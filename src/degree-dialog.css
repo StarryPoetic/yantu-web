@@ -1,0 +1,108 @@
+/* Keep the heading outside the scrolling explanation at both entry points. */
+.modal.degree-dialog,
+.flow-dialog.panel.degree-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 100%);
+  max-width: 960px;
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.degree-dialog > .modal-heading,
+.degree-dialog > .degree-dialog-heading {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0;
+  padding: 22px 28px;
+  border-bottom: 1px solid #e0e7d5;
+  background: #fafbf7;
+}
+
+.degree-dialog > .modal-heading h2,
+.degree-dialog > .degree-dialog-heading h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.5;
+  font-weight: 550;
+  color: #416236;
+}
+
+.degree-dialog > .modal-heading > button,
+.degree-dialog > .degree-dialog-heading > button {
+  position: static;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  color: #637756;
+  border: 1px solid #e0e7d5;
+  border-radius: 8px;
+  background: white;
+}
+
+.degree-dialog > .degree-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-padding-block: 20px;
+  padding: 8px 28px 28px;
+}
+
+.degree-dialog > .degree-dialog-body:focus-visible {
+  outline: 2px solid #7f9b64;
+  outline-offset: -3px;
+}
+
+.degree-dialog .degree-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.degree-dialog .degree-columns section {
+  min-width: 0;
+  padding: 24px;
+}
+
+.degree-dialog .degree-explanation > .notice {
+  margin-top: 22px;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+@media (max-width: 640px) {
+  .modal.degree-dialog,
+  .flow-dialog.panel.degree-dialog {
+    max-height: calc(100dvh - 28px);
+  }
+
+  .degree-dialog > .modal-heading,
+  .degree-dialog > .degree-dialog-heading {
+    align-items: flex-start;
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .degree-dialog > .modal-heading h2,
+  .degree-dialog > .degree-dialog-heading h2 {
+    font-size: 20px;
+    padding-top: 4px;
+  }
+
+  .degree-dialog > .degree-dialog-body {
+    padding: 4px 18px 22px;
+  }
+
+  .degree-dialog .degree-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .degree-dialog .degree-columns section {
+    padding: 20px;
+  }
+}

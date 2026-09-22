@@ -747,6 +747,262 @@ test("academic and professional degree explanations are clickable in exploration
   ).toHaveValue("专业学位");
 });
 
+test("degree explanations use a wide dialog and keep the close control fixed while reading", async ({
+  page,
+}, testInfo) => {
+  for (const route of ["explore", "profile"]) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`/#${route}`);
+    const trigger = page.getByRole("button", {
+      name: "学硕和专硕有什么区别？",
+      exact: true,
+    });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", {
+      name: "学硕和专硕有什么区别？",
+      exact: true,
+    });
+    const bounds = await dialog.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeGreaterThanOrEqual(800);
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1440);
+    await page.setViewportSize({ width: 1440, height: 460 });
+    const body = dialog.locator(".degree-dialog-body");
+    const close = dialog.getByRole("button", {
+      name: "关闭学位说明",
+      exact: true,
+    });
+    const before = await close.boundingBox();
+    const scroll = await body.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+      return {
+        client: element.clientHeight,
+        total: element.scrollHeight,
+        top: element.scrollTop,
+      };
+    });
+    expect(scroll.total).toBeGreaterThan(scroll.client);
+    expect(scroll.top).toBeGreaterThan(0);
+    const after = await close.boundingBox();
+    expect(after).not.toBeNull();
+    expect(after!.x).toBeCloseTo(before!.x, 1);
+    expect(after!.y).toBeCloseTo(before!.y, 1);
+    expect(after!.y).toBeGreaterThanOrEqual(0);
+    expect(after!.y + after!.height).toBeLessThanOrEqual(460);
+    await expect(dialog.locator(".degree-explanation .notice")).toBeInViewport({
+      ratio: 1,
+    });
+    await close.click();
+    await expect(dialog).not.toBeVisible();
+    await expect(trigger).toBeFocused();
+  }
+
+  await page.setViewportSize({ width: 375, height: 640 });
+  await page
+    .getByRole("button", { name: "学硕和专硕有什么区别？", exact: true })
+    .click();
+  const mobileDialog = page.getByRole("dialog", {
+    name: "学硕和专硕有什么区别？",
+    exact: true,
+  });
+  const mobileBody = mobileDialog.locator(".degree-dialog-body");
+  const close = mobileDialog.getByRole("button", {
+    name: "关闭学位说明",
+    exact: true,
+  });
+  const before = await close.boundingBox();
+  await mobileBody.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const after = await close.boundingBox();
+  expect(after!.y).toBeCloseTo(before!.y, 1);
+  await expect(
+    mobileDialog.locator(".degree-explanation .notice"),
+  ).toBeInViewport({ ratio: 1 });
+  const mobileBounds = await mobileDialog.boundingBox();
+  expect(mobileBounds!.x).toBeGreaterThanOrEqual(0);
+  expect(mobileBounds!.x + mobileBounds!.width).toBeLessThanOrEqual(375);
+  expect(mobileBounds!.y + mobileBounds!.height).toBeLessThanOrEqual(640);
+  await page.screenshot({
+    path: testInfo.outputPath("mobile-degree-dialog-bottom.png"),
+  });
+  await close.click();
+  await expect(mobileDialog).not.toBeVisible();
+});
+
+test("city selection supports four arrow keys and visible direction controls without scrolling the page", async ({
+  page,
+}) => {
+  for (const width of [1440, 375]) {
+    await page.setViewportSize({ width, height: 812 });
+    await page.goto("/#profile");
+    // A same-hash navigation can preserve transient component state. Give each
+    // viewport its own fresh attempt instead of reusing the active city index.
+    await page.reload();
+    const search = page.getByRole("combobox", {
+      name: "搜索意向城市",
+      exact: true,
+    });
+    await search.evaluate((element) =>
+      element.scrollIntoView({ block: "center" }),
+    );
+    await search.click();
+    const list = page.getByRole("listbox", { name: "全国城市", exact: true });
+    await expect(list).toBeVisible();
+    const options = list.getByRole("option");
+    const firstGroup = list.getByRole("group", {
+      name: "A 开头的城市",
+      exact: true,
+    });
+    const firstRow = await firstGroup
+      .getByRole("option")
+      .evaluateAll((elements) => {
+        const firstTop = elements[0].getBoundingClientRect().top;
+        return elements.filter(
+          (element) =>
+            Math.abs(element.getBoundingClientRect().top - firstTop) < 1,
+        ).length;
+      });
+    expect(firstRow).toBe(width === 1440 ? 3 : 2);
+    const pagePosition = await page.evaluate(() => window.scrollY);
+    const expectActive = async (index: number) => {
+      await expect(search).toHaveAttribute(
+        "aria-activedescendant",
+        (await options.nth(index).getAttribute("id"))!,
+      );
+    };
+    await search.press("ArrowDown");
+    await expectActive(0);
+    await search.press("ArrowRight");
+    await expectActive(1);
+    await search.press("ArrowDown");
+    await expectActive(1 + firstRow);
+    await search.press("ArrowUp");
+    await expectActive(1);
+    await search.press("ArrowLeft");
+    await expectActive(0);
+    await page
+      .getByRole("button", { name: "向右移动城市", exact: true })
+      .click();
+    await expectActive(1);
+    await page
+      .getByRole("button", { name: "向下移动城市", exact: true })
+      .click();
+    await expectActive(1 + firstRow);
+    await page
+      .getByRole("button", { name: "向上移动城市", exact: true })
+      .click();
+    await expectActive(1);
+    await page
+      .getByRole("button", { name: "向左移动城市", exact: true })
+      .click();
+    await expectActive(0);
+    await search.press("End");
+    await expectActive((await options.count()) - 1);
+    const last = options.last();
+    await expect(last).toBeInViewport({ ratio: 1 });
+    const listBounds = await list.boundingBox();
+    const lastBounds = await last.boundingBox();
+    expect(lastBounds!.y).toBeGreaterThanOrEqual(listBounds!.y);
+    expect(lastBounds!.y + lastBounds!.height).toBeLessThanOrEqual(
+      listBounds!.y + listBounds!.height + 1,
+    );
+    expect(await list.evaluate((element) => element.scrollTop)).toBeGreaterThan(
+      0,
+    );
+    expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(
+      pagePosition,
+      1,
+    );
+    await search.press("Enter");
+    await expect(last).toHaveAttribute("aria-selected", "true");
+    await search.press("Home");
+    await expectActive(0);
+    await expect(options.first()).toBeInViewport({ ratio: 1 });
+    await search.press("Escape");
+    await expect(list).not.toBeVisible();
+    await expect(search).toBeFocused();
+    await search.click();
+    await expect(list).toBeVisible();
+    await expectActive(0);
+    await search.press("Escape");
+    await expect(list).not.toBeVisible();
+  }
+});
+
+test("city dropdown flips above a low field and adapts to scrolling and a shorter viewport", async ({
+  page,
+}, testInfo) => {
+  for (const width of [1440, 375]) {
+    const height = width === 1440 ? 720 : 812;
+    await page.setViewportSize({ width, height });
+    await page.goto("/#profile");
+    const search = page.getByRole("combobox", {
+      name: "搜索意向城市",
+      exact: true,
+    });
+    await search.evaluate((element) => {
+      window.scrollBy(
+        0,
+        element.getBoundingClientRect().top - (window.innerHeight - 110),
+      );
+    });
+    await search.click();
+    const dropdown = page.locator(".city-dropdown");
+    const assertContained = async () => {
+      await expect
+        .poll(async () =>
+          dropdown.evaluate((element) => {
+            const rect = element.getBoundingClientRect();
+            return (
+              rect.left >= 0 &&
+              rect.top >= 0 &&
+              rect.right <= window.innerWidth + 1 &&
+              rect.bottom <= window.innerHeight + 1
+            );
+          }),
+        )
+        .toBe(true);
+      await expect(page.locator(".city-keyboard-help")).toBeInViewport({
+        ratio: 1,
+      });
+      for (const direction of ["左", "上", "下", "右"]) {
+        await expect(
+          page.getByRole("button", {
+            name: `向${direction}移动城市`,
+            exact: true,
+          }),
+        ).toBeInViewport({ ratio: 1 });
+      }
+    };
+    await expect(dropdown).toHaveAttribute("data-placement", "top");
+    await assertContained();
+    const bounds = await dropdown.boundingBox();
+    const field = await page.locator(".city-search-field").boundingBox();
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(field!.y);
+    await search.evaluate((element) => {
+      window.scrollBy(0, element.getBoundingClientRect().top - 100);
+    });
+    await expect(dropdown).toHaveAttribute("data-placement", "bottom");
+    await assertContained();
+    await page.setViewportSize({ width, height: 520 });
+    await assertContained();
+    await search.press("End");
+    await expect(
+      page.getByRole("listbox").getByRole("option").last(),
+    ).toBeInViewport({ ratio: 1 });
+    await assertContained();
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `${width === 1440 ? "desktop" : "mobile"}-city-floating.png`,
+      ),
+    });
+    await search.press("Escape");
+    await expect(dropdown).not.toBeVisible();
+  }
+});
+
 test("body copy, form labels, controls, and helper text remain readable on desktop and mobile", async ({
   page,
 }, testInfo) => {

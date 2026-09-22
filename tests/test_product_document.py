@@ -34,7 +34,7 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertFalse(re.search(r"\b(?:TODO|FIXME|TBD)\b", self.content))
 
     def test_current_requirement_version_is_declared(self):
-        self.assertRegex(self.content, r"版本：V0\.4 · 日期：\d{4}-\d{2}-\d{2}")
+        self.assertRegex(self.content, r"版本：V0\.5 · 日期：\d{4}-\d{2}-\d{2}")
 
     def test_heading_hierarchy_and_unique_titles(self):
         headings = re.findall(r"^(#{1,6}) (.+)$", self.content, re.MULTILINE)
@@ -132,6 +132,16 @@ class ProductDocumentTests(unittest.TestCase):
             "拼音", "多选", "移除", "自定义城市", "不确定", "互斥", "保存",
         ):
             self.assertIn(behavior, city_requirement)
+
+    def test_overlay_interactions_keep_navigation_and_close_controls_visible(self):
+        interactions = self.content.split("### 3.2. 说明弹窗与城市浮层交互", 1)[1].split("## 4.", 1)[0]
+        for behavior in (
+            "加宽弹窗", "手机端改为单列", "关闭按钮固定在顶部",
+            "独立区域内滚动", "焦点回到入口", "向上翻转", "重新定位并调整高度",
+            "列表独立滚动", "不能连带滚动整个页面", "← →", "↑ ↓",
+            "Home / End", "Enter 选择", "Esc 收起", "四方向移动按钮",
+        ):
+            self.assertIn(behavior, interactions)
 
     def test_assessment_modules_have_five_questions_and_no_math_requirement(self):
         public_row = self.table_rows["公共课测评"]

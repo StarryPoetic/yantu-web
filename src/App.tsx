@@ -40,6 +40,7 @@ import { MajorDiscovery, DegreeExplanation } from "./MajorDiscovery";
 import { SchoolDetail } from "./SchoolDetail";
 import { schools, baseSchools, majorDirections, directionOf } from "./programs";
 import { initialProfile } from "./types";
+import "./degree-dialog.css";
 import type {
   AssessmentResult,
   FlowProps,
@@ -124,11 +125,15 @@ export function Modal({
   children,
   onClose,
   wide = false,
+  className = "",
+  closeLabel = "关闭弹窗",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  className?: string;
+  closeLabel?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -179,7 +184,7 @@ export function Modal({
       }}
     >
       <div
-        className={`modal ${wide ? "modal-wide" : ""}`}
+        className={`modal ${wide ? "modal-wide" : ""} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -190,7 +195,7 @@ export function Modal({
           <h2>{title}</h2>
           <button
             className="icon-button"
-            aria-label="关闭弹窗"
+            aria-label={closeLabel}
             onClick={onClose}
           >
             <X size={20} />
@@ -1783,9 +1788,18 @@ export default function App() {
         <Modal
           title="学硕和专硕有什么区别？"
           wide
+          className="degree-dialog"
+          closeLabel="关闭学位说明"
           onClose={() => setModal(null)}
         >
-          <DegreeExplanation />
+          <div
+            className="degree-dialog-body"
+            tabIndex={0}
+            role="region"
+            aria-label="学位类型说明内容"
+          >
+            <DegreeExplanation />
+          </div>
         </Modal>
       )}
       {modal === "help" && (

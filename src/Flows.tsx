@@ -495,17 +495,26 @@ export function ProfileView({
         <FlowDialog
           labelId="degree-help-title"
           onClose={() => setDegreeHelp(false)}
-          className="degree-help-dialog"
+          className="degree-help-dialog degree-dialog"
         >
-          <button
-            className="flow-dialog-close flow-icon-button"
-            aria-label="关闭学位说明"
-            onClick={() => setDegreeHelp(false)}
+          <div className="degree-dialog-heading">
+            <h2 id="degree-help-title">学硕和专硕有什么区别？</h2>
+            <button
+              className="flow-icon-button"
+              aria-label="关闭学位说明"
+              onClick={() => setDegreeHelp(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div
+            className="degree-dialog-body"
+            tabIndex={0}
+            role="region"
+            aria-label="学位类型说明内容"
           >
-            <X size={20} />
-          </button>
-          <h2 id="degree-help-title">学硕和专硕有什么区别？</h2>
-          <DegreeExplanation />
+            <DegreeExplanation />
+          </div>
         </FlowDialog>
       )}
       {confirm && (
