@@ -34,9 +34,11 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { AdminView, AssessmentView, ProfileView } from "./Flows";
+import { AdminView, ProfileView } from "./Flows";
+import { AssessmentView } from "./AssessmentView";
+import { MajorDiscovery, DegreeExplanation } from "./MajorDiscovery";
 import { SchoolDetail } from "./SchoolDetail";
-import { schools } from "./data";
+import { schools, baseSchools, majorDirections, directionOf } from "./programs";
 import { initialProfile } from "./types";
 import type {
   AssessmentResult,
@@ -78,6 +80,11 @@ function readState(): DemoState {
     return {
       ...defaultState,
       ...parsed,
+      assessment:
+        parsed.assessment?.version === 2 &&
+        parsed.assessment?.stage === "public"
+          ? parsed.assessment
+          : null,
       profile: {
         ...initialProfile,
         ...parsed.profile,
@@ -254,6 +261,7 @@ function SchoolCard({
   onCompare,
   onDetail,
   onExclude,
+  onCampus,
 }: {
   school: School;
   saved: boolean;
@@ -262,6 +270,7 @@ function SchoolCard({
   onCompare: () => void;
   onDetail: () => void;
   onExclude: () => void;
+  onCampus: () => void;
 }) {
   return (
     <article className="school-card">
@@ -299,6 +308,10 @@ function SchoolCard({
           <Heart size={19} fill={saved ? "currentColor" : "none"} />
         </button>
       </div>
+      <button className="text-button same-campus-link" onClick={onCampus}>
+        比较这所学校的其他专业
+        <ArrowRight size={13} />
+      </button>
       <div className="project-title">
         <h3>
           {school.major}
@@ -458,11 +471,19 @@ export default function App() {
   const [sort, setSort] = useState("综合适配");
   const [compare, setCompare] = useState<string[]>([]);
   const [modal, setModal] = useState<
-    "compare" | "excluded" | "report" | "help" | "notifications" | null
+    | "compare"
+    | "excluded"
+    | "report"
+    | "help"
+    | "notifications"
+    | "degree"
+    | null
   >(null);
   const [detail, setDetail] = useState<School | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [degree, setDegree] = useState("全部类型");
+  const [campus, setCampus] = useState("全部院校");
+  const [majorFilter, setMajorFilter] = useState("");
   const [storageError, setStorageError] = useState(false);
   useEffect(() => {
     try {
@@ -509,6 +530,13 @@ export default function App() {
     setState((s) => ({
       ...s,
       target: school.id,
+      profile: {
+        ...s.profile,
+        targetMajor:
+          directionOf(school) === "research"
+            ? "计算机科学与技术"
+            : "计算机技术",
+      },
       saved: s.saved.includes(school.id) ? s.saved : [...s.saved, school.id],
     }));
     setDetail(null);
@@ -521,15 +549,21 @@ export default function App() {
     setCity("全部城市");
     setTier("全部梯度");
     setDegree("全部类型");
+    setCampus("全部院校");
+    setMajorFilter("");
   };
   const targetSchool = schools.find((s) => s.id === state.target);
   const activeFilters =
     city !== "全部城市" ||
     tier !== "全部梯度" ||
     degree !== "全部类型" ||
+    campus !== "全部院校" ||
+    !!majorFilter ||
     !!search;
   const isSavedPage = page === "favorites";
-  const shown = schools
+  const recommendedPool =
+    isSavedPage || campus !== "全部院校" || majorFilter ? schools : baseSchools;
+  const shown = recommendedPool
     .filter(
       (s) =>
         !state.excluded.includes(s.id) &&
@@ -537,6 +571,8 @@ export default function App() {
         (city === "全部城市" || s.city === city) &&
         (tier === "全部梯度" || s.tier === tier) &&
         (degree === "全部类型" || s.degree === degree) &&
+        (campus === "全部院校" || s.name === campus) &&
+        (!majorFilter || directionOf(s) === majorFilter) &&
         `${s.name}${s.major}${s.city}${s.college}`
           .toLowerCase()
           .includes(search.trim().toLowerCase()),
@@ -548,6 +584,29 @@ export default function App() {
           ? b.seats - a.seats
           : b.match - a.match,
     );
+  const chooseCampus = (name: string) => {
+    setCampus(name);
+    setMajorFilter("");
+    setCity("全部城市");
+    setSearch("");
+    setTier("全部梯度");
+    setDegree("全部类型");
+    setTab("专业方向");
+  };
+  const majorCandidates = schools.filter(
+    (s) =>
+      !state.excluded.includes(s.id) &&
+      (campus === "全部院校" || s.name === campus) &&
+      (city === "全部城市" || s.city === city) &&
+      (degree === "全部类型" || s.degree === degree),
+  );
+  const confirmMajor = (name: string) => {
+    setState((prev) => ({
+      ...prev,
+      profile: { ...prev.profile, targetMajor: name },
+    }));
+    notify(`已确认${name}方向，可继续比较院校或选做专业课测评`);
+  };
   const flowProps: FlowProps = {
     profile: state.profile,
     assessment: state.assessment,
@@ -561,6 +620,7 @@ export default function App() {
     onDeleteProfile: () => {
       try {
         localStorage.removeItem("yantu-demo-assessment-attempt");
+        localStorage.removeItem("yantu-demo-assessment-attempt-v2");
       } catch {
         /* Session state is still cleared below. */
       }
@@ -816,15 +876,15 @@ export default function App() {
                     {
                       n: "02",
                       title: "了解起点",
-                      sub: "基础测评与诊断",
+                      sub: "公共课测评与诊断",
                       icon: ClipboardCheck,
                       p: "assessment" as Page,
                       complete: !!state.assessment?.completed,
                     },
                     {
                       n: "03",
-                      title: "探索方向",
-                      sub: "院校与专业推荐",
+                      title: "联合选择",
+                      sub: "专业与院校推荐",
                       icon: Compass,
                       p: "explore" as Page,
                       complete: false,
@@ -864,6 +924,101 @@ export default function App() {
               )}
               <div className="explore-layout">
                 <section className="results-area">
+                  {!isSavedPage && (
+                    <section
+                      className="joint-selector"
+                      aria-label="专业与院校联合选择"
+                    >
+                      <div className="joint-selector-heading">
+                        <span className="eyebrow">FIND YOUR FIT</span>
+                        <strong>专业与院校，一起比较</strong>
+                        <span className="badge">方向未确定也可以开始</span>
+                      </div>
+                      <div className="joint-selector-fields">
+                        <label className="field">
+                          <span>从院校开始</span>
+                          <select
+                            aria-label="按院校探索专业"
+                            value={campus}
+                            onChange={(event) =>
+                              chooseCampus(event.target.value)
+                            }
+                          >
+                            <option>全部院校</option>
+                            {[...new Set(baseSchools.map((s) => s.name))].map(
+                              (name) => (
+                                <option key={name}>{name}</option>
+                              ),
+                            )}
+                          </select>
+                        </label>
+                        <label className="field">
+                          <span>从专业开始</span>
+                          <select
+                            aria-label="专业方向筛选"
+                            value={majorFilter}
+                            onChange={(event) => {
+                              setMajorFilter(event.target.value);
+                              setTab("院校推荐");
+                            }}
+                          >
+                            <option value="">全部方向 / 暂未确定</option>
+                            {majorDirections.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.name} ·{" "}
+                                {m.degree === "学术学位" ? "学硕" : "专硕"}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      <div className="joint-selector-foot">
+                        <p>
+                          {campus !== "全部院校"
+                            ? `当前查看${campus}，可比较该校的专业与学位类型。`
+                            : majorFilter
+                              ? `已按${majorDirections.find((m) => m.id === majorFilter)?.name}方向联动筛选院校。`
+                              : "先看感兴趣的方向，也可以先看心仪院校，再逐步确定组合。"}
+                        </p>
+                        <button
+                          className="text-button degree-help-button"
+                          onClick={() => setModal("degree")}
+                        >
+                          <CircleHelp size={15} />
+                          学硕和专硕有什么区别？
+                        </button>
+                      </div>
+                      {state.profile.targetMajor && (
+                        <div className="confirmed-major">
+                          <Check size={15} />
+                          <span>已确认方向：{state.profile.targetMajor}</span>
+                          <button
+                            className="text-button"
+                            onClick={() => navigate("assessment")}
+                          >
+                            选做专业课测评
+                            <ArrowRight size={14} />
+                          </button>
+                          <button
+                            className="text-button"
+                            aria-label="取消已确认专业"
+                            onClick={() => {
+                              setState((prev) => ({
+                                ...prev,
+                                profile: {
+                                  ...prev.profile,
+                                  targetMajor: undefined,
+                                },
+                              }));
+                              notify("已恢复为专业未确定，公共课测评不受影响");
+                            }}
+                          >
+                            重新考虑
+                          </button>
+                        </div>
+                      )}
+                    </section>
+                  )}
                   <div className="results-tabs">
                     <div className="tab-buttons">
                       {(isSavedPage
@@ -878,7 +1033,11 @@ export default function App() {
                           {t}
                           {t === "院校推荐" && (
                             <span>
-                              {schools.length - state.excluded.length}
+                              {
+                                baseSchools.filter(
+                                  (s) => !state.excluded.includes(s.id),
+                                ).length
+                              }
                             </span>
                           )}
                         </button>
@@ -893,62 +1052,19 @@ export default function App() {
                     </button>
                   </div>
                   {tab === "专业方向" && !isSavedPage ? (
-                    <div className="major-grid">
-                      {[
-                        {
-                          title: "计算机技术",
-                          code: "085404",
-                          desc: "把技术变成解决问题的能力",
-                          icon: LayoutDashboard,
-                          jobs: "软件开发 / 人工智能 / 数据工程",
-                          cost: "与现有专业衔接较好；需强化算法与系统基础",
-                          tone: "green",
-                        },
-                        {
-                          title: "电子信息",
-                          code: "085400",
-                          desc: "连接数字世界与真实生活",
-                          icon: Sparkles,
-                          jobs: "嵌入式开发 / 通信工程 / 智能硬件",
-                          cost: "需补充信号、电路等课程，关注项目具体方向",
-                          tone: "orange",
-                        },
-                      ].map((m) => (
-                        <article
-                          className={`panel major-card ${m.tone}`}
-                          key={m.code}
-                        >
-                          <span className="major-icon">
-                            <m.icon size={25} />
-                          </span>
-                          <span className="badge">方向示例</span>
-                          <h2>
-                            {m.title}
-                            <small>{m.code}</small>
-                          </h2>
-                          <p>{m.desc}</p>
-                          <div className="major-info">
-                            <strong>未来可以做什么</strong>
-                            <p>{m.jobs}</p>
-                            <strong>需要补充的能力</strong>
-                            <p>{m.cost}</p>
-                          </div>
-                          <button
-                            className="button secondary"
-                            onClick={() => {
-                              setTab("院校推荐");
-                              setSearch(m.title);
-                            }}
-                          >
-                            探索相关院校
-                            <ArrowRight size={15} />
-                          </button>
-                        </article>
-                      ))}
-                      <div className="notice">
-                        专业适配与就业方向为交互示例。具体岗位门槛、项目就业数据与政策依据尚未接入。
-                      </div>
-                    </div>
+                    <MajorDiscovery
+                      candidates={majorCandidates}
+                      profile={state.profile}
+                      campus={campus}
+                      onCampus={chooseCampus}
+                      onConfirm={confirmMajor}
+                      onExplainDegree={() => setModal("degree")}
+                      onExplore={(id) => {
+                        setMajorFilter(id);
+                        setTab("院校推荐");
+                        setSearch("");
+                      }}
+                    />
                   ) : (
                     <>
                       <div className="filter-bar">
@@ -1062,6 +1178,10 @@ export default function App() {
                               onSave={() => toggleSave(s.id)}
                               onCompare={() => toggleCompare(s.id)}
                               onDetail={() => setDetail(s)}
+                              onCampus={() => {
+                                navigate("explore");
+                                chooseCampus(s.name);
+                              }}
                               onExclude={() => {
                                 setState((prev) => ({
                                   ...prev,
@@ -1659,6 +1779,15 @@ export default function App() {
           </div>
         </Modal>
       )}
+      {modal === "degree" && (
+        <Modal
+          title="学硕和专硕有什么区别？"
+          wide
+          onClose={() => setModal(null)}
+        >
+          <DegreeExplanation />
+        </Modal>
+      )}
       {modal === "help" && (
         <Modal title="欢迎来到研途" onClose={() => setModal(null)}>
           <p className="muted">
@@ -1670,8 +1799,11 @@ export default function App() {
               <p>填写背景、选择城市，调整你看重的因素。不确定也没有关系。</p>
             </li>
             <li>
-              <strong>体验基础测评</strong>
-              <p>回答示例题，查看诊断；也可以跳过测评，先探索院校。</p>
+              <strong>体验公共课测评</strong>
+              <p>
+                数学、英语、政治每科 5
+                道题，模块可选。也可以跳过，先比较专业与院校；确认专业后再选做专业课测评。
+              </p>
             </li>
             <li>
               <strong>探索、收藏和对比</strong>

@@ -20,12 +20,21 @@ class ProductDocumentTests(unittest.TestCase):
     def setUpClass(cls):
         cls.content = DOCUMENT.read_text(encoding="utf-8")
         cls.lines = cls.content.splitlines()
+        cls.table_rows = {}
+        for line in cls.lines:
+            if line.startswith("|"):
+                cells = [cell.strip() for cell in line.strip("|").split("|")]
+                if len(cells) == 2:
+                    cls.table_rows[cells[0]] = cells[1]
 
     def test_utf8_and_no_unfinished_placeholders(self):
         self.assertTrue(self.content.endswith("\n"))
         self.assertNotIn("\ufffd", self.content)
         self.assertNotIn("\x00", self.content)
         self.assertFalse(re.search(r"\b(?:TODO|FIXME|TBD)\b", self.content))
+
+    def test_current_requirement_version_is_declared(self):
+        self.assertRegex(self.content, r"版本：V0\.4 · 日期：\d{4}-\d{2}-\d{2}")
 
     def test_heading_hierarchy_and_unique_titles(self):
         headings = re.findall(r"^(#{1,6}) (.+)$", self.content, re.MULTILINE)
@@ -84,7 +93,7 @@ class ProductDocumentTests(unittest.TestCase):
 
     def test_major_and_school_selection_are_both_core_mvp(self):
         for module in ("专业推荐与选择", "院校推荐与选择"):
-            self.assertTrue(any(line.startswith(f"| {module}（核心 MVP） |") for line in self.lines))
+            self.assertIn(f"{module}（核心 MVP）", self.table_rows)
         scope = self.content.split("## 6. 首版 MVP 范围", 1)[1].split("## 7.", 1)[0]
         for requirement in ("专业选择与院校选择", "并重", "专业与院校联合推荐", "双向比较与调整"):
             self.assertIn(requirement, scope)
@@ -109,12 +118,46 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertRegex(self.content, r"专业已确定 → 专业课测评")
 
     def test_degree_guidance_has_accessible_explanation_and_mvp_scope(self):
-        guidance = next(line for line in self.lines if line.startswith("| 学硕/专硕建议与解释 |"))
+        guidance = self.table_rows["学硕/专硕建议与解释"]
         self.assertIn("说明按钮", guidance)
         self.assertIn("点击或触摸", guidance)
         scope = self.content.split("## 6. 首版 MVP 范围", 1)[1].split("## 7.", 1)[0]
         for requirement in ("专业选择", "学硕/专硕解释入口", "专业确认后", "不列为首版必备"):
             self.assertIn(requirement, scope)
+
+    def test_city_picker_has_search_order_selection_and_uncertainty(self):
+        city_requirement = self.table_rows["意向城市选择"]
+        for behavior in (
+            "全国城市下拉列表", "拼音首字母 A–Z 分组排序", "中文",
+            "拼音", "多选", "移除", "自定义城市", "不确定", "互斥", "保存",
+        ):
+            self.assertIn(behavior, city_requirement)
+
+    def test_assessment_modules_have_five_questions_and_no_math_requirement(self):
+        public_row = self.table_rows["公共课测评"]
+        specialty_row = self.table_rows["专业课测评（专业确定后可选）"]
+        for requirement in ("数学", "英语", "政治", "每科 5", "共 15", "不强制"):
+            self.assertIn(requirement, public_row)
+        for requirement in ("确认专业后", "5 道", "可以跳过", "不阻断"):
+            self.assertIn(requirement, specialty_row)
+        self.assertIn("取消数学后可完成英语与政治共 10 题", self.content)
+
+    def test_assessment_navigation_requires_explicit_final_submission(self):
+        interaction = self.content.split("### 3.1. 测评交互细则", 1)[1].split("## 4.", 1)[0]
+        for requirement in (
+            "短暂的选中反馈", "自动跳到下一题", "末题选中后停留",
+            "主动点击提交", "不能自动提交", "返回检查与修改答案",
+            "不得丢失", "旧版 6 题缓存", "独立版本记录", "删除个人资料",
+        ):
+            self.assertIn(requirement, interaction)
+
+    def test_readability_and_mobile_overflow_are_acceptance_requirements(self):
+        readability = self.table_rows["阅读与响应式适配"]
+        for requirement in ("16px", "12px", "14px", "375px", "不裁切", "无横向溢出", "自然换行"):
+            self.assertIn(requirement, readability)
+        acceptance = self.content.split("## 7. 首版验收方向", 1)[1].split("## 参考资料", 1)[0]
+        self.assertIn("正文默认 16px", acceptance)
+        self.assertIn("375px", acceptance)
 
 
 if __name__ == "__main__":

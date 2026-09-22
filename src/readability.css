@@ -1,0 +1,941 @@
+/* Shared content typography. Keep these rules after the component styles so
+   responsive layouts never shrink instructional text back to 8–10 px. */
+.app-content main {
+  font-size: 16px;
+}
+.app-content main p {
+  font-size: 16px;
+  line-height: 1.85;
+  color: #667260;
+}
+.app-content main .muted {
+  color: #73806c;
+}
+.app-content main .eyebrow {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #7b8a70;
+}
+.app-content main .page-heading {
+  flex-wrap: wrap;
+}
+.app-content main .page-heading h1 {
+  font-size: 32px;
+  line-height: 1.5;
+}
+.app-content main .page-heading p {
+  font-size: 16px;
+  max-width: none;
+}
+.app-content main .button,
+.modal .button,
+.detail-drawer .button,
+.flow-dialog .button {
+  font-size: 14px;
+  min-height: 42px;
+  white-space: normal;
+  line-height: 1.6;
+}
+.app-content main .text-button {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.app-content main .badge,
+.app-content main .tiny-tag,
+.app-content main .micro-demo {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.app-content main .notice {
+  font-size: 14px;
+  line-height: 1.9;
+  color: #82754f;
+}
+.app-content main .section-heading {
+  flex-wrap: wrap;
+}
+.app-content main .section-heading h2 {
+  font-size: 21px;
+}
+.app-content main .section-heading h3 {
+  font-size: 17px;
+}
+.app-content main .section-heading > .muted {
+  font-size: 12px;
+}
+.app-content main .field > span,
+.app-content main .field > label {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #5f7152;
+}
+.app-content main .field small {
+  font-size: 12px;
+  color: #7e8c70;
+}
+.app-content main .field input:not([type="checkbox"]):not([type="range"]),
+.app-content main .field select,
+.app-content main .field textarea {
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 46px;
+}
+.app-content main .field textarea {
+  min-height: 96px;
+}
+.app-content main .hero {
+  min-height: 285px;
+}
+.app-content main .hero-copy {
+  padding: 30px;
+}
+.app-content main .hero h2 {
+  font-size: 32px;
+}
+.app-content main .hero p {
+  color: #c8d7c7;
+  font-size: 16px;
+  max-width: 570px;
+}
+.app-content main .hero-label {
+  font-size: 12px;
+}
+.app-content main .hero button {
+  font-size: 15px;
+  padding: 10px 16px;
+}
+.app-content main .hero-footnote {
+  font-size: 12px;
+  color: #b7cbb3;
+  display: inline-block;
+  line-height: 1.8;
+}
+.app-content main .journey-art {
+  top: 28px;
+}
+.app-content main .journey-step strong {
+  font-size: 15px;
+}
+.app-content main .journey-step small {
+  font-size: 12px;
+  color: #839077;
+  line-height: 1.6;
+}
+.app-content main .step-number {
+  font-size: 23px;
+}
+.app-content main .journey-steps {
+  padding: 20px 5px;
+}
+.app-content main .tab-buttons > button {
+  font-size: 18px;
+}
+.app-content main .tab-buttons > button > span {
+  font-size: 12px;
+}
+.app-content main .filter-bar {
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.app-content main .search-field {
+  min-width: 170px;
+  height: 42px;
+}
+.app-content main .search-field input {
+  font-size: 14px;
+}
+.app-content main .filter-select {
+  height: 42px;
+  padding: 0 9px;
+}
+.app-content main .filter-select select {
+  font-size: 14px;
+  width: 96px;
+}
+.app-content main .more-filter {
+  height: 42px;
+  width: 42px;
+}
+.app-content main .extra-filters {
+  font-size: 14px;
+}
+.app-content main .extra-filters select {
+  font-size: 14px;
+  padding: 7px;
+}
+.app-content main .results-meta {
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: #758565;
+  line-height: 1.8;
+}
+.app-content main .results-meta select {
+  font-size: 13px;
+  max-width: 175px;
+}
+.app-content main .school-card {
+  padding: 22px 20px 0;
+}
+.app-content main .school-name {
+  font-size: 20px;
+  white-space: normal;
+  line-height: 1.5;
+}
+.app-content main .school-seal {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+}
+.app-content main .school-meta {
+  font-size: 13px;
+  line-height: 1.6;
+  gap: 5px;
+  color: #788669;
+}
+.app-content main .school-meta .tiny-tag {
+  font-size: 12px;
+}
+.app-content main .same-campus-link {
+  display: flex;
+  font-size: 12px;
+  margin: 13px 0 0;
+  color: #6b8158;
+}
+.app-content main .project-title {
+  margin: 17px 0;
+}
+.app-content main .project-title h3 {
+  font-size: 17px;
+  line-height: 1.6;
+}
+.app-content main .project-title h3 > span {
+  font-size: 12px;
+  color: #79886a;
+}
+.app-content main .project-title p {
+  font-size: 14px;
+  color: #748266;
+  line-height: 1.8;
+}
+.app-content main .school-stats {
+  column-gap: 10px;
+  align-items: start;
+}
+.app-content main .school-stats > div > span {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #7e8a70;
+  white-space: normal;
+}
+.app-content main .school-stats .micro-demo {
+  font-size: 12px;
+}
+.app-content main .school-stats > div > strong {
+  font-size: 31px;
+}
+.app-content main .school-stats small {
+  font-size: 12px;
+}
+.app-content main .school-stats > div.tier-stat > .tier {
+  font-size: 13px;
+  padding: 5px 8px;
+}
+.app-content main .school-stats > div.tier-stat {
+  padding-top: 6px;
+}
+.app-content main .match-reason {
+  font-size: 14px;
+  line-height: 1.8;
+  padding: 10px;
+  align-items: start;
+}
+.app-content main .match-reason > svg {
+  margin-top: 5px;
+}
+.app-content main .match-reason span {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.app-content main .card-bottom {
+  flex-wrap: wrap;
+  row-gap: 12px;
+  padding: 15px 0;
+}
+.app-content main .compare-check {
+  font-size: 14px;
+  color: #718063;
+}
+.app-content main .compare-check input {
+  width: 16px;
+  height: 16px;
+}
+.app-content main .exclude-button {
+  font-size: 12px;
+}
+.app-content main .detail-link {
+  font-size: 14px;
+}
+.app-content main .result-footer {
+  font-size: 12px;
+  line-height: 1.8;
+  flex-wrap: wrap;
+  color: #7b896d;
+}
+.app-content main .result-footer > .text-button {
+  font-size: 12px;
+}
+.app-content main .right-rail .panel {
+  padding: 21px;
+}
+.app-content main .profile-summary-main {
+  align-items: start;
+}
+.app-content main .profile-summary-main strong {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.app-content main .profile-summary-main span {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #829070;
+}
+.app-content main .profile-chips span {
+  font-size: 12px;
+  color: #758764;
+}
+.app-content main .right-rail .priority-label,
+.app-content main .right-rail .priority-row {
+  font-size: 12px;
+  color: #7b8b69;
+}
+.app-content main .right-rail .priority-row > span:last-child,
+.app-content main .right-rail .priority-label > span:last-child {
+  font-size: 12px;
+}
+.app-content main .profile-assessment {
+  font-size: 12px;
+  padding: 10px;
+}
+.app-content main .score-preview > p,
+.app-content main .score-preview-title {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.app-content main .score-preview-title {
+  align-items: start;
+}
+.app-content main .score-target > strong {
+  font-size: 40px;
+}
+.app-content main .score-target > span,
+.app-content main .score-target small {
+  font-size: 12px;
+}
+.app-content main .score-chart {
+  padding-left: 27px;
+}
+.app-content main .chart-y,
+.app-content main .chart-x {
+  font-size: 12px;
+}
+.app-content main .chart-target {
+  font-size: 12px;
+  top: 0;
+}
+.app-content main .chart-legend {
+  font-size: 12px;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.app-content main .rail-link {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.app-content main .next-steps strong {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.app-content main .next-steps small {
+  font-size: 12px;
+  color: #8b977c;
+  line-height: 1.6;
+}
+.app-content main .next-steps .section-heading h3 {
+  font-size: 15px;
+}
+.app-content main .next-steps .tiny-tag {
+  font-size: 12px;
+}
+.app-content main .task-number {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+.app-content main .priority-list .priority-label strong {
+  font-size: 16px;
+}
+.app-content main .priority-list .priority-label small {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.app-content main .priority-control > span {
+  font-size: 14px;
+}
+.app-content main .profile-summary-row {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.app-content main .profile-summary-row strong {
+  font-size: 15px;
+}
+.app-content main .profile-summary-row > span {
+  font-size: 13px;
+}
+.app-content main .flow-privacy strong {
+  font-size: 15px;
+}
+.app-content main .flow-inline-actions button {
+  font-size: 14px;
+}
+.app-content main .assessment-subjects strong {
+  font-size: 16px;
+}
+.app-content main .assessment-subjects small,
+.app-content main .assessment-subjects > div > span:last-child {
+  font-size: 13px;
+}
+.app-content main .question-title {
+  font-size: 25px;
+  line-height: 1.7;
+}
+.app-content main .answer-option {
+  font-size: 17px;
+  line-height: 1.7;
+}
+.app-content main .answer-letter {
+  font-size: 14px;
+}
+.app-content main .question-notes > span,
+.app-content main .question-notes > label {
+  font-size: 14px;
+}
+.app-content main .question-notes textarea {
+  font-size: 16px;
+}
+.app-content main .question-dots > button {
+  font-size: 14px;
+}
+.app-content main .diagnosis-card h3 {
+  font-size: 18px;
+}
+.app-content main .answer-review-item h3 {
+  font-size: 18px;
+  line-height: 1.7;
+}
+.app-content main .answer-review-item p,
+.app-content main .answer-review-item li {
+  font-size: 16px;
+}
+.app-content main .admin-toolbar .segmented {
+  flex-wrap: wrap;
+}
+.app-content main .segmented button {
+  font-size: 14px;
+}
+.app-content main .admin-table {
+  font-size: 14px;
+}
+.app-content main .admin-table th {
+  font-size: 13px;
+}
+.app-content main .admin-source,
+.app-content main .admin-footnote {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.app-content main .admin-metric p {
+  font-size: 14px;
+}
+.app-content main .plan-stats > div > span {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.app-content main .subject-score > span {
+  width: 160px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.app-content main .subject-score strong {
+  font-size: 16px;
+}
+.app-content main .subject-score small {
+  font-size: 12px;
+}
+.app-content main .plan-task strong {
+  font-size: 15px;
+  line-height: 1.8;
+}
+.app-content main .plan-task small {
+  font-size: 12px;
+}
+.app-content main .task-progress {
+  font-size: 14px;
+}
+.app-content main .page-footer {
+  font-size: 12px;
+  align-items: start;
+  line-height: 1.8;
+  flex-wrap: wrap;
+}
+.app-content main .page-footer > span:last-child {
+  font-size: 12px;
+}
+.detail-drawer p,
+.detail-drawer li {
+  font-size: 15px;
+  line-height: 1.9;
+}
+.detail-drawer .detail-caption,
+.detail-drawer .detail-meta {
+  font-size: 13px;
+}
+.detail-drawer .detail-tabs button {
+  font-size: 15px;
+}
+.detail-drawer .detail-section h3 {
+  font-size: 18px;
+}
+.detail-drawer .detail-table,
+.detail-drawer .detail-subjects {
+  font-size: 14px;
+}
+.modal > p,
+.modal .report-school > p,
+.flow-dialog p {
+  font-size: 16px;
+  line-height: 1.9;
+}
+.modal .report-school > strong {
+  font-size: 16px;
+}
+.modal .report-school > span,
+.modal .compare-table,
+.modal .compare-table th:first-child,
+.modal .notice {
+  font-size: 14px;
+}
+.modal .compare-table th:first-child {
+  width: 145px;
+}
+
+/* Professional and university choices share one context in both tabs. */
+.joint-selector {
+  padding: 22px;
+  margin-bottom: 24px;
+  background: #f0f4e9;
+  border: 1px solid #e2e9d6;
+  border-radius: 9px;
+}
+.joint-selector-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.joint-selector-heading .eyebrow {
+  margin: 0;
+}
+.joint-selector-heading > strong {
+  font-size: 18px;
+  font-weight: 550;
+}
+.joint-selector-heading > .badge {
+  margin-left: auto;
+  background: #fff;
+}
+.joint-selector-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.joint-selector-foot {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  justify-content: space-between;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.app-content main .joint-selector-foot p {
+  font-size: 14px;
+  flex: 1 1 250px;
+}
+.joint-selector-foot .degree-help-button {
+  align-self: center;
+}
+.degree-field .degree-help-button {
+  margin-top: 9px;
+}
+.confirmed-major {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid #dce5ce;
+  padding-top: 16px;
+  margin-top: 17px;
+  font-size: 14px;
+  color: #5b7546;
+}
+.confirmed-major .text-button:last-child {
+  margin-left: auto;
+}
+.joint-context {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.joint-context > svg {
+  margin-top: 5px;
+  color: #7a9364;
+}
+.app-content main .joint-context p {
+  font-size: 15px;
+}
+.app-content main .major-discovery .major-card {
+  padding: 24px;
+}
+.major-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.major-title-row .major-icon {
+  margin: 0;
+}
+.major-title-row .badge {
+  font-size: 12px;
+  position: static;
+}
+.app-content main .major-card h2 {
+  font-size: 22px;
+  line-height: 1.6;
+}
+.app-content main .major-card .major-subtitle {
+  font-size: 15px;
+  margin: 12px 0 22px;
+}
+.app-content main .major-info strong {
+  font-size: 16px;
+  font-weight: 550;
+  color: #576c49;
+}
+.app-content main .major-info p {
+  font-size: 15px;
+  margin-bottom: 20px;
+}
+.related-campuses {
+  border-top: 1px solid var(--border);
+  padding-top: 17px;
+}
+.related-campuses > strong {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #72845d;
+}
+.related-campuses > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.related-campuses button {
+  background: #f2f5ed;
+  border: 1px solid #e3e9d9;
+  border-radius: 5px;
+  padding: 7px 9px;
+  font-size: 13px;
+  text-align: left;
+}
+.related-campuses button:hover {
+  background: #e5eedb;
+}
+.major-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 22px;
+}
+.major-actions .button {
+  width: 100%;
+  margin: 0;
+}
+.major-discovery > .notice > .text-button {
+  display: flex;
+  margin-top: 10px;
+}
+.degree-explanation > p {
+  font-size: 16px;
+  line-height: 1.9;
+  color: #6d7c61;
+  margin: 14px 0 22px;
+}
+.degree-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.degree-columns section {
+  padding: 23px;
+  border: 1px solid #e0e7d5;
+  border-radius: 8px;
+  background: #f4f7ed;
+}
+.degree-columns h3 {
+  font-size: 20px;
+  line-height: 1.6;
+  font-weight: 550;
+  margin-bottom: 15px;
+  color: #416236;
+}
+.degree-columns p {
+  font-size: 15px;
+  line-height: 1.9;
+  color: #6c7f5b;
+}
+.degree-columns strong {
+  font-size: 15px;
+  display: block;
+  margin-top: 17px;
+  font-weight: 550;
+}
+.degree-columns ul {
+  padding-left: 19px;
+  font-size: 14px;
+  line-height: 2;
+  color: #6f815f;
+}
+.degree-help-dialog {
+  max-width: 800px;
+  width: min(800px, 100%);
+}
+
+@media (max-width: 1250px) and (min-width: 1051px) {
+  .app-content main .explore-layout {
+    grid-template-columns: 1fr;
+  }
+  .app-content main .right-rail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .app-content main .right-rail .next-steps {
+    display: none;
+  }
+}
+@media (max-width: 1100px) {
+  .app-content main .step-number {
+    display: none;
+  }
+  .app-content main .hero-copy {
+    width: 100%;
+  }
+  .app-content main .hero p {
+    max-width: 75%;
+  }
+  .app-content main .journey-art {
+    opacity: 0.5;
+  }
+  .app-content main .school-name {
+    font-size: 18px;
+  }
+  .app-content main .school-grid {
+    gap: 16px;
+  }
+  .app-content main .card-bottom > div {
+    gap: 12px;
+  }
+}
+@media (max-width: 760px) {
+  .app-content main .page-heading h1 {
+    font-size: 28px;
+  }
+  .app-content main .hero h2 {
+    font-size: 28px;
+  }
+  .app-content main .hero-footnote {
+    display: block;
+    margin: 10px 0 0;
+  }
+  .app-content main .journey-step {
+    flex-direction: column;
+    text-align: center;
+    padding: 0 5px;
+  }
+  .app-content main .journey-step strong {
+    font-size: 14px;
+  }
+  .app-content main .journey-step small {
+    font-size: 12px;
+  }
+  .app-content main .step-arrow {
+    top: 10px;
+  }
+  .app-content main .plan-subheading > .micro-demo {
+    font-size: 12px;
+  }
+  .app-content main .subject-score > span {
+    width: 100%;
+  }
+  .app-content main .subject-score {
+    row-gap: 8px;
+  }
+  .degree-columns {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .app-content main .major-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .app-content main .school-grid {
+    grid-template-columns: 1fr;
+  }
+  .app-content main .school-name {
+    font-size: 20px;
+  }
+  .app-content main .hero-copy {
+    padding: 25px 22px;
+  }
+  .app-content main .hero h2 {
+    font-size: 27px;
+  }
+  .app-content main .hero p {
+    max-width: 100%;
+    font-size: 16px;
+  }
+  .app-content main .journey-art {
+    opacity: 0.13;
+    right: -55px;
+    top: 90px;
+  }
+  .app-content main .hero-label {
+    font-size: 12px;
+    letter-spacing: 0.6px;
+  }
+  .app-content main .page-heading h1 {
+    font-size: 27px;
+  }
+  .app-content main .page-heading p {
+    font-size: 16px;
+  }
+  .app-content main .journey-step strong {
+    font-size: 13px;
+  }
+  .app-content main .journey-step small {
+    font-size: 12px;
+  }
+  .app-content main .filter-select {
+    min-width: 0;
+  }
+  .app-content main .filter-select select {
+    width: 100%;
+    min-width: 0;
+  }
+  .app-content main .results-meta > span {
+    width: 100%;
+  }
+  .app-content main .school-card {
+    padding: 21px 18px 0;
+  }
+  .app-content main .school-stats {
+    grid-template-columns: 1fr 0.8fr 1fr;
+    gap: 8px;
+  }
+  .app-content main .school-stats > div > span {
+    font-size: 13px;
+  }
+  .app-content main .card-bottom {
+    gap: 10px;
+  }
+  .app-content main .right-rail {
+    grid-template-columns: 1fr;
+  }
+  .app-content main .question-title {
+    font-size: 23px;
+  }
+  .app-content main .plan-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .app-content main .plan-stats strong.unassessed {
+    font-size: 21px;
+  }
+  .app-content main .section-heading {
+    gap: 9px;
+  }
+  .joint-selector {
+    padding: 20px 17px;
+  }
+  .joint-selector-heading > strong {
+    font-size: 18px;
+  }
+  .joint-selector-heading > .badge {
+    margin-left: 0;
+  }
+  .joint-selector-fields {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .app-content main .joint-selector-foot p {
+    font-size: 14px;
+  }
+  .app-content main .major-card h2 {
+    font-size: 23px;
+  }
+  .app-content main .card-bottom .exclude-button {
+    font-size: 12px;
+  }
+  .degree-columns section {
+    padding: 20px;
+  }
+}
+
+.app-content main .text-button,
+.app-content main .same-campus-link,
+.app-content main .card-bottom .exclude-button,
+.app-content main .result-footer > .text-button,
+.app-content main .related-campuses button,
+.app-content main .next-steps strong {
+  font-size: 14px;
+}
+
+.app-content main .assessment-overview > p.muted {
+  font-size: 14px;
+}
+.app-content main .assessment-overview > p.flow-small {
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .app-content main .assessment-subjects > div {
+    flex-wrap: wrap;
+    align-content: start;
+  }
+  .app-content main .assessment-subjects > div > div {
+    width: 100%;
+  }
+  .app-content main .assessment-subjects > div > span:last-child {
+    margin: 4px 0 0;
+  }
+}

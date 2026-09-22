@@ -22,6 +22,9 @@ export interface Profile {
   preparation?: string;
   courses?: string;
   notes?: string;
+  targetMajor?: string;
+  studyGoal?: string;
+  degreePreference?: string;
 }
 export interface School {
   id: string;
@@ -53,6 +56,10 @@ export interface AssessmentResult {
   answered: number;
   correct: number;
   date: string;
+  stage?: "public" | "professional";
+  modules?: string[];
+  total?: number;
+  version?: number;
 }
 export interface FlowProps {
   profile: Profile;

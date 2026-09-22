@@ -28,23 +28,14 @@ import {
 } from "lucide-react";
 import { initialProfile, type FlowProps, type Profile } from "./types";
 import "./flows.css";
+import { CityPicker } from "./CityPicker";
+import { DegreeExplanation } from "./MajorDiscovery";
 
 type ProfileDraft = Profile & {
   preparation?: string;
   courses?: string;
   notes?: string;
 };
-const cityOptions = [
-  "杭州",
-  "南京",
-  "上海",
-  "北京",
-  "广州",
-  "深圳",
-  "成都",
-  "武汉",
-  "不确定",
-];
 const priorityDescriptions: Record<string, string> = {
   专业兴趣: "愿意长期学习和投入的方向",
   就业机会: "目标城市的岗位与专业匹配",
@@ -178,6 +169,7 @@ export function ProfileView({
     priorities: { ...initialProfile.priorities, ...profile.priorities },
   });
   const [confirm, setConfirm] = useState<"reset" | "delete" | null>(null);
+  const [degreeHelp, setDegreeHelp] = useState(false);
   useEffect(() => {
     setDraft({
       ...profile,
@@ -190,19 +182,6 @@ export function ProfileView({
     value: ProfileDraft[K],
   ) {
     setDraft((current) => ({ ...current, [key]: value }));
-  }
-  function toggleCity(city: string) {
-    const existing = draft.cities;
-    update(
-      "cities",
-      city === "不确定"
-        ? existing.includes(city)
-          ? []
-          : [city]
-        : existing.includes(city)
-          ? existing.filter((item) => item !== city)
-          : [...existing.filter((item) => item !== "不确定"), city],
-    );
   }
   function save(recommend: boolean) {
     onSaveProfile({
@@ -298,6 +277,46 @@ export function ProfileView({
                 "暂不考虑跨专业",
                 "不确定",
               ])}
+              {select("读研的主要目标", "studyGoal", [
+                "科研与继续深造",
+                "就业与专业实践",
+                "两者兼顾",
+                "不确定",
+              ])}
+              <div className="degree-field">
+                {select("学位类型偏好", "degreePreference", [
+                  "不确定",
+                  "学术学位",
+                  "专业学位",
+                ])}
+                <button
+                  className="text-button degree-help-button"
+                  onClick={() => setDegreeHelp(true)}
+                  type="button"
+                >
+                  <Info size={15} />
+                  学硕和专硕有什么区别？
+                </button>
+              </div>
+              <label className="field full-width">
+                <span>
+                  已确认的目标专业 <small>（可暂不确定，不影响推荐）</small>
+                </span>
+                <select
+                  aria-label="已确认的目标专业"
+                  value={draft.targetMajor || ""}
+                  onChange={(event) =>
+                    update("targetMajor", event.target.value)
+                  }
+                >
+                  <option value="">尚未确定</option>
+                  <option>计算机科学与技术</option>
+                  <option>计算机技术</option>
+                </select>
+                <small>
+                  确认后可选做该方向专业课测评；更换方向后，旧专业测评不直接沿用。
+                </small>
+              </label>
             </div>
           </section>
           <section className="panel flow-section">
@@ -370,24 +389,10 @@ export function ProfileView({
               </h2>
               <span className="muted">03 / 03</span>
             </div>
-            <div className="field">
-              <span>
-                意向城市 <small className="muted">（可多选）</small>
-              </span>
-              <div className="city-options">
-                {cityOptions.map((city) => (
-                  <button
-                    key={city}
-                    className={`city-chip ${draft.cities.includes(city) ? "selected" : ""}`}
-                    aria-pressed={draft.cities.includes(city)}
-                    onClick={() => toggleCity(city)}
-                  >
-                    {draft.cities.includes(city) && <Check size={14} />}
-                    {city}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <CityPicker
+              value={draft.cities}
+              onChange={(cities) => update("cities", cities)}
+            />
             <div className="priority-list">
               {Object.entries(priorityDescriptions).map(
                 ([priority, description]) => (
@@ -486,6 +491,23 @@ export function ProfileView({
           </section>
         </aside>
       </div>
+      {degreeHelp && (
+        <FlowDialog
+          labelId="degree-help-title"
+          onClose={() => setDegreeHelp(false)}
+          className="degree-help-dialog"
+        >
+          <button
+            className="flow-dialog-close flow-icon-button"
+            aria-label="关闭学位说明"
+            onClick={() => setDegreeHelp(false)}
+          >
+            <X size={20} />
+          </button>
+          <h2 id="degree-help-title">学硕和专硕有什么区别？</h2>
+          <DegreeExplanation />
+        </FlowDialog>
+      )}
       {confirm && (
         <ConfirmDialog
           title={confirm === "reset" ? "恢复示例画像？" : "删除个人资料？"}
@@ -509,476 +531,6 @@ export function ProfileView({
           {confirm === "reset"
             ? "当前未保存的修改会被替换为初始示例内容。已保存的资料不会立即改变。"
             : "删除当前浏览器中保存的个人画像。此操作完成后，你可以重新填写资料。"}
-        </ConfirmDialog>
-      )}
-    </div>
-  );
-}
-
-const questions = [
-  {
-    id: "m1",
-    subject: "数学",
-    point: "导数与复合函数",
-    text: "已知 f(x) = x² + 3x，f′(2) 的值为？",
-    options: ["4", "5", "7", "10"],
-    correct: 2,
-    explanation:
-      "根据幂函数求导法则与导数的线性性质，f′(x) = 2x + 3，代入 x = 2 得到 7。",
-    source: "高等数学：导数的基本运算法则",
-  },
-  {
-    id: "m2",
-    subject: "数学",
-    point: "定积分与基本定理",
-    text: "定积分 ∫₀¹ 2x dx 的值为？",
-    options: ["0", "1", "2", "1/2"],
-    correct: 1,
-    explanation:
-      "2x 的一个原函数为 x²。根据牛顿—莱布尼茨公式，结果为 1² − 0² = 1。",
-    source: "高等数学：微积分基本定理",
-  },
-  {
-    id: "e1",
-    subject: "英语",
-    point: "阅读与逻辑关系",
-    text: "“Although the task was challenging, she completed it on time.” 这句话主要表达什么？",
-    options: [
-      "任务简单，因此她提前完成",
-      "尽管任务有挑战，她仍按时完成",
-      "任务太难，所以她没有完成",
-      "她认为任务没有必要完成",
-    ],
-    correct: 1,
-    explanation:
-      "Although 引导让步状语从句，表达“虽然……但是……”。on time 意为“按时”。",
-    source: "英语语法：让步状语从句与常用短语",
-  },
-  {
-    id: "e2",
-    subject: "英语",
-    point: "词汇与语境理解",
-    text: "在 “Regular practice is essential for improvement.” 中，essential 的意思最接近？",
-    options: ["昂贵的", "偶然的", "必要的", "暂时的"],
-    correct: 2,
-    explanation:
-      "essential 表示“必不可少的、必要的”，句子强调持续练习对进步的必要性。",
-    source: "英语词汇：essential 的基本释义",
-  },
-  {
-    id: "c1",
-    subject: "专业基础",
-    point: "数据结构：栈",
-    text: "元素 A、B、C 依次入栈，期间没有出栈操作。随后连续出栈，顺序是什么？",
-    options: ["A、B、C", "B、A、C", "C、B、A", "C、A、B"],
-    correct: 2,
-    explanation: "栈遵循“后进先出”规则。C 最后入栈，先出栈，之后依次为 B、A。",
-    source: "数据结构：栈的后进先出特性",
-  },
-  {
-    id: "c2",
-    subject: "专业基础",
-    point: "算法：二分查找",
-    text: "在有序数组中进行二分查找，其最坏时间复杂度为？",
-    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
-    correct: 1,
-    explanation:
-      "每次比较都将待查区间缩小约一半。经过约 log₂n 次比较，区间缩小为一个元素。",
-    source: "数据结构：有序数组二分查找的复杂度分析",
-  },
-];
-const attemptKey = "yantu-demo-assessment-attempt";
-type Attempt = {
-  answers: Record<string, number>;
-  notes: Record<string, string>;
-};
-function readAttempt(): Attempt {
-  try {
-    const value = JSON.parse(localStorage.getItem(attemptKey) || "null");
-    return value?.answers && value?.notes ? value : { answers: {}, notes: {} };
-  } catch {
-    return { answers: {}, notes: {} };
-  }
-}
-
-export function AssessmentView({
-  assessment,
-  onAssessment,
-  onNavigate,
-  notify,
-}: FlowProps) {
-  const [attempt, setAttempt] = useState<Attempt>(readAttempt);
-  const [index, setIndex] = useState(0);
-  const [confirmSubmit, setConfirmSubmit] = useState(false);
-  const [showReview, setShowReview] = useState(false);
-  const answered = questions.filter(
-    (question) => attempt.answers[question.id] !== undefined,
-  ).length;
-  const correct = questions.filter(
-    (question) => attempt.answers[question.id] === question.correct,
-  ).length;
-  useEffect(() => {
-    try {
-      localStorage.setItem(attemptKey, JSON.stringify(attempt));
-    } catch {
-      /* In-memory interaction remains available when browser storage is disabled. */
-    }
-  }, [attempt]);
-  function submit() {
-    onAssessment({
-      completed: true,
-      answered,
-      correct,
-      date: new Date().toISOString(),
-    });
-    setConfirmSubmit(false);
-    notify("基础诊断已生成，可查看答案与解析");
-  }
-  function restart() {
-    setAttempt({ answers: {}, notes: {} });
-    setIndex(0);
-    setShowReview(false);
-    onAssessment(null);
-    notify("已开始新的基础测评");
-  }
-  if (assessment?.completed) {
-    const hasAttempt =
-      answered === assessment.answered &&
-      correct === assessment.correct &&
-      answered > 0;
-    return (
-      <div className="flow-page">
-        <header className="page-heading">
-          <div>
-            <p className="eyebrow">UNDERSTAND YOUR STARTING POINT</p>
-            <h1>看见起点，才能走得更稳</h1>
-            <p className="muted">
-              测评已完成 ·{" "}
-              {new Date(assessment.date).toLocaleDateString("zh-CN")} · 6
-              道基础示例题
-            </p>
-          </div>
-          <button className="button secondary" onClick={restart}>
-            <RotateCcw size={16} />
-            重新测评
-          </button>
-        </header>
-        <section className="panel assessment-result-hero">
-          <div className="flow-symbol">
-            <CheckCircle2 size={28} />
-          </div>
-          <div>
-            <span className="badge">基础诊断已完成</span>
-            <h2>每个薄弱点，都是下一步的路标。</h2>
-            <p className="muted">
-              完成 {assessment.answered} / 6 题，其中 {assessment.correct}{" "}
-              题正确。这只反映本次样本表现，不能换算为考研成绩或录取概率。
-            </p>
-          </div>
-          <div className="assessment-result-number">
-            <strong>
-              {assessment.answered}
-              <small> / 6</small>
-            </strong>
-            <span className="muted">已作答题目</span>
-          </div>
-        </section>
-        <div className="diagnosis-grid">
-          {["数学", "英语", "专业基础"].map((subject) => {
-            const subset = questions.filter(
-              (question) => question.subject === subject,
-            );
-            const count = hasAttempt
-              ? subset.filter(
-                  (question) =>
-                    attempt.answers[question.id] === question.correct,
-                ).length
-              : null;
-            const attempted = hasAttempt
-              ? subset.filter(
-                  (question) => attempt.answers[question.id] !== undefined,
-                ).length
-              : 0;
-            return (
-              <section className="panel diagnosis-card" key={subject}>
-                <BookOpen size={21} />
-                <h3>{subject}</h3>
-                <span className="badge">
-                  {count === null ? "建议补测" : `${count} / 2 正确`}
-                </span>
-                <p>
-                  {count === 2
-                    ? "本次基础样本表现稳定"
-                    : attempted < 2
-                      ? "样本不足，需要补测"
-                      : "相关知识点值得再巩固"}
-                </p>
-                <p className="muted flow-small">
-                  {subject === "数学"
-                    ? "建议继续练习导数、积分与应用题，结合解题过程复查。"
-                    : subject === "英语"
-                      ? "建议补充长难句与篇章阅读，观察不同语境下的理解。"
-                      : "建议结合目标项目科目，补充数据结构与算法专项练习。"}
-                </p>
-              </section>
-            );
-          })}
-        </div>
-        <div className="notice assessment-notice">
-          <Info size={20} />
-          <span>
-            这里只覆盖少量知识点。尚未结合用时、完整过程和补测，不能断言“粗心”或个人能力上限。目标考试科目应以招生项目要求为准。
-          </span>
-        </div>
-        <div className="flow-result-actions">
-          <button
-            className="button secondary"
-            onClick={() => setShowReview((value) => !value)}
-            aria-expanded={showReview}
-          >
-            {showReview ? "收起答案解析" : "查看答案与依据"}
-          </button>
-          <button
-            className="button primary"
-            onClick={() => onNavigate("explore")}
-          >
-            带着诊断看推荐
-            <ArrowRight size={17} />
-          </button>
-        </div>
-        {showReview && (
-          <section className="panel answer-review">
-            <div className="section-heading">
-              <h2>答案与依据</h2>
-              <span className="muted">人工编写的本地示例解析</span>
-            </div>
-            {questions.map((question, questionIndex) => (
-              <article className="answer-review-item" key={question.id}>
-                <span className="badge">
-                  {question.subject} · {question.point}
-                </span>
-                <h3>
-                  {questionIndex + 1}. {question.text}
-                </h3>
-                <p>
-                  你的答案：
-                  {hasAttempt && attempt.answers[question.id] !== undefined
-                    ? `${String.fromCharCode(65 + attempt.answers[question.id])}. ${question.options[attempt.answers[question.id]]}`
-                    : "未作答或记录不可用"}
-                </p>
-                <p className="answer-correct">
-                  <CheckCircle2 size={17} />
-                  正确答案：{String.fromCharCode(65 + question.correct)}.{" "}
-                  {question.options[question.correct]}
-                </p>
-                <p className="muted">{question.explanation}</p>
-                <p className="flow-small muted">
-                  依据：{question.source} · 示例题库 v1
-                </p>
-                {attempt.notes[question.id] && (
-                  <p className="answer-user-note">
-                    你的思路：{attempt.notes[question.id]}
-                  </p>
-                )}
-              </article>
-            ))}
-          </section>
-        )}
-      </div>
-    );
-  }
-  const question = questions[index];
-  return (
-    <div className="flow-page">
-      <header className="page-heading">
-        <div>
-          <p className="eyebrow">A SMALL STEP TO CLARITY</p>
-          <h1>用几道题，找到备考起点</h1>
-          <p className="muted">
-            数学、英语、专业基础各 2 题，约 5 分钟。无需准备，按真实想法作答。
-          </p>
-        </div>
-        <button
-          className="button secondary"
-          onClick={() => {
-            onAssessment({
-              completed: false,
-              answered,
-              correct,
-              date: new Date().toISOString(),
-            });
-            notify("已跳过测评，推荐将标注能力评估依据不足");
-            onNavigate("explore");
-          }}
-        >
-          跳过测评
-        </button>
-      </header>
-      <div className="assessment-layout">
-        <aside className="panel assessment-overview">
-          <p className="eyebrow">YOUR PROGRESS</p>
-          <h2>一步一步来</h2>
-          <p className="muted">已作答 {answered} / 6 题</p>
-          <div className="flow-progress-track">
-            <span style={{ width: `${(answered / 6) * 100}%` }} />
-          </div>
-          <div className="assessment-subjects">
-            {["数学", "英语", "专业基础"].map((subject, subjectIndex) => (
-              <div
-                className={question.subject === subject ? "current" : ""}
-                key={subject}
-              >
-                <span className="assessment-subject-icon">
-                  <BookOpen size={17} />
-                </span>
-                <div>
-                  <strong>{subject}</strong>
-                  <small>
-                    {subjectIndex === 0
-                      ? "导数 · 积分"
-                      : subjectIndex === 1
-                        ? "阅读 · 词汇"
-                        : "数据结构 · 算法"}
-                  </small>
-                </div>
-                <span>
-                  {
-                    questions.filter(
-                      (item) =>
-                        item.subject === subject &&
-                        attempt.answers[item.id] !== undefined,
-                    ).length
-                  }
-                  /2
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="flow-small muted">
-            本次为交互演示测评。答案仅用于知识点诊断，不预测考试分数。
-          </p>
-        </aside>
-        <section className="panel assessment-question">
-          <div className="section-heading">
-            <span className="badge">
-              {question.subject} · {question.point}
-            </span>
-            <span className="muted">
-              {String(index + 1).padStart(2, "0")} / 06
-            </span>
-          </div>
-          <div className="question-dots" aria-label="题目导航">
-            {questions.map((item, questionIndex) => (
-              <button
-                key={item.id}
-                className={`${questionIndex === index ? "active" : ""} ${attempt.answers[item.id] !== undefined ? "answered" : ""}`}
-                aria-label={`第${questionIndex + 1}题${attempt.answers[item.id] !== undefined ? "，已作答" : ""}`}
-                aria-current={index === questionIndex ? "step" : undefined}
-                onClick={() => setIndex(questionIndex)}
-              >
-                {questionIndex + 1}
-              </button>
-            ))}
-          </div>
-          <h2 className="question-title" id="assessment-question-title">
-            {question.text}
-          </h2>
-          <div
-            className="answer-options"
-            role="radiogroup"
-            aria-labelledby="assessment-question-title"
-          >
-            {question.options.map((option, optionIndex) => (
-              <label
-                key={option}
-                className={`answer-option ${attempt.answers[question.id] === optionIndex ? "selected" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name={question.id}
-                  value={optionIndex}
-                  checked={attempt.answers[question.id] === optionIndex}
-                  onChange={() =>
-                    setAttempt((current) => ({
-                      ...current,
-                      answers: {
-                        ...current.answers,
-                        [question.id]: optionIndex,
-                      },
-                    }))
-                  }
-                />
-                <span className="answer-letter">
-                  {String.fromCharCode(65 + optionIndex)}
-                </span>
-                <span>{option}</span>
-                {attempt.answers[question.id] === optionIndex && (
-                  <CheckCircle2 size={18} />
-                )}
-              </label>
-            ))}
-          </div>
-          <label className="field question-notes">
-            <span>
-              简单记录你的思路 <small className="muted">（选填）</small>
-            </span>
-            <textarea
-              rows={2}
-              value={attempt.notes[question.id] ?? ""}
-              placeholder="例如用了哪个公式，或者不确定的地方……"
-              onChange={(event) =>
-                setAttempt((current) => ({
-                  ...current,
-                  notes: {
-                    ...current.notes,
-                    [question.id]: event.target.value,
-                  },
-                }))
-              }
-            />
-          </label>
-          <div className="question-footer">
-            <button
-              className="button secondary"
-              disabled={index === 0}
-              onClick={() => setIndex((current) => current - 1)}
-            >
-              <ArrowLeft size={16} />
-              上一题
-            </button>
-            {index < questions.length - 1 ? (
-              <button
-                className="button primary"
-                onClick={() => setIndex((current) => current + 1)}
-              >
-                下一题
-                <ArrowRight size={16} />
-              </button>
-            ) : (
-              <button
-                className="button primary"
-                onClick={() =>
-                  answered < questions.length
-                    ? setConfirmSubmit(true)
-                    : submit()
-                }
-              >
-                <ClipboardCheck size={17} />
-                提交并查看诊断
-              </button>
-            )}
-          </div>
-        </section>
-      </div>
-      {confirmSubmit && (
-        <ConfirmDialog
-          title="还有未作答的题目"
-          confirmLabel="仍然提交"
-          onClose={() => setConfirmSubmit(false)}
-          onConfirm={submit}
-        >
-          已完成 {answered} / 6
-          题。未作答部分将标记为依据不足，你也可以返回继续作答。
         </ConfirmDialog>
       )}
     </div>
