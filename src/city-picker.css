@@ -111,13 +111,10 @@
   font-size: 14px;
   font-weight: 600;
 }
-.city-letter-index button:hover:not(:disabled),
+.city-letter-index button:hover,
 .city-letter-index button:focus-visible {
   color: #fff;
   background: #6a8453;
-}
-.city-letter-index button:disabled {
-  opacity: 0.3;
 }
 .city-picker .city-options {
   display: block;
@@ -211,7 +208,7 @@
   border-top: 1px solid #e7edde;
   color: #617155;
   background: #fafcf7;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .city-move-controls {
@@ -249,9 +246,6 @@
 }
 .city-dropdown-compact .city-keyboard-help {
   padding-block: 6px;
-}
-.city-dropdown-compact .city-keyboard-help > span {
-  font-size: 12px;
 }
 .city-quick-row {
   margin-top: 17px;

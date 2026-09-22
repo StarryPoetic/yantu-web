@@ -26,7 +26,6 @@ const QUICK_CITIES = [
   "武汉",
   "不确定",
 ];
-const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 type Direction = "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
 type PopupPosition = {
   left: number;
@@ -388,11 +387,10 @@ export function CityPicker({
           </div>
           {!query.trim() && (
             <nav className="city-letter-index" aria-label="按拼音首字母浏览">
-              {LETTERS.map((letter) => (
+              {groups.map((letter) => (
                 <button
                   type="button"
                   key={letter}
-                  disabled={!groups.includes(letter)}
                   aria-label={`跳到 ${letter} 开头的城市`}
                   onClick={() => {
                     const index = matches.findIndex(

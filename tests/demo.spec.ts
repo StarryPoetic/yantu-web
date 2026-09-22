@@ -468,6 +468,21 @@ test("nationwide cities support alphabetical groups, Chinese and pinyin search, 
   expect(letters).toEqual([...new Set(letters)].sort());
   expect(letters[0]).toBe("A");
   expect(letters.at(-1)).toBe("Z");
+  const index = page.getByRole("navigation", { name: "按拼音首字母浏览" });
+  await expect(index.getByRole("button")).toHaveText(letters);
+  await expect(index.locator("button:disabled")).toHaveCount(0);
+  await expect(
+    index.getByRole("button", { name: "跳到 O 开头的城市", exact: true }),
+  ).toHaveCount(0);
+  await index
+    .getByRole("button", { name: "跳到 Z 开头的城市", exact: true })
+    .click();
+  await expect(
+    list
+      .getByRole("group", { name: "Z 开头的城市", exact: true })
+      .getByRole("option")
+      .first(),
+  ).toBeInViewport({ ratio: 1 });
   await assertCityGroupsStackVertically(list);
   await page
     .locator(".city-picker")
@@ -978,6 +993,16 @@ test("city dropdown flips above a low field and adapts to scrolling and a shorte
     };
     await expect(dropdown).toHaveAttribute("data-placement", "top");
     await assertContained();
+    const helpFontSize = await page
+      .locator(".city-keyboard-help > span")
+      .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+    const cityFontSize = await page
+      .locator(".city-option-copy > span")
+      .first()
+      .evaluate((element) => parseFloat(getComputedStyle(element).fontSize));
+    expect(helpFontSize).toBe(12);
+    expect(cityFontSize).toBe(16);
+    expect(helpFontSize).toBeLessThan(cityFontSize);
     const bounds = await dropdown.boundingBox();
     const field = await page.locator(".city-search-field").boundingBox();
     expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(field!.y);
