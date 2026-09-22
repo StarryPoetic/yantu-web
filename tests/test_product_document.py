@@ -69,11 +69,11 @@ class ProductDocumentTests(unittest.TestCase):
             elif parsed.path:
                 self.assertTrue((DOCUMENT.parent / unquote(parsed.path)).is_file())
 
-    def test_undecided_student_flow_prioritizes_major_selection(self):
+    def test_undecided_student_flow_supports_joint_selection(self):
         flow = re.search(r"^\*\*填写.+?\*\*$", self.content, re.MULTILINE)
         self.assertIsNotNone(flow)
         steps = flow.group().split(" → ")
-        required_stages = ("公共课测评", "专业推荐与选择", "院校项目匹配")
+        required_stages = ("公共课测评", "专业与院校联合推荐", "双向比较与调整", "确定专业与院校组合")
         indices = []
         for stage in required_stages:
             matches = [i for i, step in enumerate(steps) if stage in step]
@@ -81,6 +81,16 @@ class ProductDocumentTests(unittest.TestCase):
             indices.append(matches[0])
         self.assertEqual(indices, sorted(indices))
         self.assertFalse(any("专业课测评" in step for step in steps[:indices[1] + 1]))
+
+    def test_major_and_school_selection_are_both_core_mvp(self):
+        for module in ("专业推荐与选择", "院校推荐与选择"):
+            self.assertTrue(any(line.startswith(f"| {module}（核心 MVP） |") for line in self.lines))
+        scope = self.content.split("## 6. 首版 MVP 范围", 1)[1].split("## 7.", 1)[0]
+        for requirement in ("专业选择与院校选择", "并重", "专业与院校联合推荐", "双向比较与调整"):
+            self.assertIn(requirement, scope)
+        acceptance = self.content.split("## 7. 首版验收方向", 1)[1].split("## 参考资料", 1)[0]
+        for behavior in ("调整专业方向时更新候选院校", "调整院校偏好时更新适合的专业"):
+            self.assertIn(behavior, acceptance)
 
     def test_assessment_subjects_and_specialty_prerequisite(self):
         rows = {}
