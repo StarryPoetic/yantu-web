@@ -18,6 +18,8 @@ DESIGN_FILES = [
     "03-联合推荐测评与分数规划.md",
     "04-接口与前端交互.md",
     "05-安全运维与验证.md",
+    "06-诊断型题库与分层选题.md",
+    "07-DeepSeek接入与密钥管理.md",
 ]
 
 
@@ -97,6 +99,24 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertIn("产品设计文档 V0.5", readme)
         self.assertIn("技术设计文档清单", readme)
         self.assertNotIn("产品设计文档 V0.4", readme)
+
+    def test_september_27_additions_are_traceable(self):
+        content = INDEX.read_text(encoding="utf-8")
+        ids = re.findall(r"^\| (U-\d{2}) \|", content, re.MULTILINE)
+        self.assertEqual(ids, ["U-01", "U-02", "U-03", "U-04"])
+
+    def test_project_artifacts_do_not_contain_live_key_shapes(self):
+        credential = re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")
+        files = [README, ROOT / ".gitignore"]
+        for directory in ("src", "public", "docs", "scripts", "tests", "dist"):
+            files.extend(path for path in (ROOT / directory).rglob("*")
+                         if path.is_file() and "__pycache__" not in path.parts
+                         and path.suffix in (".md", ".py", ".ts", ".tsx", ".js", ".json", ".html", ".css", ".svg"))
+        for document in files:
+            found = bool(credential.search(document.read_text(encoding="utf-8")))
+            safe_path = credential.sub("[REDACTED]", str(document.relative_to(ROOT)))
+            self.assertFalse(found, f"Credential-like material in {safe_path}")
+
 
 
 if __name__ == "__main__":
