@@ -20,6 +20,7 @@ DESIGN_FILES = [
     "05-安全运维与验证.md",
     "06-诊断型题库与分层选题.md",
     "07-DeepSeek接入与密钥管理.md",
+    "08-变更与扩展约定.md",
 ]
 
 
@@ -104,6 +105,66 @@ class TechnicalDesignTests(unittest.TestCase):
         content = INDEX.read_text(encoding="utf-8")
         ids = re.findall(r"^\| (U-\d{2}) \|", content, re.MULTILINE)
         self.assertEqual(ids, ["U-01", "U-02", "U-03", "U-04"])
+
+    def test_decisions_have_one_owner_and_explicit_gates(self):
+        owner = "08-变更与扩展约定.md"
+        definitions = {}
+        for document in DESIGN_DIR.glob("*.md"):
+            content = document.read_text(encoding="utf-8")
+            for line in content.splitlines():
+                if not re.match(r"^\| D-\d{2} \|", line):
+                    continue
+                cells = [cell.strip() for cell in line.strip("|").split("|")]
+                self.assertEqual(document.name, owner)
+                self.assertEqual(len(cells), 5)
+                self.assertTrue(all(cells))
+                self.assertIn(cells[1], {"拟议", "待定", "部分确定", "已确定", "已替代"})
+                self.assertNotIn(cells[0], definitions)
+                definitions[cells[0]] = cells
+        self.assertEqual(set(definitions), {f"D-{n:02d}" for n in range(1, 13)})
+        for document in DESIGN_DIR.glob("*.md"):
+            references = set(re.findall(r"\bD-\d{2}\b", document.read_text(encoding="utf-8")))
+            self.assertLessEqual(references, set(definitions), document.name)
+
+    def test_acceptance_references_resolve_and_cover_every_requirement(self):
+        owner = DESIGN_DIR / "05-安全运维与验证.md"
+        definitions = re.findall(r"^\| (T-\d{2}) \|", owner.read_text(encoding="utf-8"), re.MULTILINE)
+        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 11)])
+        covered = set()
+        for document in DESIGN_DIR.glob("*.md"):
+            content = document.read_text(encoding="utf-8")
+            refs = set(re.findall(r"\bT-\d{2}\b", content))
+            self.assertLessEqual(refs, set(definitions), document.name)
+            if document != owner:
+                self.assertFalse(re.search(r"^\| T-\d{2} \|", content, re.MULTILINE))
+            if document == INDEX:
+                for row in content.splitlines():
+                    if re.match(r"^\| [RU]-\d{2} \|", row):
+                        targets = set(re.findall(r"\bT-\d{2}\b", row))
+                        self.assertTrue(targets, row.split("|")[1])
+                        covered.update(targets)
+        self.assertEqual(covered, set(definitions))
+
+    def test_contract_names_do_not_reintroduce_old_aliases(self):
+        deprecated = re.compile(r"\b(?:assessmentVersion|dataVersion|runId|release_id|project_id|project_revision_id)\b")
+        for document in DESIGN_DIR.glob("*.md"):
+            self.assertFalse(deprecated.search(document.read_text(encoding="utf-8")), document.name)
+        dictionary = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
+        for field in ("selectionVersion", "assessmentRefs[]", "recommendationRunId", "deletionGeneration"):
+            self.assertIn(f"`{field}`", dictionary)
+
+    def test_http_routes_are_explicit_and_unique(self):
+        content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
+        routes = re.findall(r"^\| `(GET|POST|PUT|PATCH|DELETE) (/api/v1/[^`]+)` \|", content, re.MULTILINE)
+        self.assertTrue(routes)
+        self.assertEqual(len(routes), len(set(routes)))
+        for method, path in routes:
+            self.assertNotIn("...", path)
+            self.assertNotIn(" ", path)
+            self.assertNotIn("{id}", path)
+            self.assertEqual(path.count("{"), path.count("}"))
+        route_rows = [line for line in content.splitlines() if line.startswith("| `") and "/api/v1/" in line]
+        self.assertEqual(len(route_rows), len(routes), "Each API row needs one explicit method and path")
 
     def test_project_artifacts_do_not_contain_live_key_shapes(self):
         credential = re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")
