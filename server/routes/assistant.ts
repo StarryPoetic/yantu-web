@@ -3,6 +3,10 @@ import {
   createModelRuntime,
 } from "../explanation/index.ts";
 import { createWebAnswerModule } from "../explanation/web.ts";
+import {
+  createSearchBudget,
+  searchConfigFromEnvironment,
+} from "../explanation/search.ts";
 import { createGeneralChatModule } from "../explanation/chat.ts";
 import type { Conversation, ChatMessage } from "../explanation/chat.ts";
 import type { Context } from "../context.ts";
@@ -13,6 +17,7 @@ import type { Reply } from "../http.ts";
 import { createGuidanceExplainer } from "../explanation/guidance.ts";
 import { guidanceFreshness } from "./guidance.ts";
 import type { GuidanceRun } from "../disciplines/types.ts";
+import { createResearchReportModule } from "../explanation/research.ts";
 
 export function createAssistantRoutes() {
   const config = {
@@ -23,11 +28,12 @@ export function createAssistantRoutes() {
   };
   const runtime = createModelRuntime(config);
   const explanations = createExplanationModule({ ...config, runtime });
+  const searchConfig = searchConfigFromEnvironment(process.env);
   const webConfig = {
     ...config,
     runtime,
-    searchEnabled: process.env.YANTU_SEARCH_ENABLED === "true",
-    searchKey: process.env.BRAVE_SEARCH_API_KEY,
+    ...searchConfig,
+    searchBudget: createSearchBudget(searchConfig),
     ...(process.env.YANTU_OFFICIAL_HOSTS
       ? {
           allowedHosts: process.env.YANTU_OFFICIAL_HOSTS.split(",")
@@ -37,6 +43,25 @@ export function createAssistantRoutes() {
       : {}),
   };
   const web = createWebAnswerModule(webConfig);
+  const research = createResearchReportModule(
+    {
+      ...webConfig,
+      researchModel: (process.env.YANTU_RESEARCH_MODEL ?? "deepseek-v4-pro") as
+        | "deepseek-flash"
+        | "deepseek-v4-pro",
+      researchEffort: (process.env.YANTU_RESEARCH_EFFORT ?? "high") as
+        | "low"
+        | "high"
+        | "max",
+      researchTimeoutMs: Number(
+        process.env.YANTU_RESEARCH_TIMEOUT_MS ?? 120000,
+      ),
+      researchMaxOutputTokens: Number(
+        process.env.YANTU_RESEARCH_MAX_OUTPUT_TOKENS ?? 12000,
+      ),
+    },
+    { runtime, web },
+  );
   const chat = createGeneralChatModule(webConfig);
   const guidanceExplainer = createGuidanceExplainer(runtime);
   function currentGuidance(c: Context) {
@@ -115,6 +140,7 @@ export function createAssistantRoutes() {
     }
   }
   return {
+    research,
     validateReplay,
     matches: (c: Context) =>
       (c.path === "/assistant/conversation" &&

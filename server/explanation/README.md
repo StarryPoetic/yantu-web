@@ -6,15 +6,16 @@
 
 下表路径均以 `/api/v1` 为前缀。旧接口仍兼容；悬浮咨询使用新的持续对话接口。
 
-| 模块与接口                                                | 当前行为                                                                                                 |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `index.ts` / `POST /assessment-attempts/:id/explanations` | 原有测评解释，限定本人、已交卷且适用的诊断；模型只能整理原解析、原答案与获准假设，输出严格校验。         |
-| `web.ts` / `POST /assistant/questions`                    | 原有单次网页摘录接口；最多三条能在对应片段逐字找到的摘录及来源，失败时仍可展示已有来源。                 |
-| `chat.ts` / `GET、POST、DELETE /assistant/conversation`   | 悬浮自由咨询，可提出任意主题、连续追问和清空记录；回答采用完整自然语言，不限定为三条摘录或固定问题个数。 |
-| `chat.ts` / `POST /assessment-attempts/:id/tutor`         | 每题教学入口；作答中仅返回固定知识点提示，交卷后才提供本题解析与持续模型追问。                           |
-| `guidance.ts` / `POST /guidance/:id/explanation`          | 整理已生成专业结论的有限依据；模型只选择、排序存在的依据 ID，最终文字由代码取回对应原文。                |
+| 模块与接口                                                | 当前行为                                                                                                   |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `index.ts` / `POST /assessment-attempts/:id/explanations` | 原有测评解释，限定本人、已交卷且适用的诊断；模型只能整理原解析、原答案与获准假设，输出严格校验。           |
+| `web.ts` / `POST /assistant/questions`                    | 原有单次网页摘录接口；最多三条能在对应片段逐字找到的摘录及来源，失败时仍可展示已有来源。                   |
+| `chat.ts` / `GET、POST、DELETE /assistant/conversation`   | 悬浮自由咨询，可提出任意主题、连续追问和清空记录；回答采用完整自然语言，不限定为三条摘录或固定问题个数。   |
+| `chat.ts` / `POST /assessment-attempts/:id/tutor`         | 每题教学入口；作答中仅返回固定知识点提示，交卷后才提供本题解析与持续模型追问。                             |
+| `guidance.ts` / `POST /guidance/:id/explanation`          | 整理已生成专业结论的有限依据；模型只选择、排序存在的依据 ID，最终文字由代码取回对应原文。                  |
+| `research.ts` / `POST /guidance/:id/research`             | 独立联网研究报告：结合画像、公共课诊断与实际检索资料，使用思考模式生成带来源的事实、分析建议及待核验事项。 |
 
-HTTP 校验、所有权、会话与持久化在 `server/routes/assistant.ts`。模型模块不接受前端指定提供商、密钥、系统提示词或任意工具。
+普通咨询的 HTTP 校验、所有权、会话与持久化在 `server/routes/assistant.ts`；研究任务、进度和报告持久化在 `server/routes/research.ts`。模型模块不接受前端指定提供商、密钥、系统提示词或任意工具。
 
 ## 自由对话与逐题教学
 
@@ -28,11 +29,13 @@ HTTP 校验、所有权、会话与持久化在 `server/routes/assistant.ts`。�
 
 ## 按需搜索与来源
 
-自由对话在用户允许联网且服务端配置可用时，先用受限 JSON 请求判断是否需要实时搜索；一般知识和闲聊可以不搜索。需要时使用具体检索词调用一次 Brave 搜索，再把实际资料交给自然语言回答步骤。也可提供最多两个官方资料 URL；提供 URL 本身表示请求读取该页面，不依赖搜索开关。逐题教学按固定题目依据回答，不自动调用网页搜索。
+自由对话在用户允许联网且服务端配置可用时，先用受限 JSON 请求判断是否需要实时搜索；一般知识和闲聊可以不搜索。需要时使用具体检索词调用一次已配置的搜索服务，再把实际资料交给自然语言回答步骤。也可提供最多两个官方资料 URL；提供 URL 本身表示请求读取该页面，不依赖搜索开关。逐题教学按固定题目依据回答，不自动调用网页搜索。
 
 官网读取复用 `web.ts`：允许主机名由服务端 `allowedHosts` 或 `YANTU_OFFICIAL_HOSTS` 精确配置，用户不能扩展。只允许 HTTPS，所有 DNS 地址必须为公网，并固定实际连接 IP、保留 TLS 主机名校验；拒绝重定向、私网、IP 直连、超大文件和不支持的格式。
 
-搜索需 `YANTU_SEARCH_ENABLED=true` 与 `BRAVE_SEARCH_API_KEY`，只访问固定 Brave 搜索接口，最多保留五条摘要，不自动抓取任意搜索结果页面。来源含原始 URL、标题、摘录、检索时间以及 `official_page` / `search_snippet` 类型。所有网页资料保持 `verified:false`，不会自动成为已核验招生事实。
+应用默认 `YANTU_SEARCH_PROVIDER=bocha`，启用需 `YANTU_SEARCH_ENABLED=true` 与 `BOCHA_API_KEY`。`search.ts` 将博查与Brave协议归一到同一结果类型；博查只请求固定 `POST https://api.bocha.cn/v1/web-search`，Bearer认证，返回摘要仍标为 `search_snippet`，不因供应商字段名为summary就视为官网原文。显式设置 `brave` 时仅使用 `BRAVE_SEARCH_API_KEY` 请求固定Brave主机；不自动回退、混用密钥或跨域发送凭据。直接模块旧调用未指定provider时保留Brave兼容，应用入口总会明确选择供应商。接口依据见[博查官方文档](https://bocha-ai.feishu.cn/wiki/RXEOw02rFiwzGSkd9mUcqoeAnNK)。
+
+每次最多保留五条摘要，不自动抓取任意搜索结果页面；HTTP失败、供应商业务错误码或无效结构不会标记搜索成功。来源含原始URL、标题、摘录、检索时间以及 `official_page` / `search_snippet` 类型。所有网页资料保持 `verified:false`，不会自动成为已核验招生事实。
 
 旧 `/assistant/questions` 校验摘录与原片段逐字一致；新自由回答仅校验约定格式的来源编号是否属于本次实际资料，并明确是否取得可引用网页。**存在来源或通过引用检查，不等于自然语言回答中的所有推论、时效信息或公式均已验证正确。** 仍应按原文核对适用年份、上下文和报考条件，不能将自由回答宣传为准确性保证。没有资料时要求模型说明不确定，不得假称已检索。网页、用户输入和历史文本均按不可信数据处理；提示词约束不能替代事实审核。
 
@@ -42,27 +45,54 @@ HTTP 校验、所有权、会话与持久化在 `server/routes/assistant.ts`。�
 
 模块从确定性结论、考虑因素、建议比较方向的理由和测评观察中提取最多 24 条去重依据。模型只能返回现有、非重复的依据 ID；代码按 ID 输出原文并附上原有限制。它不生成专业适配分、录取概率、资格结论或新的招生事实，也不把示例题表现升级为正式推荐证据。模型失败时保留规则原文。
 
+## 独立联网研究报告
+
+`createResearchReportModule(config, { runtime, web })` 与旧 `createGuidanceExplainer` 是不同任务。其 `generate({ subjectId, run, selectedProgram?, onProgress? })` 基于服务端保存的 `GuidanceRun` 工作，输出 `ResearchReport`，不再只选择旧依据 ID。模型可以结合个人约束与实际网页资料分析准备成本、比较方向并提出行动建议；确定性评分、正式资格和用户确认专业保持由业务模块管理。
+
+模型收到必要画像字段、公共课诊断统计、薄弱知识点和局限，以及本次实际检索片段。画像的 `notes` 自由补充最多发送前 3000 个字符；不发送姓名和本科院校字段，也不发送原始题库或未交卷答案。公开检索词由目标年度、已确认或已有依据的专业方向、可选目标学校组成，不把原始补充说明、姓名或完整画像发给搜索服务。
+
+每次最多检索三个专业方向，保留六项去重来源，读取两项学校网页，再调用一次研究模型。搜索复用注入的 `web` 实例，以 `sourcesOnly` 模式只取证据，不额外调用摘录模型。研究读取允许服务端精确配置的主机；默认也允许实际搜索结果中的 `.edu.cn` 高校域名，部署代码可用 `allowAcademicHosts:false` 关闭。客户端不能扩展可信主机。读取仍执行 HTTPS、全 DNS 公网校验、连接 IP 固定、TLS 主机验证、禁止重定向、每页 8 秒和 512000 字节上限；其他搜索结果仅保留摘要。
+
+`facts` 只接受对应来源中的连续原文摘录，每条最多 300 字符；`recommendations` 可包含开放式分析，但院校名称必须出现于引用资料，专业代码必须属于本次允许方向，且同一来源须支持学校与专业的关联。URL 只来自实际来源列表，模型不能另造链接；无据的数字费用、分数、概率及明确资格断言会被拒绝。来源始终保留 URL、标题、摘录、读取时间和层级，且 `verified:false`。这些结构检查不能证明所有推论都正确，仍需核验当年官方条件。
+
+目标年度须在实际学校正文的招生语境中明确出现；当前搜索标题、读取时间或版权年份不能替代。历史、年度不明或混合年度材料，以及含明确示例/测试资料、停招或不招生表述的来源，仅保留为待核验线索，不能支撑当前资格摘录与最终学校建议。相关生成事实与建议会移除、摘要改为核验说明，报告最多为 `partial`；其他仍有有效依据的内容可保留。学校名称中包含“示例”不等于示例资料标记。专业否定语境采用保守降级，可能影响同页其他专业，不声称已完成全面语义核验。允许“无法预测录取概率”“不保证录取”等否定限制，肯定保录或具体概率仍拒绝。
+
+状态含义如下：
+
+- `blocked`：模型或搜索未配置、尚无研究方向，或未获得真实联网来源；不会把模板冒充调研报告。
+- `partial`：只有搜索摘要或公共平台资料、没有支持每项建议的学校官网正文，或者证据不足、模型额度不足、超时及输出校验失败。已有来源可保留；未通过校验的模型正文不展示。
+- `completed`：本次有界检索、模型分析和核验流程已完成，事实与建议均有依据，且每项学校建议均引用对应目标年度的学校官网正文；不等于全国资料完整、资格已核实或录取保证。
+
+模块按实际执行回调 `preparing`、`researching`、`analyzing`、`writing`，每次都等待 `onProgress` 完成。无网页证据在进入 `analyzing` 前结束；检索后、模型调用前及返回前的回调允许路由取消过期会话、变化的画像版本或已删除数据。`writing` 表示整理本次生成结果，不是伪造的流式 token 进度。回调异常不会被吞成普通模型降级。
+
+`GET /research/status` 返回本地配置检查 `{ready,reasons,model}`，不发付费请求。`POST /guidance/:id/research` 创建任务；`GET /research-jobs/:id` 查询真实阶段与结果，`GET /guidance/:id/research/latest` 恢复最近任务。任务层另有排队、运行、失败、取消状态；报告状态与任务生命周期分开。
+
 ## 提供商、预算与故障
 
-`deepseek.ts` 当前固定使用 DeepSeek 官方 HTTPS 接口、`deepseek-flash`、关闭 thinking、非流式响应和最多 30 秒超时。格式与输出预算由服务端任务指定：
+`deepseek.ts` 仅使用 DeepSeek 官方 HTTPS 接口。普通聊天默认 `deepseek-flash`、关闭 thinking、非流式响应和最多 30 秒超时；独立研究默认 `deepseek-v4-pro`、`thinking.type=enabled`、`reasoning_effort=high`，最多 120 秒。模型和思考强度由服务端任务选择，不接受浏览器覆盖。官方模型名和参数见 [Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/)；模型供应及别名以[官方模型说明](https://api-docs.deepseek.com/quick_start/pricing/)为准，不能仅凭 Pro 名称保证质量更高。
 
-| 请求用途                                 | 格式         | 当前最大输出 token |
-| ---------------------------------------- | ------------ | ------------------ |
-| 旧测评解释、旧网页摘录、专业结论依据整理 | JSON         | 800                |
-| 自由对话是否需要搜索的判断               | JSON         | 400                |
-| 自由对话与交卷后的逐题追问               | 自然语言文本 | 2000               |
+| 请求用途                                 | 格式            | 当前最大输出 token  |
+| ---------------------------------------- | --------------- | ------------------- |
+| 旧测评解释、旧网页摘录、专业结论依据整理 | JSON            | 800                 |
+| 自由对话是否需要搜索的判断               | JSON            | 400                 |
+| 自由对话与交卷后的逐题追问               | 自然语言文本    | 2000                |
+| 独立联网研究报告                         | JSON + 思考模式 | 12000（含思考输出） |
 
-800 是默认值，不是所有调用的统一上限。适配器把服务端指定上限限制在 256–4096 token，拒绝超过 16000 个 JSON 字符的输入、超大响应和非正常结束输出；不自动重试、不切换其他模型、禁止重定向。模型启用需 `YANTU_MODEL_ENABLED=true` 和服务端 `DEEPSEEK_API_KEY`，不能使用 `VITE_` 环境变量或前端请求体传递密钥。
+800 是默认值，不是所有调用的统一上限。服务端输出配置须为 1–16384 的整数；输入上限为普通请求 16000、思考请求 24000 个 JSON 字符，响应字节上限分别为 65536、524288。超大响应、非正常结束、未知 token 用量和未经请求的工具调用均拒绝；不自动重试、不在失败时自动换模型、禁止重定向。响应只返回最终正文及总用量，不暴露或保存供应商的隐藏思考内容。模型启用需 `YANTU_MODEL_ENABLED=true` 和服务端 `DEEPSEEK_API_KEY`，不能使用 `VITE_` 环境变量或前端请求体传递密钥。
 
-应用创建同一个 `createModelRuntime(config)`，供旧解释、网页摘录、自由对话、搜索判断、逐题教学和专业结论解释共享模型预算。默认每账号每天 20000、全站每天 100000 token，并发分别为 1 和 4；预算按 UTC 日在进程内统计，按保守输入字符数及本次最大输出预留，有实际计量后结算。超时或计量未知保留预留额度。应用环境变量为 `YANTU_MODEL_USER_DAILY_TOKENS` 与 `YANTU_MODEL_DAILY_TOKENS`。
+研究任务配置为 `YANTU_RESEARCH_MODEL`（默认 `deepseek-v4-pro`，也支持 `deepseek-flash`）、`YANTU_RESEARCH_EFFORT`（默认 `high`，允许 `low/high/max`）、`YANTU_RESEARCH_TIMEOUT_MS`（默认及上限 120000）、`YANTU_RESEARCH_MAX_OUTPUT_TOKENS`（默认 12000，上限 16384）。这些配置不绕过共享日额度；默认每账号 20000 token 可能不足以预留一次完整研究报告，部署时应明确设置可承担的预算，额度不够即返回原因。
 
-搜索次数单独计量，默认每账号每天 10 次、全站每天 100 次，可通过模块服务端配置调整。当前计数属于各 `createWebAnswerModule` 实例；兼容网页接口与自由对话检索各有实例，不应描述为跨实例共享的总搜索额度。
+应用创建同一个 `createModelRuntime(config)`，供旧解释、网页摘录、自由对话、搜索判断、逐题教学、专业结论解释和研究报告共享模型预算。默认每账号每天 20000、全站每天 100000 token，并发分别为 1 和 4；预算按 UTC 日在进程内统计，按保守输入字符数及本次最大输出预留，有实际计量后结算，思考 token 计入供应商总输出用量。超时或计量未知保留预留额度。应用环境变量为 `YANTU_MODEL_USER_DAILY_TOKENS` 与 `YANTU_MODEL_DAILY_TOKENS`。
+
+搜索次数单独计量，默认每账号每天10次、全站每天100次，分别由 `YANTU_SEARCH_USER_DAILY_REQUESTS`、`YANTU_SEARCH_DAILY_REQUESTS` 配置。应用为研究、兼容网页接口和自由咨询注入同一个 `createSearchBudget`；发送前计数，失败请求也计入，清空聊天不退还额度。计数只在本应用进程内共享，不是跨服务器账单硬上限。
 
 缓存带账号、任务、依据或对话内容、提示版本、模型配置与请求选项，最长 24 小时、最多 1000 项。`clearSubject` 清除相关私有缓存并提升清除代次；路由还在异步返回及持久化前核对账号会话和个人数据代次，防止删除、清空或登出前的请求写回旧数据。预算、并发预留与缓存目前位于单进程；重启不会保留日额度计数，多进程部署必须先改为共享事务存储，不能将现有额度声明为跨实例硬性限额。
 
-扩展提供商只修改适配器，扩展安全检索只修改 `web.ts`，自然对话规则在 `chat.ts`，确定性依据整理在 `guidance.ts`；知识内容继续走各 `knowledge/` 目录的审核发布流程。普通测试使用模拟适配器和网络，不产生模型或搜索费用：
+扩展模型提供商只修改适配器；搜索提供商协议与预算在 `search.ts`，基础安全读取在 `web.ts`，研究政策与输出核验在 `research.ts`，自然对话规则在 `chat.ts`，确定性依据整理在 `guidance.ts`；知识内容继续走各 `knowledge/` 目录的审核发布流程。普通测试使用模拟适配器和网络，不产生模型或搜索费用：
 
 ```sh
-node --test tests/backend/explanation.test.ts tests/backend/explanation-web.test.ts tests/backend/guidance-explanation.test.ts tests/backend/tutor-chat.test.ts
+node --test tests/backend/explanation.test.ts tests/backend/explanation-web.test.ts tests/backend/guidance-explanation.test.ts tests/backend/tutor-chat.test.ts tests/backend/research-report.test.ts
 npx playwright test tests/tutor-chat.spec.ts
 ```
+
+2026-09-27 本轮独立连通检查中，`GET /models` 返回200且包含Flash/Pro；一次Flash短生成成功，计量为13输入+2输出token。凭据仅放在被Git忽略的本地 `.env`，本文不记录值。因国内银行卡无法激活Brave，应用已改为博查默认接入；博查密钥仍未提供，未实际运行完整联网研究链路，也未据此验证Pro研究质量。以上连通记录不能替代真实来源覆盖与人工评估。

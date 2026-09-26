@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ClipboardCheck } from "lucide-react";
+import {
+  Check,
+  ClipboardCheck,
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import type {
   Answer,
   AssessmentModule,
@@ -10,7 +18,12 @@ import type {
 import { request } from "./api";
 import type { Resource } from "./api";
 import { Empty, ErrorNotice } from "./ui";
-import { QuestionVisuals, QuestionTutor, TutorText } from "./TutorContent";
+import {
+  QuestionVisuals,
+  QuestionTutor,
+  TutorText,
+  QuestionStem,
+} from "./TutorContent";
 
 const moduleNames: Record<AssessmentModule, string> = {
   math: "数学",
@@ -18,6 +31,149 @@ const moduleNames: Record<AssessmentModule, string> = {
   politics: "政治",
   major: "专业课",
 };
+const outcomes = {
+  correct: { label: "答对", Icon: CheckCircle2 },
+  incorrect: { label: "答错", Icon: XCircle },
+  unanswered: { label: "未答", Icon: MinusCircle },
+};
+
+function AssessmentReview({
+  attempt,
+  diagnosis,
+}: {
+  attempt?: PublicAttempt;
+  diagnosis: Diagnosis;
+}) {
+  const [selected, setSelected] = useState(0);
+  const item = diagnosis.items[selected];
+  const question = attempt?.questions.find(
+    (question) => question.id === item?.questionId,
+  );
+  if (!item) return null;
+  const outcome = outcomes[item.outcome];
+  return (
+    <>
+      <div className="assessment-review-heading">
+        <h3>答题结果总览</h3>
+        <p>选择题号，查看该题的答案、解析与追问。</p>
+      </div>
+      <nav className="assessment-result-grid" aria-label="答题结果总览">
+        {diagnosis.items.map((item, index) => {
+          const { label, Icon } = outcomes[item.outcome];
+          return (
+            <button
+              type="button"
+              key={item.questionId}
+              className={"assessment-result-cell " + item.outcome}
+              aria-label={"第" + (index + 1) + "题，" + label}
+              aria-current={index === selected ? "true" : undefined}
+              onClick={() => setSelected(index)}
+            >
+              <strong>{index + 1}</strong>
+              <span>
+                <Icon size={14} aria-hidden="true" />
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+      <article
+        className="tutor-completed-question"
+        aria-labelledby="review-question-heading"
+      >
+        <div className="assessment-review-controls">
+          <button
+            className="ws-secondary"
+            type="button"
+            disabled={selected === 0}
+            onClick={() => setSelected(selected - 1)}
+          >
+            <ChevronLeft size={17} aria-hidden="true" />
+            上一题解析
+          </button>
+          <span>
+            {selected + 1} / {diagnosis.items.length}
+          </span>
+          <button
+            className="ws-secondary"
+            type="button"
+            disabled={selected === diagnosis.items.length - 1}
+            onClick={() => setSelected(selected + 1)}
+          >
+            下一题解析
+            <ChevronRight size={17} aria-hidden="true" />
+          </button>
+        </div>
+        <header className="assessment-reviewed-title">
+          <h3 id="review-question-heading">
+            第 {selected + 1} 题 · {item.point}
+          </h3>
+          <span className={"assessment-outcome " + item.outcome}>
+            <outcome.Icon size={17} aria-hidden="true" />
+            {outcome.label}
+          </span>
+        </header>
+        {question && (
+          <>
+            <p className="assessment-reviewed-stem">
+              <QuestionStem question={question} />
+            </p>
+            <ol type="A" className="tutor-options">
+              {question.options.map((option, index) => (
+                <li
+                  key={index}
+                  className={
+                    index === item.correctOption
+                      ? "tutor-correct"
+                      : index === item.selectedOption
+                        ? "tutor-incorrect"
+                        : ""
+                  }
+                >
+                  {option}
+                  {index === item.selectedOption ? " · 你的选择" : ""}
+                  {index === item.correctOption ? " · 标准答案" : ""}
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+        <div className="assessment-answer-summary">
+          <p>
+            你的答案：
+            {item.selectedOption === null
+              ? "未作答"
+              : String.fromCharCode(65 + item.selectedOption) +
+                (question ? ". " + question.options[item.selectedOption] : "")}
+          </p>
+          <p>
+            标准答案：{String.fromCharCode(65 + item.correctOption)}
+            {question ? ". " + question.options[item.correctOption] : ""}
+          </p>
+        </div>
+        <div className="tutor-reference">
+          <h4>本题固定解析</h4>
+          <TutorText text={item.explanation} />
+          <QuestionVisuals presentation={item.presentation} />
+        </div>
+        <p>{item.observation}</p>
+        {item.possibleCause && <p>可能原因：{item.possibleCause}</p>}
+        <p>{item.uncertainty}</p>
+        <p>下一步：{item.nextStep}</p>
+        <small>{item.source}</small>
+        {question && (
+          <QuestionTutor
+            key={diagnosis.assessmentAttemptId + ":" + item.questionId}
+            attemptId={diagnosis.assessmentAttemptId}
+            question={question}
+            submitted
+          />
+        )}
+      </article>
+    </>
+  );
+}
 type AttemptSummary = Pick<
   PublicAttempt,
   "assessmentAttemptId" | "status" | "modules" | "createdAt"
@@ -43,10 +199,16 @@ export function AssessmentPanel({
     [dirty, setDirty] = useState(false),
     [error, setError] = useState<unknown>(),
     [confirm, setConfirm] = useState(false),
-    [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null),
-    [explanation, setExplanation] = useState<string>("");
+    [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const startedAt = useRef(Date.now());
+  const resultPanel = useRef<HTMLElement>(null);
   const attempt = resource?.data;
+  useEffect(() => {
+    if (diagnosis) {
+      resultPanel.current?.scrollIntoView({ block: "start" });
+      resultPanel.current?.focus({ preventScroll: true });
+    }
+  }, [diagnosis?.assessmentAttemptId]);
   async function loadHistory(signal?: AbortSignal) {
     const result = await request<{ items: AttemptSummary[] }>(
       "/assessment-attempts",
@@ -203,7 +365,9 @@ export function AssessmentPanel({
       <div className="ws-notice">
         测评不推断考研总分、科目成绩或录取概率。政治基础不作为专业适配的硬性排除条件；你可以跳过测评直接探索。
       </div>
-      {!attempt || attempt.status !== "in_progress" ? (
+      {!attempt ||
+      attempt.status === "abandoned" ||
+      attempt.status === "invalidated" ? (
         <section className="ws-panel">
           <h2>选择本次测评模块</h2>
           <div className="ws-actions">
@@ -306,8 +470,9 @@ export function AssessmentPanel({
             ))}
           </nav>
           <fieldset className="ws-options" disabled={busy}>
-            <legend>{question.text}</legend>
-            <QuestionVisuals presentation={question.presentation} />
+            <legend>
+              <QuestionStem question={question} />
+            </legend>
             {question.options.map((option, i) => (
               <label
                 className={current?.selectedOption === i ? "selected" : ""}
@@ -433,7 +598,12 @@ export function AssessmentPanel({
         </section>
       )}
       {diagnosis && (
-        <section className="ws-panel">
+        <section
+          className="ws-panel"
+          ref={resultPanel}
+          tabIndex={-1}
+          aria-label="本次测评结果"
+        >
           <span className="ws-eyebrow">
             基础诊断 · {diagnosis.example ? "示例题" : "审核题库"}
           </span>
@@ -459,117 +629,24 @@ export function AssessmentPanel({
               题答对
             </p>
           ))}
-          {diagnosis.items.map((item, i) => {
-            const reviewedQuestion = attempt?.questions.find(
-              (question) => question.id === item.questionId,
-            );
-            return (
-              <article
-                className="tutor-completed-question"
-                key={diagnosis.assessmentAttemptId + ":" + item.questionId}
-              >
-                <details className="ws-diagnosis">
-                  <summary>
-                    第 {i + 1} 题 · {item.point} ·{" "}
-                    {item.outcome === "correct"
-                      ? "答对"
-                      : item.outcome === "incorrect"
-                        ? "需巩固"
-                        : "未答"}
-                  </summary>
-                  {reviewedQuestion && (
-                    <>
-                      <p>{reviewedQuestion.text}</p>
-                      <QuestionVisuals
-                        presentation={reviewedQuestion.presentation}
-                      />
-                      <ol type="A" className="tutor-options">
-                        {reviewedQuestion.options.map((option, index) => (
-                          <li
-                            className={
-                              index === item.correctOption
-                                ? "tutor-correct"
-                                : ""
-                            }
-                            key={index}
-                          >
-                            {option}
-                            {index === item.selectedOption ? " · 你的选择" : ""}
-                            {index === item.correctOption ? " · 标准答案" : ""}
-                          </li>
-                        ))}
-                      </ol>
-                    </>
-                  )}
-                  <p>
-                    标准答案：{String.fromCharCode(65 + item.correctOption)}
-                  </p>
-                  <div className="tutor-reference">
-                    <TutorText text={item.explanation} />
-                    <QuestionVisuals presentation={item.presentation} />
-                  </div>
-                  <p>{item.observation}</p>
-                  {item.possibleCause && <p>可能原因：{item.possibleCause}</p>}
-                  <p>{item.uncertainty}</p>
-                  <p>下一步：{item.nextStep}</p>
-                  <small>{item.source}</small>
-                </details>
-                {reviewedQuestion && (
-                  <QuestionTutor
-                    attemptId={diagnosis.assessmentAttemptId}
-                    question={reviewedQuestion}
-                    submitted
-                  />
-                )}
-              </article>
-            );
-          })}
+          <AssessmentReview
+            key={diagnosis.assessmentAttemptId}
+            attempt={attempt}
+            diagnosis={diagnosis}
+          />
           {diagnosis.uncoveredPoints.length > 0 && (
             <p>本次未覆盖：{diagnosis.uncoveredPoints.join("、")}</p>
           )}
           <button
             className="ws-secondary"
-            disabled={busy}
-            onClick={() =>
-              action(async () => {
-                const result = await request<{
-                  text?: string;
-                  explanation?: string;
-                  answer?: string;
-                  explanationStatus: string;
-                  reason?: string;
-                  items?: {
-                    explanation: string;
-                    observation: string;
-                    uncertainty: string;
-                  }[];
-                }>(
-                  `/assessment-attempts/${diagnosis.assessmentAttemptId}/explanations`,
-                  { method: "POST", body: {} },
-                );
-                setExplanation(
-                  result.data.text ??
-                    result.data.explanation ??
-                    result.data.answer ??
-                    result.data.items
-                      ?.map(
-                        (item) =>
-                          `${item.explanation} ${item.observation} ${item.uncertainty}`,
-                      )
-                      .join("\n\n") ??
-                    result.data.reason ??
-                    "请参考上述审核解析。",
-                );
-              })
-            }
+            onClick={() => {
+              setResource(null);
+              setDiagnosis(null);
+              setConfirm(false);
+            }}
           >
-            查看辅助讲解
+            开始新的测评
           </button>
-          {explanation && (
-            <div className="ws-notice" role="status">
-              {explanation}
-            </div>
-          )}
         </section>
       )}
       <section className="ws-panel">

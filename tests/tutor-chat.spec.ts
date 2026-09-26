@@ -57,6 +57,7 @@ test("悬浮咨询支持任意问题、多轮记录、收起恢复、清空和�
 test("逐题提示不提前给答案，交卷后显示行列式公式、图示和每题追问", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
   await registerAccount(page);
   await page.goto("/#assessment");
   await page.getByLabel("英语 · 5 题", { exact: true }).uncheck();
@@ -78,10 +79,22 @@ test("逐题提示不提前给答案，交卷后显示行列式公式、图示�
     .getByRole("navigation", { name: "题号导航" })
     .getByRole("button", { name: "第" + (index + 1) + "题", exact: true })
     .click();
-  await expect(page.getByRole("math")).toBeVisible();
-  await expect(
-    page.getByRole("img", { name: /二阶矩阵位置示意/ }),
-  ).toBeVisible();
+  await expect(page.locator("legend").getByRole("math")).toBeVisible();
+  await expect(page.getByRole("img", { name: /二阶矩阵位置示意/ })).toHaveCount(
+    0,
+  );
+  await expect(page.locator(".ws-assessment .tutor-visuals")).toHaveCount(0);
+  expect(
+    attempt.questions[index].stem.map((part: { kind: string }) => part.kind),
+  ).toEqual(["text", "math", "text"]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .locator(".ws-assessment")
+    .screenshot({ path: "test-results/determinant-inline-stem-mobile.png" });
   await page
     .getByRole("button", { name: "本题知识点提示", exact: true })
     .click();
@@ -92,6 +105,17 @@ test("逐题提示不提前给答案，交卷后显示行列式公式、图示�
   ).toBeVisible();
   await expect(page.getByText("标准答案：", { exact: false })).toHaveCount(0);
   await expect(page.getByLabel("针对这道题继续追问")).toHaveCount(0);
+  await page.getByRole("radio").first().check();
+  await expect(page.getByText("草稿已保存", { exact: true })).toBeVisible();
+  const wrongIndex = attempt.questions.findIndex(
+    (question: { id: string }) => question.id === "v2-m1",
+  );
+  await page
+    .getByRole("navigation", { name: "题号导航" })
+    .getByRole("button", { name: "第" + (wrongIndex + 1) + "题", exact: true })
+    .click();
+  await page.getByRole("radio").first().check();
+  await expect(page.getByText("草稿已保存", { exact: true })).toBeVisible();
   await page.getByLabel("确认有未答题，仍提交本次测评").check();
   await page.getByRole("button", { name: "主动提交测评", exact: true }).click();
   await expect(
@@ -99,15 +123,42 @@ test("逐题提示不提前给答案，交卷后显示行列式公式、图示�
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "本题辅助讲解与追问", exact: true }),
-  ).toHaveCount(5);
-  const item = page.locator(".tutor-completed-question").nth(index);
-  await item.locator("summary").click();
+  ).toHaveCount(1);
+  const grid = page.getByRole("navigation", { name: "答题结果总览" });
+  await expect(grid.getByRole("button")).toHaveCount(5);
+  await expect(grid.getByRole("button", { name: /，答对$/ })).toHaveCount(1);
+  await expect(grid.getByRole("button", { name: /，答错$/ })).toHaveCount(1);
+  await expect(grid.getByRole("button", { name: /，未答$/ })).toHaveCount(3);
+  const correctCell = grid.getByRole("button", {
+    name: "第" + (index + 1) + "题，答对",
+    exact: true,
+  });
+  await expect(correctCell).toHaveClass(/correct/);
+  await expect(
+    grid.getByRole("button", {
+      name: "第" + (wrongIndex + 1) + "题，答错",
+      exact: true,
+    }),
+  ).toHaveClass(/incorrect/);
+  await correctCell.click();
+  await expect(correctCell).toHaveAttribute("aria-current", "true");
+  await expect(page.locator(".tutor-completed-question")).toHaveCount(1);
+  const item = page.locator(".tutor-completed-question");
   await expect(item.getByText(/标准答案：/)).toBeVisible();
+  await expect(item.getByText("你的答案：A. 6", { exact: true })).toBeVisible();
+  await expect(
+    item.getByRole("img", { name: /二阶矩阵位置示意/ }),
+  ).toBeVisible();
   await expect(item.getByRole("math")).toHaveCount(3);
+  await grid.screenshot({
+    path: "test-results/assessment-result-grid-mobile.png",
+  });
   await item
     .getByRole("button", { name: "本题辅助讲解与追问", exact: true })
     .click();
-  await expect(item.getByText("本题固定解析", { exact: true })).toBeVisible();
+  await expect(
+    item.getByRole("heading", { name: "本题固定解析", exact: true }),
+  ).toBeVisible();
   await item.getByLabel("针对这道题继续追问").fill("为什么使用对角线的乘积？");
   await item.getByRole("button", { name: "发送本题追问", exact: true }).click();
   await expect(
@@ -116,6 +167,50 @@ test("逐题提示不提前给答案，交卷后显示行列式公式、图示�
   await expect(
     item.getByText("模型暂不可用，已保留本题固定解析。", { exact: true }),
   ).toBeVisible();
+  await grid
+    .getByRole("button", {
+      name: "第" + (wrongIndex + 1) + "题，答错",
+      exact: true,
+    })
+    .click();
+  await expect(
+    item.getByText("为什么使用对角线的乘积？", { exact: true }),
+  ).toHaveCount(0);
+  await expect(item.getByLabel("针对这道题继续追问")).toHaveCount(0);
+  await item
+    .getByRole("button", { name: "本题辅助讲解与追问", exact: true })
+    .click();
+  await item.getByLabel("针对这道题继续追问").fill("导数题如何检查计算？");
+  const followup = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/tutor") &&
+      request.postDataJSON().message === "导数题如何检查计算？",
+  );
+  await item.getByRole("button", { name: "发送本题追问", exact: true }).click();
+  expect((await followup).postDataJSON().questionId).toBe("v2-m1");
+  await expect(
+    item.getByText("导数题如何检查计算？", { exact: true }),
+  ).toBeVisible();
+  await correctCell.click();
+  await expect(
+    item.getByText("导数题如何检查计算？", { exact: true }),
+  ).toHaveCount(0);
+  await grid.getByRole("button").first().click();
+  await expect(item.getByRole("button", { name: "上一题解析" })).toBeDisabled();
+  await item.getByRole("button", { name: "下一题解析" }).click();
+  await expect(grid.getByRole("button").nth(1)).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await grid.getByRole("button").last().click();
+  await expect(item.getByRole("button", { name: "下一题解析" })).toBeDisabled();
+  await correctCell.click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await item.screenshot({
     path: "test-results/determinant-question-tutor.png",
   });

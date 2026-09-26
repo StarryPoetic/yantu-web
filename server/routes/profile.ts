@@ -131,6 +131,7 @@ function saveSelections(c: Context, desired: Selections): Reply {
     "current",
     value,
   );
+  const targetChanged = value.targetProgramId !== current.value.targetProgramId;
   if (value.confirmedMajorId !== current.value.confirmedMajorId) {
     for (const row of c.store.list<AssessmentAttempt>(
       c.session.subjectId,
@@ -144,6 +145,7 @@ function saveSelections(c: Context, desired: Selections): Reply {
     const plan = c.store.get<PlanSnapshot | null>(c.session.subjectId, "plan");
     if (
       plan?.value &&
+      !targetChanged &&
       (!value.confirmedMajorId ||
         !programMatchesDiscipline(
           plan.value.programSnapshot,
@@ -153,10 +155,73 @@ function saveSelections(c: Context, desired: Selections): Reply {
       requirePlanReview(c, "确认专业已变化，请重新确认目标项目和备考任务");
     }
   }
+  if (targetChanged) {
+    requirePlanReview(
+      c,
+      value.targetProgramId
+        ? "目标项目已更换，请重新确认新目标的计划和备考任务"
+        : "目标项目已取消，原计划仅保留为历史记录",
+    );
+  }
   return { body: saved.value, etag: saved.etag };
 }
 export function profileRoutes(c: Context): Reply | undefined {
   const owner = c.session.subjectId;
+  if (c.path === "/me/target" && c.method === "PUT") {
+    fields(c.body, ["programId", "programRevisionId"]);
+    const current = selectionsResource(c);
+    if (c.body.programId === null) {
+      if (c.body.programRevisionId !== undefined)
+        throw new HttpError(
+          422,
+          "unexpected_revision",
+          "取消目标时无需项目修订编号。",
+        );
+      return saveSelections(c, { ...current.value, targetProgramId: null });
+    }
+    const target = program(
+      c.store,
+      text(c.body.programId, "目标项目", 200, true),
+    );
+    if (
+      target.programRevisionId !==
+      text(c.body.programRevisionId, "项目修订", 200, true)
+    )
+      throw new HttpError(
+        409,
+        "revision_changed",
+        "项目资料已更新，请重新查看后选择。",
+      );
+    const code = target.identity.majorCode.slice(0, 4);
+    let confirmedMajorId: string | null = null;
+    if (isDisciplineId(code)) {
+      if (!programMatchesDiscipline(target, code))
+        throw new HttpError(
+          409,
+          "discipline_mismatch",
+          "项目代码与学位类型不一致，请先核验资料。",
+        );
+      confirmedMajorId = code;
+    } else if (
+      current.value.confirmedMajorId &&
+      programMatchesDiscipline(target, current.value.confirmedMajorId)
+    ) {
+      confirmedMajorId = current.value.confirmedMajorId;
+    } else if (target.majorDirectionIds.length === 1) {
+      confirmedMajorId = target.majorDirectionIds[0];
+    } else {
+      throw new HttpError(
+        422,
+        "ambiguous_target_major",
+        "该项目未对应明确的专业，请先确认具体专业方向。",
+      );
+    }
+    return saveSelections(c, {
+      ...current.value,
+      targetProgramId: target.programId,
+      confirmedMajorId,
+    });
+  }
   if (c.path === "/me/profile") {
     const current = profileResource(c);
     if (c.method === "GET") return { body: current.value, etag: current.etag };
@@ -239,7 +304,7 @@ export function profileRoutes(c: Context): Reply | undefined {
         c.body.targetProgramId !== undefined &&
         c.body.targetProgramId !== current.value.targetProgramId
       )
-        throw new HttpError(422, "use_plan", "请通过目标规划修改目标项目。");
+        throw new HttpError(422, "use_target", "请通过目标选择修改目标项目。");
       if (
         !Array.isArray(c.body.savedProgramIds) ||
         c.body.savedProgramIds.length > 200 ||

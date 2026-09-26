@@ -1,4 +1,4 @@
-"""Check that the technical design package is navigable and traceable to V0.6."""
+"""Check that the technical design package is navigable and traceable to V0.7."""
 
 from pathlib import Path
 import re
@@ -45,14 +45,14 @@ class TechnicalDesignTests(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(module, product)
         rows = re.findall(r"^\| (R-\d{2}) \| ([^|]+) \|", index, re.MULTILINE)
-        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 24)])
+        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 29)])
         self.assertEqual(len(set(number for number, _ in rows)), len(rows))
         for number, title in rows:
             self.assertTrue(title.strip(), number)
 
     def test_markdown_local_links_resolve(self):
         files = [INDEX, *(DESIGN_DIR / name for name in DESIGN_FILES), README,
-                 ROOT / "docs" / "实施说明.md", ROOT / "knowledge" / "README.md",
+                 ROOT / "docs" / "实施说明.md", ROOT / "docs" / "本地模型与联网测试.md", ROOT / "knowledge" / "README.md",
                  ROOT / "knowledge" / "catalog" / "README.md",
                  ROOT / "knowledge" / "questions" / "README.md",
                  ROOT / "server" / "explanation" / "README.md"]
@@ -101,7 +101,7 @@ class TechnicalDesignTests(unittest.TestCase):
 
     def test_readme_points_to_current_baseline(self):
         readme = README.read_text(encoding="utf-8")
-        self.assertIn("产品设计文档 V0.6", readme)
+        self.assertIn("产品设计文档 V0.7", readme)
         self.assertIn("技术设计文档清单", readme)
         self.assertNotIn("产品设计文档 V0.4", readme)
 
@@ -133,7 +133,7 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_acceptance_references_resolve_and_cover_every_requirement(self):
         owner = DESIGN_DIR / "05-安全运维与验证.md"
         definitions = re.findall(r"^\| (T-\d{2}) \|", owner.read_text(encoding="utf-8"), re.MULTILINE)
-        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 17)])
+        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 22)])
         covered = set()
         for document in DESIGN_DIR.glob("*.md"):
             content = document.read_text(encoding="utf-8")
@@ -157,6 +157,23 @@ class TechnicalDesignTests(unittest.TestCase):
         for field in ("selectionVersion", "assessmentRefs[]", "recommendationRunId", "deletionGeneration"):
             self.assertIn(f"`{field}`", dictionary)
 
+    def test_current_version_and_new_contract_boundaries(self):
+        for document in [INDEX, *(DESIGN_DIR / name for name in DESIGN_FILES)]:
+            self.assertIn("V0.4", document.read_text(encoding="utf-8"), document.name)
+        api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
+        for route in (
+            "PUT /api/v1/me/target", "GET /api/v1/research/status",
+            "POST /api/v1/guidance/{guidanceRunId}/research",
+            "GET /api/v1/guidance/{guidanceRunId}/research/latest",
+            "GET /api/v1/research-jobs/{jobId}",
+        ):
+            self.assertIn(f"`{route}`", api)
+        for phrase in ("左右对齐", "不显示空字母", "三色方格", "解释图只在提交后开放", "不自动付费重试"):
+            self.assertIn(phrase, api)
+        data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
+        for field in ("ResearchJob", "ResearchReport", "research-latest", "needsRefresh/refreshReasons", "valid=false"):
+            self.assertIn(field, data)
+
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
         routes = re.findall(r"^\| `(GET|POST|PUT|PATCH|DELETE) (/api/v1/[^`]+)` \|", content, re.MULTILINE)
@@ -169,6 +186,16 @@ class TechnicalDesignTests(unittest.TestCase):
             self.assertEqual(path.count("{"), path.count("}"))
         route_rows = [line for line in content.splitlines() if line.startswith("| `") and "/api/v1/" in line]
         self.assertEqual(len(route_rows), len(routes), "Each API row needs one explicit method and path")
+
+    def test_domestic_search_setup_matches_server_environment_contract(self):
+        guide = (ROOT / "docs" / "本地模型与联网测试.md").read_text(encoding="utf-8")
+        example = (ROOT / ".env.example").read_text(encoding="utf-8")
+        for setting in ("YANTU_SEARCH_PROVIDER=bocha", "BOCHA_API_KEY=", "YANTU_SEARCH_ENABLED="):
+            self.assertIn(setting, guide)
+            self.assertIn(setting, example)
+        self.assertIn("https://open.bochaai.com/login", guide)
+        self.assertIn("以当前账户为准", guide)
+        self.assertIn("不需要先把网站部署到公网", guide)
 
     def test_project_artifacts_do_not_contain_live_key_shapes(self):
         credential = re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")

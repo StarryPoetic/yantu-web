@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "questionBankVersion": "example-unreviewed-v2-presentation",
+  "questionBankVersion": "example-unreviewed-v3-inline-stem",
   "mode": "example",
   "notice": "本地示例练习：沿用演示题，未经真实学科审校；不用于正式诊断、分数预测或专业推荐。",
   "questions": [
@@ -78,7 +78,7 @@
     },
     {
       "id": "v2-m4",
-      "revisionId": "v2-m4-example-r2",
+      "revisionId": "v2-m4-example-r3",
       "module": "math",
       "subject": "数学",
       "point": "线性代数：行列式",
@@ -100,29 +100,6 @@
       "reviewStatus": "draft",
       "publicationStatus": "unpublished",
       "studyHint": "先识别矩阵的主对角线与非对角位置，回想二阶行列式的定义和运算顺序。请先独立列式，提交后再查看代入和结果。",
-      "presentation": {
-        "formulas": [
-          {
-            "label": "题干：二阶对角矩阵的行列式",
-            "expression": {
-              "cells": [
-                ["2", "0"],
-                ["0", "3"]
-              ],
-              "kind": "determinant"
-            }
-          }
-        ],
-        "diagram": {
-          "highlightDiagonal": true,
-          "alt": "二阶矩阵位置示意：第一行 a、b，第二行 c、d。高亮为主对角线的 a、d。",
-          "kind": "matrix",
-          "cells": [
-            ["a", "b"],
-            ["c", "d"]
-          ]
-        }
-      },
       "solutionPresentation": {
         "formulas": [
           {
@@ -163,8 +140,38 @@
               "kind": "row"
             }
           }
-        ]
-      }
+        ],
+        "diagram": {
+          "highlightDiagonal": true,
+          "alt": "二阶矩阵位置示意：第一行 a、b，第二行 c、d。高亮为主对角线的 a、d。",
+          "kind": "matrix",
+          "cells": [
+            ["a", "b"],
+            ["c", "d"]
+          ]
+        }
+      },
+      "stem": [
+        {
+          "kind": "text",
+          "text": "一个 2 × 2 对角矩阵的对角元素依次为 2、3"
+        },
+        {
+          "label": "题干：二阶对角矩阵的行列式",
+          "expression": {
+            "cells": [
+              ["2", "0"],
+              ["0", "3"]
+            ],
+            "kind": "determinant"
+          },
+          "kind": "math"
+        },
+        {
+          "kind": "text",
+          "text": "，其行列式为？"
+        }
+      ]
     },
     {
       "id": "v2-m5",

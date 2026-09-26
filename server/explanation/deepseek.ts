@@ -17,6 +17,10 @@ export interface ModelAdapter {
 export interface ModelRequestOptions {
   format?: "json" | "text";
   maxOutputTokens?: number;
+  model?: "deepseek-flash" | "deepseek-v4-pro";
+  thinking?: boolean;
+  reasoningEffort?: "low" | "high" | "max";
+  timeoutMs?: number;
 }
 export class ModelError extends Error {
   code: string;
@@ -35,7 +39,36 @@ export interface DeepSeekConfig {
   fetch?: typeof globalThis.fetch;
 }
 
-/** Provider details stay here. No caller-supplied prompts, tools, URLs, or higher-cost routing. */
+/** Called by the shared budget ledger too, so reserved output equals the provider cap. */
+export function resolveModelRequest(options: ModelRequestOptions = {}) {
+  if (
+    (options.model !== undefined &&
+      !["deepseek-flash", "deepseek-v4-pro"].includes(options.model)) ||
+    (options.thinking !== undefined && typeof options.thinking !== "boolean") ||
+    (options.reasoningEffort !== undefined &&
+      !["low", "high", "max"].includes(options.reasoningEffort)) ||
+    (options.format !== undefined &&
+      !["json", "text"].includes(options.format)) ||
+    (options.maxOutputTokens !== undefined &&
+      (!Number.isSafeInteger(options.maxOutputTokens) ||
+        options.maxOutputTokens < 1 ||
+        options.maxOutputTokens > 16384)) ||
+    (options.timeoutMs !== undefined &&
+      (!Number.isSafeInteger(options.timeoutMs) ||
+        options.timeoutMs < 1 ||
+        options.timeoutMs > 120000))
+  )
+    throw new ModelError("INVALID_MODEL_OPTIONS");
+  return {
+    model: options.model ?? "deepseek-flash",
+    thinking: options.thinking ?? false,
+    reasoningEffort: options.reasoningEffort ?? "high",
+    maxOutputTokens: options.maxOutputTokens ?? 800,
+    timeoutMs: options.timeoutMs,
+  };
+}
+
+/** Server task code chooses an allowlisted model; browser input never controls routing or tools. */
 export function createDeepSeekAdapter(
   config: DeepSeekConfig = {},
 ): ModelAdapter {
@@ -58,12 +91,21 @@ export function createDeepSeekAdapter(
     async complete(messages, options = {}) {
       if (!config.enabled) throw new ModelError("MODEL_DISABLED");
       if (!config.apiKey) throw new ModelError("MODEL_NOT_CONFIGURED");
-      if (JSON.stringify(messages).length > 16000)
+      const selected = resolveModelRequest(options);
+      if (JSON.stringify(messages).length > (selected.thinking ? 24000 : 16000))
         throw new ModelError("EVIDENCE_TOO_LARGE");
+      if (
+        config.timeoutMs !== undefined &&
+        (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1)
+      )
+        throw new ModelError("INVALID_MODEL_OPTIONS");
       const controller = new AbortController();
       const timeout = setTimeout(
         () => controller.abort(),
-        Math.min(config.timeoutMs ?? 30000, 30000),
+        Math.min(
+          selected.timeoutMs ?? config.timeoutMs ?? 30000,
+          selected.thinking ? 120000 : 30000,
+        ),
       );
       try {
         const response = await request(endpoint, {
@@ -75,14 +117,14 @@ export function createDeepSeekAdapter(
             Authorization: `Bearer ${config.apiKey}`,
           },
           body: JSON.stringify({
-            model: "deepseek-flash",
-            thinking: { type: "disabled" },
+            model: selected.model,
+            thinking: { type: selected.thinking ? "enabled" : "disabled" },
+            ...(selected.thinking
+              ? { reasoning_effort: selected.reasoningEffort }
+              : {}),
             stream: false,
             temperature: 0,
-            max_tokens: Math.min(
-              4096,
-              Math.max(256, options.maxOutputTokens ?? 800),
-            ),
+            max_tokens: selected.maxOutputTokens,
             ...(options.format === "text"
               ? {}
               : { response_format: { type: "json_object" } }),
@@ -97,7 +139,8 @@ export function createDeepSeekAdapter(
                 ? "PROVIDER_AUTH_FAILED"
                 : "PROVIDER_UNAVAILABLE",
           );
-        if (Number(response.headers.get("content-length")) > 65536)
+        const maxResponseBytes = selected.thinking ? 524288 : 65536;
+        if (Number(response.headers.get("content-length")) > maxResponseBytes)
           throw new ModelError("RESPONSE_TOO_LARGE");
         const reader = response.body?.getReader();
         if (!reader) throw new ModelError("INVALID_RESPONSE");
@@ -108,7 +151,7 @@ export function createDeepSeekAdapter(
           const part = await reader.read();
           if (part.done) break;
           bytes += part.value.byteLength;
-          if (bytes > 65536) {
+          if (bytes > maxResponseBytes) {
             await reader.cancel();
             throw new ModelError("RESPONSE_TOO_LARGE");
           }
@@ -118,7 +161,7 @@ export function createDeepSeekAdapter(
         const result = JSON.parse(raw);
         const choice = result.choices?.[0];
         if (
-          result.model !== "deepseek-flash" ||
+          result.model !== selected.model ||
           result.choices?.length !== 1 ||
           choice?.finish_reason !== "stop" ||
           choice.message?.tool_calls?.length ||

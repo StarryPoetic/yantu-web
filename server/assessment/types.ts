@@ -26,6 +26,10 @@ export interface QuestionPresentation {
   formulas?: { label: string; expression: MathExpression }[];
   diagram?: QuestionDiagram;
 }
+/** Only question text and required mathematical expressions belong in the stem. */
+export type QuestionStemPart =
+  | { kind: "text"; text: string }
+  | { kind: "math"; label: string; expression: MathExpression };
 
 export interface QuestionRevision {
   id: string;
@@ -34,6 +38,7 @@ export interface QuestionRevision {
   subject: string;
   point: string;
   text: string;
+  stem?: QuestionStemPart[];
   options: string[];
   correct: number;
   explanation: string;
@@ -77,6 +82,7 @@ export interface PublicQuestion {
   subject: string;
   point: string;
   text: string;
+  stem?: QuestionStemPart[];
   options: string[];
   difficulty: Difficulty;
   presentation?: QuestionPresentation;

@@ -71,10 +71,11 @@ test("all DNS answers must be global; mixed/private/rebinding candidates cannot 
 test("HTTPS transport pins validated DNS address and enforces redirect, MIME, byte and total time limits", async () => {
   let calls = 0;
   let captured: Record<string, unknown> = {};
+  let sentBody: string | undefined;
   let mode = "ok";
   const reader = createHttpsReader({
     resolver: (async () => [{ address: "8.8.8.8", family: 4 }]) as never,
-    get: ((
+    request: ((
       _url: URL,
       options: Record<string, unknown>,
       callback: (
@@ -87,7 +88,12 @@ test("HTTPS transport pins validated DNS address and enforces redirect, MIME, by
     ) => {
       calls += 1;
       captured = options;
-      const request = Object.assign(new EventEmitter(), { destroy() {} });
+      const request = Object.assign(new EventEmitter(), {
+        destroy() {},
+        end(body?: string) {
+          sentBody = body;
+        },
+      });
       const response = Object.assign(new EventEmitter(), {
         statusCode: mode === "redirect" ? 302 : 200,
         headers: {
@@ -118,6 +124,21 @@ test("HTTPS transport pins validated DNS address and enforces redirect, MIME, by
   );
   assert.equal(captured.servername, "yz.chsi.com.cn");
   assert.equal(captured.agent, false);
+  assert.equal(captured.method, "GET");
+  assert.equal(sentBody, undefined);
+  await reader("https://api.bocha.cn/v1/web-search", {
+    allowedHosts: ["api.bocha.cn"],
+    method: "POST",
+    body: '{"query":"招生"}',
+    headers: { Authorization: "Bearer test-bocha-key" },
+  });
+  assert.equal(captured.method, "POST");
+  assert.equal(captured.servername, "api.bocha.cn");
+  assert.equal(
+    (captured.headers as Record<string, string>).Authorization,
+    "Bearer test-bocha-key",
+  );
+  assert.equal(sentBody, '{"query":"招生"}');
   const pinnedLookup = captured.lookup as (
     hostname: string,
     options: { all: boolean },
@@ -136,13 +157,15 @@ test("HTTPS transport pins validated DNS address and enforces redirect, MIME, by
     await assert.rejects(
       reader("https://yz.chsi.com.cn/", {
         allowedHosts: ["yz.chsi.com.cn"],
+        method: "POST",
+        body: "{}",
         timeoutMs: 5,
         maxBytes: 10,
       }),
       (error: unknown) => error instanceof ModelError && error.code === code,
     );
   }
-  assert.equal(calls, 5);
+  assert.equal(calls, 6);
 });
 
 test("search off/unconfigured transparently yields no web evidence and makes no request", async () => {

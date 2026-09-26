@@ -1,9 +1,15 @@
 import { lookup } from "node:dns/promises";
-import { get } from "node:https";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
 import { AssessmentError } from "../assessment/index.ts";
 import { createModelRuntime, ModelError } from "./index.ts";
 import type { ExplanationConfig, ModelMessage } from "./index.ts";
+import {
+  createSearchBudget,
+  normalizeSearchResponse,
+  searchRequest,
+} from "./search.ts";
+import type { SearchConfig } from "./search.ts";
 
 export interface WebSource {
   id: string;
@@ -41,15 +47,13 @@ export type WebReader = (
     headers?: Record<string, string>;
     maxBytes?: number;
     timeoutMs?: number;
+    method?: "GET" | "POST";
+    body?: string;
   },
 ) => Promise<WebReadResult>;
-export interface WebAnswerConfig extends ExplanationConfig {
-  searchEnabled?: boolean;
-  searchKey?: string;
+export interface WebAnswerConfig extends ExplanationConfig, SearchConfig {
   allowedHosts?: string[];
   reader?: WebReader;
-  searchDailyRequestsPerUser?: number;
-  searchDailyRequestsGlobal?: number;
 }
 
 export const DEFAULT_OFFICIAL_HOSTS = [
@@ -130,7 +134,10 @@ export async function resolvePublicAddress(
 
 /** DNS is checked once and the exact validated address is pinned at connection time. TLS still verifies the hostname. */
 export function createHttpsReader(
-  dependencies: { resolver?: typeof lookup; get?: typeof get } = {},
+  dependencies: {
+    resolver?: typeof lookup;
+    request?: typeof httpsRequest;
+  } = {},
 ): WebReader {
   return async (value, options) => {
     const url = validateOutboundUrl(value, options.allowedHosts);
@@ -156,10 +163,11 @@ export function createHttpsReader(
         if (error) reject(error);
         else resolve(result!);
       };
-      const request = (dependencies.get ?? get)(
+      const request = (dependencies.request ?? httpsRequest)(
         url,
         {
           agent: false,
+          method: options.method ?? "GET",
           servername: url.hostname,
           headers: {
             Accept: "text/html,text/plain,application/json",
@@ -229,13 +237,14 @@ export function createHttpsReader(
         Math.max(1, timeoutMs - (Date.now() - startedAt)),
       );
       request.on("error", () => finish(new ModelError("WEB_UNAVAILABLE")));
+      request.end(options.body);
     });
   };
 }
 
 export const readOfficialHttps = createHttpsReader();
 
-function plainText(html: string): string {
+export function webPageText(html: string): string {
   return html
     .replace(/<!--[^]*?-->/g, " ")
     .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ")
@@ -287,23 +296,17 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
   const reader = config.reader ?? readOfficialHttps;
   const hosts = config.allowedHosts ?? DEFAULT_OFFICIAL_HOSTS;
   const runtime = config.runtime ?? createModelRuntime(config);
-  for (const value of [
-    config.searchDailyRequestsPerUser,
-    config.searchDailyRequestsGlobal,
-  ]) {
-    if (value !== undefined && (!Number.isSafeInteger(value) || value < 0))
-      throw new ModelError("INVALID_BUDGET_CONFIG");
-  }
-  const counts = new Map<string, number>();
+  const searchBudget = config.searchBudget ?? createSearchBudget(config);
   const generations = new Map<string, number>();
-  let searchDay = "";
-  let globalSearches = 0;
   return {
     clearSubject(subjectId: string) {
       runtime.clearSubject(subjectId);
       generations.set(subjectId, (generations.get(subjectId) ?? 0) + 1);
     },
-    async answer(input: WebAnswerInput): Promise<WebAnswerResult> {
+    async answer(
+      input: WebAnswerInput,
+      options: { sourcesOnly?: boolean } = {},
+    ): Promise<WebAnswerResult> {
       const question = userQuestion(input);
       const generation = generations.get(input.subjectId) ?? 0;
       const sources: WebSource[] = [];
@@ -318,12 +321,12 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
           const url = validateOutboundUrl(value, hosts);
           const result = await reader(url.href, { allowedHosts: hosts });
           const title = /<title[^>]*>([^]*?)<\/title>/i.exec(result.text)?.[1];
-          const excerpt = plainText(result.text).slice(0, 5000);
+          const excerpt = webPageText(result.text).slice(0, 5000);
           if (!excerpt) throw new ModelError("WEB_EMPTY");
           sources.push({
             id: `web-${sources.length + 1}`,
             url: url.href,
-            title: title ? plainText(title).slice(0, 200) : url.hostname,
+            title: title ? webPageText(title).slice(0, 200) : url.hostname,
             excerpt,
             retrievedAt,
             kind: "official_page",
@@ -339,49 +342,27 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
         else if (!config.searchKey) reason = "SEARCH_NOT_CONFIGURED";
         else {
           const today = retrievedAt.slice(0, 10);
-          if (today !== searchDay) {
-            counts.clear();
-            globalSearches = 0;
-            searchDay = today;
-          }
-          const count = counts.get(input.subjectId) ?? 0;
-          if (
-            count >= (config.searchDailyRequestsPerUser ?? 10) ||
-            globalSearches >= (config.searchDailyRequestsGlobal ?? 100)
-          )
+          if (!searchBudget.claim(input.subjectId, today))
             reason = "SEARCH_BUDGET_EXHAUSTED";
           else {
-            counts.set(input.subjectId, count + 1);
-            globalSearches += 1;
             try {
-              const url = new URL(
-                "https://api.search.brave.com/res/v1/web/search",
+              const provider = config.searchProvider ?? "brave";
+              const request = searchRequest(
+                provider,
+                config.searchKey,
+                question,
               );
-              url.searchParams.set("q", question);
-              url.searchParams.set("count", "5");
-              url.searchParams.set("safesearch", "strict");
-              url.searchParams.set("search_lang", "zh-hans");
-              const response = await reader(url.href, {
-                allowedHosts: ["api.search.brave.com"],
-                headers: {
-                  "X-Subscription-Token": config.searchKey,
-                  Accept: "application/json",
-                },
-                maxBytes: 100000,
-              });
-              const data = JSON.parse(response.text);
+              const response = await reader(request.url, request.options);
+              const results = normalizeSearchResponse(provider, response.text);
               searched = true;
-              if (!Array.isArray(data.web?.results))
-                throw new ModelError("SEARCH_INVALID_RESPONSE");
-              for (const item of data.web.results.slice(0, 5)) {
-                if (
-                  typeof item.url !== "string" ||
-                  typeof item.title !== "string" ||
-                  typeof item.description !== "string"
-                )
-                  continue;
+              for (const item of results) {
                 // Search snippets from arbitrary hosts remain display-only: never fetch them automatically.
-                const sourceUrl = new URL(item.url);
+                let sourceUrl: URL;
+                try {
+                  sourceUrl = new URL(item.url);
+                } catch {
+                  continue;
+                }
                 if (
                   sourceUrl.protocol !== "https:" ||
                   sourceUrl.username ||
@@ -389,14 +370,16 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
                   sourceUrl.port ||
                   isIP(sourceUrl.hostname) ||
                   sourceUrl.hostname === "localhost" ||
+                  sourceUrl.hostname.endsWith(".") ||
+                  /\.(?:localhost|local|internal)$/i.test(sourceUrl.hostname) ||
                   !sourceUrl.hostname.includes(".")
                 )
                   continue;
                 sources.push({
                   id: `web-${sources.length + 1}`,
-                  title: plainText(item.title).slice(0, 200),
+                  title: webPageText(item.title).slice(0, 200),
                   url: sourceUrl.href,
-                  excerpt: plainText(item.description).slice(0, 1200),
+                  excerpt: webPageText(item.excerpt).slice(0, 1200),
                   retrievedAt,
                   kind: "search_snippet",
                   verified: false,
@@ -427,11 +410,16 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
       };
       if ((generations.get(input.subjectId) ?? 0) !== generation)
         throw new AssessmentError(410, "DATA_DELETED", "相关个人数据已删除。");
-      if (!sources.length || !config.enabled)
+      if (!sources.length || !config.enabled || options.sourcesOnly)
         return {
           ...base,
           reason:
-            reason ?? (!config.enabled ? "MODEL_DISABLED" : "NO_WEB_EVIDENCE"),
+            reason ??
+            (!config.enabled
+              ? "MODEL_DISABLED"
+              : !sources.length
+                ? "NO_WEB_EVIDENCE"
+                : undefined),
         };
       const messages: ModelMessage[] = [
         {

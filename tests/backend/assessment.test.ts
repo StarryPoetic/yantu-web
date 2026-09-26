@@ -19,8 +19,81 @@ import type {
   AssessmentAttempt,
   QuestionBank,
 } from "../../server/assessment/types.ts";
+import { validStem } from "../../server/assessment/presentation.ts";
 
 const bank = await loadQuestionBank();
+test("question stem permits inline mathematics but rejects diagrams, hidden fields and altered conditions", () => {
+  const question = bank.questions.find((question) => question.id === "v2-m4")!;
+  assert.equal(validStem(question.stem, question.text), true);
+  assert.equal(
+    validStem(
+      [
+        { kind: "text", text: question.text },
+        { kind: "diagram", alt: "解释图" },
+      ],
+      question.text,
+    ),
+    false,
+  );
+  assert.equal(
+    validStem(
+      [{ kind: "text", text: question.text, correct: 0 }],
+      question.text,
+    ),
+    false,
+  );
+  assert.equal(
+    validStem([{ kind: "text", text: "删掉条件" }], question.text),
+    false,
+  );
+});
+
+test("legacy saved questions keep their snapshots while explanatory diagrams become result-only", () => {
+  const legacyBank = structuredClone(bank);
+  const question = legacyBank.questions.find(
+    (question) => question.id === "v2-m4",
+  )!;
+  question.presentation = {
+    formulas: question.stem!.flatMap((part) =>
+      part.kind === "math"
+        ? [{ label: part.label, expression: part.expression }]
+        : [],
+    ),
+    diagram: question.solutionPresentation!.diagram,
+  };
+  delete question.solutionPresentation!.diagram;
+  delete question.stem;
+  question.revisionId = "v2-m4-example-r2";
+  legacyBank.questionBankVersion = "example-unreviewed-v2-presentation";
+  const attempt = createAttempt(legacyBank, {
+    subjectId: "legacy-owner",
+    allowExampleBank: true,
+    modules: ["math"],
+  });
+  const original = structuredClone(attempt);
+  const visible = publicAttempt(attempt).questions.find(
+    (question) => question.id === "v2-m4",
+  )!;
+  assert.equal(visible.presentation, undefined);
+  assert.equal(visible.stem![0].kind, "text");
+  assert.equal(visible.stem![1].kind, "math");
+  assert.equal(JSON.stringify(visible).includes("diagram"), false);
+  assert.deepEqual(attempt, original);
+  const completed = submitAttempt(attempt, {
+    expectedAttemptVersion: attempt.attemptVersion,
+    confirmUnanswered: true,
+  });
+  const item = completed.diagnosis!.items.find(
+    (item) => item.questionId === question.id,
+  )!;
+  delete item.presentation!.diagram; // Simulate an already-saved diagnosis from the prior renderer.
+  const fixedSnapshot = structuredClone(completed);
+  const result = publicDiagnosis(completed).items.find(
+    (item) => item.questionId === question.id,
+  )!;
+  assert.equal(result.presentation?.diagram?.kind, "matrix");
+  assert.deepEqual(completed, fixedSnapshot);
+});
 const baseInput = {
   subjectId: "student-a",
   allowExampleBank: true,
@@ -166,6 +239,7 @@ test("explicit question serialization never exposes answers or future internal f
     "options",
     "point",
     "revisionId",
+    "stem",
     "subject",
     "text",
   ]);

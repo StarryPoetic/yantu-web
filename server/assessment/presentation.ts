@@ -1,4 +1,9 @@
-import type { MathExpression, QuestionPresentation } from "./types.ts";
+import type {
+  MathExpression,
+  QuestionPresentation,
+  QuestionRevision,
+  QuestionStemPart,
+} from "./types.ts";
 
 function record(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -92,4 +97,58 @@ export function validPresentation(
     (diagram.highlightDiagonal === undefined ||
       typeof diagram.highlightDiagonal === "boolean")
   );
+}
+
+export function validStem(
+  value: unknown,
+  plainText: string,
+): value is QuestionStemPart[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= 30 &&
+    JSON.stringify(value).length <= 20000 &&
+    value.every(
+      (part) =>
+        record(part) &&
+        (part.kind === "text"
+          ? keys(part, ["kind", "text"]) && short(part.text, 8000)
+          : part.kind === "math" &&
+            keys(part, ["kind", "label", "expression"]) &&
+            short(part.label) &&
+            expression(part.expression)),
+    ) &&
+    value
+      .filter((part) => part.kind === "text")
+      .map((part) => part.text)
+      .join("") === plainText
+  );
+}
+
+/** Adapt old saved snapshots on read; never mutate their questions or scores. */
+export function questionStem(question: QuestionRevision): QuestionStemPart[] {
+  if (question.stem) return question.stem;
+  const formulas =
+    question.presentation?.formulas?.map((formula) => ({
+      kind: "math" as const,
+      ...formula,
+    })) ?? [];
+  const ending = "，其行列式为？";
+  if (question.text.endsWith(ending) && formulas.length) {
+    return [
+      { kind: "text", text: question.text.slice(0, -ending.length) },
+      ...formulas,
+      { kind: "text", text: ending },
+    ];
+  }
+  return [{ kind: "text", text: question.text }, ...formulas];
+}
+
+export function questionSolution(
+  question: QuestionRevision,
+  existing = question.solutionPresentation,
+): QuestionPresentation | undefined {
+  const diagram = existing?.diagram ?? question.presentation?.diagram;
+  if (!existing && !diagram) return undefined;
+  return { ...existing, ...(diagram ? { diagram } : {}) };
 }

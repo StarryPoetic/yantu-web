@@ -1,6 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { validPresentation } from "./presentation.ts";
+import {
+  validPresentation,
+  validStem,
+  questionStem,
+  questionSolution,
+} from "./presentation.ts";
 import type {
   Answer,
   ApplicabilityTarget,
@@ -77,6 +82,8 @@ export function validateQuestion(
 ): string[] {
   const errors: string[] = [];
   if (!question || typeof question !== "object") return ["题目必须是对象"];
+  if (question.stem !== undefined && !validStem(question.stem, question.text))
+    errors.push("stem 题干内容或公式结构无效");
   for (const field of ["presentation", "solutionPresentation"] as const)
     if (question[field] !== undefined && !validPresentation(question[field]))
       errors.push(`${field} 公式或图示结构无效`);
@@ -583,8 +590,8 @@ function score(
       selectedOption: answer.selectedOption,
       correctOption: question.correct,
       explanation: question.explanation,
-      ...(question.solutionPresentation
-        ? { presentation: question.solutionPresentation }
+      ...(questionSolution(question)
+        ? { presentation: questionSolution(question) }
         : {}),
       source: question.source.title,
       observation:
@@ -786,7 +793,7 @@ export function publicAttempt(attempt: AssessmentAttempt): PublicAttempt {
       text: q.text,
       options: q.options,
       difficulty: q.difficulty,
-      ...(q.presentation ? { presentation: q.presentation } : {}),
+      stem: questionStem(q),
     })),
     answers: attempt.answers.map((a) => ({
       questionId: a.questionId,
@@ -812,6 +819,18 @@ export function publicDiagnosis(attempt: AssessmentAttempt): Diagnosis {
     fail(409, "SUBMISSION_REQUIRED", "主动提交后才可查看答案与解析。");
   return {
     ...snapshot(attempt.diagnosis),
+    items: attempt.diagnosis.items.map((item) => {
+      const question = attempt.questions.find(
+        (question) => question.id === item.questionId,
+      );
+      const presentation = question
+        ? questionSolution(question, item.presentation)
+        : item.presentation;
+      return {
+        ...snapshot(item),
+        ...(presentation ? { presentation: snapshot(presentation) } : {}),
+      };
+    }),
     usableForRecommendation:
       attempt.diagnosis.usableForRecommendation &&
       attempt.applicability.applicability === "applicable",

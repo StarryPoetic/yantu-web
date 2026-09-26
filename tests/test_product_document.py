@@ -34,7 +34,16 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertFalse(re.search(r"\b(?:TODO|FIXME|TBD)\b", self.content))
 
     def test_current_requirement_version_is_declared(self):
-        self.assertRegex(self.content, r"版本：V0\.6 · 日期：\d{4}-\d{2}-\d{2}")
+        self.assertRegex(self.content, r"版本：V0\.7 · 日期：\d{4}-\d{2}-\d{2}")
+
+    def test_picker_review_target_and_research_requirements_are_explicit(self):
+        for phrase in (
+            "左右对齐且同宽", "只显示实际有选项的字母", "多个自由兴趣",
+            "同一句中排版", "解释图在交卷后展示", "三色题号方格", "一次展示一道题",
+            "选择目标不依赖最后保存分数计划", "旧计划历史", "真实阶段",
+            "刷新或离开返回恢复原任务", "部分报告", "不自动付费重试", "Pro/high",
+        ):
+            self.assertIn(phrase, self.content)
 
     def test_complete_journey_and_national_scope_are_requirements(self):
         for phrase in ("14 个学科门类", "117 个一级学科", "67 个专业学位类别", "不默认计算机", "下拉", "自动进入公共课测评", "推荐结论", "每一道题", "行列式", "圆球", "连续追问", "注册只创建学生账号", "跨设备"):

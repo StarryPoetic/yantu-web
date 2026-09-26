@@ -99,6 +99,14 @@ test("catalog creates honest recommendations, saves target tasks and downloadabl
   ).toBeVisible();
   await first.getByRole("button", { name: "查看资料" }).click();
   await dialog.getByRole("button", { name: "设置目标与计划" }).click();
+  // A target change invalidates the old recommendation snapshot.
+  await navigate(page, "专业与院校");
+  await page.getByLabel("显示未核验的交互示例项目（仅体验流程）").check();
+  await page.getByRole("button", { name: "生成联合推荐" }).click();
+  await expect(
+    page.getByText("暂无可以正式排序的推荐项目", { exact: true }),
+  ).toBeVisible();
+  await navigate(page, "目标与规划");
   await page.getByRole("button", { name: "保存目标与计划" }).click();
   await expect(page.getByText("目标计划已保存", { exact: true })).toBeVisible();
   const task = page.locator(".ws-task-list").getByRole("checkbox").first();
@@ -178,11 +186,14 @@ test("server assessment saves an English-only draft, resumes, and exposes explan
   await expect(
     page.getByRole("heading", { name: "你的下一步练习方向" }),
   ).toBeVisible();
-  await page.getByText(/^第 1 题 ·/).click();
+  await page
+    .getByRole("navigation", { name: "答题结果总览" })
+    .getByRole("button", { name: /第1题/ })
+    .click();
   await expect(
     page.getByText("标准答案：", { exact: false }).first(),
   ).toBeVisible();
-  await page.getByRole("button", { name: "查看辅助讲解" }).click();
+  await page.getByRole("button", { name: "本题辅助讲解与追问" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await navigate(page, "专业与院校");
   await page.getByLabel(/示例诊断，只作练习参考/).check();

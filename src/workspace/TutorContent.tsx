@@ -64,6 +64,32 @@ function mathNode(value: MathExpression, key?: number): ReactNode {
     element("mo", { stretchy: "true" }, end),
   );
 }
+export function QuestionStem({ question }: { question: PublicQuestion }) {
+  const parts = question.stem ?? [
+    { kind: "text" as const, text: question.text },
+    ...(question.presentation?.formulas ?? []).map((formula) => ({
+      kind: "math" as const,
+      ...formula,
+    })),
+  ];
+  return (
+    <span className="question-stem">
+      {parts.map((part, index) =>
+        part.kind === "text" ? (
+          <span key={index}>{part.text}</span>
+        ) : (
+          <span className="question-stem-math" key={index}>
+            {element(
+              "math",
+              { display: "inline", role: "math", "aria-label": part.label },
+              mathNode(part.expression),
+            )}
+          </span>
+        ),
+      )}
+    </span>
+  );
+}
 export function QuestionVisuals({
   presentation,
 }: {

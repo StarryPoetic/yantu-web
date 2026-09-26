@@ -30,6 +30,8 @@ import { createAssistantRoutes } from "./routes/assistant.ts";
 import { createAuthRoutes } from "./routes/auth.ts";
 import { SESSION_COOKIE, sessionCookie } from "./auth/index.ts";
 import { guidanceRoutes } from "./routes/guidance.ts";
+import { createResearchRoutes } from "./routes/research.ts";
+import type { ResearchEngine } from "./routes/research.ts";
 
 const safeEqual = (a: string, b: string) => {
   const left = Buffer.from(a);
@@ -40,7 +42,10 @@ const publicPaths =
   /^\/(health|cities|programs(?:\/[^/]+)?|major-directions|disciplines)$/;
 const cookieName = SESSION_COOKIE;
 
-export async function createApplication(overrides: Partial<AppConfig> = {}) {
+export async function createApplication(
+  overrides: Partial<AppConfig> = {},
+  dependencies: { research?: ResearchEngine } = {},
+) {
   const config = { ...environmentConfig(), ...overrides };
   const store = new Store(config.databasePath);
   let auth: ReturnType<typeof createAuthRoutes>;
@@ -98,7 +103,9 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
   if (
     config.sampleData &&
     existingExampleBank?.value.mode === "example" &&
-    existingExampleBank.value.questionBankVersion === "example-unreviewed-v1"
+    ["example-unreviewed-v1", "example-unreviewed-v2-presentation"].includes(
+      existingExampleBank.value.questionBankVersion,
+    )
   ) {
     store.put("public", "question-bank", "current", await loadQuestionBank());
   }
@@ -118,6 +125,10 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
       );
   }
   const assistant = createAssistantRoutes();
+  const research = createResearchRoutes(
+    store,
+    dependencies.research ?? assistant.research,
+  );
   const limits = new Map<string, { count: number; until: number }>();
   const inFlight = new Map<string, { hash: string; promise: Promise<Reply> }>();
   const resolveSessionHash = (request: IncomingMessage): string | null => {
@@ -306,6 +317,9 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
           );
         const saved = JSON.parse(String(replay.response)) as Reply;
         const savedBody = saved.body as Record<string, unknown>;
+        const refreshedResearch = research.replay(context, savedBody);
+        if (refreshedResearch)
+          return send(response, refreshedResearch, requestId);
         assistant.validateReplay(context, savedBody);
         if (
           path === "/guidance" &&
@@ -418,7 +432,8 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
           return { body: { status: "ok", sampleData: config.sampleData } };
         const result = admin
           ? adminRoutes(context)
-          : (catalogRoutes(context) ??
+          : (research.handle(context) ??
+            catalogRoutes(context) ??
             guidanceRoutes(context) ??
             profileRoutes(context) ??
             assessmentRoutes(context) ??
@@ -586,13 +601,15 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
     handler,
     store,
     config,
-    close: () =>
-      new Promise<void>((resolve, reject) => {
+    close: async () => {
+      await research.close();
+      return new Promise<void>((resolve, reject) => {
         server.close((error) => {
           store.close();
           if (error) reject(error);
           else resolve();
         });
-      }),
+      });
+    },
   };
 }

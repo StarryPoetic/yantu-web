@@ -177,7 +177,6 @@ function SignedInWorkspace({
     [selections, setSelections] = useState<Resource<Selections> | null>(null),
     [catalog, setCatalog] = useState<Catalog | null>(null),
     [recommendation, setRecommendation] = useState<Recommendation | null>(null),
-    [target, setTarget] = useState<Program | null>(null),
     [error, setError] = useState<unknown>(),
     [loading, setLoading] = useState(true),
     [reload, setReload] = useState(0),
@@ -272,6 +271,26 @@ function SignedInWorkspace({
     setSelections(result);
     setRecommendation(null);
   }
+  async function changeTarget(program: Program | null) {
+    if (!selections) throw new Error("选择记录尚未加载，请稍后重试。");
+    const result = await request<Selections>("/me/target", {
+      method: "PUT",
+      etag: selections.etag,
+      body: program
+        ? {
+            programId: program.programId,
+            programRevisionId: program.programRevisionId,
+          }
+        : { programId: null },
+    });
+    setSelections(result);
+    setRecommendation(null);
+    setNotice(
+      program
+        ? `目标已保存：${program.display.institutionName} · ${program.display.majorName}。可以继续编辑备考计划。`
+        : "当前目标已取消，旧计划仍保留为历史记录。",
+    );
+  }
   async function previewDeletion() {
     setError(null);
     try {
@@ -303,7 +322,6 @@ function SignedInWorkspace({
       setProfile(null);
       setSelections(null);
       setRecommendation(null);
-      setTarget(null);
       setAssessmentDone(false);
       setDeletion(null);
       setGeneration((value) => value + 1);
@@ -350,7 +368,6 @@ function SignedInWorkspace({
               aria-label={name}
               aria-current={page === id ? "page" : undefined}
               onClick={() => {
-                setTarget(null);
                 navigate(id);
               }}
             >
@@ -444,8 +461,8 @@ function SignedInWorkspace({
                     profile={profile.data}
                     selections={selections.data}
                     onSelection={changeSelections}
-                    onPlan={(program) => {
-                      setTarget(program);
+                    onPlan={async (program) => {
+                      await changeTarget(program);
                       navigate("plan");
                     }}
                     recommendation={recommendation}
@@ -459,7 +476,6 @@ function SignedInWorkspace({
                     onSaved={(value) => {
                       setProfile(value);
                       setRecommendation(null);
-                      setTarget(null);
                       setNotice(
                         "个人画像已保存到账号。接下来可完成公共课测评，再查看专业推荐结论。",
                       );
@@ -513,11 +529,12 @@ function SignedInWorkspace({
                 )}
                 {page === "plan" && (
                   <PlanPanel
-                    selected={target}
+                    key={selections.data.targetProgramId ?? "no-target"}
                     programs={catalog.items ?? catalog.programs ?? []}
                     selections={selections.data}
                     recommendation={recommendation}
                     onSelectionsChanged={reloadSelections}
+                    onTargetChange={changeTarget}
                   />
                 )}
               </div>

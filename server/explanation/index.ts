@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { AssessmentError, publicDiagnosis } from "../assessment/index.ts";
 import type { AssessmentAttempt } from "../assessment/types.ts";
-import { createDeepSeekAdapter, ModelError } from "./deepseek.ts";
+import {
+  createDeepSeekAdapter,
+  ModelError,
+  resolveModelRequest,
+} from "./deepseek.ts";
 import type { DeepSeekConfig, ModelAdapter, ModelMessage } from "./deepseek.ts";
 import type { ModelRequestOptions } from "./deepseek.ts";
 export { createDeepSeekAdapter, ModelError } from "./deepseek.ts";
@@ -52,7 +56,7 @@ export interface ModelRuntime {
 }
 
 const promptVersion = "grounded-extracts-v1";
-const modelConfigVersion = "deepseek-flash-nonthinking-2026-09-27";
+const modelConfigVersion = "deepseek-server-task-routing-2026-09-27";
 
 /** Process-local reservations count in-flight requests. Persist this ledger for multi-process deployment. */
 export function createModelRuntime(
@@ -85,6 +89,7 @@ export function createModelRuntime(
       validate: (content: string) => T,
       options: ModelRequestOptions = {},
     ): Promise<{ value: T; cached: boolean }> {
+      const selected = resolveModelRequest(options);
       const cacheKey = createHash("sha256")
         .update(
           JSON.stringify({
@@ -108,8 +113,12 @@ export function createModelRuntime(
       const account = ledger.get(user) ?? { tokens: 0, active: 0 };
       // One token per input character is deliberately conservative for mixed Chinese/English.
       const reserve =
-        JSON.stringify(messages).length + (options.maxOutputTokens ?? 800);
-      if (reserve > 20096) throw new ModelError("EVIDENCE_TOO_LARGE");
+        JSON.stringify(messages).length + selected.maxOutputTokens;
+      if (
+        JSON.stringify(messages).length > (selected.thinking ? 24000 : 16000) ||
+        reserve > (selected.thinking ? 40384 : 32384)
+      )
+        throw new ModelError("EVIDENCE_TOO_LARGE");
       if (account.active >= 1 || active >= (config.globalConcurrency ?? 4))
         throw new ModelError("CONCURRENCY_LIMIT");
       if (

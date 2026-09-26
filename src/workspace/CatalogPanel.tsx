@@ -26,7 +26,7 @@ interface Props {
   profile: ProfileResource;
   selections: Selections;
   onSelection: (change: Partial<Selections>) => Promise<void>;
-  onPlan: (program: Program) => void;
+  onPlan: (program: Program) => Promise<void>;
   recommendation: Recommendation | null;
   onRecommend: (recommendation: Recommendation) => void;
   favorites?: boolean;
@@ -856,9 +856,12 @@ export function CatalogPanel({
             ))}
             <button
               className="ws-primary"
+              disabled={busy}
               onClick={() => {
-                onPlan(detail);
-                setDetail(null);
+                void act(async () => {
+                  await onPlan(detail);
+                  setDetail(null);
+                });
               }}
             >
               设置目标与计划

@@ -6,6 +6,7 @@ import type { Resource } from "./api";
 import type { ProfileResource } from "./contracts";
 import { Dialog, DegreeInfo, ErrorNotice } from "./ui";
 import type { DisciplineCatalog } from "../../server/disciplines/types";
+import { InterestPicker } from "./InterestPicker";
 
 const currentYear = new Date().getFullYear();
 const fields: {
@@ -204,38 +205,44 @@ export function ProfilePanel({
         <section className="ws-panel">
           <h2>个人情况</h2>
           <div className="ws-form-grid">
-            {fields.map((field) => (
-              <label key={field.key}>
-                {field.label}
-                {field.options ? (
-                  <select
-                    value={String(form[field.key] ?? "")}
-                    onChange={(event) => set(field.key, event.target.value)}
-                  >
-                    <option value="">{field.placeholder}</option>
-                    {String(form[field.key] ?? "") &&
-                      !field.options.includes(String(form[field.key])) && (
-                        <option>{String(form[field.key])}</option>
-                      )}
-                    {field.options.map((option) => (
-                      <option key={option}>{option}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    list={
-                      field.key === "targetMajor"
-                        ? "profile-discipline-options"
-                        : undefined
-                    }
-                    value={String(form[field.key] ?? "")}
-                    placeholder={field.placeholder}
-                    maxLength={300}
-                    onChange={(event) => set(field.key, event.target.value)}
-                  />
-                )}
-              </label>
-            ))}
+            {fields.map((field) =>
+              field.key === "targetMajor" ? (
+                <InterestPicker
+                  key={field.key}
+                  label={field.label}
+                  placeholder={field.placeholder}
+                  value={form.targetMajor ?? ""}
+                  options={disciplineNames}
+                  onChange={(value) => set("targetMajor", value)}
+                />
+              ) : (
+                <label key={field.key}>
+                  {field.label}
+                  {field.options ? (
+                    <select
+                      value={String(form[field.key] ?? "")}
+                      onChange={(event) => set(field.key, event.target.value)}
+                    >
+                      <option value="">{field.placeholder}</option>
+                      {String(form[field.key] ?? "") &&
+                        !field.options.includes(String(form[field.key])) && (
+                          <option>{String(form[field.key])}</option>
+                        )}
+                      {field.options.map((option) => (
+                        <option key={option}>{option}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      value={String(form[field.key] ?? "")}
+                      placeholder={field.placeholder}
+                      maxLength={300}
+                      onChange={(event) => set(field.key, event.target.value)}
+                    />
+                  )}
+                </label>
+              ),
+            )}
             <label>
               跨专业意愿
               <select
@@ -262,11 +269,6 @@ export function ProfilePanel({
               </select>
             </label>
           </div>
-          <datalist id="profile-discipline-options">
-            {disciplineNames.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
           <button
             type="button"
             className="ws-link"

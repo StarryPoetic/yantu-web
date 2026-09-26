@@ -5,6 +5,7 @@ import type { PublicAttempt } from "../../server/assessment/types";
 import type { ProfileResource, Selections } from "./contracts";
 import { request } from "./api";
 import { ErrorNotice, safeUrl } from "./ui";
+import { ResearchPanel } from "./ResearchPanel";
 
 type Guidance = GuidanceRun & { needsRefresh?: boolean };
 const statusNames = {
@@ -171,6 +172,11 @@ export function GuidancePanel({
                   个人条件或确认专业已变化，以下为此前结论。请点击“重新生成结论”后查看当前建议。
                 </p>
               )}
+              <ResearchPanel
+                key={run.guidanceRunId}
+                run={run}
+                stale={!!stale}
+              />
               <section className="ws-panel ws-guidance-conclusion">
                 <span className="ws-pill">
                   {run.status === "evidence_based"

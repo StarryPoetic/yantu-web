@@ -132,7 +132,18 @@ test("every question offers a safe pre-submit hint and only submitted owners rec
   const determinant = created.body.questions.find(
     (question: { id: string }) => question.id === "v2-m4",
   );
-  assert.ok(determinant.presentation.formulas.length);
+  assert.ok(
+    determinant.stem.some((part: { kind: string }) => part.kind === "math"),
+  );
+  assert.equal(determinant.presentation, undefined);
+  assert.equal(
+    JSON.stringify(created.body.questions).includes("diagram"),
+    false,
+  );
+  assert.equal(
+    JSON.stringify(created.body.questions).includes("主对角线为"),
+    false,
+  );
   assert.equal(
     JSON.stringify(created.body).includes("solutionPresentation"),
     false,
@@ -170,6 +181,7 @@ test("every question offers a safe pre-submit hint and only submitted owners rec
     (value: { questionId: string }) => value.questionId === determinant.id,
   );
   assert.ok(item.presentation.formulas.length);
+  assert.equal(item.presentation.diagram.kind, "matrix");
   const explanation = await f.user.request(path + "/tutor", "POST", {
     questionId: determinant.id,
   });

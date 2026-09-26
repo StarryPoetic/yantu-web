@@ -13,31 +13,30 @@ import type {
 import { Empty, ErrorNotice } from "./ui";
 
 export function PlanPanel({
-  selected,
   programs,
   selections,
   recommendation,
   onSelectionsChanged,
+  onTargetChange,
 }: {
-  selected: Program | null;
   programs: Program[];
   selections: Selections;
   recommendation: Recommendation | null;
   onSelectionsChanged: () => Promise<void>;
+  onTargetChange: (program: Program | null) => Promise<void>;
 }) {
   const [resource, setResource] = useState<Resource<PlanResource> | null>(null),
     [tasks, setTasks] = useState<Task[]>([]),
     [reports, setReports] = useState<Report[]>([]),
-    [programId, setProgramId] = useState(
-      selected?.programId ?? selections.targetProgramId ?? "",
-    ),
     [targets, setTargets] = useState<Record<string, number>>({}),
     [report, setReport] = useState<Report | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(),
     [saved, setSaved] = useState(false);
-  const program = programs.find((item) => item.programId === programId),
-    plan = resource?.data.plan;
+  const programId = selections.targetProgramId ?? "";
+  const program = programs.find((item) => item.programId === programId);
+  const storedPlan = resource?.data.plan;
+  const plan = storedPlan?.programId === programId ? storedPlan : null;
   const matchingRecommendation =
     program &&
     recommendation &&
@@ -61,11 +60,15 @@ export function PlanPanel({
       request<{ items: Task[] }>("/me/tasks", { signal }),
       request<{ items: Report[] }>("/reports", { signal }),
     ]);
+    if (signal?.aborted) return;
     setResource(planResult);
-    setTasks(tasksResult.data.items);
+    setTasks(
+      planResult.data.plan?.programId === programId
+        ? tasksResult.data.items
+        : [],
+    );
     setReports(reportsResult.data.items);
-    if (planResult.data.plan && !selected) {
-      setProgramId(planResult.data.plan.programId);
+    if (planResult.data.plan?.programId === programId) {
       setTargets(
         Object.fromEntries(
           planResult.data.plan.subjects
@@ -73,6 +76,8 @@ export function PlanPanel({
             .map((subject) => [subject.subjectId, subject.targetScore!]),
         ),
       );
+    } else {
+      setTargets({});
     }
   }
   useEffect(() => {
@@ -139,23 +144,68 @@ export function PlanPanel({
         <Flag size={34} />
       </div>
       <ErrorNotice error={error} onReload={() => void act(() => load())} />
+      {program && (
+        <section className="ws-panel ws-stack" aria-label="当前已选目标">
+          <span className="ws-eyebrow">已保存的院校与专业目标</span>
+          <h2>
+            {program.display.institutionName} · {program.display.majorName}
+          </h2>
+          <p>
+            {program.display.collegeName} ·{" "}
+            {program.identity.targetAdmissionYear} 年 ·{" "}
+            {program.identity.degreeType === "academic"
+              ? "学术学位"
+              : "专业学位"}
+          </p>
+          <p>
+            目标已保存在账号中。下面可单独编辑计划；未保存的分数输入不会覆盖目标选择。
+          </p>
+          <button
+            type="button"
+            className="ws-link"
+            disabled={busy}
+            onClick={() => void act(() => onTargetChange(null))}
+          >
+            取消当前目标
+          </button>
+        </section>
+      )}
+      {programId && !program && (
+        <p className="ws-warning" role="alert">
+          已保存的目标项目暂不可用，请重新核验或更换目标。旧计划不会替代当前选择。
+        </p>
+      )}
+      {storedPlan && !plan && (
+        <p className="ws-notice">
+          此前的目标计划已保留为历史记录；当前
+          {program ? "目标尚未保存计划" : "尚未选择目标"}
+          ，不会沿用旧目标的分数和任务。
+        </p>
+      )}
       <form className="ws-panel ws-stack" onSubmit={save}>
         <h2>目标项目与分数规划</h2>
         <label>
           目标院校与专业
           <select
             value={programId}
+            disabled={busy}
             onChange={(event) => {
-              setProgramId(event.target.value);
-              setTargets({});
-              setSaved(false);
+              const next =
+                programs.find(
+                  (item) => item.programId === event.target.value,
+                ) ?? null;
+              void act(() => onTargetChange(next));
             }}
           >
             <option value="">选择目标项目</option>
+            {programId && !program && (
+              <option value={programId}>已保存目标（资料暂不可用）</option>
+            )}
             {programs.map((item) => (
               <option value={item.programId} key={item.programId}>
                 {item.display.institutionName} · {item.display.majorName} ·{" "}
                 {item.identity.targetAdmissionYear}
+                {item.isExample ? " · 交互示例" : ""}
               </option>
             ))}
           </select>

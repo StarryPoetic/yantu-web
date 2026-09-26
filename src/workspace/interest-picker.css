@@ -1,0 +1,119 @@
+.interest-picker {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+.interest-picker > label {
+  font-size: 13px;
+  font-weight: 600;
+}
+.interest-anchor {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.workspace .interest-anchor > input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-right: 38px;
+}
+.workspace .interest-toggle {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  bottom: 3px;
+  width: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #5d746c;
+}
+.interest-popup {
+  position: absolute;
+  z-index: 35;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #c6d4c6;
+  border-radius: 10px;
+  background: #fffefa;
+  box-shadow: 0 12px 32px #223d282b;
+  padding: 6px;
+  scrollbar-gutter: stable;
+}
+.interest-popup-above {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.interest-initial {
+  position: sticky;
+  top: -6px;
+  background: #f0f4ed;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 750;
+  color: #41604c;
+}
+.workspace .interest-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 9px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 5px;
+  color: #233f34;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.workspace .interest-option:hover,
+.workspace .interest-active {
+  background: #e4eedf;
+}
+.interest-option span {
+  flex-shrink: 0;
+  color: #66775c;
+  font-size: 11px;
+}
+.interest-empty {
+  margin: 0;
+  padding: 10px;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.interest-picker > small {
+  color: #748071;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.interest-picker > [role="status"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 600px) {
+  .workspace .interest-anchor > input {
+    font-size: 16px;
+  }
+  .workspace .interest-option {
+    min-height: 44px;
+  }
+}
