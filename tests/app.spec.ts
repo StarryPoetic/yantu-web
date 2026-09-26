@@ -1,10 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
+import { registerAccount } from "./helpers/account";
 
 async function openWorkspace(page: Page) {
-  await page.goto("/");
+  await registerAccount(page);
+  await page.goto("/#explore");
   await expect(
     page.getByRole("heading", { name: "找到属于你的下一站。" }),
   ).toBeVisible();
+  await page.getByLabel("显示未核验的交互示例项目（仅体验流程）").check();
 }
 async function navigate(page: Page, name: string) {
   await page
@@ -35,11 +38,17 @@ test("server profile persists without importing local demo identity and new sess
   await page.getByLabel("称呼（选填）").fill("真实会话测试");
   await page.getByLabel("本科院校", { exact: true }).fill("测试大学");
   await page.getByRole("button", { name: "保存个人画像" }).click();
-  await expect(page.getByText("已保存到当前游客会话")).toBeVisible();
+  await expect(
+    page.getByText(
+      "个人画像已保存到账号。接下来可完成公共课测评，再查看专业推荐结论。",
+    ),
+  ).toBeVisible();
+  await navigate(page, "个人画像");
   await page.reload();
   await expect(page.getByLabel("称呼（选填）")).toHaveValue("真实会话测试");
   const isolated = await browser.newContext();
   const other = await isolated.newPage();
+  await registerAccount(other);
   await other.goto("/#profile");
   await expect(other.getByLabel("称呼（选填）")).not.toHaveValue(
     "真实会话测试",
@@ -83,6 +92,12 @@ test("catalog creates honest recommendations, saves target tasks and downloadabl
     dialog.getByRole("button", { name: "恢复这所院校" }),
   ).toBeVisible();
   await dialog.getByRole("button", { name: "恢复这所院校" }).click();
+  await dialog.getByRole("button", { name: "关闭弹窗" }).click();
+  await page.getByRole("button", { name: "生成联合推荐" }).click();
+  await expect(
+    page.getByText("暂无可以正式排序的推荐项目", { exact: true }),
+  ).toBeVisible();
+  await first.getByRole("button", { name: "查看资料" }).click();
   await dialog.getByRole("button", { name: "设置目标与计划" }).click();
   await page.getByRole("button", { name: "保存目标与计划" }).click();
   await expect(page.getByText("目标计划已保存", { exact: true })).toBeVisible();
@@ -169,7 +184,7 @@ test("server assessment saves an English-only draft, resumes, and exposes explan
   ).toBeVisible();
   await page.getByRole("button", { name: "查看辅助讲解" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await navigate(page, "择校探索");
+  await navigate(page, "专业与院校");
   await page.getByLabel(/示例诊断，只作练习参考/).check();
   await page.getByRole("button", { name: "生成联合推荐" }).click();
   await expect(
@@ -188,7 +203,11 @@ test("stale profile writes require explicit reload instead of overwriting a newe
   await expect(second.getByLabel("称呼（选填）")).toBeVisible();
   await page.getByLabel("称呼（选填）").fill("第一页面的新资料");
   await page.getByRole("button", { name: "保存个人画像" }).click();
-  await expect(page.getByText("已保存到当前游客会话")).toBeVisible();
+  await expect(
+    page.getByText(
+      "个人画像已保存到账号。接下来可完成公共课测评，再查看专业推荐结论。",
+    ),
+  ).toBeVisible();
   await second.getByLabel("称呼（选填）").fill("过期页面的修改");
   await second.getByRole("button", { name: "保存个人画像" }).click();
   await expect(second.getByRole("alert")).toContainText(
@@ -201,7 +220,7 @@ test("stale profile writes require explicit reload instead of overwriting a newe
   );
 });
 
-test("mobile layout and keyboard dialogs stay usable and web assistant reports unavailable providers honestly", async ({
+test("mobile layout and keyboard dialogs stay usable and students have no administration entry", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 });
@@ -222,30 +241,50 @@ test("mobile layout and keyboard dialogs stay usable and web assistant reports u
       ),
     )
     .toBe(true);
-  await navigate(page, "咨询助手");
-  await page.getByLabel("你的问题").fill("对比学硕和专硕需要查看哪些资料？");
-  await page.getByRole("button", { name: "提问", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "回答与依据" })).toBeVisible();
-  await expect(page.getByText("基础说明", { exact: true })).toBeVisible();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    )
-    .toBe(true);
-  await navigate(page, "资料管理");
-  await page
-    .getByLabel("管理访问凭据")
-    .fill("invalid-test-credential-no-access");
-  await page.getByRole("button", { name: "验证管理身份" }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "导入与编辑草稿" }),
+    page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "资料管理" }),
   ).toHaveCount(0);
+  await expect(page.getByLabel("管理访问凭据")).toHaveCount(0);
 });
 
-test("an unavailable catalog keeps profile and administration reachable", async ({
+test("hidden computing examples stay out of recommendations and unrelated targets save without a stale run", async ({
+  page,
+}) => {
+  await registerAccount(page);
+  await page.goto("/#explore");
+  await expect(
+    page.getByLabel("显示未核验的交互示例项目（仅体验流程）"),
+  ).not.toBeChecked();
+  const response = page.waitForResponse(
+    (value) =>
+      value.url().endsWith("/api/v1/recommendations") &&
+      value.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "生成联合推荐" }).click();
+  const run = await (await response).json();
+  expect(run.inputSnapshot.filters.includeExamples).toBe(false);
+  expect([...run.items, ...run.pendingVerification]).toHaveLength(0);
+  await page.getByLabel("显示未核验的交互示例项目（仅体验流程）").check();
+  const first = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("button", { name: "查看资料" }) })
+    .first();
+  await first.getByRole("button", { name: "查看资料" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "设置目标与计划" })
+    .click();
+  const saving = page.waitForRequest(
+    (value) => value.url().endsWith("/me/plan") && value.method() === "PUT",
+  );
+  await page.getByRole("button", { name: "保存目标与计划" }).click();
+  expect((await saving).postDataJSON().recommendationRunId).toBeUndefined();
+  await expect(page.getByText("目标计划已保存", { exact: true })).toBeVisible();
+});
+
+test("an unavailable annual catalog keeps profile and nationwide disciplines reachable", async ({
   page,
 }) => {
   await page.route("**/api/v1/programs", (route) =>
@@ -258,8 +297,10 @@ test("an unavailable catalog keeps profile and administration reachable", async 
   await expect(page.getByRole("alert")).toContainText("招生目录尚未发布");
   await navigate(page, "个人画像");
   await expect(page.getByLabel("称呼（选填）")).toBeVisible();
-  await navigate(page, "资料管理");
-  await expect(page.getByLabel("管理访问凭据")).toBeVisible();
+  await navigate(page, "专业与院校");
+  await expect(
+    page.getByRole("heading", { name: "全国研究生学科专业目录" }),
+  ).toBeVisible();
 });
 
 test("question reviewers must explicitly complete all six checks before approving", async ({
@@ -288,10 +329,24 @@ test("question reviewers must explicitly complete all six checks before approvin
       },
     }),
   );
-  await openWorkspace(page);
-  await navigate(page, "资料管理");
-  await page.getByLabel("管理访问凭据").fill("test-ui-reviewer-credential");
-  await page.getByRole("button", { name: "验证管理身份" }).click();
+  await page.route("**/api/v1/auth/session", (route) =>
+    route.fulfill({
+      json: {
+        authenticated: true,
+        user: {
+          accountId: "reviewer-test",
+          username: "reviewer",
+          role: "admin",
+          adminRoles: ["reviewer"],
+        },
+        csrfToken: "test-csrf",
+        guest: false,
+        guestHasData: false,
+        features: { sampleData: true, modelEnabled: false },
+      },
+    }),
+  );
+  await page.goto("/");
   await page.getByLabel("资料类型").selectOption("question");
   await page
     .getByLabel("审核 / 发布说明")
@@ -334,6 +389,7 @@ test("new catalog majors and admission years can be explored, confirmed and reco
       identity: {
         ...template.identity,
         institutionId: "expanded-institution",
+        majorCode: "083000",
         targetAdmissionYear: 2028,
         degreeType: "academic",
       },
@@ -384,29 +440,27 @@ test("new catalog majors and admission years can be explored, confirmed and reco
   );
   await openWorkspace(page);
   expect(requestedSnapshots).toEqual(["expanded-snapshot-v1"]);
+  await page.getByLabel("搜索全国专业").fill("环境科学与工程");
   const direction = page.getByRole("article").filter({
     has: page.getByRole("heading", {
       name: "环境科学与工程",
       exact: true,
-      level: 2,
+      level: 3,
     }),
   });
   await expect(direction).toBeVisible();
-  await expect(direction).not.toContainText("关注理论基础、研究方法和科研训练");
   const confirmation = page.waitForRequest(
     (request) =>
       request.url().endsWith("/me/selections") && request.method() === "PUT",
   );
-  await direction.getByRole("button", { name: "确认专业方向" }).click();
-  expect((await confirmation).postDataJSON().confirmedMajorId).toBe(
-    "environmental-science",
-  );
+  await direction.getByRole("button", { name: "确认报考专业" }).click();
+  expect((await confirmation).postDataJSON().confirmedMajorId).toBe("0830");
   await expect(
-    direction.getByRole("button", { name: "已确认 · 点击取消" }),
+    direction.getByRole("button", { name: "已确认 · 取消" }),
   ).toBeVisible();
-  await page
-    .getByRole("combobox", { name: "专业方向", exact: true })
-    .selectOption("environmental-science");
+  // Confirming a national discipline immediately filters annual projects.
+  await expect(page.locator(".ws-school")).toHaveCount(1);
+  await direction.getByRole("button", { name: "查看招生项目" }).click();
   await page
     .getByRole("combobox", { name: "招生年份", exact: true })
     .selectOption("2027");
@@ -436,7 +490,7 @@ test("new catalog majors and admission years can be explored, confirmed and reco
   expect((await recommendation).postDataJSON()).toMatchObject({
     targetAdmissionYear: 2028,
     filters: {
-      majorDirectionIds: ["environmental-science"],
+      disciplineCodes: ["0830"],
       degreeTypes: ["academic"],
     },
   });
@@ -445,79 +499,6 @@ test("new catalog majors and admission years can be explored, confirmed and reco
       exact: true,
     }),
   ).toBeVisible();
-});
-
-test("web-assisted answers render evidence-linked points, source excerpts and readable fallback notices", async ({
-  page,
-}) => {
-  await page.route("**/api/v1/assistant/questions", (route) =>
-    route.fulfill({
-      json: {
-        answer: "根据本次资料，可以先核对以下事项。",
-        explanationStatus: "model",
-        reason: "WEB_TIMEOUT",
-        points: [
-          {
-            text: "该项目报名时应核对目标年份和考试科目。",
-            citations: ["official-one"],
-          },
-          {
-            text: "培养方式需要结合招生公告逐项确认。",
-            citations: ["search-two"],
-          },
-        ],
-        sources: [
-          {
-            id: "official-one",
-            title: "招生公告",
-            url: "https://example.edu.cn/admissions",
-            retrievedAt: "2026-09-27T08:00:00Z",
-            kind: "official_page",
-            excerpt: "官方网页原文摘录：请查阅当年招生专业目录。",
-          },
-          {
-            id: "search-two",
-            title: "培养说明",
-            url: "https://example.edu.cn/program",
-            retrievedAt: "2026-09-27T08:00:00Z",
-            kind: "search_snippet",
-            excerpt: "搜索摘录：培养方式请以学院公告为准。",
-          },
-        ],
-        notices: [
-          "搜索摘要尚未经过人工核验。",
-          "部分参考网页未读取成功（WEB_TIMEOUT）。",
-        ],
-      },
-    }),
-  );
-  await openWorkspace(page);
-  await navigate(page, "咨询助手");
-  await page.getByLabel("你的问题").fill("需要核对哪些招生条件？");
-  await page.getByLabel("允许按需联网搜索公开资料").check();
-  await page.getByRole("button", { name: "提问", exact: true }).click();
-  await expect(
-    page.getByText("该项目报名时应核对目标年份和考试科目。", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("培养方式需要结合招生公告逐项确认。", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "依据：招生公告" }),
-  ).toHaveAttribute("href", "https://example.edu.cn/admissions");
-  await expect(
-    page.getByRole("link", { name: "依据：培养说明" }),
-  ).toHaveAttribute("href", "https://example.edu.cn/program");
-  await expect(
-    page.getByText("官方网页原文摘录：请查阅当年招生专业目录。", {
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expect(page.getByText(/搜索摘要，尚未读取网页全文/)).toBeVisible();
-  await expect(
-    page.getByText("搜索摘要尚未经过人工核验。", { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText(/WEB_TIMEOUT/)).toHaveCount(0);
 });
 
 test("catalog pagination rejects a mixed snapshot and keeps other workspace pages usable", async ({

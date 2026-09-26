@@ -1,5 +1,5 @@
 export interface ModelMessage {
-  role: "system" | "user";
+  role: "system" | "user" | "assistant";
   content: string;
 }
 export interface ModelReply {
@@ -9,7 +9,14 @@ export interface ModelReply {
   model: string;
 }
 export interface ModelAdapter {
-  complete(messages: ModelMessage[]): Promise<ModelReply>;
+  complete(
+    messages: ModelMessage[],
+    options?: ModelRequestOptions,
+  ): Promise<ModelReply>;
+}
+export interface ModelRequestOptions {
+  format?: "json" | "text";
+  maxOutputTokens?: number;
 }
 export class ModelError extends Error {
   code: string;
@@ -48,7 +55,7 @@ export function createDeepSeekAdapter(
     throw new ModelError("UNSAFE_PROVIDER_ENDPOINT");
   const request = config.fetch ?? globalThis.fetch;
   return {
-    async complete(messages) {
+    async complete(messages, options = {}) {
       if (!config.enabled) throw new ModelError("MODEL_DISABLED");
       if (!config.apiKey) throw new ModelError("MODEL_NOT_CONFIGURED");
       if (JSON.stringify(messages).length > 16000)
@@ -72,8 +79,13 @@ export function createDeepSeekAdapter(
             thinking: { type: "disabled" },
             stream: false,
             temperature: 0,
-            max_tokens: 800,
-            response_format: { type: "json_object" },
+            max_tokens: Math.min(
+              4096,
+              Math.max(256, options.maxOutputTokens ?? 800),
+            ),
+            ...(options.format === "text"
+              ? {}
+              : { response_format: { type: "json_object" } }),
             messages,
           }),
         });

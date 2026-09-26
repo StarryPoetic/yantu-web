@@ -38,6 +38,23 @@ export function PlanPanel({
     [saved, setSaved] = useState(false);
   const program = programs.find((item) => item.programId === programId),
     plan = resource?.data.plan;
+  const matchingRecommendation =
+    program &&
+    recommendation &&
+    !recommendation.needsRefresh &&
+    [
+      ...recommendation.items,
+      ...recommendation.pendingVerification,
+      ...(recommendation.eligibleUnranked ?? []),
+      ...(recommendation.historicalPreview ?? []),
+    ].some(
+      (item) =>
+        item.programRevisionId === program.programRevisionId &&
+        item.program.identity.targetAdmissionYear ===
+          program.identity.targetAdmissionYear,
+    )
+      ? recommendation
+      : null;
   async function load(signal?: AbortSignal) {
     const [planResult, tasksResult, reportsResult] = await Promise.all([
       request<PlanResource>("/me/plan", { signal }),
@@ -87,7 +104,7 @@ export function PlanPanel({
           selectionVersion: selections.selectionVersion,
           programId: program.programId,
           programRevisionId: program.programRevisionId,
-          recommendationRunId: recommendation?.recommendationRunId,
+          recommendationRunId: matchingRecommendation?.recommendationRunId,
           subjectTargets: targets,
         },
       });

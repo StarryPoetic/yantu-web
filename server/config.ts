@@ -9,12 +9,24 @@ export interface AppConfig {
   secureCookies: boolean;
   origins: string[];
   admins: AdminIdentity[];
+  bootstrapAdmins?: BootstrapAdmin[];
   staticDirectory?: string;
   rateLimit: number;
+  authRegistrationIpLimit?: number;
+  authLoginIpLimit?: number;
 }
 export function environmentConfig(): AppConfig {
   const production = process.env.NODE_ENV === "production";
   let admins: AdminIdentity[] = [];
+  let bootstrapAdmins: BootstrapAdmin[] = [];
+  if (process.env.YANTU_BOOTSTRAP_ADMINS) {
+    try {
+      bootstrapAdmins = JSON.parse(process.env.YANTU_BOOTSTRAP_ADMINS);
+    } catch {
+      throw new Error("YANTU_BOOTSTRAP_ADMINS 必须是有效 JSON 数组。");
+    }
+    validateBootstrapAdmins(bootstrapAdmins);
+  }
   if (process.env.YANTU_ADMIN_CREDENTIALS) {
     try {
       admins = JSON.parse(process.env.YANTU_ADMIN_CREDENTIALS);
@@ -58,7 +70,57 @@ export function environmentConfig(): AppConfig {
           "http://127.0.0.1:8787",
         ],
     admins,
+    bootstrapAdmins,
     staticDirectory: "./dist",
     rateLimit: 600,
+    authRegistrationIpLimit: authRateLimit(
+      process.env.YANTU_AUTH_REGISTRATION_IP_LIMIT ?? 10,
+    ),
+    authLoginIpLimit: authRateLimit(
+      process.env.YANTU_AUTH_LOGIN_IP_LIMIT ?? 40,
+    ),
   };
 }
+
+export function authRateLimit(value: unknown): number {
+  if (
+    (typeof value !== "number" &&
+      (typeof value !== "string" || !/^\d+$/.test(value))) ||
+    !Number.isInteger(Number(value)) ||
+    Number(value) < 1 ||
+    Number(value) > 1000
+  )
+    throw new Error("认证频控配置必须为 1 至 1000 的整数。");
+  return Number(value);
+}
+
+export function validateBootstrapAdmins(value: BootstrapAdmin[]): void {
+  if (!Array.isArray(value) || value.length > 20)
+    throw new Error("管理账户配置必须是最多 20 项的数组。");
+  const usernames = new Set<string>();
+  for (const entry of value) {
+    if (
+      !entry ||
+      typeof entry !== "object" ||
+      !Array.isArray(entry.roles) ||
+      !entry.roles.length ||
+      entry.roles.some(
+        (role) =>
+          !["editor", "reviewer", "publisher", "auditor"].includes(role),
+      ) ||
+      new Set(entry.roles).size !== entry.roles.length
+    )
+      throw new Error("管理账户须提供有效的独立职责。");
+    let key: string;
+    try {
+      key = usernameInput(entry.username).usernameKey;
+      passwordInput(entry.password);
+    } catch {
+      throw new Error("管理账户用户名或密码格式不正确。");
+    }
+    if (usernames.has(key)) throw new Error("管理账户用户名不能重复。");
+    usernames.add(key);
+  }
+}
+import type { BootstrapAdmin } from "./auth/types.ts";
+import { passwordInput, usernameInput } from "./auth/password.ts";

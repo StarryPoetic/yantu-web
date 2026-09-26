@@ -1,220 +1,340 @@
-import { useState } from "react";
-import { Sparkles } from "lucide-react";
-import { request } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { MessageCircle, Send, Sparkles, Trash2, X } from "lucide-react";
+import type { Conversation, ChatMessage } from "../../server/explanation/chat";
+import { request, type Resource } from "./api";
 import { ErrorNotice, safeUrl } from "./ui";
+import { TutorText } from "./TutorContent";
+import "./assistant.css";
 
-interface Answer {
-  answer: string;
-  points?: { text: string; citations: string[] }[];
-  sources: {
-    id: string;
-    title: string;
-    url: string;
-    retrievedAt: string;
-    excerpt?: string;
-    kind?: "official_page" | "search_snippet";
-  }[];
-  notices?: string[];
-  explanationStatus: "model" | "template";
-  reason?: string;
-}
 const reasonMessages: Record<string, string> = {
-  MODEL_DISABLED: "模型辅助回答尚未启用，当前展示基础说明与可获得的资料。",
-  MODEL_NOT_CONFIGURED: "模型服务尚未配置，暂时无法整理完整回答。",
-  SEARCH_DISABLED: "联网搜索尚未启用，可以提供官方资料链接作为参考。",
-  SEARCH_NOT_CONFIGURED: "搜索服务尚未配置，可以提供官方资料链接作为参考。",
-  SEARCH_BUDGET_EXHAUSTED: "本日搜索额度已用完，请稍后再试。",
-  SEARCH_UNAVAILABLE: "搜索服务暂时不可用，请稍后重试或提供官方资料链接。",
-  WEB_UNAVAILABLE: "参考网页暂时无法读取，请检查链接或换用其他官方页面。",
-  WEB_TIMEOUT: "网页读取超时，请稍后重试或换用其他官方资料链接。",
-  WEB_HOST_NOT_ALLOWED:
-    "该链接不在已配置的官方资料范围内，请使用受支持的官方来源。",
-  WEB_REDIRECT_BLOCKED: "参考链接发生跳转，请提供官方资料页面的直接链接。",
-  WEB_FORMAT_UNSUPPORTED: "该网页格式暂不支持读取，请换用官方文本页面。",
-  NO_WEB_EVIDENCE:
-    "尚未找到足以支持回答的网页资料，请补充更具体的问题或官方链接。",
-  OUTPUT_VALIDATION_FAILED: "回答未通过来源核对，当前仅展示已取得的参考资料。",
-  CITATION_VALIDATION_FAILED:
-    "回答的引用未通过核对，当前仅展示已取得的参考资料。",
-  MODEL_TIMEOUT: "回答整理超时，请稍后重试。",
-  MODEL_BUDGET_EXHAUSTED: "本日辅助回答额度已用完，仍可查看已有参考资料。",
-  RATE_LIMITED: "辅助回答请求较多，请稍后重试。",
-  PROVIDER_UNAVAILABLE: "辅助回答服务暂时不可用，请稍后重试。",
+  MODEL_DISABLED: "模型服务尚未启用，目前无法生成自由回答。",
+  MODEL_NOT_CONFIGURED: "模型服务尚未配置，请联系维护人员。",
+  SEARCH_DISABLED: "联网搜索尚未启用，本次未搜索网页。",
+  SEARCH_NOT_CONFIGURED: "搜索服务尚未配置，本次未搜索网页。",
+  SEARCH_BUDGET_EXHAUSTED: "今天的搜索额度已用完，请稍后再试。",
+  SEARCH_UNAVAILABLE: "搜索服务暂时不可用。",
+  NO_WEB_EVIDENCE: "本次未找到可引用的网页资料。",
+  MODEL_TIMEOUT: "回答生成超时，请稍后重试。",
+  MODEL_BUDGET_EXHAUSTED: "今天的辅助回答额度已用完，请稍后再试。",
+  RATE_LIMITED: "当前咨询请求较多，请稍后重试。",
+  PROVIDER_UNAVAILABLE: "模型服务暂时不可用，请稍后重试。",
+  MODEL_UNAVAILABLE: "模型服务暂时不可用，请稍后重试。",
+  PROVIDER_AUTH_FAILED: "模型服务的授权配置需要维护人员检查。",
+  BUDGET_EXHAUSTED: "今天的辅助回答额度已用完，请稍后再试。",
+  CONCURRENCY_LIMIT: "当前仍有回答正在生成，请稍后再试。",
+  EVIDENCE_TOO_LARGE: "本次资料较长，请缩短问题或分步提问。",
+  CITATION_VALIDATION_FAILED: "回答的来源引用未通过核对，请重新提问。",
+  OUTPUT_VALIDATION_FAILED: "本次回答未通过检查，请稍后重试。",
 };
 function reasonMessage(code: string) {
-  return (
-    reasonMessages[code] ??
-    "辅助回答暂时不可用，当前仅展示基础说明与已有参考资料。"
-  );
+  return reasonMessages[code] ?? "辅助服务暂时不可用，已有对话仍保留。";
 }
 function readableNotice(notice: string) {
   return notice.replace(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g, reasonMessage);
 }
-export function AssistantPanel() {
-  const [question, setQuestion] = useState(""),
-    [allowSearch, setAllowSearch] = useState(false),
-    [urls, setUrls] = useState(""),
-    [result, setResult] = useState<Answer | null>(null),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState<unknown>();
+function Message({ message }: { message: ChatMessage }) {
+  return (
+    <article
+      className={"assistant-message " + message.role}
+      aria-label={message.role === "user" ? "我的消息" : "助手回答"}
+    >
+      <span className="assistant-message-author">
+        {message.role === "user" ? "你" : "研途助手"}
+      </span>
+      <TutorText text={message.content} />
+      {message.reason && (
+        <p className="assistant-message-notice">
+          {reasonMessage(message.reason)}
+        </p>
+      )}
+      {!!message.notices?.length && (
+        <ul className="assistant-message-notice">
+          {message.notices.map((notice, i) => (
+            <li key={i}>{readableNotice(notice)}</li>
+          ))}
+        </ul>
+      )}
+      {!!message.sources?.length && (
+        <details className="assistant-sources">
+          <summary>本次参考资料 · {message.sources.length} 条</summary>
+          {message.sources.map((source) => (
+            <div key={source.id}>
+              {safeUrl(source.url) ? (
+                <a href={safeUrl(source.url)} target="_blank" rel="noreferrer">
+                  [{source.id}] {source.title}
+                </a>
+              ) : (
+                <span>{source.title}</span>
+              )}
+              <small>
+                {source.kind === "search_snippet"
+                  ? "搜索摘要，尚未读取全文"
+                  : "官方网页正文摘录"}{" "}
+                · {new Date(source.retrievedAt).toLocaleString("zh-CN")}
+              </small>
+              <blockquote>{source.excerpt}</blockquote>
+            </div>
+          ))}
+        </details>
+      )}
+    </article>
+  );
+}
+function ConversationPanel({ onClose }: { onClose?: () => void }) {
+  const [resource, setResource] = useState<Resource<Conversation> | null>(null);
+  const [input, setInput] = useState(""),
+    [urls, setUrls] = useState("");
+  const [allowSearch, setAllowSearch] = useState(true),
+    [showLinks, setShowLinks] = useState(false);
+  const [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(),
+    [confirmClear, setConfirmClear] = useState(false);
+  const list = useRef<HTMLDivElement>(null),
+    composer = useRef<HTMLTextAreaElement>(null);
+  const lifecycle = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    lifecycle.current = controller;
+    request<Conversation>("/assistant/conversation", {
+      signal: controller.signal,
+    })
+      .then((result) => {
+        if (!controller.signal.aborted) setResource(result);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setError(error);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    composer.current?.focus();
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    if (list.current) list.current.scrollTop = list.current.scrollHeight;
+  }, [resource?.data.version, busy]);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (!resource || !input.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      const response = await request<Answer>("/assistant/questions", {
+      const result = await request<Conversation>("/assistant/conversation", {
         method: "POST",
+        etag: resource.etag,
+        signal: lifecycle.current?.signal,
         body: {
-          question,
+          message: input,
           allowSearch,
           urls: urls.split(/\s+/).filter(Boolean),
         },
       });
-      setResult(response.data);
+      setResource(result);
+      setInput("");
     } catch (error) {
-      setError(error);
+      if (!lifecycle.current?.signal.aborted) setError(error);
     } finally {
-      setBusy(false);
+      if (!lifecycle.current?.signal.aborted) setBusy(false);
+    }
+  }
+  async function clear() {
+    if (!resource) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await request<Conversation>("/assistant/conversation", {
+        method: "DELETE",
+        etag: resource.etag,
+        signal: lifecycle.current?.signal,
+        body: {},
+      });
+      setResource(result);
+      setInput("");
+      setConfirmClear(false);
+    } catch (error) {
+      if (!lifecycle.current?.signal.aborted) setError(error);
+    } finally {
+      if (!lifecycle.current?.signal.aborted) setBusy(false);
     }
   }
   return (
     <>
-      <div className="ws-heading">
+      <header className="assistant-header">
+        <Sparkles size={23} />
         <div>
-          <span className="ws-eyebrow">把问题问具体</span>
-          <h1>带着来源，寻找答案。</h1>
-          <p>按需搜索网页，帮你理解招生资料、培养方向与备考问题。</p>
+          <h2>研途咨询</h2>
+          <p>可以继续追问，也可以聊其他问题</p>
         </div>
-        <Sparkles size={34} />
-      </div>
-      <ErrorNotice error={error} />
-      <form className="ws-panel ws-stack" onSubmit={submit}>
-        <label>
-          你的问题
-          <textarea
-            required
-            minLength={2}
-            maxLength={600}
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="例如：比较学硕和专硕时，我应该查看招生简章中的哪些内容？"
-          />
-        </label>
-        <label>
-          参考资料链接（选填，最多两个）
-          <textarea
-            value={urls}
-            onChange={(event) => setUrls(event.target.value)}
-            placeholder="粘贴官方招生或政策页面链接"
-          />
-        </label>
-        <label className="ws-check">
-          <input
-            type="checkbox"
-            checked={allowSearch}
-            onChange={(event) => setAllowSearch(event.target.checked)}
-          />
-          允许按需联网搜索公开资料
-        </label>
         <button
-          className="ws-primary"
-          disabled={busy || question.trim().length < 2}
+          type="button"
+          aria-label="清空当前对话"
+          disabled={!resource || busy}
+          onClick={() => setConfirmClear(true)}
         >
-          {busy ? "正在查找与整理…" : "提问"}
+          <Trash2 size={19} />
         </button>
-      </form>
-      {result && (
-        <section className="ws-panel ws-stack" aria-live="polite">
-          <div className="ws-between">
-            <h2>回答与依据</h2>
-            <span className="ws-pill">
-              {result.explanationStatus === "model"
-                ? "模型辅助回答"
-                : "基础说明"}
-            </span>
-          </div>
-          <div className="ws-answer">{result.answer}</div>
-          {!!result.points?.length && (
-            <ol className="ws-answer-points">
-              {result.points.map((point, index) => (
-                <li key={index}>
-                  <p>{point.text}</p>
-                  <div className="ws-citations">
-                    {point.citations.map((id) => {
-                      const source = result.sources.find(
-                        (source) => source.id === id,
-                      );
-                      return source && safeUrl(source.url) ? (
-                        <a
-                          key={id}
-                          href={safeUrl(source.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          依据：{source.title}
-                        </a>
-                      ) : null;
-                    })}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-          {result.reason && (
-            <p className="ws-muted">{reasonMessage(result.reason)}</p>
-          )}
-          {!!result.notices?.length && (
-            <div className="ws-notice">
-              <ul>
-                {result.notices.map((notice, index) => (
-                  <li key={index}>{readableNotice(notice)}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {result.sources.length ? (
-            <div>
-              <h3>参考来源</h3>
-              <ul>
-                {result.sources.map((source) => (
-                  <li key={source.id}>
-                    {safeUrl(source.url) ? (
-                      <a
-                        href={safeUrl(source.url)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {source.title}
-                      </a>
-                    ) : (
-                      source.title
-                    )}
-                    <small>
-                      {source.kind === "search_snippet"
-                        ? " · 搜索摘要，尚未读取网页全文"
-                        : source.kind === "official_page"
-                          ? " · 官方网页正文摘录"
-                          : ""}{" "}
-                      · 检索于{" "}
-                      {new Date(source.retrievedAt).toLocaleString("zh-CN")}
-                    </small>
-                    {source.excerpt && (
-                      <blockquote className="ws-source-excerpt">
-                        {source.excerpt}
-                      </blockquote>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="ws-muted">本次未获得可引用的网页资料。</p>
-          )}
-          <div className="ws-notice">
-            回答用于资料理解与核验参考。网页或模型内容不会自动成为已核验招生事实，报考要求以当年官方文件为准。
-          </div>
-        </section>
+        {onClose && (
+          <button type="button" aria-label="收起咨询助手" onClick={onClose}>
+            <X size={21} />
+          </button>
+        )}
+      </header>
+      {confirmClear && (
+        <div className="assistant-clear">
+          <p>清空后无法恢复这段对话。</p>
+          <button type="button" disabled={busy} onClick={() => void clear()}>
+            确认清空当前对话
+          </button>
+          <button type="button" onClick={() => setConfirmClear(false)}>
+            保留对话
+          </button>
+        </div>
       )}
+      <div
+        ref={list}
+        className="assistant-messages"
+        role="log"
+        aria-live="polite"
+        aria-label="咨询对话记录"
+      >
+        {loading ? (
+          <p>正在读取对话…</p>
+        ) : (
+          !resource?.data.messages.length && (
+            <div className="assistant-welcome">
+              <MessageCircle size={32} />
+              <h3>有什么想聊的？</h3>
+              <p>
+                学习中的疑问、资料理解，或任何你想讨论的话题。需要最新资料时，可以允许助手按需联网。
+              </p>
+              <small>回答用于理解与参考，招生事实仍需核对当年官方文件。</small>
+            </div>
+          )
+        )}
+        {resource?.data.messages.map((message) => (
+          <Message key={message.id} message={message} />
+        ))}
+        {busy && <p role="status">正在思考与整理…</p>}
+        <ErrorNotice
+          error={error}
+          onReload={() => {
+            setError(null);
+            setLoading(true);
+            void request<Conversation>("/assistant/conversation", {
+              signal: lifecycle.current?.signal,
+            })
+              .then(setResource)
+              .catch((error) => {
+                if (!lifecycle.current?.signal.aborted) setError(error);
+              })
+              .finally(() => {
+                if (!lifecycle.current?.signal.aborted) setLoading(false);
+              });
+          }}
+        />
+      </div>
+      <form className="assistant-composer" onSubmit={submit}>
+        <div className="assistant-tools">
+          <label>
+            <input
+              type="checkbox"
+              checked={allowSearch}
+              onChange={(event) => setAllowSearch(event.target.checked)}
+            />
+            允许按需联网
+          </label>
+          <button
+            type="button"
+            aria-expanded={showLinks}
+            onClick={() => setShowLinks(!showLinks)}
+          >
+            参考链接
+          </button>
+        </div>
+        {showLinks && (
+          <label>
+            官方资料链接（最多两个）
+            <textarea
+              value={urls}
+              onChange={(event) => setUrls(event.target.value)}
+              placeholder="用空格或换行分隔链接"
+            />
+          </label>
+        )}
+        <label className="assistant-input-label">
+          <span>发送消息</span>
+          <textarea
+            ref={composer}
+            required
+            maxLength={3000}
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="输入任意问题，或继续刚才的讨论…"
+          />
+        </label>
+        <div className="assistant-send-row">
+          <small>对话保存在当前账号，可随时清空</small>
+          <button
+            className="ws-primary"
+            disabled={busy || !resource || !input.trim()}
+          >
+            <Send size={17} />
+            发送
+          </button>
+        </div>
+      </form>
     </>
+  );
+}
+export function FloatingAssistant() {
+  const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  function close() {
+    setOpen(false);
+    requestAnimationFrame(() => button.current?.focus());
+  }
+  useEffect(() => {
+    if (!open) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        button.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+  }, [open]);
+  return (
+    <div className="floating-assistant">
+      {open && (
+        <aside
+          className="assistant-panel"
+          id="assistant-conversation-panel"
+          aria-label="研途咨询助手"
+        >
+          <ConversationPanel onClose={close} />
+        </aside>
+      )}
+      <button
+        ref={button}
+        type="button"
+        className="assistant-orb"
+        aria-label={open ? "收起咨询对话" : "打开咨询助手"}
+        aria-expanded={open}
+        aria-controls="assistant-conversation-panel"
+        onClick={() => (open ? close() : setOpen(true))}
+      >
+        {open ? <X size={25} /> : <MessageCircle size={25} />}
+        <span>咨询</span>
+      </button>
+    </div>
+  );
+}
+export function AssistantPanel() {
+  return (
+    <div className="assistant-panel assistant-inline">
+      <ConversationPanel />
+    </div>
   );
 }

@@ -3,6 +3,8 @@ import type { Context } from "../context.ts";
 import type { Reply } from "../http.ts";
 import { HttpError, canonical, digest } from "../http.ts";
 import { searchCities } from "../../src/cities.ts";
+import { programMatchesDiscipline } from "../../shared/discipline-matching.ts";
+import { isDisciplineId } from "../disciplines/index.ts";
 
 export function catalogRoutes(c: Context): Reply | undefined {
   if (c.method !== "GET") return;
@@ -37,6 +39,15 @@ export function catalogRoutes(c: Context): Reply | undefined {
     if (city) items = items.filter((p) => p.display.city === city);
     const major = c.query.get("majorDirectionId");
     if (major) items = items.filter((p) => p.majorDirectionIds.includes(major));
+    const disciplineCodes = c.query
+      .getAll("disciplineCodes")
+      .flatMap((value) => value.split(","));
+    if (disciplineCodes.some((code) => !isDisciplineId(code)))
+      throw new HttpError(422, "unknown_discipline", "未知全国学科专业代码。");
+    if (disciplineCodes.length)
+      items = items.filter((program) =>
+        disciplineCodes.some((code) => programMatchesDiscipline(program, code)),
+      );
     const institution = c.query.get("institutionId");
     if (institution)
       items = items.filter((p) => p.identity.institutionId === institution);

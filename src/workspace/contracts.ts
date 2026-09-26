@@ -9,6 +9,8 @@ import type { RecommendationCandidate } from "../../server/recommendation/index"
 export interface ProfileResource {
   profile: Profile;
   profileVersion: string | number;
+  profileSavedAt?: string | null;
+  profileCompleted?: boolean;
 }
 export interface Selections {
   selectionVersion: string | number;
@@ -46,6 +48,8 @@ export interface Recommendation {
   items: RecommendationItem[];
   pendingVerification: RecommendationItem[];
   eligibleUnranked?: RecommendationItem[];
+  historicalPreview?: RecommendationItem[];
+  inputSnapshot?: { targetAdmissionYear: number };
   needsRefresh?: boolean;
   degreeAdvice?: {
     inclination: "academic" | "professional" | "undetermined";

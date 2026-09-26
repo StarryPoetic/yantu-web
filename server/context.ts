@@ -14,7 +14,10 @@ export interface Context {
   store: Store;
   config: AppConfig;
   session: Session;
-  admin?: AdminIdentity;
+  sessionHash?: string | null;
+  admin?: Pick<AdminIdentity, "actorId" | "roles"> & {
+    authentication?: "bearer" | "session";
+  };
 }
 export const publicOwner = "public";
 export function catalogState(store: Store): CatalogState {

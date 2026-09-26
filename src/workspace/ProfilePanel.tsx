@@ -1,31 +1,131 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Profile } from "../types";
 import { CityPicker } from "../CityPicker";
 import { request } from "./api";
 import type { Resource } from "./api";
 import type { ProfileResource } from "./contracts";
 import { Dialog, DegreeInfo, ErrorNotice } from "./ui";
+import type { DisciplineCatalog } from "../../server/disciplines/types";
 
-const fields: { key: keyof Profile; label: string; placeholder: string }[] = [
+const currentYear = new Date().getFullYear();
+const fields: {
+  key: keyof Profile;
+  label: string;
+  placeholder: string;
+  options?: string[];
+}[] = [
   { key: "name", label: "称呼（选填）", placeholder: "怎么称呼你" },
   { key: "university", label: "本科院校", placeholder: "可填写不确定" },
   { key: "major", label: "本科专业", placeholder: "不等于已确认报考专业" },
-  { key: "graduation", label: "毕业年份", placeholder: "例如 2027" },
-  { key: "year", label: "报考年份", placeholder: "例如 2027" },
-  { key: "english", label: "英语经历", placeholder: "例如 CET-4，或不确定" },
-  { key: "math", label: "数学基础", placeholder: "例如学过高等数学" },
-  { key: "hours", label: "每天可投入时间", placeholder: "例如 4 小时" },
-  { key: "budget", label: "年度预算", placeholder: "例如 1–2 万元，或不确定" },
+  {
+    key: "targetMajor",
+    label: "感兴趣的专业或领域（选填）",
+    placeholder: "可搜索专业名称，也可填写多个兴趣；尚未确定可留空",
+  },
+  {
+    key: "graduation",
+    label: "毕业年份",
+    placeholder: "请选择",
+    options: [
+      "不确定",
+      ...Array.from({ length: 36 }, (_, index) =>
+        String(currentYear + 5 - index),
+      ),
+    ],
+  },
+  {
+    key: "year",
+    label: "报考年份",
+    placeholder: "请选择",
+    options: Array.from({ length: 6 }, (_, index) =>
+      String(currentYear + index),
+    ),
+  },
+  {
+    key: "english",
+    label: "英语经历",
+    placeholder: "请选择",
+    options: [
+      "不确定",
+      "尚未参加等级考试",
+      "大学英语四级",
+      "大学英语六级",
+      "英语专业四级",
+      "英语专业八级",
+      "雅思或托福经历",
+    ],
+  },
+  {
+    key: "math",
+    label: "数学基础",
+    placeholder: "请选择",
+    options: [
+      "不确定",
+      "未系统学习高等数学",
+      "学过高等数学",
+      "学过高等数学与线性代数",
+      "学过高等数学、线性代数与概率论",
+      "已开始考研数学复习",
+    ],
+  },
+  {
+    key: "hours",
+    label: "每天可投入时间",
+    placeholder: "请选择",
+    options: [
+      "不确定",
+      "不足 2 小时",
+      "2–4 小时",
+      "4–6 小时",
+      "6–8 小时",
+      "8 小时以上",
+    ],
+  },
+  {
+    key: "budget",
+    label: "年度预算",
+    placeholder: "请选择",
+    options: [
+      "不确定",
+      "1 万元以内",
+      "1–2 万元",
+      "2–5 万元",
+      "5–10 万元",
+      "10 万元以上",
+    ],
+  },
   {
     key: "courses",
     label: "相关课程基础",
     placeholder: "例如数据结构、概率论",
   },
-  { key: "preparation", label: "备考进度", placeholder: "例如刚开始收集信息" },
+  {
+    key: "preparation",
+    label: "备考进度",
+    placeholder: "请选择",
+    options: [
+      "不确定",
+      "刚开始了解",
+      "已制定计划，尚未复习",
+      "基础复习阶段",
+      "强化练习阶段",
+      "真题与冲刺阶段",
+      "准备再次报考",
+    ],
+  },
   {
     key: "studyGoal",
     label: "职业与学习目标",
-    placeholder: "例如工程实践、研究或不确定",
+    placeholder: "请选择主要目标，可在补充说明中细化",
+    options: [
+      "不确定，希望先探索",
+      "学术研究与继续读博",
+      "专业实践与行业就业",
+      "转向新的专业领域",
+      "提升现有专业能力",
+      "公共服务与社会发展",
+      "文化、创意与艺术实践",
+    ],
   },
 ];
 export function ProfilePanel({
@@ -43,7 +143,21 @@ export function ProfilePanel({
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(),
     [saved, setSaved] = useState(false),
-    [degree, setDegree] = useState(false);
+    [degree, setDegree] = useState(false),
+    [disciplineNames, setDisciplineNames] = useState<string[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void request<DisciplineCatalog>("/disciplines", {
+      signal: controller.signal,
+    })
+      .then((result) =>
+        setDisciplineNames([
+          ...new Set(result.data.items.map((item) => item.name)),
+        ]),
+      )
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
   function set<K extends keyof Profile>(key: K, value: Profile[K]) {
     setForm((current) => ({ ...current, [key]: value }));
     setSaved(false);
@@ -73,9 +187,17 @@ export function ProfilePanel({
         <div>
           <span className="ws-eyebrow">01 / 认识自己</span>
           <h1>为你的下一站，建立起点。</h1>
-          <p>允许不确定。按需填写，保存后可随时修改。</p>
+          <p>
+            允许不确定。本科专业不会自动成为报考专业，保存后进入公共课测评。
+          </p>
         </div>
-        <span className="ws-pill">画像版本 {resource.data.profileVersion}</span>
+        <span className="ws-pill">
+          {resource.data.profileCompleted ||
+          Number(resource.data.profileVersion) > 0
+            ? "个人画像已保存"
+            : "个人画像尚未保存"}{" "}
+          · 版本 {resource.data.profileVersion}
+        </span>
       </div>
       <ErrorNotice error={error} onReload={onReload} />
       <form onSubmit={save} className="ws-stack">
@@ -85,12 +207,33 @@ export function ProfilePanel({
             {fields.map((field) => (
               <label key={field.key}>
                 {field.label}
-                <input
-                  value={String(form[field.key] ?? "")}
-                  placeholder={field.placeholder}
-                  maxLength={300}
-                  onChange={(event) => set(field.key, event.target.value)}
-                />
+                {field.options ? (
+                  <select
+                    value={String(form[field.key] ?? "")}
+                    onChange={(event) => set(field.key, event.target.value)}
+                  >
+                    <option value="">{field.placeholder}</option>
+                    {String(form[field.key] ?? "") &&
+                      !field.options.includes(String(form[field.key])) && (
+                        <option>{String(form[field.key])}</option>
+                      )}
+                    {field.options.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    list={
+                      field.key === "targetMajor"
+                        ? "profile-discipline-options"
+                        : undefined
+                    }
+                    value={String(form[field.key] ?? "")}
+                    placeholder={field.placeholder}
+                    maxLength={300}
+                    onChange={(event) => set(field.key, event.target.value)}
+                  />
+                )}
               </label>
             ))}
             <label>
@@ -119,6 +262,11 @@ export function ProfilePanel({
               </select>
             </label>
           </div>
+          <datalist id="profile-discipline-options">
+            {disciplineNames.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
           <button
             type="button"
             className="ws-link"
@@ -177,7 +325,7 @@ export function ProfilePanel({
           <button className="ws-primary" disabled={busy} type="submit">
             {busy ? "正在保存…" : "保存个人画像"}
           </button>
-          {saved && <span role="status">已保存到当前游客会话</span>}
+          {saved && <span role="status">个人画像已保存到账号</span>}
           <button type="button" className="ws-danger" onClick={onDelete}>
             删除我的个人资料
           </button>

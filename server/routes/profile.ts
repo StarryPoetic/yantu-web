@@ -17,6 +17,8 @@ import { catalog, program, required } from "../context.ts";
 import { reassessApplicability } from "../assessment/index.ts";
 import type { AssessmentAttempt } from "../assessment/types.ts";
 import type { PlanSnapshot } from "../planning/index.ts";
+import { isDisciplineId } from "../disciplines/index.ts";
+import { programMatchesDiscipline } from "../../shared/discipline-matching.ts";
 
 export const deletionScopeVersion = "all-personal-v1";
 export const deletionScope = [
@@ -27,17 +29,27 @@ export const deletionScope = [
   "目标计划与阶段任务",
   "纠错记录与个人解释缓存",
 ];
+export interface ProfileResource {
+  profile: Profile;
+  profileVersion: number;
+  profileSavedAt: string | null;
+  profileCompleted: boolean;
+}
 export function profileResource(c: Context) {
-  return (
-    c.store.get<{ profile: Profile; profileVersion: number }>(
-      c.session.subjectId,
-      "profile",
-    ) ??
-    c.store.put(c.session.subjectId, "profile", "current", {
-      profile: blankProfile(),
-      profileVersion: 0,
-    })
-  );
+  const current = c.store.get<ProfileResource>(c.session.subjectId, "profile");
+  if (
+    current &&
+    typeof current.value.profileCompleted === "boolean" &&
+    current.value.profileSavedAt !== undefined
+  )
+    return current;
+  return c.store.put(c.session.subjectId, "profile", "current", {
+    profile: current?.value.profile ?? blankProfile(),
+    profileVersion: current?.value.profileVersion ?? 0,
+    profileSavedAt: current?.value.profileSavedAt ?? null,
+    // Earlier saved resources have a positive version, but their save time was not recorded.
+    profileCompleted: (current?.value.profileVersion ?? 0) > 0,
+  });
 }
 export function selectionsResource(c: Context) {
   return (
@@ -86,19 +98,23 @@ function saveSelections(c: Context, desired: Selections): Reply {
     throw new HttpError(422, "unknown_program", "收藏项目不存在。");
   if (
     desired.confirmedMajorId &&
+    !isDisciplineId(desired.confirmedMajorId) &&
     !programs.some((p) =>
       p.majorDirectionIds.includes(desired.confirmedMajorId!),
     )
   )
     throw new HttpError(422, "unknown_major", "专业方向不存在。");
   for (const exclusion of desired.exclusions) {
-    const exists = programs.some((p) =>
-      exclusion.scope === "institution"
-        ? p.identity.institutionId === exclusion.objectId
-        : exclusion.scope === "majorDirection"
-          ? p.majorDirectionIds.includes(exclusion.objectId)
-          : p.programId === exclusion.objectId,
-    );
+    const exists =
+      (exclusion.scope === "majorDirection" &&
+        isDisciplineId(exclusion.objectId)) ||
+      programs.some((p) =>
+        exclusion.scope === "institution"
+          ? p.identity.institutionId === exclusion.objectId
+          : exclusion.scope === "majorDirection"
+            ? p.majorDirectionIds.includes(exclusion.objectId)
+            : p.programId === exclusion.objectId,
+      );
     if (!exists)
       throw new HttpError(422, "unknown_exclusion", "屏蔽对象不存在。");
   }
@@ -128,10 +144,11 @@ function saveSelections(c: Context, desired: Selections): Reply {
     const plan = c.store.get<PlanSnapshot | null>(c.session.subjectId, "plan");
     if (
       plan?.value &&
-      value.confirmedMajorId &&
-      !plan.value.programSnapshot.majorDirectionIds.includes(
-        value.confirmedMajorId,
-      )
+      (!value.confirmedMajorId ||
+        !programMatchesDiscipline(
+          plan.value.programSnapshot,
+          value.confirmedMajorId,
+        ))
     ) {
       requirePlanReview(c, "确认专业已变化，请重新确认目标项目和备考任务");
     }
@@ -146,11 +163,16 @@ export function profileRoutes(c: Context): Reply | undefined {
     if (c.method === "PUT") {
       matchEtag(c.request.headers["if-match"], current.etag);
       const profile = validateProfile(c.body);
-      if (canonical(profile) === canonical(current.value.profile))
+      if (
+        current.value.profileCompleted &&
+        canonical(profile) === canonical(current.value.profile)
+      )
         return { body: current.value, etag: current.etag };
       const value = {
         profile,
         profileVersion: current.value.profileVersion + 1,
+        profileSavedAt: now(),
+        profileCompleted: true,
       };
       const saved = c.store.put(owner, "profile", "current", value);
       c.store.put(

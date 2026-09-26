@@ -4,6 +4,7 @@ import type {
   SubjectRequirement,
 } from "../catalog/types.ts";
 import { evaluateEligibility } from "../recommendation/index.ts";
+import { programMatchesDiscipline } from "../../shared/discipline-matching.ts";
 
 export class PlanningError extends Error {
   code: string;
@@ -320,7 +321,7 @@ export function buildPlan(input: PlanInput): PlanSnapshot {
     errors.push("目录科目满分合计与总分口径不一致，需要更正资料");
   const incompatible = Boolean(
     input.confirmedMajorId &&
-      !program.majorDirectionIds.includes(input.confirmedMajorId),
+      !programMatchesDiscipline(program, input.confirmedMajorId),
   );
   if (incompatible)
     pendingItems.push("当前确认专业与目标项目不兼容，请重新确认目标");

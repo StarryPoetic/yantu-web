@@ -3,6 +3,7 @@ import { AssessmentError, publicDiagnosis } from "../assessment/index.ts";
 import type { AssessmentAttempt } from "../assessment/types.ts";
 import { createDeepSeekAdapter, ModelError } from "./deepseek.ts";
 import type { DeepSeekConfig, ModelAdapter, ModelMessage } from "./deepseek.ts";
+import type { ModelRequestOptions } from "./deepseek.ts";
 export { createDeepSeekAdapter, ModelError } from "./deepseek.ts";
 export type {
   DeepSeekConfig,
@@ -45,6 +46,7 @@ export interface ModelRuntime {
     key: unknown,
     messages: ModelMessage[],
     validate: (content: string) => T,
+    options?: ModelRequestOptions,
   ): Promise<{ value: T; cached: boolean }>;
   clearSubject(subjectId: string): void;
 }
@@ -81,10 +83,17 @@ export function createModelRuntime(
       key: unknown,
       messages: ModelMessage[],
       validate: (content: string) => T,
+      options: ModelRequestOptions = {},
     ): Promise<{ value: T; cached: boolean }> {
       const cacheKey = createHash("sha256")
         .update(
-          JSON.stringify({ user, key, promptVersion, modelConfigVersion }),
+          JSON.stringify({
+            user,
+            key,
+            options,
+            promptVersion,
+            modelConfigVersion,
+          }),
         )
         .digest("hex");
       const saved = cache.get(cacheKey);
@@ -98,8 +107,9 @@ export function createModelRuntime(
       }
       const account = ledger.get(user) ?? { tokens: 0, active: 0 };
       // One token per input character is deliberately conservative for mixed Chinese/English.
-      const reserve = JSON.stringify(messages).length + 800;
-      if (reserve > 16800) throw new ModelError("EVIDENCE_TOO_LARGE");
+      const reserve =
+        JSON.stringify(messages).length + (options.maxOutputTokens ?? 800);
+      if (reserve > 20096) throw new ModelError("EVIDENCE_TOO_LARGE");
       if (account.active >= 1 || active >= (config.globalConcurrency ?? 4))
         throw new ModelError("CONCURRENCY_LIMIT");
       if (
@@ -115,7 +125,7 @@ export function createModelRuntime(
       ledger.set(user, account);
       let actual = reserve;
       try {
-        const reply = await adapter.complete(messages);
+        const reply = await adapter.complete(messages, options);
         if (
           ![reply.inputTokens, reply.outputTokens].every(
             (value) => Number.isSafeInteger(value) && value >= 0,

@@ -34,7 +34,14 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertFalse(re.search(r"\b(?:TODO|FIXME|TBD)\b", self.content))
 
     def test_current_requirement_version_is_declared(self):
-        self.assertRegex(self.content, r"版本：V0\.5 · 日期：\d{4}-\d{2}-\d{2}")
+        self.assertRegex(self.content, r"版本：V0\.6 · 日期：\d{4}-\d{2}-\d{2}")
+
+    def test_complete_journey_and_national_scope_are_requirements(self):
+        for phrase in ("14 个学科门类", "117 个一级学科", "67 个专业学位类别", "不默认计算机", "下拉", "自动进入公共课测评", "推荐结论", "每一道题", "行列式", "圆球", "连续追问", "注册只创建学生账号", "跨设备"):
+            self.assertIn(phrase, self.content)
+        scope = self.content.split("## 6. 首版 MVP 范围", 1)[1].split("## 7.", 1)[0]
+        self.assertNotIn("后续再扩展全学科覆盖", scope)
+        self.assertNotIn("先面向准备全日制考研的理工科", scope)
 
     def test_heading_hierarchy_and_unique_titles(self):
         headings = re.findall(r"^(#{1,6}) (.+)$", self.content, re.MULTILINE)

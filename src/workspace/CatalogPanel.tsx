@@ -8,6 +8,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { request } from "./api";
+import { DisciplineExplorer } from "./DisciplineExplorer";
+import { programMatchesDiscipline } from "../../shared/discipline-matching";
 import type {
   Catalog,
   Program,
@@ -69,6 +71,8 @@ export function CatalogPanel({
   const [query, setQuery] = useState(""),
     [city, setCity] = useState(""),
     [direction, setDirection] = useState(""),
+    [disciplineCode, setDisciplineCode] = useState(""),
+    [showExamples, setShowExamples] = useState(false),
     [school, setSchool] = useState(""),
     [admissionYear, setAdmissionYear] = useState(""),
     [degreeType, setDegreeType] = useState(""),
@@ -81,7 +85,9 @@ export function CatalogPanel({
     [error, setError] = useState<unknown>(),
     [correction, setCorrection] = useState(""),
     [corrected, setCorrected] = useState(false);
-  const all = catalog.items ?? catalog.programs ?? [];
+  const all = (catalog.items ?? catalog.programs ?? []).filter(
+    (program) => showExamples || !program.isExample,
+  );
   const directions = useMemo(() => {
     const grouped = new Map<string, Program[]>();
     for (const program of all) {
@@ -126,6 +132,8 @@ export function CatalogPanel({
             )) &&
           (!city || program.display.city === city) &&
           (!direction || program.majorDirectionIds.includes(direction)) &&
+          (!disciplineCode ||
+            programMatchesDiscipline(program, disciplineCode)) &&
           (!school || program.display.institutionName === school) &&
           (!admissionYear ||
             String(program.identity.targetAdmissionYear) === admissionYear) &&
@@ -136,6 +144,7 @@ export function CatalogPanel({
       query,
       city,
       direction,
+      disciplineCode,
       school,
       admissionYear,
       degreeType,
@@ -167,8 +176,10 @@ export function CatalogPanel({
             catalog.coverage.years?.[0] ||
             new Date().getFullYear() + 1,
           filters: {
+            includeExamples: showExamples,
             cities: city ? [city] : undefined,
             majorDirectionIds: direction ? [direction] : undefined,
+            disciplineCodes: disciplineCode ? [disciplineCode] : undefined,
             degreeTypes: degreeType ? [degreeType] : undefined,
             institutionIds: school
               ? [
@@ -297,44 +308,51 @@ export function CatalogPanel({
       </div>
       <ErrorNotice error={error} />
       {!favorites && (
-        <div className="ws-direction-grid">
-          {directions.map((item) => (
-            <article className={`ws-direction ${item.color}`} key={item.id}>
-              <span className="ws-eyebrow">专业与院校 · 联合探索</span>
-              <h2>{item.name}</h2>
-              <p>{item.body}</p>
-              <div className="ws-actions">
-                <button
-                  className="ws-link"
-                  onClick={() =>
-                    setDirection(direction === item.id ? "" : item.id)
-                  }
-                >
-                  查看关联项目 <ArrowRight size={16} />
-                </button>
-                <button
-                  className="ws-secondary"
-                  disabled={busy}
-                  onClick={() =>
-                    act(() =>
-                      onSelection({
-                        confirmedMajorId:
-                          selections.confirmedMajorId === item.id
-                            ? null
-                            : item.id,
-                      }),
-                    )
-                  }
-                >
-                  {selections.confirmedMajorId === item.id
-                    ? "已确认 · 点击取消"
-                    : "确认专业方向"}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
+        <DisciplineExplorer
+          confirmedMajorId={selections.confirmedMajorId}
+          onConfirm={async (id) => {
+            await onSelection({ confirmedMajorId: id });
+            setDisciplineCode(id ?? "");
+            setDirection("");
+          }}
+          onBrowse={(code) => {
+            setDisciplineCode(code);
+            setDirection("");
+            requestAnimationFrame(() =>
+              document
+                .getElementById("annual-programs")
+                ?.scrollIntoView({ block: "start", behavior: "smooth" }),
+            );
+          }}
+        />
       )}
+      <section className="ws-panel ws-stack" id="annual-programs">
+        <h2>各校年度招生项目</h2>
+        <p>
+          全国专业目录用于了解学科范围；具体学校是否招生、考试科目和资格要求，以目标年度已核验项目为准。
+        </p>
+        {disciplineCode && (
+          <div className="ws-notice">
+            正在查看专业代码 {disciplineCode} 的关联项目。
+            <button className="ws-link" onClick={() => setDisciplineCode("")}>
+              查看全部已收录项目
+            </button>
+          </div>
+        )}
+        <label className="ws-check">
+          <input
+            type="checkbox"
+            checked={showExamples}
+            onChange={(event) => setShowExamples(event.target.checked)}
+          />
+          显示未核验的交互示例项目（仅体验流程）
+        </label>
+        {!all.length && (
+          <p>
+            当前尚未收录可展示的正式招生项目。仍可浏览全国专业目录并获取个人专业探索结论，后续通过后台导入各校年度资料。
+          </p>
+        )}
+      </section>
       <section className="ws-panel ws-filter">
         <div className="ws-search">
           <Search size={18} />

@@ -10,6 +10,7 @@ import type {
 import { request } from "./api";
 import type { Resource } from "./api";
 import { Empty, ErrorNotice } from "./ui";
+import { QuestionVisuals, QuestionTutor, TutorText } from "./TutorContent";
 
 const moduleNames: Record<AssessmentModule, string> = {
   math: "数学",
@@ -23,8 +24,10 @@ type AttemptSummary = Pick<
 >;
 export function AssessmentPanel({
   confirmedMajorId,
+  onCompleted,
 }: {
   confirmedMajorId: string | null;
+  onCompleted?: (diagnosis: Diagnosis) => void;
 }) {
   const [modules, setModules] = useState<AssessmentModule[]>([
       "math",
@@ -64,6 +67,7 @@ export function AssessmentPanel({
     setIndex(result.data.currentIndex);
     setDirty(false);
     setDiagnosis(result.data.diagnosis ?? null);
+    if (result.data.diagnosis) onCompleted?.(result.data.diagnosis);
     startedAt.current = Date.now();
   }
   async function action(run: () => Promise<void>) {
@@ -303,6 +307,7 @@ export function AssessmentPanel({
           </nav>
           <fieldset className="ws-options" disabled={busy}>
             <legend>{question.text}</legend>
+            <QuestionVisuals presentation={question.presentation} />
             {question.options.map((option, i) => (
               <label
                 className={current?.selectedOption === i ? "selected" : ""}
@@ -321,6 +326,12 @@ export function AssessmentPanel({
               </label>
             ))}
           </fieldset>
+          <QuestionTutor
+            key={attempt.assessmentAttemptId + ":" + question.id}
+            attemptId={attempt.assessmentAttemptId}
+            question={question}
+            submitted={false}
+          />
           <label>
             简要思路（选填）
             <textarea
@@ -448,25 +459,71 @@ export function AssessmentPanel({
               题答对
             </p>
           ))}
-          {diagnosis.items.map((item, i) => (
-            <details className="ws-diagnosis" key={item.questionId}>
-              <summary>
-                第 {i + 1} 题 · {item.point} ·{" "}
-                {item.outcome === "correct"
-                  ? "答对"
-                  : item.outcome === "incorrect"
-                    ? "需巩固"
-                    : "未答"}
-              </summary>
-              <p>标准答案：{String.fromCharCode(65 + item.correctOption)}</p>
-              <p>{item.explanation}</p>
-              <p>{item.observation}</p>
-              {item.possibleCause && <p>可能原因：{item.possibleCause}</p>}
-              <p>{item.uncertainty}</p>
-              <p>下一步：{item.nextStep}</p>
-              <small>{item.source}</small>
-            </details>
-          ))}
+          {diagnosis.items.map((item, i) => {
+            const reviewedQuestion = attempt?.questions.find(
+              (question) => question.id === item.questionId,
+            );
+            return (
+              <article
+                className="tutor-completed-question"
+                key={diagnosis.assessmentAttemptId + ":" + item.questionId}
+              >
+                <details className="ws-diagnosis">
+                  <summary>
+                    第 {i + 1} 题 · {item.point} ·{" "}
+                    {item.outcome === "correct"
+                      ? "答对"
+                      : item.outcome === "incorrect"
+                        ? "需巩固"
+                        : "未答"}
+                  </summary>
+                  {reviewedQuestion && (
+                    <>
+                      <p>{reviewedQuestion.text}</p>
+                      <QuestionVisuals
+                        presentation={reviewedQuestion.presentation}
+                      />
+                      <ol type="A" className="tutor-options">
+                        {reviewedQuestion.options.map((option, index) => (
+                          <li
+                            className={
+                              index === item.correctOption
+                                ? "tutor-correct"
+                                : ""
+                            }
+                            key={index}
+                          >
+                            {option}
+                            {index === item.selectedOption ? " · 你的选择" : ""}
+                            {index === item.correctOption ? " · 标准答案" : ""}
+                          </li>
+                        ))}
+                      </ol>
+                    </>
+                  )}
+                  <p>
+                    标准答案：{String.fromCharCode(65 + item.correctOption)}
+                  </p>
+                  <div className="tutor-reference">
+                    <TutorText text={item.explanation} />
+                    <QuestionVisuals presentation={item.presentation} />
+                  </div>
+                  <p>{item.observation}</p>
+                  {item.possibleCause && <p>可能原因：{item.possibleCause}</p>}
+                  <p>{item.uncertainty}</p>
+                  <p>下一步：{item.nextStep}</p>
+                  <small>{item.source}</small>
+                </details>
+                {reviewedQuestion && (
+                  <QuestionTutor
+                    attemptId={diagnosis.assessmentAttemptId}
+                    question={reviewedQuestion}
+                    submitted
+                  />
+                )}
+              </article>
+            );
+          })}
           {diagnosis.uncoveredPoints.length > 0 && (
             <p>本次未覆盖：{diagnosis.uncoveredPoints.join("、")}</p>
           )}

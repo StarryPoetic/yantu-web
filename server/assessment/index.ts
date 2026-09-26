@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { validPresentation } from "./presentation.ts";
 import type {
   Answer,
   ApplicabilityTarget,
@@ -76,6 +77,14 @@ export function validateQuestion(
 ): string[] {
   const errors: string[] = [];
   if (!question || typeof question !== "object") return ["题目必须是对象"];
+  for (const field of ["presentation", "solutionPresentation"] as const)
+    if (question[field] !== undefined && !validPresentation(question[field]))
+      errors.push(`${field} 公式或图示结构无效`);
+  if (
+    question.studyHint !== undefined &&
+    (typeof question.studyHint !== "string" || question.studyHint.length > 1500)
+  )
+    errors.push("知识点提示格式无效");
   for (const key of [
     "id",
     "revisionId",
@@ -574,6 +583,9 @@ function score(
       selectedOption: answer.selectedOption,
       correctOption: question.correct,
       explanation: question.explanation,
+      ...(question.solutionPresentation
+        ? { presentation: question.solutionPresentation }
+        : {}),
       source: question.source.title,
       observation:
         outcome === "correct"
@@ -774,6 +786,7 @@ export function publicAttempt(attempt: AssessmentAttempt): PublicAttempt {
       text: q.text,
       options: q.options,
       difficulty: q.difficulty,
+      ...(q.presentation ? { presentation: q.presentation } : {}),
     })),
     answers: attempt.answers.map((a) => ({
       questionId: a.questionId,

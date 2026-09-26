@@ -26,7 +26,16 @@ let csrfToken = "";
 let sessionPromise: Promise<Resource<Session>> | null = null;
 export interface Session {
   authenticated: boolean;
-  csrfToken: string;
+  csrfToken: string | null;
+  user: null | {
+    accountId: string;
+    username: string;
+    role: "student" | "admin";
+    adminRoles: string[];
+  };
+  guest: boolean;
+  guestHasData: boolean;
+  notice?: string;
   features: { sampleData: boolean; modelEnabled: boolean };
 }
 
@@ -65,13 +74,18 @@ export async function request<T>(
     );
   }
   const data = await response.json().catch(() => null);
-  if (!response.ok)
+  if (!response.ok) {
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+      resetSession();
+      window.dispatchEvent(new Event("yantu-session-expired"));
+    }
     throw new ApiError(
       response.status,
       data?.code ?? "request_failed",
       data?.message ?? "请求未完成，请稍后重试。",
       data?.details,
     );
+  }
   if (!data)
     throw new ApiError(
       503,
@@ -83,9 +97,9 @@ export async function request<T>(
 
 export function ensureSession() {
   if (!sessionPromise)
-    sessionPromise = request<Session>("/guest-sessions", { method: "POST" })
+    sessionPromise = request<Session>("/auth/session")
       .then((result) => {
-        csrfToken = result.data.csrfToken;
+        csrfToken = result.data.csrfToken ?? "";
         return result;
       })
       .catch((error) => {
@@ -93,6 +107,16 @@ export function ensureSession() {
         throw error;
       });
   return sessionPromise;
+}
+
+export function acceptSession(session: Session) {
+  csrfToken = session.csrfToken ?? "";
+  sessionPromise = Promise.resolve({ data: session, etag: "" });
+}
+
+export function resetSession() {
+  csrfToken = "";
+  sessionPromise = null;
 }
 
 export function errorMessage(error: unknown): string {

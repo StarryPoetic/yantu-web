@@ -1,17 +1,20 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   BookOpen,
+  ArrowRight,
   ClipboardCheck,
   Compass,
   Flag,
   GraduationCap,
   Heart,
+  LogOut,
   ShieldCheck,
   Sparkles,
   UserRound,
 } from "lucide-react";
 import type { Resource, Session } from "./api";
-import { ensureSession, request } from "./api";
+import { ensureSession, request, resetSession, acceptSession } from "./api";
+import { AuthScreen } from "./AuthScreen";
 import { loadCatalog } from "./catalog";
 import type {
   Catalog,
@@ -24,6 +27,7 @@ import type {
 import { CatalogPanel } from "./CatalogPanel";
 import { Dialog, ErrorNotice } from "./ui";
 import "./workspace.css";
+import "./journey.css";
 
 const ProfilePanel = lazy(() =>
   import("./ProfilePanel").then((module) => ({ default: module.ProfilePanel })),
@@ -36,29 +40,33 @@ const AssessmentPanel = lazy(() =>
 const PlanPanel = lazy(() =>
   import("./PlanPanel").then((module) => ({ default: module.PlanPanel })),
 );
-const AssistantPanel = lazy(() =>
+const FloatingAssistant = lazy(() =>
   import("./AssistantPanel").then((module) => ({
-    default: module.AssistantPanel,
+    default: module.FloatingAssistant,
+  })),
+);
+const GuidancePanel = lazy(() =>
+  import("./GuidancePanel").then((module) => ({
+    default: module.GuidancePanel,
   })),
 );
 const AdminPanel = lazy(() =>
   import("./AdminPanel").then((module) => ({ default: module.AdminPanel })),
 );
 const navigation = [
-  { id: "explore", name: "择校探索", icon: Compass },
   { id: "profile", name: "个人画像", icon: UserRound },
   { id: "assessment", name: "基础测评", icon: ClipboardCheck },
+  { id: "guidance", name: "推荐结论", icon: Sparkles },
+  { id: "explore", name: "专业与院校", icon: Compass },
   { id: "favorites", name: "我的收藏", icon: Heart },
   { id: "plan", name: "目标与规划", icon: Flag },
-  { id: "assistant", name: "咨询助手", icon: Sparkles },
-  { id: "admin", name: "资料管理", icon: ShieldCheck },
 ] as const;
 type Page = (typeof navigation)[number]["id"];
 function currentPage(): Page {
   const page = location.hash.slice(1);
   return navigation.some((item) => item.id === page)
     ? (page as Page)
-    : "explore";
+    : "profile";
 }
 interface DeletionPreview {
   deletionScopeVersion: string;
@@ -67,8 +75,104 @@ interface DeletionPreview {
   deadline: string;
 }
 export default function Workspace() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [error, setError] = useState<unknown>();
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    const expired = () => {
+      resetSession();
+      setSession(null);
+      setError(null);
+      setReload((value) => value + 1);
+    };
+    window.addEventListener("yantu-session-expired", expired);
+    return () => window.removeEventListener("yantu-session-expired", expired);
+  }, []);
+  useEffect(() => {
+    let active = true;
+    void ensureSession()
+      .then((result) => {
+        if (active) {
+          acceptSession(result.data);
+          setSession(result.data);
+        }
+      })
+      .catch((failure) => {
+        if (active) setError(failure);
+      });
+    return () => {
+      active = false;
+    };
+  }, [reload]);
+  async function logout() {
+    try {
+      await request("/auth/logout", { method: "POST", body: {} });
+      resetSession();
+      setSession(null);
+      location.hash = "";
+      setReload((value) => value + 1);
+    } catch (failure) {
+      setError(failure);
+    }
+  }
+  if (!session)
+    return (
+      <main className="ws-auth-loading">
+        <h1>研途</h1>
+        <ErrorNotice
+          error={error}
+          onReload={() => {
+            resetSession();
+            setError(null);
+            setReload((value) => value + 1);
+          }}
+        />
+        {!error && <p role="status">正在确认登录状态…</p>}
+      </main>
+    );
+  if (!session.authenticated || !session.user)
+    return <AuthScreen session={session} onAuthenticated={setSession} />;
+  if (session.user.role === "admin")
+    return (
+      <div className="workspace ws-admin-workspace">
+        <header className="ws-topbar">
+          <strong>
+            <ShieldCheck size={20} /> 研途 · 管理工作台
+          </strong>
+          <span>{session.user.username}</span>
+          <button className="ws-secondary" onClick={() => void logout()}>
+            <LogOut size={16} />
+            退出登录
+          </button>
+        </header>
+        <main className="ws-main">
+          <ErrorNotice error={error} />
+          <Suspense fallback={<p role="status">正在打开管理工作台…</p>}>
+            <AdminPanel />
+          </Suspense>
+        </main>
+      </div>
+    );
+  return (
+    <SignedInWorkspace
+      key={session.user.accountId}
+      session={session}
+      onLogout={() => void logout()}
+      globalError={error}
+    />
+  );
+}
+
+function SignedInWorkspace({
+  session,
+  onLogout,
+  globalError,
+}: {
+  session: Session;
+  onLogout: () => void;
+  globalError?: unknown;
+}) {
   const [page, setPage] = useState<Page>(currentPage),
-    [session, setSession] = useState<Session | null>(null),
     [profile, setProfile] = useState<Resource<ProfileResource> | null>(null),
     [selections, setSelections] = useState<Resource<Selections> | null>(null),
     [catalog, setCatalog] = useState<Catalog | null>(null),
@@ -81,7 +185,8 @@ export default function Workspace() {
     [deletion, setDeletion] = useState<DeletionPreview | null>(null),
     [confirmed, setConfirmed] = useState(false),
     [deleting, setDeleting] = useState(false),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(session.notice ?? ""),
+    [assessmentDone, setAssessmentDone] = useState(false);
   useEffect(() => {
     const onHash = () => setPage(currentPage());
     window.addEventListener("hashchange", onHash);
@@ -92,9 +197,6 @@ export default function Workspace() {
     setLoading(true);
     setError(null);
     async function load() {
-      const auth = await ensureSession();
-      if (controller.signal.aborted) return;
-      setSession(auth.data);
       const [profileResult, selectionResult, catalogResult] = await Promise.all(
         [
           request<ProfileResource>("/me/profile", {
@@ -123,6 +225,17 @@ export default function Workspace() {
         setSelections(selectionResult);
         setCatalog(catalogResult.data);
       }
+      const attempts = await request<{
+        items: { status: string; stage?: string; modules: string[] }[];
+      }>("/assessment-attempts", { signal: controller.signal });
+      if (!controller.signal.aborted)
+        setAssessmentDone(
+          attempts.data.items.some(
+            (item) =>
+              item.status === "submitted" &&
+              item.modules.some((module) => module !== "major"),
+          ),
+        );
     }
     void load()
       .catch((error) => {
@@ -157,6 +270,7 @@ export default function Workspace() {
       body,
     });
     setSelections(result);
+    setRecommendation(null);
   }
   async function previewDeletion() {
     setError(null);
@@ -190,6 +304,7 @@ export default function Workspace() {
       setSelections(null);
       setRecommendation(null);
       setTarget(null);
+      setAssessmentDone(false);
       setDeletion(null);
       setGeneration((value) => value + 1);
       setNotice(
@@ -198,7 +313,7 @@ export default function Workspace() {
           : "删除作业已创建，可稍后查询完成状态。",
       );
       setReload((value) => value + 1);
-      navigate("explore");
+      navigate("profile");
     } catch (error) {
       setError(error);
     } finally {
@@ -256,9 +371,13 @@ export default function Workspace() {
           <span className="ws-avatar">同</span>
           <div>
             <strong>{profile?.data.profile.name || "研途同学"}</strong>
-            <small>游客会话 · 当前浏览器</small>
+            <small>{session.user?.username} · 已登录</small>
           </div>
         </div>
+        <button className="ws-link ws-logout" onClick={onLogout}>
+          <LogOut size={16} />
+          退出登录
+        </button>
       </aside>
       <div className="ws-shell">
         <header className="ws-topbar">
@@ -275,6 +394,25 @@ export default function Workspace() {
           </span>
         </header>
         <main id="workspace-content" className="ws-main" tabIndex={-1}>
+          <ErrorNotice error={globalError} />
+          <div className="ws-progress" aria-label="准备进度">
+            <button onClick={() => navigate("profile")}>
+              <span>01</span>个人画像{" "}
+              <strong>
+                {profile?.data.profileCompleted ||
+                Number(profile?.data.profileVersion) > 0
+                  ? "已保存"
+                  : "待保存"}
+              </strong>
+            </button>
+            <button onClick={() => navigate("assessment")}>
+              <span>02</span>公共课测评{" "}
+              <strong>{assessmentDone ? "已完成" : "可选"}</strong>
+            </button>
+            <button onClick={() => navigate("guidance")}>
+              <span>03</span>专业推荐结论 <ArrowRight size={16} />
+            </button>
+          </div>
           <ErrorNotice
             error={error}
             onReload={() => setReload((value) => value + 1)}
@@ -318,7 +456,15 @@ export default function Workspace() {
                 {page === "profile" && (
                   <ProfilePanel
                     resource={profile}
-                    onSaved={setProfile}
+                    onSaved={(value) => {
+                      setProfile(value);
+                      setRecommendation(null);
+                      setTarget(null);
+                      setNotice(
+                        "个人画像已保存到账号。接下来可完成公共课测评，再查看专业推荐结论。",
+                      );
+                      navigate("assessment");
+                    }}
                     onReload={() => {
                       void request<ProfileResource>("/me/profile")
                         .then((value) => {
@@ -333,6 +479,36 @@ export default function Workspace() {
                 {page === "assessment" && (
                   <AssessmentPanel
                     confirmedMajorId={selections.data.confirmedMajorId}
+                    onCompleted={() => setAssessmentDone(true)}
+                  />
+                )}
+                {page === "assessment" && (
+                  <div className="ws-panel ws-between">
+                    <div>
+                      <h2>
+                        {assessmentDone
+                          ? "测评已完成，看看适合探索的专业"
+                          : "可以先探索，再补充测评"}
+                      </h2>
+                      <p>
+                        推荐会结合已保存画像与有效的公共课诊断，说明依据与待确认条件。
+                      </p>
+                    </div>
+                    <button
+                      className="ws-primary"
+                      onClick={() => navigate("guidance")}
+                    >
+                      查看专业推荐结论
+                    </button>
+                  </div>
+                )}
+                {page === "guidance" && (
+                  <GuidancePanel
+                    profile={profile.data}
+                    selections={selections.data}
+                    onExplore={() => navigate("explore")}
+                    onProfile={() => navigate("profile")}
+                    onSelection={changeSelections}
                   />
                 )}
                 {page === "plan" && (
@@ -344,8 +520,6 @@ export default function Workspace() {
                     onSelectionsChanged={reloadSelections}
                   />
                 )}
-                {page === "assistant" && <AssistantPanel />}
-                {page === "admin" && <AdminPanel />}
               </div>
             </Suspense>
           ) : (
@@ -367,6 +541,9 @@ export default function Workspace() {
           </footer>
         </main>
       </div>
+      <Suspense fallback={null}>
+        <FloatingAssistant key={generation} />
+      </Suspense>
       {deletion && (
         <Dialog
           title="确认删除个人资料"

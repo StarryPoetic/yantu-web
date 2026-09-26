@@ -8,6 +8,24 @@ export type AttemptStatus =
   | "abandoned"
   | "invalidated";
 export type Scope = Partial<Record<AssessmentModule, string>>;
+export type MathExpression =
+  | { kind: "text"; value: string }
+  | { kind: "row"; items: MathExpression[] }
+  | { kind: "fraction"; numerator: MathExpression; denominator: MathExpression }
+  | { kind: "power"; base: MathExpression; exponent: MathExpression }
+  | { kind: "matrix" | "determinant"; cells: string[][] };
+export type QuestionDiagram =
+  | {
+      kind: "matrix";
+      cells: string[][];
+      alt: string;
+      highlightDiagonal?: boolean;
+    }
+  | { kind: "image"; src: string; alt: string };
+export interface QuestionPresentation {
+  formulas?: { label: string; expression: MathExpression }[];
+  diagram?: QuestionDiagram;
+}
 
 export interface QuestionRevision {
   id: string;
@@ -19,6 +37,9 @@ export interface QuestionRevision {
   options: string[];
   correct: number;
   explanation: string;
+  studyHint?: string;
+  presentation?: QuestionPresentation;
+  solutionPresentation?: QuestionPresentation;
   source: {
     title: string;
     origin: string;
@@ -58,6 +79,7 @@ export interface PublicQuestion {
   text: string;
   options: string[];
   difficulty: Difficulty;
+  presentation?: QuestionPresentation;
 }
 
 export interface Answer {
@@ -87,6 +109,7 @@ export interface DiagnosisItem {
   selectedOption: number | null;
   correctOption: number;
   explanation: string;
+  presentation?: QuestionPresentation;
   source: string;
   observation: string;
   possibleCause: string | null;

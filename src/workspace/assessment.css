@@ -1,0 +1,132 @@
+.tutor-visuals {
+  display: grid;
+  gap: 16px;
+  margin: 18px 0;
+}
+.tutor-formula {
+  overflow-x: auto;
+  padding: 20px 14px;
+  background: #f8faf5;
+  border: 1px solid #dfe7d8;
+  border-radius: 10px;
+  font-size: 25px;
+}
+.tutor-formula math {
+  font-family: "Cambria Math", "STIX Two Math", serif;
+}
+.tutor-figure {
+  margin: 0;
+  background: #fbfcf9;
+  border: 1px solid #e1e8da;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+}
+.tutor-figure svg {
+  display: block;
+  max-width: 340px;
+  width: 100%;
+  max-height: 240px;
+  margin: auto;
+}
+.tutor-figure img {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+.tutor-figure figcaption {
+  font-size: 13px;
+  color: #68775e;
+  margin-top: 12px;
+}
+.question-tutor {
+  border: 1px solid #dbe6d3;
+  border-radius: 10px;
+  padding: 16px;
+  margin-block: 16px;
+  background: #fafcf7;
+}
+.question-tutor small {
+  color: #73836a;
+}
+.tutor-expanded {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+}
+.tutor-message {
+  padding: 14px 16px;
+  border: 1px solid #e3e9dd;
+  background: #fff;
+  border-radius: 10px;
+}
+.tutor-message.user {
+  background: #edf3e6;
+}
+.tutor-message > strong {
+  font-size: 13px;
+  color: #617157;
+}
+.tutor-prose {
+  white-space: pre-wrap;
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+.tutor-followup {
+  display: grid;
+  gap: 14px;
+}
+.tutor-completed-question {
+  border: 1px solid #e1e8da;
+  border-radius: 12px;
+  margin-top: 20px;
+  padding: 20px;
+}
+.tutor-completed-question > h3 {
+  margin-bottom: 10px;
+}
+.tutor-completed-question .tutor-reference {
+  padding: 14px;
+  background: #eff4e8;
+  border-radius: 9px;
+}
+.tutor-completed-question .tutor-options {
+  padding-left: 22px;
+}
+.tutor-correct {
+  color: #375a30;
+  font-weight: 600;
+}
+.tutor-prose .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 10px;
+}
+.tutor-prose .katex {
+  font-size: 1.12em;
+}
+.tutor-display-math {
+  display: block;
+  white-space: normal;
+}
+.tutor-inline-math {
+  white-space: normal;
+}
+@media (max-width: 580px) {
+  .tutor-formula {
+    font-size: 23px;
+    padding: 18px 10px;
+  }
+  .tutor-completed-question {
+    padding: 16px;
+  }
+  .question-tutor {
+    padding: 13px;
+  }
+  .question-tutor .ws-between {
+    align-items: flex-start;
+  }
+  .tutor-message {
+    padding: 12px;
+  }
+}

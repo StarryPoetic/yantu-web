@@ -1,0 +1,3132 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "moe-graduate-2022-checked-20260927-v1",
+  "title": "研究生教育学科专业目录（2022年）",
+  "asOf": "2026-09-27",
+  "effectiveFrom": "2023",
+  "coverage": {
+    "disciplineGroups": 14,
+    "academicDisciplines": 117,
+    "professionalCategories": 67,
+    "total": 184,
+    "description": "覆盖教育部 2022 年国家目录的全部 14 个门类、117 个一级学科和 67 个专业学位类别；不等于全国年度招生项目。"
+  },
+  "groups": [
+    {
+      "code": "01",
+      "name": "哲学"
+    },
+    {
+      "code": "02",
+      "name": "经济学"
+    },
+    {
+      "code": "03",
+      "name": "法学"
+    },
+    {
+      "code": "04",
+      "name": "教育学"
+    },
+    {
+      "code": "05",
+      "name": "文学"
+    },
+    {
+      "code": "06",
+      "name": "历史学"
+    },
+    {
+      "code": "07",
+      "name": "理学"
+    },
+    {
+      "code": "08",
+      "name": "工学"
+    },
+    {
+      "code": "09",
+      "name": "农学"
+    },
+    {
+      "code": "10",
+      "name": "医学"
+    },
+    {
+      "code": "11",
+      "name": "军事学"
+    },
+    {
+      "code": "12",
+      "name": "管理学"
+    },
+    {
+      "code": "13",
+      "name": "艺术学"
+    },
+    {
+      "code": "14",
+      "name": "交叉学科"
+    }
+  ],
+  "items": [
+    {
+      "id": "0101",
+      "code": "0101",
+      "name": "哲学",
+      "groupCode": "01",
+      "groupName": "哲学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0151",
+      "code": "0151",
+      "name": "应用伦理",
+      "groupCode": "01",
+      "groupName": "哲学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0201",
+      "code": "0201",
+      "name": "理论经济学",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0202",
+      "code": "0202",
+      "name": "应用经济学",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0251",
+      "code": "0251",
+      "name": "金融",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0252",
+      "code": "0252",
+      "name": "应用统计",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0253",
+      "code": "0253",
+      "name": "税务",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0254",
+      "code": "0254",
+      "name": "国际商务",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0255",
+      "code": "0255",
+      "name": "保险",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0256",
+      "code": "0256",
+      "name": "资产评估",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0258",
+      "code": "0258",
+      "name": "数字经济",
+      "groupCode": "02",
+      "groupName": "经济学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0301",
+      "code": "0301",
+      "name": "法学",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 3
+    },
+    {
+      "id": "0302",
+      "code": "0302",
+      "name": "政治学",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0303",
+      "code": "0303",
+      "name": "社会学",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0304",
+      "code": "0304",
+      "name": "民族学",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0305",
+      "code": "0305",
+      "name": "马克思主义理论",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0306",
+      "code": "0306",
+      "name": "公安学",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0307",
+      "code": "0307",
+      "name": "中共党史党建学",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0308",
+      "code": "0308",
+      "name": "纪检监察学",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0351",
+      "code": "0351",
+      "name": "法律",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0352",
+      "code": "0352",
+      "name": "社会工作",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0353",
+      "code": "0353",
+      "name": "警务",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0354",
+      "code": "0354",
+      "name": "知识产权",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0355",
+      "code": "0355",
+      "name": "国际事务",
+      "groupCode": "03",
+      "groupName": "法学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0401",
+      "code": "0401",
+      "name": "教育学",
+      "groupCode": "04",
+      "groupName": "教育学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0402",
+      "code": "0402",
+      "name": "心理学",
+      "groupCode": "04",
+      "groupName": "教育学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授教育学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0403",
+      "code": "0403",
+      "name": "体育学",
+      "groupCode": "04",
+      "groupName": "教育学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0451",
+      "code": "0451",
+      "name": "教育",
+      "groupCode": "04",
+      "groupName": "教育学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0452",
+      "code": "0452",
+      "name": "体育",
+      "groupCode": "04",
+      "groupName": "教育学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 4
+    },
+    {
+      "id": "0453",
+      "code": "0453",
+      "name": "国际中文教育",
+      "groupCode": "04",
+      "groupName": "教育学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [
+        "汉语国际教育"
+      ],
+      "sourceIds": [
+        "moe-catalog-2022",
+        "moe-correspondence-2025"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0454",
+      "code": "0454",
+      "name": "应用心理",
+      "groupCode": "04",
+      "groupName": "教育学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0501",
+      "code": "0501",
+      "name": "中国语言文学",
+      "groupCode": "05",
+      "groupName": "文学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0502",
+      "code": "0502",
+      "name": "外国语言文学",
+      "groupCode": "05",
+      "groupName": "文学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0503",
+      "code": "0503",
+      "name": "新闻传播学",
+      "groupCode": "05",
+      "groupName": "文学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0551",
+      "code": "0551",
+      "name": "翻译",
+      "groupCode": "05",
+      "groupName": "文学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0552",
+      "code": "0552",
+      "name": "新闻与传播",
+      "groupCode": "05",
+      "groupName": "文学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0553",
+      "code": "0553",
+      "name": "出版",
+      "groupCode": "05",
+      "groupName": "文学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0601",
+      "code": "0601",
+      "name": "考古学",
+      "groupCode": "06",
+      "groupName": "历史学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0602",
+      "code": "0602",
+      "name": "中国史",
+      "groupCode": "06",
+      "groupName": "历史学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0603",
+      "code": "0603",
+      "name": "世界史",
+      "groupCode": "06",
+      "groupName": "历史学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0651",
+      "code": "0651",
+      "name": "博物馆",
+      "groupCode": "06",
+      "groupName": "历史学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [
+        "文物与博物馆"
+      ],
+      "sourceIds": [
+        "moe-catalog-2022",
+        "moe-correspondence-2025"
+      ],
+      "sourcePage": 5
+    },
+    {
+      "id": "0701",
+      "code": "0701",
+      "name": "数学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0702",
+      "code": "0702",
+      "name": "物理学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0703",
+      "code": "0703",
+      "name": "化学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0704",
+      "code": "0704",
+      "name": "天文学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0705",
+      "code": "0705",
+      "name": "地理学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0706",
+      "code": "0706",
+      "name": "大气科学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0707",
+      "code": "0707",
+      "name": "海洋科学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0708",
+      "code": "0708",
+      "name": "地球物理学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0709",
+      "code": "0709",
+      "name": "地质学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0710",
+      "code": "0710",
+      "name": "生物学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0711",
+      "code": "0711",
+      "name": "系统科学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0712",
+      "code": "0712",
+      "name": "科学技术史",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授理学、工学、农学、医学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0713",
+      "code": "0713",
+      "name": "生态学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0714",
+      "code": "0714",
+      "name": "统计学",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授理学、经济学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0751",
+      "code": "0751",
+      "name": "气象",
+      "groupCode": "07",
+      "groupName": "理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 6
+    },
+    {
+      "id": "0801",
+      "code": "0801",
+      "name": "力学",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0802",
+      "code": "0802",
+      "name": "机械工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0803",
+      "code": "0803",
+      "name": "光学工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0804",
+      "code": "0804",
+      "name": "仪器科学与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0805",
+      "code": "0805",
+      "name": "材料科学与工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0806",
+      "code": "0806",
+      "name": "冶金工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0807",
+      "code": "0807",
+      "name": "动力工程及工程热物理",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0808",
+      "code": "0808",
+      "name": "电气工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0809",
+      "code": "0809",
+      "name": "电子科学与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0810",
+      "code": "0810",
+      "name": "信息与通信工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0811",
+      "code": "0811",
+      "name": "控制科学与工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0812",
+      "code": "0812",
+      "name": "计算机科学与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0813",
+      "code": "0813",
+      "name": "建筑学",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0814",
+      "code": "0814",
+      "name": "土木工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0815",
+      "code": "0815",
+      "name": "水利工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0816",
+      "code": "0816",
+      "name": "测绘科学与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0817",
+      "code": "0817",
+      "name": "化学工程与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0818",
+      "code": "0818",
+      "name": "地质资源与地质工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 7
+    },
+    {
+      "id": "0819",
+      "code": "0819",
+      "name": "矿业工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0820",
+      "code": "0820",
+      "name": "石油与天然气工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0821",
+      "code": "0821",
+      "name": "纺织科学与工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0822",
+      "code": "0822",
+      "name": "轻工技术与工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0823",
+      "code": "0823",
+      "name": "交通运输工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0824",
+      "code": "0824",
+      "name": "船舶与海洋工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0825",
+      "code": "0825",
+      "name": "航空宇航科学与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0826",
+      "code": "0826",
+      "name": "兵器科学与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0827",
+      "code": "0827",
+      "name": "核科学与技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0828",
+      "code": "0828",
+      "name": "农业工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0829",
+      "code": "0829",
+      "name": "林业工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0830",
+      "code": "0830",
+      "name": "环境科学与工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、理学、农学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0831",
+      "code": "0831",
+      "name": "生物医学工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、理学、医学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0832",
+      "code": "0832",
+      "name": "食品科学与工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、农学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0833",
+      "code": "0833",
+      "name": "城乡规划学",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0835",
+      "code": "0835",
+      "name": "软件工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0836",
+      "code": "0836",
+      "name": "生物工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0837",
+      "code": "0837",
+      "name": "安全科学与工程",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、管理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0838",
+      "code": "0838",
+      "name": "公安技术",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 8
+    },
+    {
+      "id": "0839",
+      "code": "0839",
+      "name": "网络空间安全",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0851",
+      "code": "0851",
+      "name": "建筑",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [
+        "建筑学"
+      ],
+      "sourceIds": [
+        "moe-catalog-2022",
+        "moe-correspondence-2025"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0853",
+      "code": "0853",
+      "name": "城乡规划",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [
+        "城市规划"
+      ],
+      "sourceIds": [
+        "moe-catalog-2022",
+        "moe-correspondence-2025"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0854",
+      "code": "0854",
+      "name": "电子信息",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0855",
+      "code": "0855",
+      "name": "机械",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0856",
+      "code": "0856",
+      "name": "材料与化工",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0857",
+      "code": "0857",
+      "name": "资源与环境",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0858",
+      "code": "0858",
+      "name": "能源动力",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0859",
+      "code": "0859",
+      "name": "土木水利",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0860",
+      "code": "0860",
+      "name": "生物与医药",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0861",
+      "code": "0861",
+      "name": "交通运输",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0862",
+      "code": "0862",
+      "name": "风景园林",
+      "groupCode": "08",
+      "groupName": "工学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [
+        "风景园林学"
+      ],
+      "sourceIds": [
+        "moe-catalog-2022",
+        "moe-correspondence-2025"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0901",
+      "code": "0901",
+      "name": "作物学",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0902",
+      "code": "0902",
+      "name": "园艺学",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0903",
+      "code": "0903",
+      "name": "农业资源与环境",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0904",
+      "code": "0904",
+      "name": "植物保护",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0905",
+      "code": "0905",
+      "name": "畜牧学",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 9
+    },
+    {
+      "id": "0906",
+      "code": "0906",
+      "name": "兽医学",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0907",
+      "code": "0907",
+      "name": "林学",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0908",
+      "code": "0908",
+      "name": "水产",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0909",
+      "code": "0909",
+      "name": "草学",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0910",
+      "code": "0910",
+      "name": "水土保持与荒漠化防治学",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0951",
+      "code": "0951",
+      "name": "农业",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0952",
+      "code": "0952",
+      "name": "兽医",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0954",
+      "code": "0954",
+      "name": "林业",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "0955",
+      "code": "0955",
+      "name": "食品与营养",
+      "groupCode": "09",
+      "groupName": "农学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1001",
+      "code": "1001",
+      "name": "基础医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授医学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1002",
+      "code": "1002",
+      "name": "临床医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（同时设专业学位类别，代码为1051）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1003",
+      "code": "1003",
+      "name": "口腔医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（同时设专业学位类别，代码为1052）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1004",
+      "code": "1004",
+      "name": "公共卫生与预防医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授医学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1005",
+      "code": "1005",
+      "name": "中医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1006",
+      "code": "1006",
+      "name": "中西医结合",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1007",
+      "code": "1007",
+      "name": "药学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授医学、理学学位，同时设专业学位类别，代码为1055）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1008",
+      "code": "1008",
+      "name": "中药学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授医学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1009",
+      "code": "1009",
+      "name": "特种医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1011",
+      "code": "1011",
+      "name": "护理学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授医学、理学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1012",
+      "code": "1012",
+      "name": "法医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1051",
+      "code": "1051",
+      "name": "临床医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [
+        "由原文 1002 条目明确标注的“同时设专业学位类别”展开。"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1052",
+      "code": "1052",
+      "name": "口腔医学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [
+        "由原文 1003 条目明确标注的“同时设专业学位类别”展开。"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1053",
+      "code": "1053",
+      "name": "公共卫生",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1054",
+      "code": "1054",
+      "name": "护理",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1055",
+      "code": "1055",
+      "name": "药学",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [
+        "由原文 1007 条目明确标注的“同时设专业学位类别”展开。"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 10
+    },
+    {
+      "id": "1056",
+      "code": "1056",
+      "name": "中药",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1057",
+      "code": "1057",
+      "name": "中医",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1058",
+      "code": "1058",
+      "name": "医学技术",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1059",
+      "code": "1059",
+      "name": "针灸",
+      "groupCode": "10",
+      "groupName": "医学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1101",
+      "code": "1101",
+      "name": "军事思想与军事历史",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1102",
+      "code": "1102",
+      "name": "战略学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1103",
+      "code": "1103",
+      "name": "联合作战学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1104",
+      "code": "1104",
+      "name": "军兵种作战学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1105",
+      "code": "1105",
+      "name": "军队指挥学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1106",
+      "code": "1106",
+      "name": "军队政治工作学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1107",
+      "code": "1107",
+      "name": "军事后勤学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 11
+    },
+    {
+      "id": "1108",
+      "code": "1108",
+      "name": "军事装备学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1109",
+      "code": "1109",
+      "name": "军事管理学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1110",
+      "code": "1110",
+      "name": "军事训练学",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1111",
+      "code": "1111",
+      "name": "军事智能",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1152",
+      "code": "1152",
+      "name": "联合作战指挥",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1153",
+      "code": "1153",
+      "name": "军兵种作战指挥",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1154",
+      "code": "1154",
+      "name": "作战指挥保障",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1155",
+      "code": "1155",
+      "name": "战时政治工作",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1156",
+      "code": "1156",
+      "name": "后勤与装备保障",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1157",
+      "code": "1157",
+      "name": "军事训练与管理",
+      "groupCode": "11",
+      "groupName": "军事学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1201",
+      "code": "1201",
+      "name": "管理科学与工程",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授管理学、工学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1202",
+      "code": "1202",
+      "name": "工商管理学",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1203",
+      "code": "1203",
+      "name": "农林经济管理",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1204",
+      "code": "1204",
+      "name": "公共管理学",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1205",
+      "code": "1205",
+      "name": "信息资源管理",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1251",
+      "code": "1251",
+      "name": "工商管理",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1252",
+      "code": "1252",
+      "name": "公共管理",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 12
+    },
+    {
+      "id": "1253",
+      "code": "1253",
+      "name": "会计",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1254",
+      "code": "1254",
+      "name": "旅游管理",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1255",
+      "code": "1255",
+      "name": "图书情报",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1256",
+      "code": "1256",
+      "name": "工程管理",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1257",
+      "code": "1257",
+      "name": "审计",
+      "groupCode": "12",
+      "groupName": "管理学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1301",
+      "code": "1301",
+      "name": "艺术学",
+      "groupCode": "13",
+      "groupName": "艺术学",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（含音乐、舞蹈、戏剧与影视、戏曲与曲艺、美术与书法、设计等历史、理论和评论研究）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1352",
+      "code": "1352",
+      "name": "音乐",
+      "groupCode": "13",
+      "groupName": "艺术学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1353",
+      "code": "1353",
+      "name": "舞蹈",
+      "groupCode": "13",
+      "groupName": "艺术学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1354",
+      "code": "1354",
+      "name": "戏剧与影视",
+      "groupCode": "13",
+      "groupName": "艺术学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1355",
+      "code": "1355",
+      "name": "戏曲与曲艺",
+      "groupCode": "13",
+      "groupName": "艺术学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1356",
+      "code": "1356",
+      "name": "美术与书法",
+      "groupCode": "13",
+      "groupName": "艺术学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1357",
+      "code": "1357",
+      "name": "设计",
+      "groupCode": "13",
+      "groupName": "艺术学",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1401",
+      "code": "1401",
+      "name": "集成电路科学与工程",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授理学、工学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 13
+    },
+    {
+      "id": "1402",
+      "code": "1402",
+      "name": "国家安全学",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授法学、工学、管理学、军事学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    },
+    {
+      "id": "1403",
+      "code": "1403",
+      "name": "设计学",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授工学、艺术学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    },
+    {
+      "id": "1404",
+      "code": "1404",
+      "name": "遥感科学与技术",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授理学、工学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    },
+    {
+      "id": "1405",
+      "code": "1405",
+      "name": "智能科学与技术",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授理学、工学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    },
+    {
+      "id": "1406",
+      "code": "1406",
+      "name": "纳米科学与工程",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授理学、工学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    },
+    {
+      "id": "1407",
+      "code": "1407",
+      "name": "区域国别学",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "academic",
+      "level": "first_level_discipline",
+      "mastersOnly": false,
+      "notes": [
+        "（可授经济学、法学、文学、历史学学位）"
+      ],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    },
+    {
+      "id": "1451",
+      "code": "1451",
+      "name": "文物",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": false,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    },
+    {
+      "id": "1452",
+      "code": "1452",
+      "name": "密码",
+      "groupCode": "14",
+      "groupName": "交叉学科",
+      "degreeType": "professional",
+      "level": "professional_category",
+      "mastersOnly": true,
+      "notes": [],
+      "aliases": [],
+      "sourceIds": [
+        "moe-catalog-2022"
+      ],
+      "sourcePage": 14
+    }
+  ],
+  "sources": [
+    {
+      "sourceId": "moe-catalog-2022",
+      "title": "研究生教育学科专业目录（2022年）",
+      "publisher": "国务院学位委员会、教育部",
+      "url": "https://www.moe.gov.cn/srcsite/A22/moe_833/202209/W020220914572994461110.pdf",
+      "retrievedFrom": "https://webplus.chd.edu.cn/_upload/article/files/00/2f/f9d3977646529ced5e6242ba6e34/f637f2ae-61df-4de4-a12f-6c1f855861a9.pdf",
+      "publishedAt": "2022-09-13",
+      "checkedAt": "2026-09-27",
+      "sha256": "9693faf68dd3156afc0f580fadbfe4f64dd1a815eedf1f1e56b992887a7b0fba",
+      "note": "教育部原附件；本次教育部附件连接异常，经长安大学官方网站同版原件提取并核对。代码名称与医学附注保留原文依据。"
+    },
+    {
+      "sourceId": "moe-correspondence-2025",
+      "title": "教育部办公厅关于印发《有关学科专业调整对应关系表》等的通知",
+      "publisher": "教育部办公厅",
+      "url": "https://www.moe.gov.cn/srcsite/A22/s7065/202506/t20250611_1193766.html",
+      "retrievedFrom": "https://gs.tju.edu.cn/info/1181/14242.htm",
+      "publishedAt": "2025-01-26",
+      "checkedAt": "2026-09-27",
+      "note": "教研厅函〔2025〕2号；核对旧新名称与专业领域对应，不将专业领域或学校授权点算作新增一级学科。"
+    },
+    {
+      "sourceId": "moe-classification-reference-2026",
+      "title": "关于教育部2026年度公务员考录职位要求的说明",
+      "publisher": "教育部",
+      "url": "https://www.moe.gov.cn/s78/A04/tongzhi/202510/t20251015_1416829.html",
+      "retrievedFrom": "https://www.moe.gov.cn/s78/A04/tongzhi/202510/t20251015_1416829.html",
+      "publishedAt": "2025-10-15",
+      "checkedAt": "2026-09-27",
+      "note": "教育部关于2026年度考录的说明仍将研究生专业分类链接至2022国家目录，用作版本交叉核对，不推导任何个人考录资格。"
+    }
+  ],
+  "warnings": [
+    "这是全国基础学科分类目录，不能证明某校某年招生、考试科目或个人报考资格。",
+    "已核对2025年调整对应表；本快照不是各校二级学科、自设学科、交叉方向及六位年度招生专业的全量目录，也不覆盖未接入的急需清单。",
+    "目录更新需重新采集官方原件并审核发布；不声称实时覆盖此后未接入的调整。",
+    "星号只表示目录中仅可授硕士专业学位；无星号不代表每所学校均有博士授权。"
+  ]
+}

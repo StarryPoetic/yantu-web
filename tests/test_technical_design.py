@@ -1,4 +1,4 @@
-"""Check that the technical design package is navigable and traceable to V0.5."""
+"""Check that the technical design package is navigable and traceable to V0.6."""
 
 from pathlib import Path
 import re
@@ -45,7 +45,7 @@ class TechnicalDesignTests(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(module, product)
         rows = re.findall(r"^\| (R-\d{2}) \| ([^|]+) \|", index, re.MULTILINE)
-        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 18)])
+        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 24)])
         self.assertEqual(len(set(number for number, _ in rows)), len(rows))
         for number, title in rows:
             self.assertTrue(title.strip(), number)
@@ -101,7 +101,7 @@ class TechnicalDesignTests(unittest.TestCase):
 
     def test_readme_points_to_current_baseline(self):
         readme = README.read_text(encoding="utf-8")
-        self.assertIn("产品设计文档 V0.5", readme)
+        self.assertIn("产品设计文档 V0.6", readme)
         self.assertIn("技术设计文档清单", readme)
         self.assertNotIn("产品设计文档 V0.4", readme)
 
@@ -133,7 +133,7 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_acceptance_references_resolve_and_cover_every_requirement(self):
         owner = DESIGN_DIR / "05-安全运维与验证.md"
         definitions = re.findall(r"^\| (T-\d{2}) \|", owner.read_text(encoding="utf-8"), re.MULTILINE)
-        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 11)])
+        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 17)])
         covered = set()
         for document in DESIGN_DIR.glob("*.md"):
             content = document.read_text(encoding="utf-8")

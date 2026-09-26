@@ -4,6 +4,7 @@ import type {
   EvidenceDimension,
   ProgramRevision,
 } from "../catalog/types.ts";
+import { programMatchesDiscipline } from "../../shared/discipline-matching.ts";
 
 export class RecommendationError extends Error {
   code: string;
@@ -27,8 +28,10 @@ export interface RecommendationSelection {
   blockedProgramIds?: string[];
 }
 export interface RecommendationFilters {
+  includeExamples?: boolean;
   institutionIds?: string[];
   majorDirectionIds?: string[];
+  disciplineCodes?: string[];
   degreeTypes?: ("academic" | "professional")[];
   studyModes?: ("full_time" | "part_time")[];
   cities?: string[];
@@ -375,11 +378,13 @@ function filterReasons(
   filters: RecommendationFilters,
 ): string[] {
   const reasons: string[] = [];
+  if (filters.includeExamples === false && program.isExample)
+    reasons.push("已隐藏示例项目");
   if (selection.blockedInstitutionIds?.includes(program.identity.institutionId))
     reasons.push("已屏蔽学校");
   if (
-    program.majorDirectionIds.some((id) =>
-      selection.blockedMajorIds?.includes(id),
+    selection.blockedMajorIds?.some((code) =>
+      programMatchesDiscipline(program, code),
     )
   )
     reasons.push("已屏蔽专业方向");
@@ -387,7 +392,7 @@ function filterReasons(
     reasons.push("已屏蔽招生项目");
   if (
     selection.confirmedMajorId &&
-    !program.majorDirectionIds.includes(selection.confirmedMajorId)
+    !programMatchesDiscipline(program, selection.confirmedMajorId)
   )
     reasons.push("不在已确认专业范围");
   if (
@@ -402,6 +407,13 @@ function filterReasons(
     )
   )
     reasons.push("不符合专业筛选");
+  if (
+    filters.disciplineCodes?.length &&
+    !filters.disciplineCodes.some((code) =>
+      programMatchesDiscipline(program, code),
+    )
+  )
+    reasons.push("不符合学科目录筛选");
   if (
     filters.degreeTypes?.length &&
     !filters.degreeTypes.includes(program.identity.degreeType)
@@ -454,6 +466,26 @@ export function recommend(input: RecommendationInput): RecommendationRun {
   const weights = normalizedWeights(input.profile, rule);
   const hasWeights = Object.values(weights).some((value) => value > 0);
   const filters = input.filters ?? {};
+  if (
+    filters.includeExamples !== undefined &&
+    typeof filters.includeExamples !== "boolean"
+  )
+    throw new RecommendationError(
+      "INVALID_EXAMPLE_FILTER",
+      "示例项目筛选必须为布尔值。",
+    );
+  if (
+    filters.disciplineCodes !== undefined &&
+    (!Array.isArray(filters.disciplineCodes) ||
+      filters.disciplineCodes.length > 100 ||
+      filters.disciplineCodes.some(
+        (code) => typeof code !== "string" || !/^\d{4}$/.test(code),
+      ))
+  )
+    throw new RecommendationError(
+      "INVALID_DISCIPLINE_FILTER",
+      "学科目录筛选必须使用四位正式代码。",
+    );
   if (
     filters.degreeTypes?.some(
       (value) => !["academic", "professional"].includes(value),

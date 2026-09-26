@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { LockKeyhole, ShieldCheck } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { request } from "./api";
 import { Empty, ErrorNotice } from "./ui";
 
@@ -32,8 +32,7 @@ const reviewChecks = [
 ];
 export function AdminPanel() {
   const [checks, setChecks] = useState<string[]>([]);
-  const [token, setToken] = useState(""),
-    [actor, setActor] = useState<Actor | null>(null),
+  const [actor, setActor] = useState<Actor | null>(null),
     [kind, setKind] = useState("program"),
     [drafts, setDrafts] = useState<Draft[]>([]),
     [content, setContent] = useState(""),
@@ -59,18 +58,29 @@ export function AdminPanel() {
   async function load(nextKind = kind) {
     const result = await request<{ items: Draft[] }>(
       `/admin/drafts/${nextKind}`,
-      { token },
+      {},
     );
     setDrafts(result.data.items);
   }
-  async function login(event: React.FormEvent) {
-    event.preventDefault();
-    await act(async () => {
-      const result = await request<Actor>("/admin/me", { token });
-      setActor(result.data);
-      await load();
-    });
-  }
+  useEffect(() => {
+    const controller = new AbortController();
+    void Promise.all([
+      request<Actor>("/admin/me", { signal: controller.signal }),
+      request<{ items: Draft[] }>("/admin/drafts/program", {
+        signal: controller.signal,
+      }),
+    ])
+      .then(([identity, records]) => {
+        if (!controller.signal.aborted) {
+          setActor(identity.data);
+          setDrafts(records.data.items);
+        }
+      })
+      .catch((failure) => {
+        if (!controller.signal.aborted) setError(failure);
+      });
+    return () => controller.abort();
+  }, []);
   async function write(event: React.FormEvent) {
     event.preventDefault();
     await act(async () => {
@@ -84,7 +94,6 @@ export function AdminPanel() {
         `/admin/drafts/${kind}${editing ? `/${editing.draftId}` : ""}`,
         {
           method: editing ? "PUT" : "POST",
-          token,
           etag: editing?.etag,
           body: { content: parsed },
         },
@@ -102,7 +111,6 @@ export function AdminPanel() {
     await act(async () => {
       await request(`/admin/drafts/${kind}/${draft.draftId}/${operation}`, {
         method: "POST",
-        token,
         etag: draft.etag,
         body: {},
       });
@@ -113,7 +121,6 @@ export function AdminPanel() {
     await act(async () => {
       await request(`/admin/reviews/${draft.reviewId}/decision`, {
         method: "POST",
-        token,
         etag: draft.etag,
         body: {
           decision,
@@ -139,51 +146,22 @@ export function AdminPanel() {
         error={error}
         onReload={actor ? () => void act(() => load()) : undefined}
       />
-      <form className="ws-panel ws-stack" onSubmit={login}>
-        <h2>
-          <LockKeyhole size={19} /> 管理身份
-        </h2>
-        <p className="ws-muted">
-          使用部署管理员分配的凭据。凭据只保留在此页面内存中，关闭页面后需要重新输入。
-        </p>
-        <label>
-          管理访问凭据
-          <input
-            type="password"
-            autoComplete="off"
-            value={token}
-            required
-            onChange={(event) => {
-              setToken(event.target.value);
-              setActor(null);
-              setDrafts([]);
-            }}
-          />
-        </label>
-        <div className="ws-actions">
-          <button className="ws-primary" disabled={busy || !token}>
-            验证管理身份
-          </button>
-          {actor && (
-            <>
-              <span role="status">
-                {actor.actorId} · {actor.roles.join(" / ")}
-              </span>
-              <button
-                type="button"
-                className="ws-link"
-                onClick={() => {
-                  setToken("");
-                  setActor(null);
-                  setDrafts([]);
-                }}
-              >
-                退出管理
-              </button>
-            </>
-          )}
+      {actor && (
+        <div className="ws-notice" role="status">
+          当前管理身份：{actor.actorId} · 权限：
+          {actor.roles
+            .map(
+              (role) =>
+                ({
+                  editor: "录入",
+                  reviewer: "复核",
+                  publisher: "发布",
+                  auditor: "审计",
+                })[role] ?? role,
+            )
+            .join(" / ")}
         </div>
-      </form>
+      )}
       {actor && (
         <>
           <section className="ws-panel ws-stack">
@@ -435,7 +413,6 @@ export function AdminPanel() {
                       status?: string;
                     }>("/admin/publications", {
                       method: "POST",
-                      token,
                       body: {
                         kind: publicationKind,
                         draftIds: selected,
@@ -457,7 +434,7 @@ export function AdminPanel() {
               服务端检查角色、禁止自审，并保留审计记录；管理者不能通过页面跳过复核。
             </p>
           </section>
-          <CorrectionQueue token={token} />
+          <CorrectionQueue />
         </>
       )}
       {message && (
@@ -469,7 +446,7 @@ export function AdminPanel() {
   );
 }
 
-function CorrectionQueue({ token }: { token: string }) {
+function CorrectionQueue() {
   const [items, setItems] = useState<
       {
         correctionId: string;
@@ -484,7 +461,7 @@ function CorrectionQueue({ token }: { token: string }) {
     try {
       const result = await request<{ items: typeof items }>(
         "/admin/corrections",
-        { token },
+        {},
       );
       setItems(result.data.items);
       setLoaded(true);

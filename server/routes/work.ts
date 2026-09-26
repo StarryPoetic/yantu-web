@@ -25,6 +25,7 @@ import { buildPlan } from "../planning/index.ts";
 import type { PlanSnapshot, PlanTask } from "../planning/index.ts";
 import { buildReport } from "../reports/index.ts";
 import type { ReportSnapshot } from "../reports/index.ts";
+import { programMatchesDiscipline } from "../../shared/discipline-matching.ts";
 
 type TaskState = PlanTask & { completed: boolean };
 function candidates(run: RecommendationRun) {
@@ -107,19 +108,31 @@ export function workRoutes(c: Context): Reply | undefined {
     const year = integer(c.body.targetAdmissionYear, "招生年度", 2000, 2200);
     const filters = object(c.body.filters ?? {});
     fields(filters, [
+      "includeExamples",
       "institutionIds",
       "majorDirectionIds",
+      "disciplineCodes",
       "degreeTypes",
       "studyModes",
       "cities",
     ]);
-    for (const [key, value] of Object.entries(filters))
+    for (const [key, value] of Object.entries(filters)) {
+      if (key === "includeExamples") {
+        if (typeof value !== "boolean")
+          throw new HttpError(
+            422,
+            "invalid_filters",
+            "示例项目筛选必须为布尔值。",
+          );
+        continue;
+      }
       if (
         !Array.isArray(value) ||
         value.length > 100 ||
         value.some((v) => typeof v !== "string" || v.length > 200)
       )
         throw new HttpError(422, "invalid_filters", `${key}筛选格式错误。`);
+    }
     if (
       !Array.isArray(c.body.assessmentRefs ?? []) ||
       (c.body.assessmentRefs as unknown[] | undefined)?.length! > 20
@@ -465,7 +478,7 @@ export function workRoutes(c: Context): Reply | undefined {
       if (
         (active?.planId === plan.planId && active.status === "needs_review") ||
         (confirmedMajorId &&
-          !plan.programSnapshot.majorDirectionIds.includes(confirmedMajorId))
+          !programMatchesDiscipline(plan.programSnapshot, confirmedMajorId))
       )
         throw new HttpError(
           409,

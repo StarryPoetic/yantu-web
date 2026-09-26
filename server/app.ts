@@ -4,7 +4,6 @@ import { timingSafeEqual, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve, extname, sep } from "node:path";
 import { Store } from "./store.ts";
-import type { Session } from "./store.ts";
 import { environmentConfig } from "./config.ts";
 import type { AppConfig } from "./config.ts";
 import {
@@ -28,18 +27,31 @@ import { assessmentRoutes } from "./routes/assessment.ts";
 import { workRoutes } from "./routes/work.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { createAssistantRoutes } from "./routes/assistant.ts";
+import { createAuthRoutes } from "./routes/auth.ts";
+import { SESSION_COOKIE, sessionCookie } from "./auth/index.ts";
+import { guidanceRoutes } from "./routes/guidance.ts";
 
 const safeEqual = (a: string, b: string) => {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
   return left.length === right.length && timingSafeEqual(left, right);
 };
-const publicPaths = /^\/(health|cities|programs(?:\/[^/]+)?|major-directions)$/;
-const cookieName = "yantu_session";
+const publicPaths =
+  /^\/(health|cities|programs(?:\/[^/]+)?|major-directions|disciplines)$/;
+const cookieName = SESSION_COOKIE;
 
 export async function createApplication(overrides: Partial<AppConfig> = {}) {
   const config = { ...environmentConfig(), ...overrides };
   const store = new Store(config.databasePath);
+  let auth: ReturnType<typeof createAuthRoutes>;
+  try {
+    auth = createAuthRoutes(store, config);
+    await auth.bootstrap(config.bootstrapAdmins);
+  } catch (error) {
+    store.close();
+    throw error;
+  }
+  config.bootstrapAdmins = [];
   if (!store.get("public", "catalog")) {
     const empty: CatalogState = {
       schemaVersion: 1,
@@ -79,6 +91,17 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
   }
   if (config.sampleData && !store.get("public", "question-bank"))
     store.put("public", "question-bank", "current", await loadQuestionBank());
+  const existingExampleBank = store.get<{
+    mode: string;
+    questionBankVersion: string;
+  }>("public", "question-bank");
+  if (
+    config.sampleData &&
+    existingExampleBank?.value.mode === "example" &&
+    existingExampleBank.value.questionBankVersion === "example-unreviewed-v1"
+  ) {
+    store.put("public", "question-bank", "current", await loadQuestionBank());
+  }
   if (!config.sampleData) {
     const state = store.get<CatalogState>("public", "catalog")!.value;
     if (
@@ -97,13 +120,13 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
   const assistant = createAssistantRoutes();
   const limits = new Map<string, { count: number; until: number }>();
   const inFlight = new Map<string, { hash: string; promise: Promise<Reply> }>();
-  const resolveSession = (request: IncomingMessage): Session | null => {
+  const resolveSessionHash = (request: IncomingMessage): string | null => {
     const token = request.headers.cookie
       ?.split(";")
       .map((s) => s.trim())
       .find((s) => s.startsWith(`${cookieName}=`))
       ?.slice(cookieName.length + 1);
-    return token ? store.session(digest(token)) : null;
+    return token ? digest(token) : null;
   };
   function throttle(key: string, limit: number) {
     const time = Date.now();
@@ -156,7 +179,19 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
       )
         throw new HttpError(403, "origin_rejected", "请求来源不受信任。");
       const body = write ? await readBody(request) : {};
-      let session = resolveSession(request);
+      const sessionHash = resolveSessionHash(request);
+      let session = sessionHash ? store.session(sessionHash) : null;
+      if (auth.matches(path)) {
+        const reply = await auth.handle({
+          path,
+          method,
+          body,
+          request,
+          session,
+          sessionHash,
+        });
+        return send(response, reply, requestId);
+      }
       if (path === "/guest-sessions" && method === "POST") {
         fields(body, []);
         let headers: Record<string, string> = {};
@@ -170,19 +205,14 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
             ),
           );
           headers = {
-            "Set-Cookie": `${cookieName}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000${config.secureCookies ? "; Secure" : ""}`,
+            "Set-Cookie": sessionCookie(token, config.secureCookies),
           };
         }
         return send(
           response,
           {
             body: {
-              authenticated: true,
-              csrfToken: session.csrfToken,
-              features: {
-                sampleData: config.sampleData,
-                modelEnabled: process.env.YANTU_MODEL_ENABLED === "true",
-              },
+              ...auth.sessionView(session),
             },
             headers,
           },
@@ -193,12 +223,26 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
       if (path.startsWith("/admin/")) {
         const token =
           request.headers.authorization?.replace(/^Bearer /, "") ?? "";
-        admin = config.admins.find((a) => safeEqual(a.token, token));
+        const machineIdentity = token
+          ? config.admins.find((a) => safeEqual(a.token, token))
+          : undefined;
+        if (machineIdentity)
+          admin = {
+            actorId: machineIdentity.actorId,
+            roles: machineIdentity.roles,
+            authentication: "bearer",
+          };
+        else if (session?.user?.role === "admin")
+          admin = {
+            actorId: session.user.accountId,
+            roles: session.user.adminRoles,
+            authentication: "session",
+          };
         if (!admin)
           throw new HttpError(
-            401,
+            session?.user ? 403 : 401,
             "admin_required",
-            "请输入具有相应权限的后台凭据。",
+            "需要具有相应权限的管理账户。",
           );
       } else if (!session && !publicPaths.test(path))
         throw new HttpError(
@@ -208,7 +252,7 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
         );
       if (
         write &&
-        !admin &&
+        admin?.authentication !== "bearer" &&
         (!session ||
           !safeEqual(
             String(request.headers["x-csrf-token"] ?? ""),
@@ -230,6 +274,7 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
           csrfToken: "",
           expiresAt: 0,
         },
+        sessionHash,
         admin,
       };
       const owner = admin
@@ -261,6 +306,24 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
           );
         const saved = JSON.parse(String(replay.response)) as Reply;
         const savedBody = saved.body as Record<string, unknown>;
+        assistant.validateReplay(context, savedBody);
+        if (
+          path === "/guidance" &&
+          typeof savedBody.guidanceRunId === "string"
+        ) {
+          const refreshed = store.transaction(() =>
+            guidanceRoutes({
+              ...context,
+              method: "GET",
+              path: `/guidance/${savedBody.guidanceRunId}`,
+            }),
+          );
+          return send(
+            response,
+            { ...refreshed!, status: saved.status },
+            requestId,
+          );
+        }
         // Replay the same resource, while reapplying current withdrawal barriers.
         if (
           path === "/recommendations" &&
@@ -317,6 +380,16 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
         return send(response, saved, requestId);
       }
       const remember = (reply: Reply) => {
+        if (
+          sessionHash &&
+          admin?.authentication !== "bearer" &&
+          !store.session(sessionHash)
+        )
+          throw new HttpError(
+            409,
+            "session_changed",
+            "会话已退出或切换，旧请求结果已丢弃。",
+          );
         const current = admin ? generation : store.generation(owner);
         if (
           owner !== "public" &&
@@ -346,6 +419,7 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
         const result = admin
           ? adminRoutes(context)
           : (catalogRoutes(context) ??
+            guidanceRoutes(context) ??
             profileRoutes(context) ??
             assessmentRoutes(context) ??
             workRoutes(context));
@@ -382,6 +456,12 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
             "data_deleted",
             "个人资料已删除，旧请求结果已丢弃。",
           );
+        if (sessionHash && !store.session(sessionHash))
+          throw new HttpError(
+            409,
+            "session_changed",
+            "会话已退出或切换，旧请求结果已丢弃。",
+          );
       } else {
         result = store.transaction(() => remember(route()));
         if (path === "/me/profile" && method === "DELETE")
@@ -389,6 +469,25 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
       }
       send(response, result, requestId);
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.name === "ModelError" &&
+        "code" in error &&
+        error.code === "DATA_DELETED"
+      ) {
+        send(
+          response,
+          {
+            status: 409,
+            body: {
+              code: "data_deleted",
+              message: "相关资料或对话已清空，旧回答已丢弃。请重新开始。",
+            },
+          },
+          requestId,
+        );
+        return;
+      }
       const known =
         error instanceof Error &&
         ("status" in error ||
@@ -455,6 +554,12 @@ export async function createApplication(overrides: Partial<AppConfig> = {}) {
         ".css": "text/css; charset=utf-8",
         ".svg": "image/svg+xml",
         ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+        ".ttf": "font/ttf",
         ".json": "application/json; charset=utf-8",
       };
       if (!mime[extension]) throw new Error();
