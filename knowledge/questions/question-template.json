@@ -1,0 +1,20 @@
+{
+  "id": "replace-stable-question-id",
+  "revisionId": "replace-question-revision-id",
+  "module": "math",
+  "subject": "数学",
+  "point": "填写已评审知识点",
+  "text": "填写完整题干与全部条件",
+  "options": ["填写选项 A", "填写选项 B", "填写选项 C", "填写选项 D"],
+  "correct": 0,
+  "explanation": "填写与唯一正确答案一致的完整解析",
+  "source": {"title": "填写真实来源", "origin": "填写出处或原创依据", "rights": "填写授权/原创复核记录", "applicableYears": []},
+  "scopes": ["common-foundation"],
+  "majorIds": [],
+  "difficulty": "basic",
+  "calibration": "manual_initial",
+  "errorHypotheses": {"1": "仅作为有待进一步核验的错误假设"},
+  "reviewStatus": "draft",
+  "publicationStatus": "unpublished",
+  "review": {"reviewerId": "", "reviewedAt": "", "checks": ["answer_unique", "conditions_complete", "options_distinct", "explanation_consistent", "scope_checked", "rights_checked"], "rationale": ""}
+}

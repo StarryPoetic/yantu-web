@@ -1,3 +1,6 @@
+import type { Profile } from "../shared/profile";
+export type { Profile } from "../shared/profile";
+
 export type Page =
   | "explore"
   | "profile"
@@ -6,26 +9,6 @@ export type Page =
   | "plan"
   | "admin";
 export type Tier = "冲刺" | "匹配" | "相对稳妥";
-export interface Profile {
-  name: string;
-  university: string;
-  major: string;
-  graduation: string;
-  year: string;
-  english: string;
-  math: string;
-  hours: string;
-  budget: string;
-  cities: string[];
-  crossMajor: string;
-  priorities: Record<string, number>;
-  preparation?: string;
-  courses?: string;
-  notes?: string;
-  targetMajor?: string;
-  studyGoal?: string;
-  degreePreference?: string;
-}
 export interface School {
   id: string;
   name: string;

@@ -61,7 +61,7 @@ async function assertCityGroupsStackVertically(list: Locator) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?demo=1");
   await expect(
     page.getByRole("heading", { name: "找到属于你的下一站。", exact: true }),
   ).toBeVisible();
@@ -305,7 +305,7 @@ test("a chosen project becomes the persistent target and planning tasks are save
     page.getByRole("heading", { name: "南京理工大学", exact: true }),
   ).toBeVisible();
   await expect(task).toBeChecked();
-  await page.goto("/#explore");
+  await page.goto("/?demo=1#explore");
   await expect(
     page.getByRole("img", {
       name: "南京理工大学近三年模拟复试线走势：2024年335分、2025年342分、2026年340分",
@@ -317,13 +317,13 @@ test("a chosen project becomes the persistent target and planning tasks are save
 test("profile draft persists, and deleting personal data also removes assessment drafts", async ({
   page,
 }) => {
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   await page
     .getByLabel("简单记录你的思路", { exact: false })
     .fill("测试草稿：使用求导法则");
   await page.getByRole("radio").nth(2).check();
   await expect(questionButton(page, 2)).toHaveAttribute("aria-current", "step");
-  await page.goto("/#profile");
+  await page.goto("/?demo=1#profile");
   await page
     .getByRole("textbox", { name: "怎么称呼你", exact: true })
     .fill("测试同学");
@@ -347,7 +347,7 @@ test("profile draft persists, and deleting personal data also removes assessment
   await expect(page.locator(".right-rail .profile-summary")).toContainText(
     "测试本科院校",
   );
-  await page.goto("/#profile");
+  await page.goto("/?demo=1#profile");
   await page.getByRole("button", { name: "删除资料", exact: true }).click();
   await page
     .getByRole("dialog", { name: "删除个人资料？" })
@@ -360,7 +360,7 @@ test("profile draft persists, and deleting personal data also removes assessment
   await expect(
     page.getByRole("textbox", { name: "本科专业", exact: true }),
   ).toHaveValue("");
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   await expect(
     page.getByLabel("简单记录你的思路", { exact: false }),
@@ -370,7 +370,7 @@ test("profile draft persists, and deleting personal data also removes assessment
 test("fifteen public questions advance automatically, allow revisiting, and require explicit submission", async ({
   page,
 }) => {
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   for (const subject of ["数学", "英语", "政治"]) {
     await expect(
       page.getByRole("checkbox", { name: `参加${subject}测评` }),
@@ -439,13 +439,13 @@ test("fifteen public questions advance automatically, allow revisiting, and requ
 test("assessment can be skipped and the plan clearly marks insufficient evidence", async ({
   page,
 }) => {
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   await page.getByRole("button", { name: "跳过测评", exact: true }).click();
   await expect(page).toHaveURL(/#explore$/);
   await expect(
     page.getByRole("button", { name: "能力画像待完善" }),
   ).toBeVisible();
-  await page.goto("/#plan");
+  await page.goto("/?demo=1#plan");
   await expect(page.locator(".target-panel .notice")).toContainText(
     "能力评估依据不足",
   );
@@ -456,7 +456,7 @@ test("nationwide cities support alphabetical groups, Chinese and pinyin search, 
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/#profile");
+  await page.goto("/?demo=1#profile");
   await page.getByRole("button", { name: "展开全国城市", exact: true }).click();
   const list = page.getByRole("listbox", { name: "全国城市", exact: true });
   await expect(list).toHaveAttribute("aria-multiselectable", "true");
@@ -549,7 +549,7 @@ test("nationwide cities support alphabetical groups, Chinese and pinyin search, 
 test("public modules are optional, with five questions per selected subject and no mandatory math", async ({
   page,
 }) => {
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   await page.getByRole("checkbox", { name: "参加数学测评" }).uncheck();
   await expect(page.locator(".question-dots > button")).toHaveCount(10);
   await expect(
@@ -595,7 +595,7 @@ test("old six-question caches never appear as current answers or completed publi
       }),
     );
   });
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   await page.reload();
   await expect(page.locator(".question-dots > button")).toHaveCount(15);
   await expect(questionButton(page, 1)).toHaveAttribute("aria-current", "step");
@@ -611,7 +611,7 @@ test("old six-question caches never appear as current answers or completed publi
 test("professional questions require a confirmed major, stay optional, and keep their own result", async ({
   page,
 }) => {
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   const professionalTab = page.getByRole("button", {
     name: "专业课测评（可选）",
     exact: true,
@@ -653,19 +653,19 @@ test("professional questions require a confirmed major, stay optional, and keep 
   await expect(
     page.getByRole("button", { name: "能力画像待完善", exact: true }),
   ).toBeVisible();
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   await expect(page.locator(".question-dots > button")).toHaveCount(15);
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   await professionalTab.click();
   await expect(
     page.getByText("专业课基础诊断已完成", { exact: true }),
   ).toBeVisible();
-  await page.goto("/#profile");
+  await page.goto("/?demo=1#profile");
   await page
     .getByRole("combobox", { name: "已确认的目标专业", exact: true })
     .selectOption("计算机科学与技术");
   await page.getByRole("button", { name: "保存草稿", exact: true }).click();
-  await page.goto("/#assessment");
+  await page.goto("/?demo=1#assessment");
   await professionalTab.click();
   await expect(page.locator(".question-dots > button")).toHaveCount(5);
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
@@ -742,7 +742,7 @@ test("academic and professional degree explanations are clickable in exploration
   await expect(dialog).toContainText("以具体项目为准");
   await page.keyboard.press("Escape");
   await expect(explanation).toBeFocused();
-  await page.goto("/#profile");
+  await page.goto("/?demo=1#profile");
   await page
     .getByRole("combobox", { name: "学位类型偏好", exact: true })
     .selectOption("专业学位");
@@ -767,7 +767,7 @@ test("degree explanations use a wide dialog and keep the close control fixed whi
 }, testInfo) => {
   for (const route of ["explore", "profile"]) {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`/#${route}`);
+    await page.goto(`/?demo=1#${route}`);
     const trigger = page.getByRole("button", {
       name: "学硕和专硕有什么区别？",
       exact: true,
@@ -851,7 +851,7 @@ test("city selection supports four arrow keys and visible direction controls wit
 }) => {
   for (const width of [1440, 375]) {
     await page.setViewportSize({ width, height: 812 });
-    await page.goto("/#profile");
+    await page.goto("/?demo=1#profile");
     // A same-hash navigation can preserve transient component state. Give each
     // viewport its own fresh attempt instead of reusing the active city index.
     await page.reload();
@@ -952,7 +952,7 @@ test("city dropdown flips above a low field and adapts to scrolling and a shorte
   for (const width of [1440, 375]) {
     const height = width === 1440 ? 720 : 812;
     await page.setViewportSize({ width, height });
-    await page.goto("/#profile");
+    await page.goto("/?demo=1#profile");
     const search = page.getByRole("combobox", {
       name: "搜索意向城市",
       exact: true,
@@ -1037,7 +1037,7 @@ test("body copy, form labels, controls, and helper text remain readable on deskt
     );
   for (const width of [1440, 375]) {
     await page.setViewportSize({ width, height: width === 1440 ? 1000 : 812 });
-    await page.goto("/#explore");
+    await page.goto("/?demo=1#explore");
     expect(
       await fontSize(
         page.locator("main .page-heading p:not(.eyebrow)").first(),
@@ -1049,7 +1049,7 @@ test("body copy, form labels, controls, and helper text remain readable on deskt
     expect(
       await fontSize(page.locator("main .eyebrow").first()),
     ).toBeGreaterThanOrEqual(12);
-    await page.goto("/#profile");
+    await page.goto("/?demo=1#profile");
     expect(
       await fontSize(page.locator(".flow-section .field > span").first()),
     ).toBeGreaterThanOrEqual(14);
@@ -1069,7 +1069,7 @@ test("body copy, form labels, controls, and helper text remain readable on deskt
       ),
       fullPage: true,
     });
-    await page.goto("/#assessment");
+    await page.goto("/?demo=1#assessment");
     expect(
       await fontSize(page.locator(".question-title")),
     ).toBeGreaterThanOrEqual(16);
@@ -1099,7 +1099,7 @@ test("city picker, long city names, and admin editing fit a 375px viewport", asy
     }));
     expect(dimensions.body).toBeLessThanOrEqual(dimensions.viewport);
   };
-  await page.goto("/#profile");
+  await page.goto("/?demo=1#profile");
   const search = page.getByRole("combobox", {
     name: "搜索意向城市",
     exact: true,
@@ -1131,7 +1131,7 @@ test("city picker, long city names, and admin editing fit a 375px viewport", asy
   await expect(
     page.getByRole("listbox", { name: "全国城市", exact: true }),
   ).toHaveCount(0);
-  await page.goto("/#admin");
+  await page.goto("/?demo=1#admin");
   await page.getByRole("button", { name: "添加记录", exact: true }).click();
   const dialog = page.getByRole("dialog", {
     name: "添加招生资料",
@@ -1153,7 +1153,7 @@ test("city picker, long city names, and admin editing fit a 375px viewport", asy
 test("admin records can be added, reviewed, filtered, and restored after reload", async ({
   page,
 }) => {
-  await page.goto("/#admin");
+  await page.goto("/?demo=1#admin");
   await page.getByRole("button", { name: "添加记录" }).click();
   let editor = page.getByRole("dialog", { name: "添加招生资料" });
   await editor
@@ -1240,11 +1240,11 @@ test("mobile pages, navigation, detail, and comparison do not overflow the body"
     "plan",
     "admin",
   ]) {
-    await page.goto(`/#${route}`);
+    await page.goto(`/?demo=1#${route}`);
     await expect(page.locator("main h1")).toBeVisible();
     await assertFits();
   }
-  await page.goto("/#explore");
+  await page.goto("/?demo=1#explore");
   await page.screenshot({
     path: testInfo.outputPath("mobile-home.png"),
     fullPage: true,

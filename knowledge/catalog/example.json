@@ -1,0 +1,871 @@
+{
+  "schemaVersion": 1,
+  "coverage": {
+    "years": [
+      2027
+    ],
+    "description": "8 个未核验交互示例，覆盖计算机研究与实践两个方向；不代表真实招生覆盖。",
+    "limitations": [
+      "仅院校名称来自既有 Demo；项目组合、学院、科目和方向尚未核验。",
+      "演示匹配百分比、梯度、名额和历史分数未导入正式知识库。",
+      "正式招生资料与推荐规则待人工复核发布。"
+    ]
+  },
+  "sources": [
+    {
+      "sourceId": "source-demo-interaction-v1",
+      "publisher": "本项目交互 Demo",
+      "title": "src/data.ts 和 src/programs.ts 中的示例项目",
+      "url": null,
+      "fileReference": "repository:src/data.ts;src/programs.ts",
+      "contentHash": null,
+      "publishedAt": null,
+      "collectedAt": "2026-09-27T00:00:00.000Z",
+      "verifiedAt": null,
+      "type": "example",
+      "usageRestrictions": "仅交互演示；禁止用于招生资格判断、真实排序或分数规划。"
+    }
+  ],
+  "programs": [
+    {
+      "programId": "example:njust:2027",
+      "programRevisionId": "example:njust:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:njust",
+        "collegeId": "example-college:njust",
+        "majorCode": "081200",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "academic",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "南京理工大学",
+        "shortName": "南理工",
+        "collegeName": "计算机科学与工程学院（演示项目）",
+        "majorName": "计算机科学与技术",
+        "directionName": "未单列方向（示例）",
+        "city": "南京",
+        "color": "#5b7265"
+      },
+      "majorDirectionIds": [
+        "research"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:njust:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njust:2",
+          "name": "英语一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njust:3",
+          "name": "数学一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njust:4",
+          "name": "计算机学科专业基础",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    },
+    {
+      "programId": "example:hdu:2027",
+      "programRevisionId": "example:hdu:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:hdu",
+        "collegeId": "example-college:hdu",
+        "majorCode": "085404",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "professional",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "杭州电子科技大学",
+        "shortName": "杭电",
+        "collegeName": "计算机学院（演示项目）",
+        "majorName": "电子信息 · 计算机技术",
+        "directionName": "未单列方向（示例）",
+        "city": "杭州",
+        "color": "#5b797d"
+      },
+      "majorDirectionIds": [
+        "practice"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:hdu:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:hdu:2",
+          "name": "英语二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:hdu:3",
+          "name": "数学二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:hdu:4",
+          "name": "计算机专业综合",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    },
+    {
+      "programId": "example:suda:2027",
+      "programRevisionId": "example:suda:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:suda",
+        "collegeId": "example-college:suda",
+        "majorCode": "081200",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "academic",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "苏州大学",
+        "shortName": "苏大",
+        "collegeName": "计算机科学与技术学院（演示项目）",
+        "majorName": "计算机科学与技术",
+        "directionName": "未单列方向（示例）",
+        "city": "苏州",
+        "color": "#8b7863"
+      },
+      "majorDirectionIds": [
+        "research"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:suda:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:suda:2",
+          "name": "英语一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:suda:3",
+          "name": "数学一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:suda:4",
+          "name": "计算机学科专业基础",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    },
+    {
+      "programId": "example:njupt:2027",
+      "programRevisionId": "example:njupt:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:njupt",
+        "collegeId": "example-college:njupt",
+        "majorCode": "085404",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "professional",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "南京邮电大学",
+        "shortName": "南邮",
+        "collegeName": "计算机学院（演示项目）",
+        "majorName": "电子信息 · 计算机技术",
+        "directionName": "未单列方向（示例）",
+        "city": "南京",
+        "color": "#778169"
+      },
+      "majorDirectionIds": [
+        "practice"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:njupt:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njupt:2",
+          "name": "英语一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njupt:3",
+          "name": "数学一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njupt:4",
+          "name": "计算机专业综合",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    },
+    {
+      "programId": "example:zjut:2027",
+      "programRevisionId": "example:zjut:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:zjut",
+        "collegeId": "example-college:zjut",
+        "majorCode": "085404",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "professional",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "浙江工业大学",
+        "shortName": "浙工大",
+        "collegeName": "计算机科学与技术学院（演示项目）",
+        "majorName": "电子信息 · 计算机技术",
+        "directionName": "未单列方向（示例）",
+        "city": "杭州",
+        "color": "#807382"
+      },
+      "majorDirectionIds": [
+        "practice"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:zjut:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:zjut:2",
+          "name": "英语二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:zjut:3",
+          "name": "数学二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:zjut:4",
+          "name": "计算机专业综合",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    },
+    {
+      "programId": "example:shu:2027",
+      "programRevisionId": "example:shu:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:shu",
+        "collegeId": "example-college:shu",
+        "majorCode": "085404",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "professional",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "上海大学",
+        "shortName": "上大",
+        "collegeName": "计算机工程与科学学院（演示项目）",
+        "majorName": "电子信息 · 计算机技术",
+        "directionName": "未单列方向（示例）",
+        "city": "上海",
+        "color": "#907362"
+      },
+      "majorDirectionIds": [
+        "practice"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:shu:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:shu:2",
+          "name": "英语二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:shu:3",
+          "name": "数学二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:shu:4",
+          "name": "计算机专业综合",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    },
+    {
+      "programId": "example:njust-practice:2027",
+      "programRevisionId": "example:njust-practice:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:njust",
+        "collegeId": "example-college:njust",
+        "majorCode": "085404",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "professional",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "南京理工大学",
+        "shortName": "南理工",
+        "collegeName": "计算机科学与工程学院（演示项目）",
+        "majorName": "电子信息 · 计算机技术",
+        "directionName": "未单列方向（示例）",
+        "city": "南京",
+        "color": "#5b7265"
+      },
+      "majorDirectionIds": [
+        "practice"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:njust-practice:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njust-practice:2",
+          "name": "英语一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njust-practice:3",
+          "name": "数学一",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:njust-practice:4",
+          "name": "计算机学科专业基础",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    },
+    {
+      "programId": "example:hdu-research:2027",
+      "programRevisionId": "example:hdu-research:2027:r1",
+      "supersedesRevisionId": null,
+      "identity": {
+        "institutionId": "institution:hdu",
+        "collegeId": "example-college:hdu",
+        "majorCode": "081200",
+        "codeSystem": "example-moe-major-code",
+        "directionId": "no-separate-direction",
+        "degreeType": "academic",
+        "studyMode": "full_time",
+        "targetAdmissionYear": 2027,
+        "campusId": null,
+        "admissionUnitId": null,
+        "examGroupId": null
+      },
+      "display": {
+        "institutionName": "杭州电子科技大学",
+        "shortName": "杭电",
+        "collegeName": "计算机学院（演示项目）",
+        "majorName": "计算机科学与技术",
+        "directionName": "未单列方向（示例）",
+        "city": "杭州",
+        "color": "#5b797d"
+      },
+      "majorDirectionIds": [
+        "research"
+      ],
+      "reviewStatus": "approved",
+      "publicationStatus": "published",
+      "availability": "unverified",
+      "isExample": true,
+      "sourceIds": [
+        "source-demo-interaction-v1"
+      ],
+      "claims": [],
+      "eligibility": {
+        "availability": "unverified",
+        "complete": false,
+        "reason": "example_only: 项目组合仅用于交互演示，目标年度资格尚未核验",
+        "conditions": []
+      },
+      "subjects": [
+        {
+          "subjectId": "example-subject:hdu-research:1",
+          "name": "思想政治理论",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:hdu-research:2",
+          "name": "英语二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:hdu-research:3",
+          "name": "数学二",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        },
+        {
+          "subjectId": "example-subject:hdu-research:4",
+          "name": "计算机专业综合",
+          "maxScore": null,
+          "minimumScore": null,
+          "availability": "unverified",
+          "sourceIds": [
+            "source-demo-interaction-v1"
+          ],
+          "optionGroupId": null
+        }
+      ],
+      "scoreRequirements": {
+        "totalMaxScore": null,
+        "totalMinimumScore": null,
+        "interviewRequirement": null,
+        "availability": "unverified"
+      },
+      "tuitionPerYear": null,
+      "durationYears": null,
+      "historyScoreRecords": [],
+      "evidence": [],
+      "risks": [],
+      "preparationNotes": [
+        "核验目标年度官方招生目录、实际科目、报考条件及复试规则。",
+        "五题测评仅用于知识点诊断，不能换算考研分数。"
+      ]
+    }
+  ]
+}

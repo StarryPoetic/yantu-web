@@ -51,7 +51,11 @@ class TechnicalDesignTests(unittest.TestCase):
             self.assertTrue(title.strip(), number)
 
     def test_markdown_local_links_resolve(self):
-        files = [INDEX, *(DESIGN_DIR / name for name in DESIGN_FILES), README]
+        files = [INDEX, *(DESIGN_DIR / name for name in DESIGN_FILES), README,
+                 ROOT / "docs" / "实施说明.md", ROOT / "knowledge" / "README.md",
+                 ROOT / "knowledge" / "catalog" / "README.md",
+                 ROOT / "knowledge" / "questions" / "README.md",
+                 ROOT / "server" / "explanation" / "README.md"]
         for document in files:
             content = document.read_text(encoding="utf-8")
             with self.subTest(document=document.name):
@@ -169,7 +173,7 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_project_artifacts_do_not_contain_live_key_shapes(self):
         credential = re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")
         files = [README, ROOT / ".gitignore"]
-        for directory in ("src", "public", "docs", "scripts", "tests", "dist"):
+        for directory in ("src", "public", "docs", "scripts", "server", "knowledge", "tests", "dist"):
             files.extend(path for path in (ROOT / directory).rglob("*")
                          if path.is_file() and "__pycache__" not in path.parts
                          and path.suffix in (".md", ".py", ".ts", ".tsx", ".js", ".json", ".html", ".css", ".svg"))
