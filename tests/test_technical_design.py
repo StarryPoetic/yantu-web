@@ -196,6 +196,9 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertIn("https://open.bochaai.com/login", guide)
         self.assertIn("以当前账户为准", guide)
         self.assertIn("不需要先把网站部署到公网", guide)
+        self.assertIn("YANTU_DNS_MODE=system", guide)
+        self.assertIn("YANTU_DNS_MODE=system", example)
+        self.assertIn("YANTU_DNS_MODE=public-doh", guide)
 
     def test_project_artifacts_do_not_contain_live_key_shapes(self):
         credential = re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")

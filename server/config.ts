@@ -17,6 +17,19 @@ export interface AppConfig {
 }
 export function environmentConfig(): AppConfig {
   const production = process.env.NODE_ENV === "production";
+  // Parallel browser tests share one loopback IP; this override never applies outside test mode.
+  const testRateLimit =
+    process.env.NODE_ENV === "test"
+      ? process.env.YANTU_TEST_API_RATE_LIMIT
+      : undefined;
+  if (
+    testRateLimit !== undefined &&
+    (!/^\d+$/.test(testRateLimit) ||
+      !Number.isSafeInteger(Number(testRateLimit)) ||
+      Number(testRateLimit) < 1 ||
+      Number(testRateLimit) > 100_000)
+  )
+    throw new Error("测试 API 频控配置必须为 1 至 100000 的整数。");
   let admins: AdminIdentity[] = [];
   let bootstrapAdmins: BootstrapAdmin[] = [];
   if (process.env.YANTU_BOOTSTRAP_ADMINS) {
@@ -72,7 +85,7 @@ export function environmentConfig(): AppConfig {
     admins,
     bootstrapAdmins,
     staticDirectory: "./dist",
-    rateLimit: 600,
+    rateLimit: testRateLimit === undefined ? 600 : Number(testRateLimit),
     authRegistrationIpLimit: authRateLimit(
       process.env.YANTU_AUTH_REGISTRATION_IP_LIMIT ?? 10,
     ),

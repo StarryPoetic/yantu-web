@@ -47,11 +47,22 @@ test("all DNS answers must be global; mixed/private/rebinding candidates cannot 
     "fc00::1",
     "fe80::1",
     "2001:db8::1",
+    "2001:0DB8::1",
+    "2001::1",
+    "2001:0000:4136:e378:8000:63bf:3fff:fdd2",
+    "2001:2::1",
+    "2001:20::1",
+    "2001:01ff:ffff::1",
+    "2001:da8::192.0.2.1",
+    "2001:da8::1%eth0",
     "2002:7f00:1::1",
   ])
     assert.equal(isPublicAddress(ip), false, ip);
   assert.equal(isPublicAddress("8.8.8.8"), true);
   assert.equal(isPublicAddress("2606:4700::1111"), true);
+  assert.equal(isPublicAddress("2001:da8:e021:1070::2"), true);
+  assert.equal(isPublicAddress("2001:0DA8:e021:1070::2"), true);
+  assert.equal(isPublicAddress("2001:0200::1"), true);
   await assert.rejects(
     resolvePublicAddress("yz.chsi.com.cn", (async () => [
       { address: "8.8.8.8", family: 4 },
@@ -66,6 +77,40 @@ test("all DNS answers must be global; mixed/private/rebinding candidates cannot 
     ]) as never),
     { address: "8.8.8.8", family: 4 },
   );
+});
+
+test("mixed public IPv4 and CERNET IPv6 resolves normally while any special-purpose answer still blocks", async () => {
+  const educationAddress = { address: "2001:da8:e021:1070::2", family: 6 };
+  const v4 = { address: "61.153.34.45", family: 4 };
+  assert.deepEqual(
+    await resolvePublicAddress("fxy.zjnu.edu.cn", async () => [
+      v4,
+      educationAddress,
+    ]),
+    v4,
+  );
+  assert.deepEqual(
+    await resolvePublicAddress("fxy.zjnu.edu.cn", async () => [
+      educationAddress,
+    ]),
+    educationAddress,
+  );
+  for (const address of [
+    "2001:0000::1",
+    "2001:01ff::1",
+    "2001:0db8::1",
+    "2002::1",
+    "198.18.0.118",
+  ]) {
+    await assert.rejects(
+      resolvePublicAddress("fxy.zjnu.edu.cn", async () => [
+        v4,
+        educationAddress,
+        { address, family: address.includes(":") ? 6 : 4 },
+      ]),
+      { code: "WEB_ADDRESS_BLOCKED" },
+    );
+  }
 });
 
 test("HTTPS transport pins validated DNS address and enforces redirect, MIME, byte and total time limits", async () => {

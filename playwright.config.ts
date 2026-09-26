@@ -16,7 +16,8 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "npm run dev -- --port 4187",
+    // Never load the developer's .env (provider credentials, database or enabled services).
+    command: "node scripts/dev.mjs --port 4187",
     url: "http://127.0.0.1:4187",
     reuseExistingServer: false,
     env: {
@@ -27,9 +28,16 @@ export default defineConfig({
       YANTU_MODEL_ENABLED: "false",
       YANTU_SEARCH_ENABLED: "false",
       YANTU_ADMIN_CREDENTIALS: "[]",
+      YANTU_TEST_API_RATE_LIMIT: "10000",
       YANTU_AUTH_REGISTRATION_IP_LIMIT: "200",
       YANTU_AUTH_LOGIN_IP_LIMIT: "200",
-      YANTU_BOOTSTRAP_ADMINS: JSON.stringify([{username: "editor_account", password: "Test-Admin-Password-2026!", roles: ["editor"]}]),
+      YANTU_BOOTSTRAP_ADMINS: JSON.stringify([
+        {
+          username: "editor_account",
+          password: "Test-Admin-Password-2026!",
+          roles: ["editor"],
+        },
+      ]),
     },
     timeout: 30_000,
   },

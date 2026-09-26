@@ -10,6 +10,8 @@ import {
   searchRequest,
 } from "./search.ts";
 import type { SearchConfig } from "./search.ts";
+import { createPublicDohResolver } from "./dns.ts";
+import type { AddressResolver, DnsMode } from "./dns.ts";
 
 export interface WebSource {
   id: string;
@@ -108,9 +110,15 @@ export function isPublicAddress(address: string): boolean {
   }
   if (isIP(address) === 6) {
     const normalized = address.toLowerCase();
+    const [prefix, second] = normalized.split(":");
+    const subnet = Number.parseInt(second || "0", 16);
+    // IANA reserves 2001::/23 and 2001:db8::/32, not the entire 2001::/16.
+    // https://www.iana.org/assignments/iana-ipv6-special-registry
+    // https://www.iana.org/assignments/ipv6-unicast-address-assignments
     return (
       /^[23][0-9a-f]{3}:/.test(normalized) &&
-      !normalized.startsWith("2001:") &&
+      !/[.%]/.test(normalized) &&
+      !(prefix === "2001" && (subnet <= 0x1ff || subnet === 0xdb8)) &&
       !normalized.startsWith("2002:") &&
       !normalized.startsWith("3ffe:") &&
       !normalized.startsWith("3fff:")
@@ -121,7 +129,7 @@ export function isPublicAddress(address: string): boolean {
 
 export async function resolvePublicAddress(
   host: string,
-  resolver: typeof lookup = lookup,
+  resolver: AddressResolver = lookup,
 ): Promise<{ address: string; family: number }> {
   const addresses = await resolver(host, { all: true, verbatim: true });
   if (
@@ -135,10 +143,17 @@ export async function resolvePublicAddress(
 /** DNS is checked once and the exact validated address is pinned at connection time. TLS still verifies the hostname. */
 export function createHttpsReader(
   dependencies: {
-    resolver?: typeof lookup;
+    resolver?: AddressResolver;
+    dnsMode?: DnsMode;
+    fetch?: typeof fetch;
     request?: typeof httpsRequest;
   } = {},
 ): WebReader {
+  const resolver =
+    dependencies.resolver ??
+    (dependencies.dnsMode === "public-doh"
+      ? createPublicDohResolver({ fetch: dependencies.fetch })
+      : lookup);
   return async (value, options) => {
     const url = validateOutboundUrl(value, options.allowedHosts);
     const timeoutMs = Math.min(options.timeoutMs ?? 8000, 10000);
@@ -146,7 +161,7 @@ export function createHttpsReader(
     const startedAt = Date.now();
     let dnsTimer: ReturnType<typeof setTimeout> | undefined;
     const address = await Promise.race([
-      resolvePublicAddress(url.hostname, dependencies.resolver ?? lookup),
+      resolvePublicAddress(url.hostname, resolver),
       new Promise<never>((_, reject) => {
         dnsTimer = setTimeout(
           () => reject(new ModelError("WEB_TIMEOUT")),

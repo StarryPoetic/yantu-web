@@ -2,7 +2,11 @@ import {
   createExplanationModule,
   createModelRuntime,
 } from "../explanation/index.ts";
-import { createWebAnswerModule } from "../explanation/web.ts";
+import {
+  createHttpsReader,
+  createWebAnswerModule,
+} from "../explanation/web.ts";
+import { dnsModeFromEnvironment } from "../explanation/dns.ts";
 import {
   createSearchBudget,
   searchConfigFromEnvironment,
@@ -34,6 +38,7 @@ export function createAssistantRoutes() {
     runtime,
     ...searchConfig,
     searchBudget: createSearchBudget(searchConfig),
+    reader: createHttpsReader({ dnsMode: dnsModeFromEnvironment(process.env) }),
     ...(process.env.YANTU_OFFICIAL_HOSTS
       ? {
           allowedHosts: process.env.YANTU_OFFICIAL_HOSTS.split(",")
