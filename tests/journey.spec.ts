@@ -236,7 +236,9 @@ test("未保存画像时引导补充，保存后访问推荐结论会自动生�
   await expect(
     page.getByRole("heading", { name: "先保存你的个人画像" }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "当前结论" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "基础探索提示" })).toHaveCount(
+    0,
+  );
   await page.getByRole("button", { name: "填写个人画像", exact: true }).click();
   await page.getByLabel("本科专业", { exact: true }).fill("法学");
   await page.getByLabel("感兴趣的专业或领域（选填）").fill("法学、公共管理");
@@ -249,12 +251,29 @@ test("未保存画像时引导补充，保存后访问推荐结论会自动生�
     .getByRole("button", { name: "查看专业推荐结论", exact: true })
     .click();
   await expect(page).toHaveURL(/#guidance$/);
-  await expect(page.getByRole("heading", { name: "当前结论" })).toBeVisible();
+  const exploration = page.getByText("查看基础探索与专业选择", { exact: true });
+  await expect(exploration).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "基础探索提示", includeHidden: true }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "解释基础探索依据", includeHidden: true }),
+  ).toBeHidden();
+  await expect(
+    page.getByRole("button", { name: "比较全国专业与院校", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "重新生成结论", exact: true }),
+  ).toBeEnabled();
+  await exploration.click();
+  await expect(
+    page.getByRole("heading", { name: "基础探索提示" }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "公共课诊断如何影响建议" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "建议优先比较的方向" }),
+    page.getByRole("heading", { name: "可进一步探索的专业类别" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "0301 法学", exact: true }),

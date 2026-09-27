@@ -146,8 +146,8 @@ export function GuidancePanel({
       <div className="ws-heading">
         <div>
           <span className="ws-eyebrow">03 / 从了解自己，到选择方向</span>
-          <h1>你的专业探索结论</h1>
-          <p>综合个人画像与公共课诊断，给出可解释、可调整的专业建议。</p>
+          <h1>你的院校与专业建议</h1>
+          <p>先看具体学校与专业，再比较匹配理由、准备成本和报考条件。</p>
         </div>
         <Compass size={34} />
       </div>
@@ -176,171 +176,180 @@ export function GuidancePanel({
                 key={run.guidanceRunId}
                 run={run}
                 stale={!!stale}
+                onProfile={onProfile}
+                onExplore={onExplore}
               />
-              <section className="ws-panel ws-guidance-conclusion">
-                <span className="ws-pill">
-                  {run.status === "evidence_based"
-                    ? "有依据的探索建议"
-                    : "初步探索结论"}
-                </span>
-                <h2>当前结论</h2>
-                <p className="ws-answer">{run.conclusion}</p>
-                <ul>
-                  {run.considerations.map((item, index) => (
-                    <li key={index}>{item}</li>
-                  ))}
-                </ul>
-                <small>
-                  画像版本 {run.versions.profileVersion} · 全国目录{" "}
-                  {run.versions.catalogVersion} · 生成于{" "}
-                  {new Date(run.generatedAt).toLocaleString("zh-CN")}
-                </small>
-              </section>
-              <section className="ws-panel ws-stack">
-                <div className="ws-between">
-                  <h2>结合模型理解这些建议</h2>
-                  <button
-                    className="ws-secondary"
-                    disabled={modelBusy || stale}
-                    onClick={() => void explain()}
-                  >
-                    <Sparkles size={16} />
-                    {modelBusy ? "正在整理…" : "辅助解释推荐依据"}
-                  </button>
-                </div>
-                <p>
-                  模型解释基于下方可核验依据；不会替你确认报考资格、预测录取概率或承诺某专业一定适合。
+              <details className="ws-panel research-basic-exploration">
+                <summary>查看基础探索与专业选择</summary>
+                <p className="ws-muted">
+                  根据已保存的意向、本科背景和学习目标提供基础探索提示；你可以在这里查看依据并自主确认专业。
                 </p>
-                {model && (
-                  <div className="ws-answer" role="status">
-                    {model.text}
-                  </div>
-                )}
-              </section>
-              {notice && (
-                <p role="status" className="ws-notice">
-                  {notice}
-                </p>
-              )}
-              {highlights.length ? (
-                <section className="ws-stack">
-                  <h2>建议优先比较的方向</h2>
-                  <div className="ws-guidance-grid">
-                    {highlights.map((item) => (
-                      <article
-                        className="ws-panel ws-stack"
-                        key={item.discipline.code}
+                <div className="ws-stack">
+                  <section className="ws-panel ws-guidance-conclusion">
+                    <span className="ws-pill">
+                      {run.status === "evidence_based"
+                        ? "有依据的探索建议"
+                        : "初步探索结论"}
+                    </span>
+                    <h2>基础探索提示</h2>
+                    <p className="ws-answer">{run.conclusion}</p>
+                    <ul>
+                      {run.considerations.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                    <small>
+                      画像版本 {run.versions.profileVersion} · 全国目录{" "}
+                      {run.versions.catalogVersion} · 生成于{" "}
+                      {new Date(run.generatedAt).toLocaleString("zh-CN")}
+                    </small>
+                  </section>
+                  <section className="ws-panel ws-stack">
+                    <div className="ws-between">
+                      <h2>理解基础探索依据</h2>
+                      <button
+                        className="ws-secondary"
+                        disabled={modelBusy || stale}
+                        onClick={() => void explain()}
                       >
-                        <span className="ws-eyebrow">
-                          {item.discipline.groupName} ·{" "}
-                          {statusNames[item.status]}
-                        </span>
-                        <h3>
-                          {item.discipline.code} {item.discipline.name}
-                        </h3>
-                        <p>
-                          {item.discipline.degreeType === "academic"
-                            ? "学术学位"
-                            : "专业学位"}{" "}
-                          · 资格待核验
-                        </p>
-                        <ul>
-                          {item.reasons.map((reason, index) => (
-                            <li key={index}>{reason}</li>
-                          ))}
-                        </ul>
-                        <details>
-                          <summary>准备成本与需要确认的条件</summary>
-                          <ul>
-                            {[
-                              ...item.preparation,
-                              ...item.verificationNeeded,
-                            ].map((line, index) => (
-                              <li key={index}>{line}</li>
-                            ))}
-                          </ul>
-                        </details>
-                        <button
-                          className="ws-secondary"
-                          onClick={() => {
-                            void onSelection({
-                              confirmedMajorId: item.discipline.code,
-                            })
-                              .then(() =>
-                                setNotice(
-                                  `已确认 ${item.discipline.name}，可继续比较院校。`,
-                                ),
-                              )
-                              .catch(setError);
-                          }}
-                        >
-                          {selections.confirmedMajorId === item.discipline.code
-                            ? "已确认该专业"
-                            : "确认此报考专业"}
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ) : (
-                <section className="ws-panel">
-                  <h2>暂时不缩小专业范围</h2>
-                  <p>
-                    当前信息不足以排出优先专业，先补充兴趣与职业目标，或从全国目录选择感兴趣的方向进一步比较。
-                  </p>
-                </section>
-              )}
-              <section className="ws-panel">
-                <h2>公共课诊断如何影响建议</h2>
-                <ul>
-                  {run.assessmentSummary.observations.map((item, index) => (
-                    <li key={index}>{item}</li>
-                  ))}
-                  {run.assessmentSummary.ignored.map((item) => (
-                    <li key={item.assessmentAttemptId}>{item.reason}</li>
-                  ))}
-                </ul>
-                <p>
-                  公共课用于识别复习任务，不用五题表现断言你适合或不适合某个专业。
-                </p>
-              </section>
-              {!!run.followUpQuestions.length && (
-                <section className="ws-panel">
-                  <h2>再回答这些问题，建议会更具体</h2>
-                  <ul>
-                    {run.followUpQuestions.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                  <button className="ws-link" onClick={onProfile}>
-                    补充个人画像
-                  </button>
-                </section>
-              )}
-              <section className="ws-notice">
-                <div>
-                  <strong>结论的适用范围</strong>
-                  <ul>
-                    {run.limitations.map((item, index) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                  <details>
-                    <summary>查看目录来源</summary>
-                    {run.sources.map((source) => (
-                      <p key={source.sourceId}>
-                        <a
-                          href={safeUrl(source.url)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {source.title}
-                        </a>
+                        <Sparkles size={16} />
+                        {modelBusy ? "正在整理…" : "解释基础探索依据"}
+                      </button>
+                    </div>
+                    <p>
+                      帮助理解下方基础探索提示；具体学校与专业建议请查看上方联网研究报告。
+                    </p>
+                    {model && (
+                      <div className="ws-answer" role="status">
+                        {model.text}
+                      </div>
+                    )}
+                  </section>
+                  {notice && (
+                    <p role="status" className="ws-notice">
+                      {notice}
+                    </p>
+                  )}
+                  {highlights.length ? (
+                    <section className="ws-stack">
+                      <h2>可进一步探索的专业类别</h2>
+                      <div className="ws-guidance-grid">
+                        {highlights.map((item) => (
+                          <article
+                            className="ws-panel ws-stack"
+                            key={item.discipline.code}
+                          >
+                            <span className="ws-eyebrow">
+                              {item.discipline.groupName} ·{" "}
+                              {statusNames[item.status]}
+                            </span>
+                            <h3>
+                              {item.discipline.code} {item.discipline.name}
+                            </h3>
+                            <p>
+                              {item.discipline.degreeType === "academic"
+                                ? "学术学位"
+                                : "专业学位"}{" "}
+                              · 资格待核验
+                            </p>
+                            <ul>
+                              {item.reasons.map((reason, index) => (
+                                <li key={index}>{reason}</li>
+                              ))}
+                            </ul>
+                            <details>
+                              <summary>准备成本与需要确认的条件</summary>
+                              <ul>
+                                {[
+                                  ...item.preparation,
+                                  ...item.verificationNeeded,
+                                ].map((line, index) => (
+                                  <li key={index}>{line}</li>
+                                ))}
+                              </ul>
+                            </details>
+                            <button
+                              className="ws-secondary"
+                              onClick={() => {
+                                void onSelection({
+                                  confirmedMajorId: item.discipline.code,
+                                })
+                                  .then(() =>
+                                    setNotice(
+                                      `已确认 ${item.discipline.name}，可继续比较院校。`,
+                                    ),
+                                  )
+                                  .catch(setError);
+                              }}
+                            >
+                              {selections.confirmedMajorId ===
+                              item.discipline.code
+                                ? "已确认该专业"
+                                : "确认此报考专业"}
+                            </button>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ) : (
+                    <section className="ws-panel">
+                      <h2>暂时不缩小专业范围</h2>
+                      <p>
+                        当前信息不足以排出优先专业，先补充兴趣与职业目标，或从全国目录选择感兴趣的方向进一步比较。
                       </p>
-                    ))}
+                    </section>
+                  )}
+                  <section className="ws-panel">
+                    <h2>公共课诊断如何影响建议</h2>
+                    <ul>
+                      {run.assessmentSummary.observations.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                      {run.assessmentSummary.ignored.map((item) => (
+                        <li key={item.assessmentAttemptId}>{item.reason}</li>
+                      ))}
+                    </ul>
+                    <p>
+                      公共课用于识别复习任务，不用五题表现断言你适合或不适合某个专业。
+                    </p>
+                  </section>
+                  {!!run.followUpQuestions.length && (
+                    <section className="ws-panel">
+                      <h2>再回答这些问题，建议会更具体</h2>
+                      <ul>
+                        {run.followUpQuestions.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                      <button className="ws-link" onClick={onProfile}>
+                        补充个人画像
+                      </button>
+                    </section>
+                  )}
+                  <details className="ws-panel">
+                    <summary>基础探索的适用范围与目录来源</summary>
+                    <ul>
+                      {run.limitations.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                    <details>
+                      <summary>查看目录来源</summary>
+                      {run.sources.map((source) => (
+                        <p key={source.sourceId}>
+                          <a
+                            href={safeUrl(source.url)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {source.title}
+                          </a>
+                        </p>
+                      ))}
+                    </details>
                   </details>
                 </div>
-              </section>
+              </details>
             </>
           )}
           <div className="ws-actions">

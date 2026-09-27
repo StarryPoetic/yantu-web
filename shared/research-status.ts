@@ -9,6 +9,21 @@ const messages: Record<string, string> = {
   SEARCH_PROVIDER_ERROR: "搜索服务未接受本次请求，请检查密钥、余额和调用额度。",
   SEARCH_PROVIDER_INVALID: "搜索服务配置无效，请检查服务端设置。",
   RESEARCH_FOCUS_REQUIRED: "请补充兴趣或确认专业方向，再调查相关学校。",
+  RESEARCH_PROFILE_REQUIRED:
+    "请补充兴趣、职业目标与个人约束，再形成具体学校专业建议。",
+  RESEARCH_DIRECTION_NOT_ALLOWED:
+    "研究方向与已排除专业或明确的跨专业约束不符，请核对偏好后重试。",
+  INVALID_RESEARCH_PLAN: "方向规划尚未形成可核对的结果，请补充偏好后重试。",
+  UNGROUNDED_PROFILE_FIT:
+    "部分匹配理由未对应你的实际画像，已保留可核对的资料。",
+  INSUFFICIENT_PROFILE_FIT:
+    "匹配理由未充分说明你的目标与约束，暂未采用该建议。",
+  RESEARCH_EVIDENCE_EXCLUDED:
+    "资料含示例或停招信息，暂不能支持该学校专业建议。",
+  RESEARCH_PARTIAL_VALIDATION:
+    "部分内容未通过来源或画像核对，已保留其余可核对的建议。",
+  KNOWN_ADMISSION_CONFLICT:
+    "目标年度资料明确的报考条件与你的背景冲突，已移除该建议。",
   NO_WEB_EVIDENCE: "尚未取得可引用的网页资料，不能生成院校研究结论。",
   SEARCH_SNIPPETS_ONLY: "目前只有搜索摘要，尚需核对对应学校的官网原文。",
   INSUFFICIENT_RESEARCH_EVIDENCE:
@@ -24,6 +39,11 @@ const messages: Record<string, string> = {
   MODEL_TIMEOUT: "本次模型分析超时，已保留可查看的网页资料。",
   WEB_TIMEOUT: "网页读取超时。",
   WEB_EMPTY: "网页未返回可用正文。",
+  WEB_PDF_INVALID: "PDF 格式损坏、加密或暂不能解析，已保留搜索摘要。",
+  WEB_PDF_TIMEOUT: "PDF 文本解析超时，已保留搜索摘要。",
+  WEB_PDF_TOO_MANY_PAGES: "PDF 页数超过本次读取上限，尚未取得完整正文。",
+  WEB_PDF_TEXT_TOO_LARGE: "PDF 文字量超过本次读取上限，尚未取得完整正文。",
+  WEB_PDF_EMPTY: "PDF 没有可提取的文字，可能需要人工查看扫描件。",
   WEB_UNAVAILABLE: "网页暂时无法访问。",
   WEB_REDIRECT_BLOCKED: "网页跳转到了其他地址，暂未取得正文。",
 };

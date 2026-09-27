@@ -1,6 +1,58 @@
 import { ModelError } from "./deepseek.ts";
+import { isIP } from "node:net";
 
 export type SearchProvider = "bocha" | "brave";
+/** Internal research controls; never copied from browser request bodies. */
+export interface SearchOptions {
+  includeDomains?: string[];
+  count?: number;
+}
+
+export function validateSearchOptions(options: SearchOptions = {}): {
+  count: number;
+  includeDomains: string[];
+} {
+  if (
+    !options ||
+    typeof options !== "object" ||
+    Array.isArray(options) ||
+    Object.keys(options).some(
+      (key) => !["includeDomains", "count"].includes(key),
+    )
+  )
+    throw new ModelError("SEARCH_OPTIONS_INVALID");
+  const count = options.count === undefined ? 5 : options.count;
+  if (!Number.isSafeInteger(count) || count < 1 || count > 10)
+    throw new ModelError("SEARCH_OPTIONS_INVALID");
+  const domains = options.includeDomains;
+  if (
+    domains !== undefined &&
+    (!Array.isArray(domains) || !domains.length || domains.length > 10)
+  )
+    throw new ModelError("SEARCH_OPTIONS_INVALID");
+  const includeDomains = (domains ?? []).map((value) => {
+    if (typeof value !== "string")
+      throw new ModelError("SEARCH_OPTIONS_INVALID");
+    const domain = value.trim().toLowerCase();
+    const labels = domain.split(".");
+    if (
+      domain.length > 253 ||
+      labels.length < 2 ||
+      isIP(domain) ||
+      !/^[a-z]{2,63}$/.test(labels.at(-1)!) ||
+      labels.some(
+        (label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label),
+      ) ||
+      /\.(?:localhost|local|internal|invalid|test)$/.test(domain) ||
+      /^(?:edu|com|org|net|gov|ac)\.cn$/.test(domain) ||
+      /^(?:co|org|ac|gov)\.uk$/.test(domain)
+    )
+      throw new ModelError("SEARCH_OPTIONS_INVALID");
+    return domain;
+  });
+  return { count, includeDomains: [...new Set(includeDomains)] };
+}
+
 export interface SearchConfig {
   searchEnabled?: boolean;
   /** Direct module callers retain Brave compatibility; the application selects Bocha explicitly. */
@@ -67,6 +119,7 @@ export function searchRequest(
   provider: SearchProvider,
   key: string,
   query: string,
+  options: SearchOptions = {},
 ): {
   url: string;
   options: {
@@ -77,6 +130,7 @@ export function searchRequest(
     maxBytes: number;
   };
 } {
+  const { count, includeDomains } = validateSearchOptions(options);
   if (provider === "bocha")
     return {
       url: "https://api.bocha.cn/v1/web-search",
@@ -92,15 +146,21 @@ export function searchRequest(
           query,
           freshness: "noLimit",
           summary: true,
-          count: 5,
+          count,
+          ...(includeDomains.length
+            ? { include: includeDomains.join("|") }
+            : {}),
         }),
         maxBytes: 100000,
       },
     };
   if (provider !== "brave") throw new ModelError("SEARCH_PROVIDER_INVALID");
   const url = new URL("https://api.search.brave.com/res/v1/web/search");
-  url.searchParams.set("q", query);
-  url.searchParams.set("count", "5");
+  const domainQuery = includeDomains
+    .map((domain) => `site:${domain}`)
+    .join(" OR ");
+  url.searchParams.set("q", domainQuery ? `${query} (${domainQuery})` : query);
+  url.searchParams.set("count", String(count));
   url.searchParams.set("safesearch", "strict");
   url.searchParams.set("search_lang", "zh-hans");
   return {
@@ -124,7 +184,9 @@ const record = (value: unknown): value is Record<string, unknown> =>
 export function normalizeSearchResponse(
   provider: SearchProvider,
   raw: string,
+  options: SearchOptions = {},
 ): SearchHit[] {
+  const { count, includeDomains } = validateSearchOptions(options);
   let response: unknown;
   try {
     response = JSON.parse(raw);
@@ -143,8 +205,21 @@ export function normalizeSearchResponse(
     items = record(response.web) ? response.web.results : undefined;
   } else throw new ModelError("SEARCH_PROVIDER_INVALID");
   if (!Array.isArray(items)) throw new ModelError("SEARCH_INVALID_RESPONSE");
-  return items.slice(0, 5).flatMap((item) => {
+  return items.slice(0, count).flatMap((item) => {
     if (!record(item)) return [];
+    if (includeDomains.length) {
+      try {
+        const host = new URL(String(item.url)).hostname;
+        if (
+          !includeDomains.some(
+            (domain) => host === domain || host.endsWith(`.${domain}`),
+          )
+        )
+          return [];
+      } catch {
+        return [];
+      }
+    }
     const title = provider === "bocha" ? item.name : item.title;
     const excerpt =
       provider === "bocha"

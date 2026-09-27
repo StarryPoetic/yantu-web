@@ -296,3 +296,64 @@ test("signing out cancels delivery and restarted jobs are marked interrupted wit
   );
   await recovered.close();
 });
+
+test("a saved profile-based school recommendation survives refresh with admission verification still pending", async (t) => {
+  const finished = deferred();
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    generate: async (input) => {
+      await input.onProgress?.("preparing");
+      await input.onProgress?.("researching");
+      await input.onProgress?.("analyzing");
+      await input.onProgress?.("writing");
+      const report: ResearchReport = {
+        ...output(input),
+        reportVersion: "profile-research-v3",
+        recommendations: [
+          {
+            institutionName: "测试大学",
+            disciplineCode: "0301",
+            programName: "民商法学",
+            degreeType: "academic",
+            admissionStatus: "needs_verification",
+            rationale: "可作为进一步比较的方向，目标年度条件仍待核对。",
+            fitReasons: [
+              {
+                profileField: "targetMajor",
+                profileValue: "法学",
+                reason: "与明确兴趣相关。",
+              },
+              {
+                profileField: "major",
+                profileValue: "法学",
+                reason: "已有课程基础可用于准备。",
+              },
+            ],
+            tradeoffs: ["具体考试科目尚待核实。"],
+            preparation: ["核对目标年度专业目录。"],
+            uncertainties: ["当年是否招生尚未确认。"],
+            citations: ["research-1"],
+          },
+        ],
+      };
+      finished.resolve();
+      return report;
+    },
+  };
+  const { request, runId } = await fixture(t, engine);
+  const created = await request(`/guidance/${runId}/research`, "POST", {});
+  await finished.promise;
+  const latest = (await request(`/guidance/${runId}/research/latest`)).body.job;
+  assert.equal(latest.jobId, created.body.jobId);
+  assert.equal(latest.status, "completed");
+  assert.equal(latest.report.reportVersion, "profile-research-v3");
+  assert.equal(latest.report.recommendations[0].programName, "民商法学");
+  assert.equal(
+    latest.report.recommendations[0].admissionStatus,
+    "needs_verification",
+  );
+  assert.equal(latest.report.recommendations[0].fitReasons.length, 2);
+  assert.match(latest.message, /匹配理由/);
+  assert.doesNotMatch(latest.message, /资格已|条件已|录取/);
+});

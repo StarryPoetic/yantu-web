@@ -1,70 +1,30 @@
 import { useEffect, useState } from "react";
-import { Download, Globe, RefreshCw, Sparkles } from "lucide-react";
+import { Download, RefreshCw, Sparkles } from "lucide-react";
 import type { ResearchJob, ResearchEngine } from "../../server/routes/research";
-import type { ResearchReport } from "../../server/explanation/research";
 import type { GuidanceRun } from "../../server/disciplines/types";
-import { request } from "./api";
-import { ErrorNotice, safeUrl } from "./ui";
-import "./research.css";
 import { researchReason } from "../../shared/research-status";
+import { request } from "./api";
+import { ErrorNotice } from "./ui";
+import { ResearchReportView } from "./ResearchReportView";
+import { ResearchProgress } from "./ResearchProgress";
+import { downloadResearchReport } from "./research-report";
+import "./research.css";
 
 type Job = ResearchJob & { needsRefresh?: boolean; refreshReasons?: string[] };
 type Readiness = ReturnType<ResearchEngine["getReadiness"]>;
-const steps = [
-  ["preparing", "整理画像与测评"],
-  ["researching", "联网调查院校与专业"],
-  ["analyzing", "模型综合分析"],
-  ["writing", "核对依据并生成报告"],
-] as const;
 const active = (job: Job | null) =>
   !!job && ["queued", "running"].includes(job.status);
-
-function download(report: ResearchReport) {
-  const content = [
-    "# 研途 · 联网研究报告",
-    report.generatedAt,
-    "",
-    report.summary,
-    "",
-    "## 检索到的资料",
-    ...report.facts.map(
-      (fact) => `- ${fact.text} [${fact.citations.join(", ")}]`,
-    ),
-    "",
-    "## 建议比较的学校与专业",
-    ...report.recommendations.flatMap((item) => [
-      `### ${item.institutionName} · ${item.disciplineCode}`,
-      item.rationale,
-      ...item.preparation.map((text) => `- 准备：${text}`),
-      ...item.uncertainties.map((text) => `- 待核实：${text}`),
-      `参考：${item.citations.join(", ")}`,
-      "",
-    ]),
-    "## 适用范围",
-    ...report.limitations.map((text) => `- ${text}`),
-    "",
-    "## 来源",
-    ...report.sources.map(
-      (source) =>
-        `- [${source.id}] ${source.title}\n  ${source.url}\n  获取时间：${source.retrievedAt}`,
-    ),
-  ].join("\n");
-  const url = URL.createObjectURL(
-    new Blob([content], { type: "text/plain;charset=utf-8" }),
-  );
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "研途-联网研究报告.txt";
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export function ResearchPanel({
   run,
   stale,
+  onProfile,
+  onExplore,
 }: {
   run: GuidanceRun;
   stale: boolean;
+  onProfile: () => void;
+  onExplore: () => void;
 }) {
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -79,7 +39,7 @@ export function ResearchPanel({
     void Promise.all([
       request<Readiness>("/research/status", { signal: controller.signal }),
       request<{ job: Job | null }>(
-        `/guidance/${run.guidanceRunId}/research/latest`,
+        "/guidance/" + run.guidanceRunId + "/research/latest",
         { signal: controller.signal },
       ),
     ])
@@ -104,7 +64,7 @@ export function ResearchPanel({
     let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
       try {
-        const result = await request<Job>(`/research-jobs/${job.jobId}`, {
+        const result = await request<Job>("/research-jobs/" + job.jobId, {
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
@@ -125,7 +85,7 @@ export function ResearchPanel({
     setError(null);
     try {
       const result = await request<Job>(
-        `/guidance/${run.guidanceRunId}/research`,
+        "/guidance/" + run.guidanceRunId + "/research",
         { method: "POST", body: {} },
       );
       setJob(result.data);
@@ -137,52 +97,60 @@ export function ResearchPanel({
   }
   const outdated = stale || !!job?.needsRefresh;
   const report = job?.report;
-  const index =
-    job?.stage === "done"
-      ? steps.length
-      : steps.findIndex(([stage]) => stage === job?.stage);
+  const serviceNotice = readiness && !readiness.ready && (
+    <div className="research-service-notice">
+      <strong>报告服务尚未准备好</strong>
+      <ul>
+        {readiness.reasons.map((reason) => (
+          <li key={reason}>{researchReason(reason)}</li>
+        ))}
+      </ul>
+      <p>
+        可展开“查看基础探索与专业选择”继续浏览；服务配置完成后，点击“重新检查服务”即可继续。
+      </p>
+    </div>
+  );
   return (
     <section className="ws-panel research-panel" aria-label="联网研究报告">
-      <div className="ws-between">
-        <div>
-          <span className="ws-eyebrow">
-            <Globe size={16} /> 从个人情况到真实院校资料
+      <div className="research-panel-heading">
+        <h2>
+          {report?.recommendations.length
+            ? "你的院校与专业建议"
+            : "生成学校与专业建议"}
+        </h2>
+        {report && (
+          <span className="ws-muted">
+            {report.status === "completed" ? "研究报告" : "部分研究报告"}
           </span>
-          <h2>联网调研与深度推荐报告</h2>
-        </div>
-        <Sparkles size={26} />
+        )}
       </div>
-      <p>
-        结合已保存的个人画像、公共课测评和当前目标，搜索学校与专业资料，再由思考模型给出有来源、可核对的建议。
-      </p>
+      {!report && (
+        <p>
+          结合你的本科背景、跨专业意愿、学习目标和现实条件，比较具体学校与专业，并说明理由和准备成本。
+        </p>
+      )}
       <ErrorNotice
         error={error}
         onReload={() => setReload((value) => value + 1)}
       />
       {loading && <p role="status">正在读取报告和服务状态…</p>}
-      {readiness && !readiness.ready && (
-        <div className="ws-notice">
-          <div>
-            <strong>报告服务尚未准备好</strong>
-            <ul>
-              {readiness.reasons.map((reason) => (
-                <li key={reason}>{researchReason(reason)}</li>
-              ))}
-            </ul>
-            <p>
-              下方基础探索建议仍可查看；服务配置完成后，点击“重新检查服务”即可继续。
-            </p>
-          </div>
-        </div>
-      )}
       {outdated && (
-        <p className="ws-notice" role="status">
+        <p className="research-stale" role="status">
           画像、测评、目标或资料已更新。已有报告仅供回顾，请先重新生成基础结论，再进行联网调研。
         </p>
       )}
-      <div className="ws-actions">
+      {report && (
+        <ResearchReportView
+          report={report}
+          run={run}
+          onProfile={onProfile}
+          onExplore={onExplore}
+        />
+      )}
+      {!report && serviceNotice}
+      <div className="ws-actions research-actions">
         <button
-          className="ws-primary"
+          className={report ? "ws-secondary" : "ws-primary"}
           onClick={() => void generate()}
           disabled={
             loading || starting || running || !readiness?.ready || outdated
@@ -206,142 +174,31 @@ export function ResearchPanel({
           {running ? "刷新生成进度" : "重新检查服务"}
         </button>
         {report && report.status !== "blocked" && (
-          <button className="ws-secondary" onClick={() => download(report)}>
+          <button
+            className="ws-secondary"
+            onClick={() => downloadResearchReport(report, run, outdated)}
+          >
             <Download size={16} />
             下载研究报告
           </button>
         )}
       </div>
-      {readiness?.ready && (
-        <small className="ws-muted">
-          研究模型：{readiness.model.name} ·
-          已启用思考。点击生成后会调用模型与网页检索服务。
-        </small>
+      {!report && readiness?.ready && (
+        <small className="ws-muted">点击生成后会使用联网搜索与模型服务。</small>
       )}
-      {job && (
-        <div className="research-progress" aria-label="报告生成状态">
-          <div className="ws-between">
-            <strong role="status">{job.message}</strong>
-            <span>{job.progress}%</span>
-          </div>
-          <progress max={100} value={job.progress} aria-label="报告阶段进度" />
-          <ol>
-            {steps.map(([stage, name], position) => (
-              <li
-                key={stage}
-                className={
-                  position < index
-                    ? "is-complete"
-                    : job.stage === stage
-                      ? "is-current"
-                      : ""
-                }
-                aria-current={job.stage === stage ? "step" : undefined}
-              >
-                <span>{position < index ? "✓" : position + 1}</span>
-                {name}
-              </li>
-            ))}
-          </ol>
-          <small className="ws-muted">
-            进度随实际阶段更新；等待模型分析时会停留在当前阶段。离开页面后，可返回查看任务进度。
-          </small>
-          {!!job.events.length && (
-            <details>
-              <summary>查看已完成的处理步骤</summary>
-              <ul>
-                {job.events.map((event, i) => (
-                  <li key={i}>
-                    {new Date(event.at).toLocaleTimeString("zh-CN")} ·{" "}
-                    {event.message}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
-      )}
-      {report && report.status !== "blocked" && (
-        <div className="research-report">
-          <div className="ws-between">
-            <h3>
-              {report.status === "completed" ? "研究报告" : "部分研究报告"}
-            </h3>
-            <span className="ws-pill">
-              {report.searched ? "已取得网页检索资料" : "未完成网页检索"}
-            </span>
-          </div>
-          <p className="research-summary">{report.summary}</p>
-          {report.reason && (
-            <p className="ws-notice">{researchReason(report.reason)}</p>
-          )}
-          {!!report.recommendations.length && (
-            <>
-              <h3>建议进一步比较</h3>
-              <div className="ws-guidance-grid">
-                {report.recommendations.map((item, i) => (
-                  <article className="ws-panel" key={i}>
-                    <h4>
-                      {item.institutionName} ·{" "}
-                      {run.directions.find(
-                        (direction) =>
-                          direction.discipline.code === item.disciplineCode,
-                      )?.discipline.name ?? item.disciplineCode}
-                    </h4>
-                    <p>{item.rationale}</p>
-                    <h5>准备建议</h5>
-                    <ul>
-                      {item.preparation.map((text, j) => (
-                        <li key={j}>{text}</li>
-                      ))}
-                    </ul>
-                    <h5>需要进一步确认</h5>
-                    <ul>
-                      {item.uncertainties.map((text, j) => (
-                        <li key={j}>{text}</li>
-                      ))}
-                    </ul>
-                    <small>参考来源：{item.citations.join("、")}</small>
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
-          {!!report.facts.length && (
-            <>
-              <h3>检索资料摘录</h3>
-              <ul>
-                {report.facts.map((fact, i) => (
-                  <li key={i}>
-                    {fact.text} <small>[{fact.citations.join("、")}]</small>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          <h3>结论的适用范围</h3>
-          <ul>
-            {report.limitations.map((text, i) => (
-              <li key={i}>{text}</li>
-            ))}
-          </ul>
-          <details className="research-sources" open>
-            <summary>来源与获取时间 · {report.sources.length} 条</summary>
-            {report.sources.map((source) => (
-              <article key={source.id}>
-                <a href={safeUrl(source.url)} target="_blank" rel="noreferrer">
-                  [{source.id}] {source.title}
-                </a>
-                <small>
-                  {source.kind === "official_page" ? "官网原文" : "搜索摘要"} ·{" "}
-                  {new Date(source.retrievedAt).toLocaleString("zh-CN")}
-                </small>
-                <p>{source.excerpt}</p>
-              </article>
-            ))}
+      {job &&
+        (report ? (
+          <details className="research-job-details">
+            <summary>生成过程与服务信息</summary>
+            <ResearchProgress job={job} />
+            {serviceNotice}
+            {readiness?.ready && (
+              <p>使用模型：{readiness.model.name}，已启用思考。</p>
+            )}
           </details>
-        </div>
-      )}
+        ) : (
+          <ResearchProgress job={job} />
+        ))}
     </section>
   );
 }

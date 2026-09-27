@@ -7,7 +7,9 @@ import {
   normalizeSearchResponse,
   searchConfigFromEnvironment,
   searchRequest,
+  validateSearchOptions,
 } from "../../server/explanation/search.ts";
+import type { SearchOptions } from "../../server/explanation/search.ts";
 
 const input = {
   subjectId: "student-a",
@@ -260,4 +262,192 @@ test("shared search ledger counts failed sends across consumers/providers, survi
       () => createSearchBudget({ searchDailyRequestsGlobal: limit }),
       { code: "INVALID_BUDGET_CONFIG" },
     );
+});
+
+test("research controls use native Bocha domains and bounded count; Brave uses query sites without credential crossover", () => {
+  const options = {
+    count: 10,
+    includeDomains: ["SHNU.edu.cn", "grad.example.edu.cn", "shnu.edu.cn"],
+  };
+  const bocha = searchRequest("bocha", "bocha-only", input.question, options);
+  assert.deepEqual(JSON.parse(bocha.options.body!), {
+    query: input.question,
+    freshness: "noLimit",
+    summary: true,
+    count: 10,
+    include: "shnu.edu.cn|grad.example.edu.cn",
+  });
+  assert.equal(bocha.options.headers.Authorization, "Bearer bocha-only");
+  assert.equal(bocha.options.body!.includes("bocha-only"), false);
+  assert.equal(bocha.url.includes("bocha-only"), false);
+  const brave = searchRequest("brave", "brave-only", input.question, options);
+  const url = new URL(brave.url);
+  assert.equal(url.searchParams.get("count"), "10");
+  assert.equal(
+    url.searchParams.get("q"),
+    `${input.question} (site:shnu.edu.cn OR site:grad.example.edu.cn)`,
+  );
+  assert.equal(brave.options.headers.Authorization, undefined);
+  assert.equal(brave.options.headers["X-Subscription-Token"], "brave-only");
+  assert.equal(brave.url.includes("brave-only"), false);
+});
+
+test("normalized results obey requested count and concrete domain boundaries for both providers", () => {
+  const hits = Array.from({ length: 12 }, (_, index) => ({
+    ...hit,
+    url: `https://law.example.edu.cn/${index}`,
+  }));
+  for (const provider of ["bocha", "brave"] as const) {
+    const raw = (items: typeof hits) =>
+      JSON.stringify(
+        provider === "bocha"
+          ? bochaResults(items)
+          : {
+              web: {
+                results: items.map((item) => ({
+                  ...item,
+                  title: item.name,
+                  description: item.snippet,
+                })),
+              },
+            },
+      );
+    assert.equal(normalizeSearchResponse(provider, raw(hits)).length, 5);
+    assert.equal(
+      normalizeSearchResponse(provider, raw(hits), { count: 10 }).length,
+      10,
+    );
+    assert.equal(
+      normalizeSearchResponse(provider, raw(hits), { count: 3 }).length,
+      3,
+    );
+    const urls = [
+      "https://example.edu.cn/root",
+      "https://law.example.edu.cn/child",
+      "https://evilexample.edu.cn/",
+      "https://example.edu.cn.attacker.com/",
+      "https://training.example.com/",
+      "not a URL",
+    ];
+    assert.deepEqual(
+      normalizeSearchResponse(
+        provider,
+        raw(urls.map((url) => ({ ...hit, url }))),
+        {
+          count: 10,
+          includeDomains: ["example.edu.cn"],
+        },
+      ).map((item) => item.url),
+      urls.slice(0, 2),
+    );
+  }
+});
+
+test("internal domain/count options preserve URL safety and do not authorize fetching search results", async () => {
+  const requests: Array<{ url: string; options: Parameters<WebReader>[1] }> =
+    [];
+  const module = createWebAnswerModule({
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "private-key-for-test",
+    reader: async (url, options) => {
+      requests.push({ url, options });
+      return {
+        contentType: "application/json",
+        text: JSON.stringify(
+          bochaResults([
+            ...Array.from({ length: 7 }, (_, index) => ({
+              ...hit,
+              url: `https://law.example.edu.cn/${index}`,
+            })),
+            { ...hit, url: "https://law.example.edu.cn.attacker.com/" },
+            { ...hit, url: "http://law.example.edu.cn/plaintext" },
+            { ...hit, url: "https://credentials@law.example.edu.cn/" },
+          ]),
+        ),
+      };
+    },
+  });
+  const result = await module.answer(input, {
+    sourcesOnly: true,
+    search: { includeDomains: ["example.edu.cn"], count: 10 },
+  });
+  assert.equal(result.sources.length, 7);
+  assert.equal(result.searched, true);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, "https://api.bocha.cn/v1/web-search");
+  assert.equal(JSON.parse(requests[0].options.body!).count, 10);
+  assert.equal(JSON.stringify(result).includes("private-key-for-test"), false);
+
+  // Extra untyped request fields cannot become internal options. HTTP routes additionally reject them.
+  const untrusted = { ...input, includeDomains: ["attacker.com"], count: 10 };
+  await module.answer(untrusted, { sourcesOnly: true });
+  const ordinary = JSON.parse(requests[1].options.body!);
+  assert.equal(ordinary.count, 5);
+  assert.equal(ordinary.include, undefined);
+});
+
+test("invalid internal search options fail before budget reservation or any request", async () => {
+  let requests = 0,
+    claims = 0;
+  const module = createWebAnswerModule({
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "never-sent",
+    searchBudget: {
+      claim: () => {
+        claims++;
+        return true;
+      },
+    },
+    reader: async () => {
+      requests++;
+      throw new Error("must not send");
+    },
+  });
+  const invalid: unknown[] = [
+    null,
+    [],
+    { count: 0 },
+    { count: 11 },
+    { count: 1.5 },
+    { count: NaN },
+    { count: null },
+    { count: "10" },
+    { headers: {} },
+    { includeDomains: [] },
+    { includeDomains: "shnu.edu.cn" },
+    { includeDomains: Array(11).fill("shnu.edu.cn") },
+  ];
+  for (const domain of [
+    "edu.cn",
+    "com.cn",
+    "co.uk",
+    "cn",
+    "*.edu.cn",
+    "https://shnu.edu.cn",
+    "shnu.edu.cn/path",
+    "shnu.edu.cn:443",
+    "127.0.0.1",
+    "[::1]",
+    "localhost",
+    "secret.local",
+    "a..cn",
+    "-school.edu.cn",
+    "school.edu.cn.",
+    "school.edu.cn|attacker.com",
+    "school.edu.cn\nsite:attacker.com",
+  ])
+    invalid.push({ includeDomains: [domain] });
+  for (const options of invalid) {
+    assert.throws(() => validateSearchOptions(options as SearchOptions), {
+      code: "SEARCH_OPTIONS_INVALID",
+    });
+    await assert.rejects(
+      module.answer(input, { search: options as SearchOptions }),
+      { code: "SEARCH_OPTIONS_INVALID" },
+    );
+  }
+  assert.equal(claims, 0);
+  assert.equal(requests, 0);
 });

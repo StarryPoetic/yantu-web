@@ -8,10 +8,12 @@ import {
   createSearchBudget,
   normalizeSearchResponse,
   searchRequest,
+  validateSearchOptions,
 } from "./search.ts";
-import type { SearchConfig } from "./search.ts";
+import type { SearchConfig, SearchOptions } from "./search.ts";
 import { createPublicDohResolver } from "./dns.ts";
 import type { AddressResolver, DnsMode } from "./dns.ts";
+import { pdfText, pdfTextLimits } from "./pdf-text.ts";
 
 export interface WebSource {
   id: string;
@@ -51,6 +53,10 @@ export type WebReader = (
     timeoutMs?: number;
     method?: "GET" | "POST";
     body?: string;
+    /** Server-only opt-in; normal question answering remains text-only. */
+    allowPdf?: boolean;
+    /** Separate PDF ceiling never increases HTML/JSON/text limits. */
+    maxPdfBytes?: number;
   },
 ) => Promise<WebReadResult>;
 export interface WebAnswerConfig extends ExplanationConfig, SearchConfig {
@@ -158,6 +164,13 @@ export function createHttpsReader(
     const url = validateOutboundUrl(value, options.allowedHosts);
     const timeoutMs = Math.min(options.timeoutMs ?? 8000, 10000);
     const maxBytes = Math.min(options.maxBytes ?? 512000, 1000000);
+    const maxPdfBytes = options.maxPdfBytes ?? maxBytes;
+    if (
+      !Number.isInteger(maxPdfBytes) ||
+      maxPdfBytes < 1 ||
+      maxPdfBytes > pdfTextLimits.maxBytes
+    )
+      throw new ModelError("WEB_PDF_LIMIT_INVALID");
     const startedAt = Date.now();
     let dnsTimer: ReturnType<typeof setTimeout> | undefined;
     const address = await Promise.race([
@@ -169,9 +182,15 @@ export function createHttpsReader(
         );
       }),
     ]).finally(() => clearTimeout(dnsTimer));
-    return new Promise((resolve, reject) => {
+    const downloaded = await new Promise<{
+      bytes: Buffer;
+      contentType: string;
+    }>((resolve, reject) => {
       let settled = false;
-      const finish = (error?: Error, result?: WebReadResult) => {
+      const finish = (
+        error?: Error,
+        result?: { bytes: Buffer; contentType: string },
+      ) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
@@ -185,7 +204,7 @@ export function createHttpsReader(
           method: options.method ?? "GET",
           servername: url.hostname,
           headers: {
-            Accept: "text/html,text/plain,application/json",
+            Accept: `text/html,text/plain,application/json${options.allowPdf ? ",application/pdf" : ""}`,
             "Accept-Encoding": "identity",
             "User-Agent": "YantuEvidence/1.0",
             ...options.headers,
@@ -211,9 +230,12 @@ export function createHttpsReader(
           }
           const contentType = response.headers["content-type"] ?? "";
           if (
-            !/^(text\/(html|plain)|application\/json)(;|$)/i.test(
+            (!/^(text\/(html|plain)|application\/json)(;|$)/i.test(
               contentType,
-            ) ||
+            ) &&
+              !(
+                options.allowPdf && /^application\/pdf(;|$)/i.test(contentType)
+              )) ||
             (response.headers["content-encoding"] &&
               response.headers["content-encoding"] !== "identity")
           ) {
@@ -221,7 +243,11 @@ export function createHttpsReader(
             finish(new ModelError("WEB_FORMAT_UNSUPPORTED"));
             return;
           }
-          if (Number(response.headers["content-length"]) > maxBytes) {
+          const responseMaxBytes =
+            options.allowPdf && /^application\/pdf(;|$)/i.test(contentType)
+              ? maxPdfBytes
+              : maxBytes;
+          if (Number(response.headers["content-length"]) > responseMaxBytes) {
             response.destroy();
             finish(new ModelError("WEB_TOO_LARGE"));
             return;
@@ -229,15 +255,16 @@ export function createHttpsReader(
           const chunks: Buffer[] = [];
           let length = 0;
           response.on("data", (chunk: Buffer) => {
+            if (settled) return;
             length += chunk.length;
-            if (length > maxBytes) {
+            if (length > responseMaxBytes) {
               response.destroy();
               finish(new ModelError("WEB_TOO_LARGE"));
             } else chunks.push(chunk);
           });
           response.on("end", () =>
             finish(undefined, {
-              text: Buffer.concat(chunks).toString("utf8"),
+              bytes: Buffer.concat(chunks),
               contentType,
             }),
           );
@@ -254,6 +281,15 @@ export function createHttpsReader(
       request.on("error", () => finish(new ModelError("WEB_UNAVAILABLE")));
       request.end(options.body);
     });
+    const isPdf = /^application\/pdf(;|$)/i.test(downloaded.contentType);
+    if (!isPdf && downloaded.bytes.subarray(0, 5).toString("ascii") === "%PDF-")
+      throw new ModelError("WEB_FORMAT_UNSUPPORTED");
+    return {
+      contentType: downloaded.contentType,
+      text: isPdf
+        ? await pdfText(downloaded.bytes)
+        : downloaded.bytes.toString("utf8"),
+    };
   };
 }
 
@@ -320,9 +356,11 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
     },
     async answer(
       input: WebAnswerInput,
-      options: { sourcesOnly?: boolean } = {},
+      options: { sourcesOnly?: boolean; search?: SearchOptions } = {},
     ): Promise<WebAnswerResult> {
       const question = userQuestion(input);
+      // Validate internal controls before a URL read or paid search reservation.
+      validateSearchOptions(options.search);
       const generation = generations.get(input.subjectId) ?? 0;
       const sources: WebSource[] = [];
       const notices = [
@@ -366,9 +404,14 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
                 provider,
                 config.searchKey,
                 question,
+                options.search,
               );
               const response = await reader(request.url, request.options);
-              const results = normalizeSearchResponse(provider, response.text);
+              const results = normalizeSearchResponse(
+                provider,
+                response.text,
+                options.search,
+              );
               searched = true;
               for (const item of results) {
                 // Search snippets from arbitrary hosts remain display-only: never fetch them automatically.

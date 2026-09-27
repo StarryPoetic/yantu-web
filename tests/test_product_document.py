@@ -34,7 +34,19 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertFalse(re.search(r"\b(?:TODO|FIXME|TBD)\b", self.content))
 
     def test_current_requirement_version_is_declared(self):
-        self.assertRegex(self.content, r"版本：V0\.7 · 日期：\d{4}-\d{2}-\d{2}")
+        self.assertRegex(self.content, r"版本：V0\.8 · 日期：\d{4}-\d{2}-\d{2}")
+
+    def test_full_profile_school_guidance_is_separate_from_year_eligibility(self):
+        requirements = self.content.split("### 3.3. 全国专业与推荐结论", 1)[1].split("### 3.4.", 1)[0]
+        for phrase in (
+            "全国 184 条基础目录", "不能锁定研究方向", "七项偏好优先级",
+            "意向城市", "跨专业意愿", "可投入时间", "补充说明",
+            "具体学校与具体专业", "至少解释两个不同的真实画像维度",
+            "适合度建议与目标年度资格核验独立展示", "历史或年份不明",
+            "可以支持条件性推荐", "学费", "名额", "停招",
+            "不等于用户已满足全部报考条件", "完整来源", "收起", "两次模型调用",
+        ):
+            self.assertIn(phrase, requirements)
 
     def test_picker_review_target_and_research_requirements_are_explicit(self):
         for phrase in (

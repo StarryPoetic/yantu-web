@@ -40,7 +40,10 @@ export interface ResearchJob {
   };
 }
 const stages: Record<ResearchStage, { progress: number; message: string }> = {
-  preparing: { progress: 10, message: "正在整理个人画像、测评和目标信息" },
+  preparing: {
+    progress: 10,
+    message: "正在结合完整画像与测评，由模型选择研究方向",
+  },
   researching: {
     progress: 30,
     message: "正在检索院校与专业资料，读取可访问的官网原文",
@@ -170,9 +173,9 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
           const done = report.status !== "blocked";
           const message =
             report.status === "completed"
-              ? "报告已生成，请结合引用来源核对报考条件"
+              ? "学校与专业建议已生成，可逐项查看匹配理由和报考条件"
               : report.status === "partial"
-                ? "已生成部分报告，缺少的依据已在报告中说明"
+                ? "本次研究已结束，可查看候选建议及仍需补充的信息"
                 : report.summary || "生成条件尚不具备，请检查配置或补充资料";
           job = {
             ...job,

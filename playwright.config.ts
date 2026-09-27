@@ -6,7 +6,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : 4,
+  // Limit concurrent Chromium loads on Windows to avoid local network buffer exhaustion.
+  workers: process.env.CI || process.platform === "win32" ? 2 : 4,
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:4187",
