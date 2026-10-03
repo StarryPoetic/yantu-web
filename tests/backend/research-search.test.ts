@@ -128,9 +128,10 @@ test("missing official domains use a bounded alternate-city query and cancellati
     onProgress: async () => {},
   };
   const result = await searchResearchSources(input);
-  assert.equal(questions.length, 2);
+  assert.equal(questions.length, 6);
   assert.match(questions[0], /^上海 /);
   assert.match(questions[1], /^杭州 /);
+  assert.equal(new Set(questions).size, 6);
   assert.equal(result.sources.length, 0);
   await assert.rejects(
     searchResearchSources({
@@ -141,7 +142,7 @@ test("missing official domains use a bounded alternate-city query and cancellati
     }),
     /cancelled/,
   );
-  assert.equal(questions.length, 2);
+  assert.equal(questions.length, 6);
 });
 
 test("model school hints guide retrieval but never create evidence or recommendations", async () => {
@@ -169,10 +170,12 @@ test("model school hints guide retrieval but never create evidence or recommenda
     schoolHints: new Map([[discipline.code, ["甲师范大学", "乙师范大学"]]]),
     onProgress: async () => {},
   });
-  assert.equal(queries[0], "甲师范大学 官网");
+  assert.equal(queries[0], "甲师范大学 教育学 硕士");
   assert.match(queries[1], /^乙师范大学 教育学 硕士/);
   assert.deepEqual(result.sources, []);
   assert.equal(result.sourceDirections.size, 0);
+  assert.equal(queries.length, 6);
+  assert.equal(new Set(queries).size, 6);
 });
 
 test("a mentioned official domain is only a search clue, not a fetched URL or invented source", async () => {
@@ -222,4 +225,93 @@ test("a mentioned official domain is only a search clue, not a fetched URL or in
   assert.equal(result.sources.length, 1);
   assert.equal(result.sources[0].url, "https://directory.example.org/school");
   assert.equal(result.sources[0].kind, "search_snippet");
+});
+
+test("a useful first school leads to the second hint and preserves both schools before duplicate pages", async () => {
+  const discipline = getDisciplineCatalog().items.find(
+    (item) => item.code === "0401",
+  )!;
+  const requests: Record<string, unknown>[] = [];
+  const web = createWebAnswerModule({
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "test-only",
+    searchDailyRequestsPerUser: 6,
+    reader: async (_url, options) => {
+      const body = JSON.parse(options.body!);
+      requests.push(body);
+      const second = body.query.startsWith("乙大学");
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({
+          code: 200,
+          data: {
+            webPages: {
+              value: Array.from({ length: 10 }, (_, index) => ({
+                name: `${second ? "乙大学" : "甲大学"}教育学硕士培养方案`,
+                url: `https://grad.${second ? "second" : "first"}.edu.cn/master/${index}`,
+                summary: "040101 教育学原理硕士培养与招生专业目录",
+              })),
+            },
+          },
+        }),
+      };
+    },
+  });
+  const result = await searchResearchSources({
+    web,
+    subjectId: "synthetic",
+    disciplines: [discipline],
+    regions: ["上海", "杭州"],
+    schoolHints: new Map([[discipline.code, ["甲大学", "乙大学"]]]),
+    onProgress: async () => {},
+  });
+  assert.equal(requests.length, 6);
+  assert.equal(requests[0].query, "甲大学 教育学 硕士");
+  assert.equal(requests[1].query, "乙大学 教育学 硕士");
+  assert.equal(requests[1].include, undefined);
+  assert.equal(
+    new Set(
+      requests.map(({ query, include }) => JSON.stringify([query, include])),
+    ).size,
+    6,
+  );
+  assert.deepEqual(
+    result.sources.slice(0, 2).map((item) => new URL(item.url).hostname),
+    ["grad.first.edu.cn", "grad.second.edu.cn"],
+  );
+  assert.ok(result.sources.every((item) => item.kind === "search_snippet"));
+  assert.equal(result.sources.length, 12);
+});
+
+test("cancellation after a search prevents all remaining discovery requests", async () => {
+  const discipline = getDisciplineCatalog().items.find(
+    (item) => item.code === "0401",
+  )!;
+  let searches = 0;
+  const web = createWebAnswerModule({
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "test-only",
+    reader: async () => {
+      searches++;
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({ code: 200, data: { webPages: { value: [] } } }),
+      };
+    },
+  });
+  await assert.rejects(
+    searchResearchSources({
+      web,
+      subjectId: "synthetic",
+      disciplines: [discipline],
+      regions: [],
+      onProgress: async () => {
+        if (searches) throw new Error("cancelled");
+      },
+    }),
+    /cancelled/,
+  );
+  assert.equal(searches, 1);
 });

@@ -2,7 +2,12 @@ import type { ResearchReport } from "../../server/explanation/research";
 import type { GuidanceRun } from "../../server/disciplines/types";
 import { researchReason } from "../../shared/research-status";
 import { safeUrl } from "./ui";
-import { admissionLabel, profileLabel, programName } from "./research-report";
+import {
+  admissionLabel,
+  profileLabel,
+  programName,
+  type researchOutcome,
+} from "./research-report";
 
 function SourceLinks({
   ids,
@@ -34,16 +39,16 @@ export function ResearchReportView({
   report,
   run,
   onProfile,
-  onExplore,
+  outcome,
 }: {
   report: ResearchReport;
   run: GuidanceRun;
   onProfile: () => void;
-  onExplore: () => void;
+  outcome: ReturnType<typeof researchOutcome>;
 }) {
   const hasRecommendations = report.recommendations.length > 0;
   const legacy =
-    report.reportVersion !== "profile-research-v3" ||
+    report.reportVersion !== "profile-research-v4" ||
     report.recommendations.some(
       (item) => !item.programName || !item.fitReasons?.length,
     );
@@ -152,9 +157,13 @@ export function ResearchReportView({
             </p>
           )}
         </>
-      ) : (
+      ) : outcome !== "failure" ? (
         <section className="research-empty" aria-label="暂无学校推荐">
-          <h3>还没有足够依据给出具体学校</h3>
+          <h3>
+            {outcome === "profile"
+              ? "补充这些信息后继续研究"
+              : "本次尚未找到足够的学校依据"}
+          </h3>
           {legacy && (
             <p className="research-legacy" role="status">
               这是旧版报告。点击下方“重新调研并生成报告”，可按完整画像重新调查学校与具体专业。
@@ -163,7 +172,7 @@ export function ResearchReportView({
           <p>
             {report.reason
               ? researchReason(report.reason)
-              : "本次没有取得可支持学校与具体专业建议的资料，可以补充意向后再试。"}
+              : "本次没有取得可支持学校与具体专业建议的资料。你的画像已保存，可以重新发起研究。"}
           </p>
           {!!report.followUpQuestions?.length && (
             <ul>
@@ -172,19 +181,26 @@ export function ResearchReportView({
               ))}
             </ul>
           )}
-          <div className="ws-actions">
-            <button className="ws-secondary" onClick={onProfile}>
-              补充个人情况
-            </button>
-            <button className="ws-link" onClick={onExplore}>
-              浏览专业与院校
-            </button>
-          </div>
+          {outcome === "profile" ? (
+            <div className="ws-actions">
+              <button className="ws-secondary" onClick={onProfile}>
+                补充个人情况
+              </button>
+            </div>
+          ) : (
+            <p>
+              你无需先列出目标学校。可点击下方“重新调研并生成报告”，由系统继续检索与比较。
+            </p>
+          )}
         </section>
-      )}
+      ) : null}
       <div className="research-supporting-details">
         <details>
-          <summary>综合分析与适用范围</summary>
+          <summary>
+            {outcome === "failure"
+              ? "查看失败详情与已取得的资料"
+              : "综合分析与适用范围"}
+          </summary>
           <p className="research-summary">{report.summary}</p>
           {hasRecommendations && report.reason && (
             <p>{researchReason(report.reason)}</p>

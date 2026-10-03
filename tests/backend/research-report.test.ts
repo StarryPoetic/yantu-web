@@ -165,7 +165,7 @@ function setup(
   const adapter: ModelAdapter = {
     async complete(messages, options) {
       const planning = messages[0].content.includes(
-        "research-direction-plan-v3",
+        "research-direction-plan-v4",
       );
       (planning ? planningCalls : calls).push({ messages, options });
       const custom = planning ? settings.planningModel : settings.model;
@@ -246,7 +246,7 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
     },
   });
   assert.equal(report.status, "completed");
-  assert.equal(report.reportVersion, "profile-research-v3");
+  assert.equal(report.reportVersion, "profile-research-v4");
   assert.equal(report.recommendations[0].programName, "法学理论");
   assert.equal(report.recommendations[0].degreeType, "academic");
   assert.equal(report.recommendations[0].admissionStatus, "current_evidence");
@@ -264,9 +264,7 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
   assert.equal(planning.context.profile.priorities["就业机会"], 90);
   assert.equal(planning.context.profile.university, "本科教育背景大学");
   for (const request of [...planningCalls, ...calls]) {
-    assert.equal(request.options?.maxOutputTokens, 12000);
     assert.equal(request.options?.model, "deepseek-v4-pro");
-    assert.equal(request.options?.reasoningEffort, "high");
     const sent = JSON.stringify(request.messages);
     assert.ok(sent.includes("阅读理解"));
     assert.ok(sent.includes("私密补充信息"));
@@ -278,10 +276,16 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
       assert.equal(sent.includes(secret), false);
     assert.ok(sent.length < 24000);
   }
+  assert.equal(planningCalls[0].options?.thinking, false);
+  assert.equal(planningCalls[0].options?.maxOutputTokens, 4096);
+  assert.equal(planningCalls[0].options?.timeoutMs, 30000);
+  assert.equal(calls[0].options?.thinking, true);
+  assert.equal(calls[0].options?.maxOutputTokens, 12000);
+  assert.equal(calls[0].options?.reasoningEffort, "high");
   const queries = events
     .filter((event) => new URL(event.url).hostname === "api.search.brave.com")
     .map((event) => new URL(event.url).searchParams.get("q")!);
-  assert.equal(queries.length, 2);
+  assert.equal(queries.length, 6);
   assert.equal(queries[0], "上海 法学 硕士");
   assert.equal(queries[0].includes("2027"), false);
   assert.match(queries[1], /法学 硕士 培养 招生.*site:example\.edu\.cn/);
@@ -346,6 +350,160 @@ test("mechanical background and a confirmed major cannot lock planning to underg
   assert.equal(run.inputSnapshot.confirmedMajorId, "0802");
 });
 
+test("an undecided profile without a chosen school can repair planning once and produce concrete recommendations", async () => {
+  const run = fixture();
+  run.inputSnapshot.confirmedMajorId = null;
+  Object.assign(run.inputSnapshot.profile, {
+    targetMajor: "",
+    studyGoal: "不确定，希望先探索",
+    notes: "希望从事公共法律服务",
+  });
+  const reasons = [
+    {
+      profileField: "notes",
+      profileValue: "希望从事公共法律服务",
+      reason: "法律实践方向与你的服务兴趣相关，这是方向建议。",
+    },
+    {
+      profileField: "priorities.就业机会",
+      profileValue: 90,
+      reason: "你重视就业，应进一步比较该专业的实践训练和准备投入。",
+    },
+  ];
+  let planned = 0;
+  const body = {
+    ...reportBody(),
+    recommendations: reportBody().recommendations.map((card) => ({
+      ...card,
+      fitReasons: reasons,
+    })),
+  };
+  const { module, calls } = setup({
+    body,
+    planningModel: {
+      async complete() {
+        planned++;
+        return {
+          content:
+            planned === 1
+              ? '{"directions":false}'
+              : JSON.stringify({
+                  directions: [
+                    {
+                      disciplineCode: "0301",
+                      rationale: "综合服务兴趣和就业侧重探索法律方向。",
+                      fitReasons: reasons,
+                      searchSchools: null,
+                    },
+                  ],
+                }),
+          inputTokens: 100,
+          outputTokens: 200,
+          model: "deepseek-v4-pro",
+        };
+      },
+    },
+  });
+  const messages: string[] = [];
+  const report = await module.generate({
+    subjectId: "student",
+    run,
+    onProgress: (_stage, message) => {
+      if (message) messages.push(message);
+    },
+  });
+  assert.equal(planned, 2);
+  assert.equal(calls.length, 1);
+  assert.equal(report.recommendations[0].institutionName, "示例研究大学");
+  assert.equal(report.recommendations[0].fitReasons![1].profileValue, "90");
+  assert.equal(report.status, "completed");
+  assert.ok(messages.some((message) => message.includes("自动修正")));
+  assert.equal(report.failureStage, undefined);
+});
+
+test("rejected final citations are repaired once against the original evidence", async () => {
+  let attempts = 0;
+  const { module } = setup({
+    model: {
+      async complete() {
+        attempts++;
+        const body = reportBody();
+        if (attempts === 1)
+          body.recommendations[0].citations = ["invented-source"];
+        return {
+          content: JSON.stringify(body),
+          inputTokens: 100,
+          outputTokens: 200,
+          model: "deepseek-v4-pro",
+        };
+      },
+    },
+  });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(attempts, 2);
+  assert.equal(report.status, "completed");
+  assert.deepEqual(report.recommendations[0].citations, ["research-1"]);
+});
+
+test("personal cross-major intent and historic pages cannot invent eligibility, named exams or employment advantages", async () => {
+  const body = reportBody();
+  const card = body.recommendations[0];
+  card.programName = "法学理论专业学位硕士研究生";
+  card.fitReasons.push({
+    profileField: "crossMajor",
+    profileValue: "接受跨专业",
+    reason: "用户接受跨专业，可以报考法学。",
+  });
+  card.preparation.push(
+    "数学基础薄弱，需大量时间攻克数学一",
+    "需要核对是否可以报考和是否考数学一",
+    "补充高等数学基础",
+  );
+  card.tradeoffs.push("该校就业机会较多，值得优先选择");
+  const { module } = setup({ body, reader: mockReader({ year: "2024" }) });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  const kept = report.recommendations[0];
+  assert.equal(kept.programName, "法学理论");
+  assert.equal(kept.fitReasons!.length, 2);
+  assert.equal(kept.tradeoffs!.length, 1);
+  assert.ok(kept.preparation.includes("需要核对是否可以报考和是否考数学一"));
+  assert.ok(kept.preparation.includes("补充高等数学基础"));
+  assert.ok(!kept.preparation.some((item) => item.includes("攻克数学一")));
+});
+
+test("planning failure keeps profile intact and repair progress authorization failures cannot become reports", async () => {
+  const invalid = { directions: false };
+  const failed = setup({ plan: invalid });
+  const run = fixture();
+  const snapshot = structuredClone(run);
+  const report = await failed.module.generate({ subjectId: "student", run });
+  assert.equal(failed.planningCalls.length, 2);
+  assert.equal(failed.calls.length, 0);
+  assert.equal(report.failureStage, "preparing");
+  assert.equal(report.searched, false);
+  assert.equal(report.followUpQuestions, undefined);
+  assert.deepEqual(run, snapshot);
+  const cancelled = setup({ plan: invalid });
+  const error = new Error("session revoked");
+  await assert.rejects(
+    cancelled.module.generate({
+      subjectId: "student",
+      run,
+      onProgress: (_stage, message) => {
+        if (message) throw error;
+      },
+    }),
+    (failure) => failure === error,
+  );
+  assert.equal(cancelled.planningCalls.length, 1);
+});
+
 test("optional planner school names only guide searches and cannot establish a recommendation", async () => {
   const plan = planBody();
   Object.assign(plan.directions[0], {
@@ -365,7 +523,7 @@ test("optional planner school names only guide searches and cannot establish a r
   )!;
   assert.equal(
     new URL(firstSearch.url).searchParams.get("q"),
-    "虚构候选大学 官网",
+    "虚构候选大学 法学 硕士",
   );
   assert.match(planningCalls[0].messages[0].content, /searchSchools/);
   assert.equal(report.recommendations.length, 1);
@@ -930,7 +1088,7 @@ test("retrieval rotates regions/directions within six searches, six pages and tw
       (source) =>
         source.kind === "official_page" &&
         source.excerpt.includes("法学理论") &&
-        source.excerpt.includes("版权所有"),
+        source.excerpt.includes("示例研究大学"),
     ),
   );
   const sent = JSON.parse(calls[0].messages[1].content);
@@ -1101,8 +1259,14 @@ test("both model phases use the shared token ledger and retrieval consumes the s
 });
 
 test("incomplete planning responses retain their shared budget reservation instead of being counted as free", async () => {
+  const reservation =
+    JSON.stringify(
+      (
+        await import("../../server/explanation/research-planning.ts")
+      ).planningMessages(fixture()),
+    ).length + 4096;
   const { module, planningCalls } = setup({
-    userDailyTokens: 30000,
+    userDailyTokens: reservation + 500,
     planningModel: {
       async complete() {
         throw new ModelError("INCOMPLETE_RESPONSE");

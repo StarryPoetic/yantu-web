@@ -74,7 +74,7 @@ function reportFor(
 ): ResearchReport {
   return {
     schemaVersion: 1,
-    reportVersion: "profile-research-v3",
+    reportVersion: "profile-research-v4",
     status,
     generatedAt: retrievedAt,
     guidanceRunId: run.guidanceRunId,
@@ -234,6 +234,31 @@ async function researchService(page: Page) {
         report: change ? change(report) : report,
       };
     },
+    stop(stage: ResearchStage, reason: string, withReport = true) {
+      if (!current || !run)
+        throw new Error("Start the report before stopping it.");
+      current = {
+        ...current,
+        status: withReport ? "blocked" : "failed",
+        stage,
+        progress: stages[stage].progress,
+        message: "本次研究未能完成，请查看失败原因。",
+        ...(withReport
+          ? {
+              report: {
+                ...reportFor(run, "partial"),
+                status: "blocked" as const,
+                reason,
+                recommendations: [],
+                facts: [],
+                sources: [],
+                searched: false,
+                summary: "浏览器测试：模型规划结构未通过核对。",
+              },
+            }
+          : {}),
+      };
+    },
   };
 }
 
@@ -380,8 +405,15 @@ test("手机上明确展示部分报告与搜索摘要，保留来源和适用�
   await expect(
     panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
   ).toBeVisible();
-  service.finish("partial");
+  service.finish("partial", (report) => ({
+    ...report,
+    failureStage: "analyzing",
+    reason: "MODEL_TIMEOUT",
+  }));
   await expect(panel.getByText("部分研究报告", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole("region", { name: "报告生成失败", exact: true }),
+  ).toHaveCount(0);
   await expect(panel.getByText("研究报告", { exact: true })).toHaveCount(0);
   await expect(panel.getByText(/报考条件待核验/)).toBeVisible();
   await expect(
@@ -654,7 +686,7 @@ test("跨专业画像优先展示具体学校专业、真实个人理由与成�
   expect(service.postCount()).toBe(1);
 });
 
-test("没有学校依据时简洁解释原因，保留完整排查内容并提供补充画像入口", async ({
+test("确有待补充问题时展示问题与画像入口，保留完整排查内容", async ({
   page,
 }) => {
   const service = await researchService(page);
@@ -682,7 +714,7 @@ test("没有学校依据时简洁解释原因，保留完整排查内容并提�
   });
   await expect(
     empty.getByRole("heading", {
-      name: "还没有足够依据给出具体学校",
+      name: "补充这些信息后继续研究",
       exact: true,
     }),
   ).toBeVisible();
@@ -697,7 +729,7 @@ test("没有学校依据时简洁解释原因，保留完整排查内容并提�
   await expect(panel.getByText(/测试排查详情/)).not.toBeVisible();
   await expect(
     empty.getByRole("button", { name: "浏览专业与院校", exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await panel.getByText("综合分析与适用范围", { exact: true }).click();
   await expect(panel.getByText(/测试排查详情/)).toBeVisible();
   await empty
@@ -707,6 +739,208 @@ test("没有学校依据时简洁解释原因，保留完整排查内容并提�
     "法学",
   );
   expect(service.postCount()).toBe(1);
+});
+
+test("规划技术失败显示停止阶段，刷新保留画像且仅手动重试", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const service = await researchService(page);
+  const run = await openGuidance(page);
+  service.setRun(run);
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.stop("preparing", "INVALID_RESEARCH_REPORT");
+  const failure = panel.getByRole("region", {
+    name: "报告生成失败",
+    exact: true,
+  });
+  await expect(
+    failure.getByRole("heading", { name: "系统未能完成本次报告", exact: true }),
+  ).toBeVisible();
+  await expect(
+    failure.getByText("未完成阶段：结合画像选择研究方向。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    failure.getByText(/你的个人画像仍已保存，无需重新填写/),
+  ).toBeVisible();
+  await expect(panel.getByText("部分研究报告", { exact: true })).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "补充个人情况", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "浏览专业与院校", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "下载研究报告", exact: true }),
+  ).toHaveCount(0);
+  await panel.getByText("生成过程与服务信息", { exact: true }).click();
+  await expect(panel.getByText(/本次处理已停止，不会在后台继续/)).toBeVisible();
+  await expect(
+    panel
+      .getByRole("listitem")
+      .filter({ hasText: "结合画像选择研究方向（未完成）" }),
+  ).toBeVisible();
+  await expect(panel.locator('[aria-current="step"]')).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.reload();
+  await expect(failure).toBeVisible();
+  expect(service.postCount()).toBe(1);
+  const profile = await (await page.request.get("/api/v1/me/profile")).json();
+  expect(profile.profile).toMatchObject(run.inputSnapshot.profile);
+  await panel
+    .getByRole("button", { name: "重新调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  await expect(failure).toHaveCount(0);
+  expect(service.postCount()).toBe(2);
+});
+
+for (const failureStage of [undefined, "analyzing"] as const) {
+  test(
+    (failureStage ? "明确失败阶段" : "旧 partial 完成态") +
+      "中的模型错误仍显示失败，不误称部分研究报告或缺画像",
+    async ({ page }) => {
+      const service = await researchService(page);
+      service.setRun(await openGuidance(page));
+      const panel = page.getByRole("region", {
+        name: "联网研究报告",
+        exact: true,
+      });
+      await panel
+        .getByRole("button", { name: "联网调研并生成报告", exact: true })
+        .click();
+      await expect(
+        panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+      ).toBeVisible();
+      service.finish("partial", (report) => ({
+        ...report,
+        reason: "INVALID_RESEARCH_REPORT",
+        failureStage,
+        recommendations: [],
+        followUpQuestions: ["旧结果遗留的补充问题"],
+      }));
+      await expect(
+        panel.getByRole("region", { name: "报告生成失败", exact: true }),
+      ).toBeVisible();
+      if (failureStage) {
+        await expect(
+          panel.getByText("未完成阶段：分析匹配与准备成本。", { exact: true }),
+        ).toBeVisible();
+      }
+      await expect(
+        panel.getByText("部分研究报告", { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        panel.getByText("旧结果遗留的补充问题", { exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        panel.getByRole("button", { name: "补充个人情况", exact: true }),
+      ).toHaveCount(0);
+      await panel.getByText("生成过程与服务信息", { exact: true }).click();
+      await expect(
+        panel.getByText(/本次处理已停止，不会在后台继续/),
+      ).toBeVisible();
+      await expect(panel.getByRole("progressbar")).toHaveCount(0);
+      await panel
+        .getByText("全部来源与获取时间 · 1 条", { exact: true })
+        .click();
+      await expect(
+        panel.getByRole("link", {
+          name: "研究生招生资料（浏览器测试）",
+          exact: true,
+        }),
+      ).toHaveAttribute("href", sourceUrl);
+      expect(service.postCount()).toBe(1);
+    },
+  );
+}
+
+test("画像已足但无学校证据时由系统继续调研，不要求用户先选学校", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("partial", (report) => ({
+    ...report,
+    reason: "NO_WEB_EVIDENCE",
+    recommendations: [],
+    facts: [],
+    sources: [],
+  }));
+  await expect(
+    panel.getByRole("heading", {
+      name: "本次尚未找到足够的学校依据",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(panel.getByText(/你无需先列出目标学校/)).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "补充个人情况", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "浏览专业与院校", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "重新调研并生成报告", exact: true }),
+  ).toBeEnabled();
+  await expect(panel.getByText("报告生成失败", { exact: true })).toHaveCount(0);
+  expect(service.postCount()).toBe(1);
+});
+
+test("真正缺画像的阻断状态保留补充入口，任务未生成报告时失败也可重试", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.stop("preparing", "RESEARCH_PROFILE_REQUIRED");
+  await expect(panel.getByText("需要补充信息", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "补充个人情况", exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByText("报告生成失败", { exact: true })).toHaveCount(0);
+  await panel
+    .getByRole("button", { name: "重新调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.stop("analyzing", "MODEL_UNAVAILABLE", false);
+  await expect(
+    panel.getByRole("region", { name: "报告生成失败", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText("未完成阶段：分析匹配与准备成本。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "重新调研并生成报告", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    panel.getByRole("button", { name: "补充个人情况", exact: true }),
+  ).toHaveCount(0);
 });
 
 for (const empty of [false, true]) {

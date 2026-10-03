@@ -1,5 +1,49 @@
 import type { ResearchReport } from "../../server/explanation/research";
 import type { GuidanceRun } from "../../server/disciplines/types";
+import type { ResearchJob } from "../../server/routes/research";
+
+/** Older jobs can save a technical failure as partial/done; do not mistake it for missing profile data. */
+export function researchOutcome(job: ResearchJob | null) {
+  if (!job) return "ready";
+  if (job.status === "queued" || job.status === "running") return "running";
+  const report = job.report;
+  if (report?.recommendations.length) return "recommendations";
+  if (
+    job.status === "failed" ||
+    job.status === "cancelled" ||
+    report?.failureStage
+  )
+    return "failure";
+  const reasons = report?.reason?.split(",") ?? [];
+  if (
+    reasons.some((reason) =>
+      /^(INVALID_|UNGROUNDED_|UNSUPPORTED_|MODEL_|PROVIDER_|BUDGET_|CONCURRENCY_|RATE_LIMITED$|TIMEOUT$|EVIDENCE_TOO_LARGE$|INSUFFICIENT_PROFILE_FIT$|RESEARCH_DIRECTION_NOT_ALLOWED$|SEARCH_(DISABLED|NOT_CONFIGURED|UNAVAILABLE|PROVIDER_ERROR|PROVIDER_INVALID|INVALID_RESPONSE|BUDGET_EXHAUSTED)$)/.test(
+        reason,
+      ),
+    )
+  )
+    return "failure";
+  if (
+    reasons.includes("RESEARCH_PROFILE_REQUIRED") ||
+    report?.followUpQuestions?.some((question) => question.trim())
+  )
+    return "profile";
+  const evidenceReasons = [
+    "NO_WEB_EVIDENCE",
+    "SEARCH_SNIPPETS_ONLY",
+    "INSUFFICIENT_RESEARCH_EVIDENCE",
+    "RESEARCH_EVIDENCE_EXCLUDED",
+    "RESEARCH_PARTIAL_VALIDATION",
+    "KNOWN_ADMISSION_CONFLICT",
+    "ADMISSION_EVIDENCE_NOT_APPLICABLE",
+  ];
+  if (
+    job.status === "blocked" &&
+    !reasons.some((reason) => evidenceReasons.includes(reason))
+  )
+    return "failure";
+  return "empty";
+}
 
 export type SchoolRecommendation = ResearchReport["recommendations"][number];
 const profileLabels: Record<string, string> = {

@@ -151,28 +151,28 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             subjectId: owner,
             run,
             selectedProgram,
-            onProgress: async (stage) => {
+            onProgress: async (stage, detail) => {
               live(c, run, job);
               const step = stages[stage];
               if (!step || step.progress < job.progress) return;
+              const message = detail ?? step.message;
               job = {
                 ...job,
                 status: "running",
                 stage,
                 ...step,
+                message,
                 updatedAt: now(),
-                events: [
-                  ...job.events,
-                  { stage, message: step.message, at: now() },
-                ],
+                events: [...job.events, { stage, message, at: now() }],
               };
               save();
             },
           });
           live(c, run, job);
-          const done = report.status !== "blocked";
-          const message =
-            report.status === "completed"
+          const done = report.status !== "blocked" && !report.failureStage;
+          const message = report.failureStage
+            ? report.summary
+            : report.status === "completed"
               ? "学校与专业建议已生成，可逐项查看匹配理由和报考条件"
               : report.status === "partial"
                 ? "本次研究已结束，可查看候选建议及仍需补充的信息"

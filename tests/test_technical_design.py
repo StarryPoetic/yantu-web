@@ -174,10 +174,10 @@ class TechnicalDesignTests(unittest.TestCase):
         for field in ("ResearchJob", "ResearchReport", "research-latest", "needsRefresh/refreshReasons", "valid=false"):
             self.assertIn(field, data)
 
-    def test_profile_research_v3_contract_and_budget_are_consistent(self):
+    def test_profile_research_v4_contract_and_budget_are_consistent(self):
         data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
         for field in (
-            "profile-research-v3", "researchDirections", "followUpQuestions",
+            "profile-research-v4", "failureStage", "researchDirections", "followUpQuestions",
             "programName", "degreeType", "fitReasons", "profileField", "profileValue",
             "tradeoffs", "admissionStatus", "current_evidence", "needs_verification",
         ):
@@ -190,7 +190,7 @@ class TechnicalDesignTests(unittest.TestCase):
         ):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for value in ("12000", "16384", "六次", "十二项", "历史", "条件性", "画像"):
+                for value in ("4096", "12000", "16384", "六次", "十二项", "历史", "条件性", "画像"):
                     self.assertIn(value, content)
                 for obsolete in (
                     "最多三次搜索", "最多三次检索", "最多检索三个专业方向",
@@ -220,6 +220,10 @@ class TechnicalDesignTests(unittest.TestCase):
                 for phrase in ("复用", "不是全新端到端搜索", "RESEARCH_PARTIAL_VALIDATION", "needs_verification", "模拟"):
                     self.assertIn(phrase, evidence_record)
                 self.assertNotIn("当时v2因缺2027", evidence_record)
+        for phrase in ("research-generation.ts", "最多修复一次", "非思考", "4096", "30秒", "failureStage", "校名＋专业＋硕士", "第二所学校", "具体专业的代码/句段", "实际学校标识"):
+            self.assertIn(phrase, model)
+        self.assertNotIn("第一轮有校名线索时用“校名＋官网”", model)
+        self.assertNotIn("每次默认12000输出token，两次均含思考输出", model)
         for phrase in ("allowPdf:true", "maxPdfBytes:5000000", "普通问答默认false", "pdf-parse@2.4.5", "512000", "80页", "120000字符", "独立隐藏Node子进程", "不做OCR", "NODE_OPTIONS", "WEB_PDF_TIMEOUT"):
             self.assertIn(phrase, model)
 

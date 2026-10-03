@@ -23,6 +23,36 @@ function mentionedSchoolDomains(sources: WebSource[], school?: string) {
   });
 }
 
+function hasGraduateLead(sources: WebSource[], discipline: Discipline) {
+  return sources.some((source) => {
+    const text = `${source.title} ${source.excerpt}`;
+    return (
+      !!schoolDomain(source) &&
+      /硕士|研究生(?:培养|招生|专业)/.test(text) &&
+      (text.includes(discipline.name) || text.includes(discipline.code)) &&
+      !/本科|拟录取|录取名单|博士(?:招生|专业|目录)/.test(source.title)
+    );
+  });
+}
+
+function diverseSources(sources: WebSource[], discipline: Discipline) {
+  const ranked = [...sources].sort(
+    (a, b) => sourcePriority(b, discipline) - sourcePriority(a, discipline),
+  );
+  const seen = new Set<string>();
+  const first: WebSource[] = [];
+  const rest: WebSource[] = [];
+  for (const source of ranked) {
+    const host = schoolDomain(source);
+    if (!host || seen.has(host)) rest.push(source);
+    else {
+      seen.add(host);
+      first.push(source);
+    }
+  }
+  return [...first, ...rest];
+}
+
 /** Discover schools broadly, then search their observed domains without inventing URLs. */
 export async function searchResearchSources(input: {
   web: ReturnType<typeof createWebAnswerModule>;
@@ -34,50 +64,72 @@ export async function searchResearchSources(input: {
   onProgress: () => Promise<void>;
 }) {
   const directions = input.disciplines.slice(0, 3);
-  const pools = new Map<string, WebSource[]>(
-    directions.map((item) => [item.code, []]),
-  );
+  const states = directions.map((discipline, index) => ({
+    discipline,
+    index,
+    pool: [] as WebSource[],
+    hints: [
+      ...new Set([
+        ...(index === 0 && input.selectedSchool ? [input.selectedSchool] : []),
+        ...(input.schoolHints?.get(discipline.code) ?? []),
+      ]),
+    ],
+    hintIndex: 0,
+    usedDomains: new Set<string>(),
+    broadIndex: 0,
+    attempts: 0,
+  }));
   let searched = false;
   const limitations: string[] = [];
-  for (let round = 0; round < 2; round++) {
-    for (const [index, discipline] of directions.entries()) {
-      const pool = pools.get(discipline.code)!;
-      const ranked = () =>
-        [...pool].sort(
-          (a, b) =>
-            sourcePriority(b, discipline) - sourcePriority(a, discipline),
-        );
-      const hints = input.schoolHints?.get(discipline.code) ?? [];
-      const domains = round
-        ? [
-            ...new Set([
-              ...ranked()
-                .map(schoolDomain)
-                .filter((host): host is string => !!host),
-              ...mentionedSchoolDomains(
-                pool,
-                index === 0 ? input.selectedSchool || hints[0] : hints[0],
-              ),
-            ]),
-          ].slice(0, 2)
-        : [];
-      const region =
-        input.regions[(index + round) % input.regions.length] ?? "";
-      const schoolHint =
-        (!round && index === 0 ? input.selectedSchool : undefined) ||
-        hints[round] ||
-        hints[0];
-      const question =
-        !round && schoolHint
-          ? `${schoolHint} 官网`
-          : [
-              domains.length ? "" : schoolHint || region,
-              discipline.name,
-              "硕士",
-              round ? "培养 招生" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
+  const requests = new Set<string>();
+  // A global ceiling lets one or two directions use the remaining discovery
+  // slots without raising the six-request budget or repeating failed queries.
+  while (requests.size < 6 && states.length) {
+    for (const state of states) {
+      if (requests.size >= 6) break;
+      const { discipline, pool } = state;
+      const availableDomains = [
+        ...new Set([
+          ...diverseSources(pool, discipline)
+            .map(schoolDomain)
+            .filter((host): host is string => !!host),
+          ...state.hints.flatMap((hint) => mentionedSchoolDomains(pool, hint)),
+        ]),
+      ].filter((domain) => !state.usedDomains.has(domain));
+      const nextHint = state.hints[state.hintIndex];
+      const broadenSchool =
+        !!nextHint &&
+        (!state.attempts ||
+          hasGraduateLead(pool, discipline) ||
+          !availableDomains.length);
+      const domains = broadenSchool ? [] : availableDomains.slice(0, 2);
+      let question: string;
+      if (broadenSchool) {
+        state.hintIndex++;
+        question = `${nextHint} ${discipline.name} 硕士`;
+      } else if (domains.length) {
+        domains.forEach((domain) => state.usedDomains.add(domain));
+        question = `${discipline.name} 硕士 培养 招生`;
+      } else {
+        const index = state.broadIndex++;
+        const region =
+          input.regions[(state.index + index) % input.regions.length] ?? "";
+        const focus = [
+          "",
+          "招生专业目录",
+          "培养方案",
+          "硕士点",
+          "专业介绍",
+          "招生简章",
+        ][index % 6];
+        question = [region, discipline.name, "硕士", focus]
+          .filter(Boolean)
+          .join(" ");
+      }
+      const key = JSON.stringify([question, [...domains].sort()]);
+      if (requests.has(key)) continue;
+      requests.add(key);
+      state.attempts++;
       await input.onProgress();
       const result = await input.web.answer(
         { subjectId: input.subjectId, question, search: true },
@@ -98,13 +150,9 @@ export async function searchResearchSources(input: {
       await input.onProgress();
     }
   }
-  const queues = directions.map((discipline) => ({
+  const queues = states.map(({ discipline, pool }) => ({
     code: discipline.code,
-    sources: pools
-      .get(discipline.code)!
-      .sort(
-        (a, b) => sourcePriority(b, discipline) - sourcePriority(a, discipline),
-      ),
+    sources: diverseSources(pool, discipline),
   }));
   const sources: WebSource[] = [];
   const sourceDirections = new Map<string, string>();

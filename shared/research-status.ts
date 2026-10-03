@@ -13,7 +13,10 @@ const messages: Record<string, string> = {
     "请补充兴趣、职业目标与个人约束，再形成具体学校专业建议。",
   RESEARCH_DIRECTION_NOT_ALLOWED:
     "研究方向与已排除专业或明确的跨专业约束不符，请核对偏好后重试。",
-  INVALID_RESEARCH_PLAN: "方向规划尚未形成可核对的结果，请补充偏好后重试。",
+  INVALID_RESEARCH_PLAN:
+    "模型返回的方向规划格式未通过校验，请重试生成，无需重新填写画像。",
+  INVALID_RESEARCH_REPORT:
+    "模型返回的报告格式未通过校验，请重试生成，无需先选择学校或专业。",
   UNGROUNDED_PROFILE_FIT:
     "部分匹配理由未对应你的实际画像，已保留可核对的资料。",
   INSUFFICIENT_PROFILE_FIT:

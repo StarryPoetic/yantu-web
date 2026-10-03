@@ -9,6 +9,31 @@ export interface AdmissionEvidence {
 export const isSchoolPage = (source: WebSource) =>
   source.kind === "official_page" &&
   !/(^|\.)chsi\.com\.cn$/.test(new URL(source.url).hostname);
+
+/** Restrictions belong to a programme clause, never an arbitrary following table row. */
+function programPassages(excerpt: string, programName: string) {
+  const clauses = excerpt
+    .replace(/(?=\b(?:0[1-9]|1[0-4])\d{4}\b)/g, "\n")
+    .split(/[。；;\n，,]/)
+    .map((clause) => clause.trim())
+    .filter(Boolean);
+  return clauses.flatMap((clause, index) => {
+    if (!clause.includes(programName)) return [];
+    const parts = [clause];
+    for (const next of clauses.slice(index + 1, index + 4)) {
+      // A short conditions note can sit between a programme and "本专业停招".
+      // Never cross a new code/name row or an unrecognised clause to find a restriction.
+      if (
+        !/^(?:本专业|该专业|仅限|只招收|限招|不(?:接受|接收|招收)跨专业|禁止跨专业|具体(?:条件|要求)|详细(?:条件|要求)|报考(?:条件|要求))/.test(
+          next,
+        )
+      )
+        break;
+      parts.push(next);
+    }
+    return [parts.join("；")];
+  });
+}
 export function supportsProgram(
   source: WebSource,
   institutionName: string,
@@ -105,39 +130,39 @@ export function knownAdmissionConflict(
   profile: Record<string, unknown>,
   year: string,
 ) {
-  if (admissionEvidence(source, year).admissionStatus !== "current_evidence")
+  if (
+    admissionEvidence(source, year, programName).admissionStatus !==
+    "current_evidence"
+  )
     return false;
   const major = String(profile.major ?? "").replace(/\s/g, "");
-  const position = source.excerpt.indexOf(programName);
-  if (!major || position < 0) return false;
-  const context = source.excerpt.slice(
-    Math.max(0, position - 80),
-    position + programName.length + 400,
-  );
-  const only =
-    /(?:仅限|只招收|限招)([\p{Script=Han}、（）()]{2,35}?)(?:专业)?本科(?:毕业生|背景|专业|考生)/u.exec(
-      context,
-    )?.[1];
-  if (only && !/相关|相近|大类|类|等|本校/.test(only)) {
-    const choices = only
-      .replace(/专业$/, "")
-      .split(/[、与或]/)
-      .filter(Boolean);
-    if (
-      choices.length &&
-      choices.every(
-        (choice) => !major.includes(choice) && !choice.includes(major),
+  if (!major) return false;
+  return programPassages(source.excerpt, programName).some((context) => {
+    const only =
+      /(?:仅限|只招收|限招)([\p{Script=Han}、（）()]{2,35}?)(?:专业)?本科(?:毕业生|背景|专业|考生)/u.exec(
+        context,
+      )?.[1];
+    if (only && !/相关|相近|大类|类|等|本校/.test(only)) {
+      const choices = only
+        .replace(/专业$/, "")
+        .split(/[、与或]/)
+        .filter(Boolean);
+      if (
+        choices.length &&
+        choices.every(
+          (choice) => !major.includes(choice) && !choice.includes(major),
+        )
       )
-    )
-      return true;
-  }
-  return (
-    /不(?:接受|接收|招收)跨专业|禁止跨专业/.test(context) &&
-    ![programName, discipline.name, ...discipline.aliases].some(
-      (term) =>
-        term.length >= 2 && (major.includes(term) || term.includes(major)),
-    )
-  );
+        return true;
+    }
+    return (
+      /不(?:接受|接收|招收)跨专业|禁止跨专业/.test(context) &&
+      ![programName, discipline.name, ...discipline.aliases].some(
+        (term) =>
+          term.length >= 2 && (major.includes(term) || term.includes(major)),
+      )
+    );
+  });
 }
 
 export function sourcePriority(source: WebSource, discipline: Discipline) {
@@ -165,6 +190,7 @@ export function sourcePriority(source: WebSource, discipline: Discipline) {
 export function admissionEvidence(
   source: WebSource,
   targetYear: string,
+  programName?: string,
 ): AdmissionEvidence {
   const all = `${source.title} ${source.excerpt}`;
   if (
@@ -176,17 +202,22 @@ export function admissionEvidence(
       admissionStatus: "needs_verification",
       excluded: "资料含明确示例或测试标记，不能证明真实学校专业。",
     };
-  // Conditional restrictions such as 不招收同等学力考生 are not a closure notice.
+  // A directory may close one programme while continuing others. Without a
+  // specific programme only an explicit school-wide closure excludes the page.
+  const evidence = source.kind === "official_page" ? source.excerpt : all;
+  const closure =
+    /不(?:再)?招生|停招|(?:暂停|停止|取消|暂缓).{0,8}招生|不招收(?:硕士|研究生|本专业|该专业)(?:[。；，、\s]|$)/;
   if (
-    /不(?:再)?招生|停招|(?:暂停|停止|取消|暂缓).{0,8}招生|不招收(?:硕士|研究生|本专业|该专业)(?:[。；，、\s]|$)/.test(
-      all,
-    )
+    /(?:全校|本校所有|全校所有|全部)(?:硕士|研究生|专业|学位|项目|招生|\s){0,8}(?:均|全部|一律)?(?:停招|暂停招生|停止招生|不再招生)/.test(
+      evidence,
+    ) ||
+    (programName &&
+      programPassages(evidence, programName).some((part) => closure.test(part)))
   )
     return {
       admissionStatus: "needs_verification",
       excluded: "资料含停招或不招生表述，暂不据此推荐该学校专业。",
     };
-  const evidence = source.kind === "official_page" ? source.excerpt : all;
   const years = new Set(
     [
       ...evidence.matchAll(
@@ -215,32 +246,57 @@ export function compactEvidence(
   max: number,
 ) {
   if (excerpt.length <= max) return excerpt;
-  const parts = [excerpt.slice(0, Math.min(200, Math.floor(max / 4)))];
-  const tailSize = Math.min(300, Math.floor(max / 4));
-  const terms = [
-    ...disciplines.flatMap((item) => [item.name, item.code]),
-    "硕士",
-    "专业介绍",
-    "招生",
-  ];
-  let remaining = max - parts[0].length - tailSize - 15;
-  const positions = [
-    ...new Set(
-      terms
-        .map((term) => excerpt.indexOf(term, 250))
-        .filter((index) => index >= 250),
-    ),
-  ].slice(0, 3);
-  for (const position of positions) {
-    if (remaining < 100) break;
-    const part = excerpt.slice(
-      Math.max(250, position - 80),
-      Math.max(250, position - 80) +
-        Math.floor(remaining / (positions.length || 1)),
-    );
-    parts.push(part);
-    remaining -= part.length;
+  const headerSize = Math.min(200, Math.floor(max / 4));
+  const school =
+    /[\p{Script=Han}A-Za-z]{1,30}(?:大学|科学院|研究院|研究所)/u.exec(
+      excerpt,
+    ) ?? /[\p{Script=Han}A-Za-z]{1,30}学院/u.exec(excerpt);
+  // Prefer concrete six-digit programme rows to a broad discipline in navigation.
+  const programmePositions = disciplines.flatMap((discipline) => {
+    const codes = [
+      ...excerpt.matchAll(new RegExp(`\\b${discipline.code}\\d{2}\\b`, "g")),
+    ]
+      .slice(0, 3)
+      .map((match) => match.index!);
+    if (codes.length) return codes;
+    return [discipline.name, ...discipline.aliases]
+      .map((term) => excerpt.indexOf(term))
+      .filter((position) => position >= 0)
+      .slice(0, 2);
+  });
+  const anchors = [
+    school ? school.index + school[0].length - 2 : undefined,
+    ...programmePositions,
+  ]
+    .filter(
+      (position): position is number =>
+        position !== undefined && position >= headerSize,
+    )
+    .filter(
+      (position, index, positions) =>
+        positions.findIndex((other) => Math.abs(other - position) < 80) ===
+        index,
+    )
+    .slice(0, Math.max(2, Math.min(8, Math.floor(max / 250))));
+  if (!anchors.length) return excerpt.slice(0, max);
+  const width = Math.floor(
+    (max - headerSize - anchors.length * 3) / anchors.length,
+  );
+  const ranges = [
+    [0, headerSize],
+    ...anchors.map((position) => {
+      const start = Math.max(0, position - Math.min(80, Math.floor(width / 4)));
+      return [start, Math.min(excerpt.length, start + width)];
+    }),
+  ].sort((a, b) => a[0] - b[0]);
+  const merged: number[][] = [];
+  for (const range of ranges) {
+    const last = merged.at(-1);
+    if (last && range[0] <= last[1]) last[1] = Math.max(last[1], range[1]);
+    else merged.push(range);
   }
-  parts.push(excerpt.slice(-(Math.max(0, remaining) + tailSize)));
-  return parts.join(" … ").slice(0, max);
+  return merged
+    .map(([start, end]) => excerpt.slice(start, end))
+    .join(" … ")
+    .slice(0, max);
 }

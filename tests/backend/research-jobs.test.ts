@@ -126,6 +126,46 @@ test("research readiness blocks missing configuration without starting a provide
     created.body.jobId,
   );
 });
+
+test("validation repair updates persist and a failed analysis never becomes 100 percent done", async (t) => {
+  const stopped = deferred();
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    generate: async (input) => {
+      await input.onProgress?.("preparing");
+      await input.onProgress?.("researching");
+      await input.onProgress?.(
+        "analyzing",
+        "正在核对并修正学校专业建议，无需补填画像",
+      );
+      stopped.resolve();
+      return {
+        ...output(input),
+        status: "partial",
+        reportVersion: "profile-research-v4",
+        reason: "INVALID_RESEARCH_REPORT",
+        failureStage: "analyzing",
+        summary: "系统未能完成报告生成，你的画像已保留。",
+      };
+    },
+  };
+  const { request, runId } = await fixture(t, engine);
+  await request(`/guidance/${runId}/research`, "POST", {});
+  await stopped.promise;
+  const job = (await request(`/guidance/${runId}/research/latest`)).body.job;
+  assert.equal(job.stage, "analyzing");
+  assert.equal(job.progress, 60);
+  assert.equal(job.report.failureStage, "analyzing");
+  assert.ok(
+    job.events.some((event: { message: string }) =>
+      event.message.includes("无需补填画像"),
+    ),
+  );
+  assert.ok(
+    !job.events.some((event: { stage: string }) => event.stage === "done"),
+  );
+});
 test("research jobs persist actual stages, deduplicate submissions and replay current status with owner isolation", async (t) => {
   const started = deferred(),
     release = deferred(),

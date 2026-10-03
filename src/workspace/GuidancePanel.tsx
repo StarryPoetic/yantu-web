@@ -177,7 +177,6 @@ export function GuidancePanel({
                 run={run}
                 stale={!!stale}
                 onProfile={onProfile}
-                onExplore={onExplore}
               />
               <details className="ws-panel research-basic-exploration">
                 <summary>查看基础探索与专业选择</summary>
