@@ -74,7 +74,7 @@ function reportFor(
 ): ResearchReport {
   return {
     schemaVersion: 1,
-    reportVersion: "profile-research-v4",
+    reportVersion: "profile-research-v5",
     status,
     generatedAt: retrievedAt,
     guidanceRunId: run.guidanceRunId,
@@ -302,6 +302,163 @@ test("服务未配置时明确提示，基础结论仍可用且不创建研究�
     page.getByRole("heading", { name: "基础探索提示", exact: true }),
   ).toBeVisible();
   expect(starts).toBe(0);
+});
+
+test("修改画像并保存后再次生成使用新版本、新结论和新研究任务，刷新不会复用旧画像", async ({
+  page,
+}) => {
+  // Only enable the UI control. The real server keeps providers disabled and persists blocked jobs.
+  await page.route("**/api/v1/research/status", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ ready: true, reasons: [], model }),
+    }),
+  );
+  const guidanceRequests: unknown[] = [];
+  page.on("request", (request) => {
+    if (
+      new URL(request.url()).pathname === "/api/v1/guidance" &&
+      request.method() === "POST"
+    )
+      guidanceRequests.push(request.postDataJSON());
+  });
+  const firstRun = await openGuidance(page, async (page) => {
+    await page
+      .getByRole("combobox", { name: "职业与学习目标", exact: true })
+      .selectOption("专业实践与行业就业");
+    await page
+      .getByRole("textbox", { name: "补充说明", exact: true })
+      .fill("旧画像说明，需要在下一次保存时清空。");
+  });
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  const firstResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        `/api/v1/guidance/${firstRun.guidanceRunId}/research` &&
+      response.request().method() === "POST",
+  );
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  const first = await firstResponse;
+  expect(first.status()).toBe(202);
+  const firstJob = await first.json();
+  expect(firstJob.status).toBe("blocked");
+  expect(firstJob.guidanceRunId).toBe(firstRun.guidanceRunId);
+
+  await page
+    .getByRole("navigation", { name: "主要导航" })
+    .getByRole("button", { name: "个人画像", exact: true })
+    .click();
+  await expect(page.getByLabel("本科专业", { exact: true })).toHaveValue(
+    "法学",
+  );
+  await page
+    .getByLabel("本科专业", { exact: true })
+    .fill("机械设计制造及其自动化");
+  await page.getByLabel("感兴趣的专业或领域（选填）").fill("人工智能");
+  await page
+    .getByRole("combobox", { name: "跨专业意愿", exact: true })
+    .selectOption("接受跨专业");
+  await page
+    .getByRole("combobox", { name: "每天可投入时间", exact: true })
+    .selectOption("4–6 小时");
+  await page
+    .getByRole("slider", { name: "就业机会", exact: true })
+    .press("End");
+  const notes = page.getByRole("textbox", { name: "补充说明", exact: true });
+  await expect(notes).toHaveValue("旧画像说明，需要在下一次保存时清空。");
+  await notes.fill("");
+  await page
+    .getByRole("combobox", { name: "职业与学习目标", exact: true })
+    .selectOption("不确定，希望先探索");
+  const saving = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/me/profile" &&
+      response.request().method() === "PUT",
+  );
+  await page.getByRole("button", { name: "保存个人画像", exact: true }).click();
+  const savedResponse = await saving;
+  expect(savedResponse.status()).toBe(200);
+  const saved = await savedResponse.json();
+  expect(saved.profileVersion).toBe(firstRun.versions.profileVersion + 1);
+  expect(saved.profile).toMatchObject({
+    major: "机械设计制造及其自动化",
+    targetMajor: "人工智能",
+    crossMajor: "接受跨专业",
+    hours: "4–6 小时",
+    priorities: { 就业机会: 100 },
+    notes: "",
+    studyGoal: "不确定，希望先探索",
+  });
+  await expect(page).toHaveURL(/#assessment$/);
+  const nextGuidance = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/guidance" &&
+      response.request().method() === "POST",
+  );
+  await page
+    .getByRole("button", { name: "查看专业推荐结论", exact: true })
+    .click();
+  const nextResponse = await nextGuidance;
+  expect(nextResponse.status()).toBe(201);
+  expect(nextResponse.request().postDataJSON().profileVersion).toBe(
+    saved.profileVersion,
+  );
+  const nextRun = (await nextResponse.json()) as GuidanceRun;
+  expect(nextRun.guidanceRunId).not.toBe(firstRun.guidanceRunId);
+  expect(nextRun.versions.profileVersion).toBe(saved.profileVersion);
+  expect(nextRun.inputSnapshot.profile).toEqual(saved.profile);
+  expect(firstRun.inputSnapshot.profile.notes).toBe(
+    "旧画像说明，需要在下一次保存时清空。",
+  );
+  const oldJob = await (
+    await page.request.get(`/api/v1/research-jobs/${firstJob.jobId}`)
+  ).json();
+  expect(oldJob.needsRefresh).toBe(true);
+  expect(oldJob.refreshReasons).toContain("个人画像已更新");
+
+  const newResearch = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname ===
+        `/api/v1/guidance/${nextRun.guidanceRunId}/research` &&
+      response.request().method() === "POST",
+  );
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  const newResponse = await newResearch;
+  expect(newResponse.status()).toBe(202);
+  expect(newResponse.request().postDataJSON()).toEqual({});
+  expect(newResponse.request().headers()["idempotency-key"]).not.toBe(
+    first.request().headers()["idempotency-key"],
+  );
+  const nextJob = await newResponse.json();
+  expect(nextJob.status).toBe("blocked");
+  expect(nextJob.jobId).not.toBe(firstJob.jobId);
+  expect(nextJob.guidanceRunId).toBe(nextRun.guidanceRunId);
+  expect(
+    (
+      await (
+        await page.request.get(
+          `/api/v1/guidance/${firstRun.guidanceRunId}/research/latest`,
+        )
+      ).json()
+    ).job.jobId,
+  ).toBe(firstJob.jobId);
+  const latestPath = `/api/v1/guidance/${nextRun.guidanceRunId}/research/latest`;
+  const restored = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === latestPath,
+  );
+  await page.reload();
+  expect((await (await restored).json()).job.jobId).toBe(nextJob.jobId);
+  await expect(
+    panel.getByRole("button", { name: "重新调研并生成报告", exact: true }),
+  ).toBeEnabled();
+  expect(guidanceRequests).toHaveLength(2);
+  expect(guidanceRequests[1]).toMatchObject({
+    profileVersion: saved.profileVersion,
+  });
 });
 
 test("阶段进度真实变化，刷新恢复同一任务并展示完整报告及可核对下载", async ({
@@ -943,9 +1100,17 @@ test("真正缺画像的阻断状态保留补充入口，任务未生成报告�
   ).toHaveCount(0);
 });
 
-for (const empty of [false, true]) {
+for (const { empty, reportVersion } of [
+  { empty: false, reportVersion: undefined },
+  { empty: true, reportVersion: undefined },
+  { empty: false, reportVersion: "profile-research-v3" },
+  { empty: false, reportVersion: "profile-research-v4" },
+] as const) {
   test(
-    "旧版" + (empty ? "空" : "学校") + "报告可回顾并提示手动按完整画像重新生成",
+    "旧版" +
+      (reportVersion ?? "无版本") +
+      (empty ? "空" : "学校") +
+      "报告可回顾并提示手动按完整画像重新生成",
     async ({ page }) => {
       const service = await researchService(page);
       service.setRun(await openGuidance(page));
@@ -961,7 +1126,7 @@ for (const empty of [false, true]) {
       ).toBeVisible();
       service.finish("partial", (report) => ({
         ...report,
-        reportVersion: undefined,
+        reportVersion,
         recommendations: empty
           ? []
           : [

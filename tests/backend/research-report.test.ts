@@ -165,7 +165,7 @@ function setup(
   const adapter: ModelAdapter = {
     async complete(messages, options) {
       const planning = messages[0].content.includes(
-        "research-direction-plan-v4",
+        "research-direction-plan-v5",
       );
       (planning ? planningCalls : calls).push({ messages, options });
       const custom = planning ? settings.planningModel : settings.model;
@@ -246,7 +246,7 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
     },
   });
   assert.equal(report.status, "completed");
-  assert.equal(report.reportVersion, "profile-research-v4");
+  assert.equal(report.reportVersion, "profile-research-v5");
   assert.equal(report.recommendations[0].programName, "法学理论");
   assert.equal(report.recommendations[0].degreeType, "academic");
   assert.equal(report.recommendations[0].admissionStatus, "current_evidence");
@@ -448,6 +448,52 @@ test("rejected final citations are repaired once against the original evidence",
   assert.deepEqual(report.recommendations[0].citations, ["research-1"]);
 });
 
+test("editing and clearing profile fields regenerates both phases and binds reasons to current values", async () => {
+  const oldRun = fixture();
+  oldRun.inputSnapshot.profile.notes = "希望从事人工智能应用";
+  const references = [
+    {
+      profileField: "priorities.就业机会",
+      reason: "按你当前的就业侧重比较培养方向。",
+    },
+    { profileField: "budget", reason: "应核对费用和资助后与你的预算比较。" },
+  ];
+  const planning = {
+    directions: [{ ...planBody().directions[0], fitReasons: references }],
+  };
+  const body = {
+    ...reportBody(),
+    recommendations: reportBody().recommendations.map((card) => ({
+      ...card,
+      fitReasons: references,
+    })),
+  };
+  const { module, planningCalls, calls } = setup({ plan: planning, body });
+  const before = await module.generate({ subjectId: "student", run: oldRun });
+  assert.equal(before.recommendations[0].fitReasons![0].profileValue, "90");
+  const newRun = structuredClone(oldRun);
+  newRun.guidanceRunId = "run-edited";
+  newRun.versions.profileVersion++;
+  newRun.inputSnapshot.profile.notes = "";
+  newRun.inputSnapshot.profile.studyGoal = "不确定，希望先探索";
+  (newRun.inputSnapshot.profile.priorities as Record<string, number>).就业机会 =
+    75;
+  const after = await module.generate({ subjectId: "student", run: newRun });
+  assert.equal(after.status, "completed");
+  assert.equal(after.versions.profileVersion, newRun.versions.profileVersion);
+  assert.equal(after.recommendations[0].fitReasons![0].profileValue, "75");
+  assert.equal(planningCalls.length, 2);
+  assert.equal(calls.length, 2);
+  for (const request of [planningCalls[1], calls[1]]) {
+    assert.ok(
+      !JSON.stringify(request.messages).includes("希望从事人工智能应用"),
+    );
+    const payload = JSON.parse(request.messages[1].content);
+    assert.equal(payload.context.profile.notes, "");
+    assert.equal(payload.context.profile.priorities.就业机会, 75);
+  }
+});
+
 test("personal cross-major intent and historic pages cannot invent eligibility, named exams or employment advantages", async () => {
   const body = reportBody();
   const card = body.recommendations[0];
@@ -486,6 +532,9 @@ test("planning failure keeps profile intact and repair progress authorization fa
   assert.equal(failed.planningCalls.length, 2);
   assert.equal(failed.calls.length, 0);
   assert.equal(report.failureStage, "preparing");
+  assert.deepEqual(report.validationIssues, [
+    { path: "directions", code: "EXPECTED_ARRAY" },
+  ]);
   assert.equal(report.searched, false);
   assert.equal(report.followUpQuestions, undefined);
   assert.deepEqual(run, snapshot);

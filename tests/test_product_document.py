@@ -45,6 +45,7 @@ class ProductDocumentTests(unittest.TestCase):
             "适合度建议与目标年度资格核验独立展示", "历史或年份不明",
             "可以支持条件性推荐", "学费", "名额", "停招",
             "不等于用户已满足全部报考条件", "完整来源", "收起", "两个模型阶段",
+            "当前已保存画像", "具体值由服务端绑定", "已清空的补充说明", "单条理由无效",
         ):
             self.assertIn(phrase, requirements)
 

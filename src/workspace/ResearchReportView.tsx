@@ -48,7 +48,7 @@ export function ResearchReportView({
 }) {
   const hasRecommendations = report.recommendations.length > 0;
   const legacy =
-    report.reportVersion !== "profile-research-v4" ||
+    report.reportVersion !== "profile-research-v5" ||
     report.recommendations.some(
       (item) => !item.programName || !item.fitReasons?.length,
     );

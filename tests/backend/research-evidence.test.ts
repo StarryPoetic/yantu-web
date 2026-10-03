@@ -156,6 +156,80 @@ test("official programme documents are read before admission rosters, recruitmen
   }
 });
 
+test("doctoral student, postdoc, supervisor administration and admission notices cannot outrank master's programme documents", () => {
+  const mechanical = discipline("0802");
+  const programme = source("甲大学0802机械工程硕士培养", {
+    title: "甲大学机械工程硕士研究生培养方案",
+    url: "https://mech.example.edu.cn/info/1001/2001.htm",
+  });
+  for (const title of [
+    "机械工程学院2024年交叉科学研究院专项博士生招生通知",
+    "机械工程博士研究生招生目录",
+    "机械工程博士后研究人员招收公告",
+    "机械工程学院研究生导师招生资格审核通知",
+    "关于开展硕士生导师遴选的通知",
+    "机械工程学院2026年硕士录取通知书领取通知",
+  ]) {
+    const other = { ...programme, title };
+    assert.ok(sourcePriority(other, mechanical) < 0, title);
+    assert.ok(
+      sourcePriority(programme, mechanical) > sourcePriority(other, mechanical),
+      title,
+    );
+  }
+  const combined = {
+    ...programme,
+    title: "机械工程硕士与博士研究生招生专业目录",
+  };
+  assert.ok(sourcePriority(combined, mechanical) >= 100);
+  const mastersWithMentors = {
+    ...programme,
+    title: "机械工程硕士专业介绍及导师研究方向",
+  };
+  assert.ok(sourcePriority(mastersWithMentors, mechanical) >= 100);
+});
+
+test("college home pages with graduate navigation stay below actual master's programme pages", () => {
+  const mechanical = discipline("0802");
+  const programme = source("甲大学0802机械工程硕士培养", {
+    title: "机械工程硕士招生通知",
+    url: "https://mech.example.edu.cn/info/1001/2001.htm",
+  });
+  for (const homepage of [
+    {
+      ...programme,
+      title: "甲大学机械工程学院",
+      url: "https://mech.example.edu.cn/",
+    },
+    {
+      ...programme,
+      title: "甲大学机械工程学院",
+      url: "https://mech.example.edu.cn/index.html",
+    },
+    {
+      ...programme,
+      title: "机械工程学院首页",
+      url: "https://mech.example.edu.cn/channel/intro",
+    },
+  ]) {
+    assert.ok(sourcePriority(homepage, mechanical) < 0);
+    assert.ok(
+      sourcePriority(programme, mechanical) >
+        sourcePriority(homepage, mechanical),
+    );
+  }
+  assert.ok(
+    sourcePriority(
+      {
+        ...programme,
+        title: "机械工程硕士培养方案",
+        url: "https://masters.example.edu.cn/",
+      },
+      mechanical,
+    ) >= 100,
+  );
+});
+
 test("closure and entry requirements bind to their own programme rather than an adjacent catalogue row", () => {
   const page = source(
     "甲大学2027年硕士招生专业目录：040101教育学原理正常招生；040102课程与教学论停止招生，仅限教育学本科毕业生报考，不接受跨专业。",

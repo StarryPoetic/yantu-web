@@ -44,7 +44,8 @@ function diverseSources(sources: WebSource[], discipline: Discipline) {
   const rest: WebSource[] = [];
   for (const source of ranked) {
     const host = schoolDomain(source);
-    if (!host || seen.has(host)) rest.push(source);
+    if (!host || seen.has(host) || sourcePriority(source, discipline) < 100)
+      rest.push(source);
     else {
       seen.add(host);
       first.push(source);
@@ -97,14 +98,20 @@ export async function searchResearchSources(input: {
         ]),
       ].filter((domain) => !state.usedDomains.has(domain));
       const nextHint = state.hints[state.hintIndex];
+      const recoverFirstSchool =
+        state.attempts === 1 && !pool.length && state.hintIndex === 1;
       const broadenSchool =
+        !recoverFirstSchool &&
         !!nextHint &&
         (!state.attempts ||
           hasGraduateLead(pool, discipline) ||
           !availableDomains.length);
-      const domains = broadenSchool ? [] : availableDomains.slice(0, 2);
+      const domains =
+        broadenSchool || recoverFirstSchool ? [] : availableDomains.slice(0, 2);
       let question: string;
-      if (broadenSchool) {
+      if (recoverFirstSchool) {
+        question = `${state.hints[0]} ${discipline.name} 硕士 培养方案`;
+      } else if (broadenSchool) {
         state.hintIndex++;
         question = `${nextHint} ${discipline.name} 硕士`;
       } else if (domains.length) {

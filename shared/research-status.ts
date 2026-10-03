@@ -18,7 +18,7 @@ const messages: Record<string, string> = {
   INVALID_RESEARCH_REPORT:
     "模型返回的报告格式未通过校验，请重试生成，无需先选择学校或专业。",
   UNGROUNDED_PROFILE_FIT:
-    "部分匹配理由未对应你的实际画像，已保留可核对的资料。",
+    "模型返回的部分匹配理由未能对应到当前画像，本次生成未完成。",
   INSUFFICIENT_PROFILE_FIT:
     "匹配理由未充分说明你的目标与约束，暂未采用该建议。",
   RESEARCH_EVIDENCE_EXCLUDED:

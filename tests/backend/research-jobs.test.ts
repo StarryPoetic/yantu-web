@@ -127,6 +127,89 @@ test("research readiness blocks missing configuration without starting a provide
   );
 });
 
+test("editing a saved profile creates a fresh guidance snapshot and research input instead of reusing the prior job", async (t) => {
+  const inputs: ResearchInput["run"][] = [];
+  const firstCompleted = deferred(),
+    secondCompleted = deferred();
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    generate: async (input) => {
+      inputs.push(structuredClone(input.run));
+      await input.onProgress?.("preparing");
+      (inputs.length === 1 ? firstCompleted : secondCompleted).resolve();
+      return output(input);
+    },
+  };
+  const { request, runId } = await fixture(t, engine);
+  const first = await request(`/guidance/${runId}/research`, "POST", {});
+  await firstCompleted.promise;
+  assert.equal(
+    (await request(`/research-jobs/${first.body.jobId}`)).body.status,
+    "completed",
+  );
+  const before = await request("/me/profile");
+  const updatedProfile = {
+    ...before.body.profile,
+    targetMajor: "人工智能",
+    crossMajor: "接受跨专业",
+    hours: "4–6 小时",
+    notes: "希望从现有背景转向人工智能应用，暂未确定学校。",
+    priorities: { ...before.body.profile.priorities, 就业机会: 100 },
+  };
+  const saved = await request("/me/profile", "PUT", updatedProfile, {
+    "If-Match": before.etag,
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.profileVersion, before.body.profileVersion + 1);
+  const oldGuidance = await request(`/guidance/${runId}`);
+  assert.equal(oldGuidance.body.needsRefresh, true);
+  const staleStart = await request(`/guidance/${runId}/research`, "POST", {});
+  assert.equal(staleStart.status, 409);
+  assert.equal(staleStart.body.code, "guidance_changed");
+  assert.equal(inputs.length, 1);
+  const selection = await request("/me/selections");
+  const staleGuidance = await request("/guidance", "POST", {
+    profileVersion: before.body.profileVersion,
+    selectionVersion: selection.body.selectionVersion,
+    assessmentRefs: [],
+  });
+  assert.equal(staleGuidance.status, 409);
+  assert.equal(staleGuidance.body.code, "stale_input");
+  const next = await request("/guidance", "POST", {
+    profileVersion: saved.body.profileVersion,
+    selectionVersion: selection.body.selectionVersion,
+    assessmentRefs: [],
+  });
+  assert.equal(next.status, 201);
+  assert.notEqual(next.body.guidanceRunId, runId);
+  const second = await request(
+    `/guidance/${next.body.guidanceRunId}/research`,
+    "POST",
+    {},
+  );
+  assert.equal(second.status, 202);
+  await secondCompleted.promise;
+  assert.notEqual(second.body.jobId, first.body.jobId);
+  assert.equal(inputs.length, 2);
+  assert.equal(inputs[0].versions.profileVersion, before.body.profileVersion);
+  assert.equal(inputs[0].inputSnapshot.profile.targetMajor, "法学");
+  assert.equal(inputs[1].versions.profileVersion, saved.body.profileVersion);
+  assert.deepEqual(inputs[1].inputSnapshot.profile, saved.body.profile);
+  const latest = await request(
+    `/guidance/${next.body.guidanceRunId}/research/latest`,
+  );
+  assert.equal(latest.body.job.jobId, second.body.jobId);
+  assert.equal(
+    latest.body.job.report.versions.profileVersion,
+    saved.body.profileVersion,
+  );
+  assert.equal(latest.body.job.needsRefresh, false);
+  const old = await request(`/guidance/${runId}/research/latest`);
+  assert.equal(old.body.job.jobId, first.body.jobId);
+  assert.equal(old.body.job.needsRefresh, true);
+});
+
 test("validation repair updates persist and a failed analysis never becomes 100 percent done", async (t) => {
   const stopped = deferred();
   const engine: ResearchReportModule = {

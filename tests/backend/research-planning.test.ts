@@ -5,6 +5,7 @@ import { blankProfile } from "../../server/profile.ts";
 import {
   PlanningValidationError,
   planningMessages,
+  profileFitEvidence,
   profileQuestions,
   researchContext,
   researchRecord,
@@ -234,7 +235,7 @@ test("bounded repair feedback identifies a field without echoing private values 
       },
     ],
   );
-  assert.match(captured.issues[0].message, /实际画像值/);
+  assert.match(captured.issues[0].message, /当前画像原值/);
   assert.doesNotMatch(
     JSON.stringify(captured.issues),
     /敏感原文|伪造预算|不得进入|1 万元/,
@@ -372,4 +373,260 @@ test("planning context stays within 15000 characters while retaining 184 directi
     assert.ok(String(before[key]).startsWith(payload.context.profile[key]));
   assert.equal("name" in payload.context.profile, false);
   assert.deepEqual(run.inputSnapshot.profile, before);
+});
+
+test("field-only model reasons bind to the current profile while explicit null and stale values remain invalid", () => {
+  const profile = researchContext(fixture()).profile;
+  for (const profileField of [
+    "cities",
+    "priorities.就业机会",
+    "studyGoal",
+    "budget",
+  ])
+    for (const extra of [{}, { profileValue: undefined }]) {
+      const reason = validateProfileFitReason(
+        { profileField, reason: "按当前已保存的约束调查。", ...extra },
+        profile,
+      );
+      assert.equal(
+        reason.profileValue,
+        profileFitEvidence(profile).find(
+          (item) => item.profileField === profileField,
+        )!.profileValue,
+      );
+    }
+  for (const profileValue of [null, "旧值", 100])
+    assert.throws(
+      () =>
+        validateProfileFitReason(
+          {
+            profileField: "priorities.就业机会",
+            profileValue,
+            reason: "不能覆盖当前实际值。",
+          },
+          profile,
+        ),
+      ModelError,
+    );
+  profile.notes = "当前补充内容";
+  assert.equal(
+    validateProfileFitReason(
+      { profileField: "notes", reason: "依据当前说明分析。" },
+      profile,
+    ).profileValue,
+    "当前补充内容",
+  );
+  assert.throws(
+    () =>
+      validateProfileFitReason(
+        {
+          profileField: "notes",
+          profileValue: "旧的人工智能兴趣",
+          reason: "旧值不能回填。",
+        },
+        profile,
+      ),
+    { code: "UNGROUNDED_PROFILE_FIT" },
+  );
+});
+
+test("usable evidence omits cleared notes, unknown goals, neutral sliders and identifiers", () => {
+  const profile = {
+    ...researchContext(fixture()).profile,
+    notes: "",
+    studyGoal: "不确定",
+    priorities: { ...blankProfile().priorities, 就业机会: 85 },
+  };
+  const fields = profileFitEvidence(profile).map((item) => item.profileField);
+  for (const field of [
+    "notes",
+    "studyGoal",
+    "priorities.发展前景",
+    "priorities",
+    "year",
+    "graduation",
+    "name",
+  ])
+    assert.equal(fields.includes(field), false);
+  assert.ok(fields.includes("priorities.就业机会"));
+  for (const field of ["notes", "studyGoal", "priorities.发展前景"])
+    assert.throws(
+      () =>
+        validateProfileFitReason(
+          { profileField: field, reason: "不可用于凑维度。" },
+          profile,
+        ),
+      { code: "UNGROUNDED_PROFILE_FIT" },
+    );
+  assert.throws(
+    () =>
+      validateProfileFitReason(
+        {
+          profileField: "studyGoal",
+          profileValue: "不确定",
+          reason: "虽等于原值也不代表偏好。",
+        },
+        profile,
+      ),
+    { code: "UNGROUNDED_PROFILE_FIT" },
+  );
+});
+
+test("clearing notes removes old AI reasons without erasing directions supported by two current dimensions", () => {
+  const run = fixture();
+  run.inputSnapshot.profile.notes = "";
+  run.inputSnapshot.profile.studyGoal = "不确定";
+  run.versions.profileVersion = 4;
+  const direction = {
+    ...plan().directions[0],
+    fitReasons: [
+      {
+        profileField: "notes",
+        profileValue: "希望学习人工智能",
+        reason: "已清空的旧兴趣不能保留。",
+      },
+      {
+        profileField: "studyGoal",
+        profileValue: "不确定",
+        reason: "未知目标不能当正面证据。",
+      },
+      { profileField: "budget", reason: "核对费用再权衡。" },
+      { profileField: "cities", reason: "根据意向地域比较项目。" },
+    ],
+  };
+  const result = validatePlan(
+    JSON.stringify({
+      directions: [direction, { ...direction, disciplineCode: "0503" }],
+    }),
+    run,
+  );
+  assert.deepEqual(
+    result.directions.map((item) => item.disciplineCode),
+    ["0401", "0503"],
+  );
+  for (const item of result.directions) {
+    assert.deepEqual(
+      item.fitReasons.map((reason) => reason.profileField),
+      ["budget", "cities"],
+    );
+    assert.doesNotMatch(JSON.stringify(item.fitReasons), /人工智能|未知目标/);
+  }
+  assert.deepEqual(profileQuestions(run), []);
+});
+
+test("mixed legitimate value formats and one incorrect optional reason retain the grounded dimensions", () => {
+  const run = fixture();
+  const value = {
+    directions: [
+      {
+        ...plan().directions[0],
+        fitReasons: [
+          {
+            profileField: "cities",
+            profileValue: ["杭州", "上海"],
+            reason: "比较本人城市。",
+          },
+          {
+            profileField: "priorities.就业机会",
+            profileValue: 85,
+            reason: "依据明确优先级。",
+          },
+          { profileField: "budget", reason: "按实际预算核对。" },
+          {
+            profileField: "studyGoal",
+            profileValue: "已删除或编造的职业目标",
+            reason: "必须移除此项。",
+          },
+          {
+            profileField: "notes",
+            profileValue: null,
+            reason: "空字段不凑维度。",
+          },
+        ],
+      },
+    ],
+  };
+  const result = validatePlan(JSON.stringify(value), run);
+  assert.deepEqual(
+    result.directions[0].fitReasons.map((item) => [
+      item.profileField,
+      item.profileValue,
+    ]),
+    [
+      ["cities", "上海、杭州"],
+      ["priorities.就业机会", "85"],
+      ["budget", "1 万元以内"],
+    ],
+  );
+});
+
+test("insufficient remaining evidence yields all invalid field paths for one bounded repair", () => {
+  const run = fixture();
+  run.inputSnapshot.profile.notes = "";
+  run.inputSnapshot.profile.studyGoal = "不确定";
+  const value = {
+    directions: [
+      {
+        ...plan().directions[0],
+        fitReasons: [
+          {
+            profileField: "notes",
+            profileValue: "旧私密补充",
+            reason: "不可引用旧备注。",
+          },
+          { profileField: "studyGoal", reason: "未知目标不能凑数。" },
+          { profileField: "priorities.发展前景", reason: "默认中性不能凑数。" },
+          {
+            profileField: "budget",
+            profileValue: null,
+            reason: "显式null不可自动绑定。",
+          },
+          { profileField: "cities", reason: "只剩一个合法维度。" },
+        ],
+      },
+    ],
+  };
+  assert.throws(
+    () => validatePlan(JSON.stringify(value), run),
+    (error: unknown) => {
+      assert.ok(error instanceof PlanningValidationError);
+      assert.equal(error.issues.length, 4);
+      assert.deepEqual(
+        error.issues.map((item) => item.path),
+        [
+          "directions[0].fitReasons[0].profileField",
+          "directions[0].fitReasons[1].profileField",
+          "directions[0].fitReasons[2].profileField",
+          "directions[0].fitReasons[3].profileValue",
+        ],
+      );
+      assert.doesNotMatch(
+        JSON.stringify(error.issues),
+        /旧私密补充|不得进入错误反馈/,
+      );
+      return true;
+    },
+  );
+});
+
+test("planner exposes only current evidence fields and asks for field references rather than copied values", () => {
+  const run = fixture();
+  run.inputSnapshot.profile.notes = "";
+  run.inputSnapshot.profile.studyGoal = "不确定";
+  const messages = planningMessages(run);
+  const payload = JSON.parse(messages[1].content);
+  assert.deepEqual(
+    payload.profileEvidence,
+    profileFitEvidence(payload.context.profile),
+  );
+  assert.equal(
+    payload.profileEvidence.some(
+      (item: { profileField: string }) =>
+        item.profileField === "notes" || item.profileField === "studyGoal",
+    ),
+    false,
+  );
+  assert.match(messages[0].content, /research-direction-plan-v5/);
+  assert.match(messages[0].content, /profileValue可以省略/);
+  assert.ok(JSON.stringify(messages).length <= 15000);
 });

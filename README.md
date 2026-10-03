@@ -63,7 +63,7 @@ npm run dev
 
 - 模型：设置 `YANTU_MODEL_ENABLED=true` 与 `DEEPSEEK_API_KEY`。默认关闭；未配置时明确提示，固定题解与专业结论仍可使用。不自动探测真实凭据。
 - 搜索：国内接入默认使用博查，设置 `YANTU_SEARCH_PROVIDER=bocha`、`YANTU_SEARCH_ENABLED=true` 与 `BOCHA_API_KEY`。保留 `brave` 配合 `BRAVE_SEARCH_API_KEY` 的显式兼容选项，两家凭据隔离，不自动切换产生额外调用。用户可允许联网或提供最多两个官方网页地址；无搜索配置时明确降级。
-- 深度报告：默认 `YANTU_RESEARCH_MODEL=deepseek-v4-pro`、`YANTU_RESEARCH_EFFORT=high`，独立于普通咨询使用的 Flash。每份报告包含两个模型阶段：规划使用同一研究模型的非思考模式，4096输出token/30秒；最终分析默认12000输出token/120秒（最大16384，含思考）。每阶段校验失败最多修复一次并共用额度，传输、认证、预算或取消不自动重试；最多六次搜索、六次官网正文读取及十二项来源。按实际阶段展示进度，百分比不表示剩余时间。
+- 深度报告：默认 `YANTU_RESEARCH_MODEL=deepseek-v4-pro`、`YANTU_RESEARCH_EFFORT=high`，独立于普通咨询使用的 Flash。每份报告包含两个模型阶段：规划使用同一研究模型的非思考模式，4096输出token/30秒；最终分析默认12000输出token/120秒（最大16384，含思考）。每阶段校验失败最多修复一次并共用额度，传输、认证、预算或取消不自动重试；最多六次搜索、六次官网正文读取及十二项来源。按实际阶段展示进度，百分比不表示剩余时间。v5匹配理由由模型引用当前可用字段，服务端补入当前保存值；清空备注不沿用旧值，个别坏理由不会清空其他充分有效依据。
 - 官方网页：默认精确白名单包含研招网等；部署方用 `YANTU_OFFICIAL_HOSTS` 维护实际允许的主机。限制 HTTPS、公网 DNS、固定连接 IP、拒绝跳转、超时和内容大小。研究可显式读取受控PDF纯文本，普通问答默认拒绝；解析有独立进程、时间、页数与字符上限，不做OCR。
 - 后台账号：设置 `YANTU_BOOTSTRAP_ADMINS`，JSON每项包含 `username`、独立强密码 `password` 和 `roles`（`editor`、`reviewer`、`publisher`、`auditor`）。仅首次创建，已有账号不会被改密码或自动提升权限。管理员从正常登录页面进入，学生不能注册成管理员。初始化完成后移除明文初始化环境值；数据库只保存密码哈希。规则和风险仍须两名独立复核者，录入者不能自审。
 - 兼容接口：`YANTU_ADMIN_CREDENTIALS` 仅为已有后台机器调用保留，页面不提供凭据输入框。

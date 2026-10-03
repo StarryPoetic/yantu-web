@@ -168,10 +168,15 @@ export function knownAdmissionConflict(
 export function sourcePriority(source: WebSource, discipline: Discipline) {
   const url = new URL(source.url);
   const content = `${source.title} ${source.excerpt}`;
+  const programmeTitle =
+    /培养方案|培养计划|专业介绍|招生简章|招生专业目录|硕士点|学位授权点/.test(
+      source.title,
+    );
   let score = url.hostname.endsWith(".edu.cn") ? 100 : -100;
   if (
     /(?:\/|_)(?:BS|boshi|phd|doctoral)(?:\/|_|\.|$)/i.test(url.pathname) ||
-    /博士(?:专业|招生|目录)/.test(source.title)
+    /博士后/.test(source.title) ||
+    (/博士(?:生|研究生)?/.test(source.title) && !/硕士/.test(source.title))
   )
     score -= 1000;
   if (
@@ -180,8 +185,23 @@ export function sourcePriority(source: WebSource, discipline: Discipline) {
   )
     score -= 150;
   if (/硕士|研究生(?:培养|招生)/.test(content)) score += 20;
-  if (/培养方案|专业介绍|招生简章|招生专业目录/.test(source.title)) score += 70;
-  if (/拟录取|录取名单|录取公示|招聘|校友名册/.test(source.title)) score -= 250;
+  if (programmeTitle) score += 70;
+  if (/拟录取|录取名单|录取公示|录取通知|招聘|校友名册/.test(source.title))
+    score -= 350;
+  if (
+    /导师.{0,20}(?:审核|审查|审定|遴选|资格)|(?:审核|审查|遴选).{0,10}导师/.test(
+      source.title,
+    )
+  )
+    score -= 350;
+  // A school home page can identify a host, but navigation snippets are not
+  // programme evidence and must not displace actual master's documents.
+  if (
+    !programmeTitle &&
+    (/首页|主页|官方网站|\bhome\b/i.test(source.title) ||
+      /^\/(?:index\.(?:html?|shtml|php|aspx))?\/?$/i.test(url.pathname))
+  )
+    score -= 250;
   if (content.includes(discipline.name)) score += 25;
   if (content.includes(discipline.code)) score += 40;
   if (/\.docx?(?:$|\?)/i.test(url.pathname)) score -= 100;

@@ -4,6 +4,88 @@ import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
 import { createWebAnswerModule } from "../../server/explanation/web.ts";
 import { searchResearchSources } from "../../server/explanation/research-search.ts";
 
+test("an empty first school search gets a different focused query within the same six-request budget", async () => {
+  const discipline = getDisciplineCatalog().items.find(
+    (item) => item.code === "0401",
+  )!;
+  const requests: string[] = [];
+  const web = createWebAnswerModule({
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "test-only",
+    reader: async (_url, options) => {
+      requests.push(JSON.parse(options.body!).query);
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({ code: 200, data: { webPages: { value: [] } } }),
+      };
+    },
+  });
+  await searchResearchSources({
+    web,
+    subjectId: "search-student",
+    disciplines: [discipline],
+    regions: ["上海"],
+    schoolHints: new Map([[discipline.code, ["甲大学", "乙大学"]]]),
+    onProgress: async () => {},
+  });
+  assert.equal(requests.length, 6);
+  assert.equal(new Set(requests).size, 6);
+  assert.equal(requests[0], "甲大学 教育学 硕士");
+  assert.equal(requests[1], "甲大学 教育学 硕士 培养方案");
+  assert.equal(requests[2], "乙大学 教育学 硕士");
+});
+
+test("school diversity cannot promote a doctoral page above relevant masters evidence", async () => {
+  const discipline = getDisciplineCatalog().items.find(
+    (item) => item.code === "0401",
+  )!;
+  const web = createWebAnswerModule({
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "test-only",
+    reader: async () => ({
+      contentType: "application/json",
+      text: JSON.stringify({
+        code: 200,
+        data: {
+          webPages: {
+            value: [
+              {
+                name: "甲大学教育学硕士培养方案",
+                url: "https://grad.a.edu.cn/plan",
+                summary: "0401 教育学硕士研究生培养",
+              },
+              {
+                name: "甲大学教育学硕士招生专业目录",
+                url: "https://grad.a.edu.cn/catalog",
+                summary: "0401 教育学硕士招生",
+              },
+              {
+                name: "乙大学2024年专项博士生招生通知",
+                url: "https://grad.b.edu.cn/news",
+                summary: "教育学硕士生可申请博士",
+              },
+            ],
+          },
+        },
+      }),
+    }),
+  });
+  const result = await searchResearchSources({
+    web,
+    subjectId: "search-student",
+    disciplines: [discipline],
+    regions: [],
+    onProgress: async () => {},
+  });
+  assert.ok(
+    result.sources
+      .slice(0, 2)
+      .every((s) => new URL(s.url).hostname === "grad.a.edu.cn"),
+  );
+});
+
 test("research discovers official school domains before narrowing, ranks graduate sources and shares a bounded budget", async () => {
   const requests: Record<string, unknown>[] = [];
   const disciplines = getDisciplineCatalog().items.filter((item) =>
@@ -171,7 +253,8 @@ test("model school hints guide retrieval but never create evidence or recommenda
     onProgress: async () => {},
   });
   assert.equal(queries[0], "甲师范大学 教育学 硕士");
-  assert.match(queries[1], /^乙师范大学 教育学 硕士/);
+  assert.equal(queries[1], "甲师范大学 教育学 硕士 培养方案");
+  assert.match(queries[2], /^乙师范大学 教育学 硕士/);
   assert.deepEqual(result.sources, []);
   assert.equal(result.sourceDirections.size, 0);
   assert.equal(queries.length, 6);

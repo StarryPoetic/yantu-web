@@ -174,10 +174,10 @@ class TechnicalDesignTests(unittest.TestCase):
         for field in ("ResearchJob", "ResearchReport", "research-latest", "needsRefresh/refreshReasons", "valid=false"):
             self.assertIn(field, data)
 
-    def test_profile_research_v4_contract_and_budget_are_consistent(self):
+    def test_profile_research_v5_contract_and_budget_are_consistent(self):
         data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
         for field in (
-            "profile-research-v4", "failureStage", "researchDirections", "followUpQuestions",
+            "profile-research-v5", "failureStage", "researchDirections", "followUpQuestions",
             "programName", "degreeType", "fitReasons", "profileField", "profileValue",
             "tradeoffs", "admissionStatus", "current_evidence", "needs_verification",
         ):
@@ -226,6 +226,23 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertNotIn("每次默认12000输出token，两次均含思考输出", model)
         for phrase in ("allowPdf:true", "maxPdfBytes:5000000", "普通问答默认false", "pdf-parse@2.4.5", "512000", "80页", "120000字符", "独立隐藏Node子进程", "不做OCR", "NODE_OPTIONS", "WEB_PDF_TIMEOUT"):
             self.assertIn(phrase, model)
+
+    def test_current_profile_references_do_not_reconstruct_cleared_values(self):
+        for path in (
+            DESIGN_DIR / "02-数据模型与可信数据.md",
+            DESIGN_DIR / "07-DeepSeek接入与密钥管理.md",
+            ROOT / "server" / "explanation" / "README.md",
+        ):
+            content = path.read_text(encoding="utf-8")
+            with self.subTest(document=path.name):
+                for phrase in ("profile-research-v5", "profileField", "profileValue", "profileEvidence", "当前原值", "已清空notes", "中性优先级50", "隔离该条", "至少两个不同真实画像维度", "一次有界修复"):
+                    self.assertIn(phrase, content)
+        api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
+        self.assertIn("新的profileVersion", api)
+        self.assertIn("不能用旧值填补已清空内容", api)
+        guide = (ROOT / "docs" / "本地模型与联网测试.md").read_text(encoding="utf-8")
+        for phrase in ("未保存原始模型回答", "不能断定是哪一字段", "不是本次v5真实生成结果", "新画像版本4"):
+            self.assertIn(phrase, guide)
 
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
