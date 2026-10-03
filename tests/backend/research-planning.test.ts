@@ -626,7 +626,7 @@ test("planner exposes only current evidence fields and asks for field references
     ),
     false,
   );
-  assert.match(messages[0].content, /research-direction-plan-v5/);
+  assert.match(messages[0].content, /research-direction-plan-v6/);
   assert.match(messages[0].content, /profileValue可以省略/);
   assert.ok(JSON.stringify(messages).length <= 15000);
 });

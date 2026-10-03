@@ -10,6 +10,30 @@ export const isSchoolPage = (source: WebSource) =>
   source.kind === "official_page" &&
   !/(^|\.)chsi\.com\.cn$/.test(new URL(source.url).hostname);
 
+/** Real body headings provide degree scope; a search title cannot supply missing evidence. */
+function degreeHeadings(text: string) {
+  return [
+    ...text.matchAll(
+      /(?:硕士(?:研究生|专业学位)?|博士(?:生|研究生|专业学位)?|本科(?:生)?|学士)[^。；;…\n]{0,28}?(?:招生(?:专业)?目录|专业目录|招生简章|专业介绍|培养方案|学位授权(?:点|学科|类别|名单|目录)?|学位授予(?:权|点|学科|类别|名单|目录)?)/g,
+    ),
+  ].map((match) => ({
+    position: match.index!,
+    end: match.index! + match[0].length,
+    masters: /硕士/.test(match[0]) && !/博士|本科|学士/.test(match[0]),
+  }));
+}
+
+function recruitmentPage(source: WebSource) {
+  const url = new URL(source.url);
+  return (
+    /\/(?:job|jobs)\/(?:view|detail)(?:\/|$)/i.test(url.pathname) ||
+    (/^(?:job|jobs|jy|career|careers|employment|zhaopin)\./i.test(
+      url.hostname,
+    ) &&
+      /工程师|技术员|岗位|招聘|实习生|管培生|人才需求/.test(source.title))
+  );
+}
+
 /** Restrictions belong to a programme clause, never an arbitrary following table row. */
 function programPassages(excerpt: string, programName: string) {
   const clauses = excerpt
@@ -52,8 +76,9 @@ export function supportsProgram(
     /(?:\/|_)(?:BS|boshi|phd|doctoral)(?:\/|_|\.|$)/i.test(
       new URL(source.url).pathname,
     ) ||
-    (/博士(?:研究生|专业|招生|目录|培养)/.test(source.title) &&
-      !/硕士/.test(source.title))
+    (/博士(?:生|研究生|专业|招生|目录|培养)/.test(source.title) &&
+      !/硕士/.test(source.title)) ||
+    recruitmentPage(source)
   )
     return false;
   if (
@@ -73,20 +98,41 @@ export function supportsProgram(
       ),
     }));
   const graduate =
-    /硕士(?:研究生)?(?:招生|专业|学位|培养|授权|项目|学科)|硕士点|(?:招收|培养).{0,8}硕士|研究生(?:招生|培养|专业|课程|学位)|硕士(?:研究生)?\s*[）)]/;
-  const graduateHeading =
-    /硕士(?:研究生)?.{0,24}(?:招生简章|招生目录|招生专业目录|专业介绍|培养方案)/.test(
-      evidence.slice(0, 250),
-    );
+    /硕士(?:研究生|专业学位)?(?:招生|专业|学位|培养|授权|授予|项目|学科)|硕士点|(?:招收|培养|授予)[^。；;…\n]{0,8}硕士|研究生(?:招生|培养|专业|课程|学位)|硕士(?:研究生)?\s*[）)]/;
+  const headings = degreeHeadings(evidence);
   return windows.some(({ text: window, position }) => {
-    const substantive = window.replace(
+    const preceding = evidence.slice(0, position);
+    const rowStart = Math.max(
+      ...["。", "；", ";", "\n"].map((separator) =>
+        preceding.lastIndexOf(separator),
+      ),
+    );
+    const rowPrefix = preceding.slice(rowStart + 1);
+    // Course lists on a genuine master's page describe teaching, not additional
+    // degree programmes. A second, independently supported occurrence can still pass.
+    if (
+      /(?:课程(?:设置|列表|名称|目录|体系)|(?:必修|选修|核心|专业|主要|开设)课程|教学科目|参考书目)\s*(?:[:：]|包括|包含|有|为)/.test(
+        rowPrefix,
+      )
+    )
+      return false;
+    const scope = headings
+      .filter((heading) => heading.position <= position)
+      .at(-1);
+    const scopedWindow =
+      scope && !scope.masters
+        ? evidence.slice(
+            Math.max(scope.end, position - 120),
+            position + programName.length + 160,
+          )
+        : window;
+    const substantive = scopedWindow.replace(
       /(?:网站)?导航[^。；;\n]*(?:[。；;\n]|$)/g,
       "",
     );
-    const doctoral =
-      /博士(?:研究生)?(?:招生|专业|培养|学位|项目)|博士生培养/.test(
-        substantive,
-      );
+    const doctoral = /博士(?:生|研究生)?(?:招生|专业|培养|学位|项目)/.test(
+      substantive,
+    );
     const localGraduate =
       graduate.test(substantive) && (!doctoral || /硕士/.test(substantive));
     if (doctoral && !/硕士/.test(substantive)) return false;
@@ -118,6 +164,9 @@ export function supportsProgram(
         (alias) => alias.length >= 2 && programName.includes(alias),
       ) ||
       codeNearName;
+    // A distant genuine master's heading applies to its rows until another degree
+    // section starts. Do not reuse it for a subsequent undergraduate/doctoral table.
+    const graduateHeading = scope?.masters ?? false;
     return related && (localGraduate || graduateHeading);
   });
 }
@@ -173,6 +222,7 @@ export function sourcePriority(source: WebSource, discipline: Discipline) {
       source.title,
     );
   let score = url.hostname.endsWith(".edu.cn") ? 100 : -100;
+  if (recruitmentPage(source)) score -= 1000;
   if (
     /(?:\/|_)(?:BS|boshi|phd|doctoral)(?:\/|_|\.|$)/i.test(url.pathname) ||
     /博士后/.test(source.title) ||
@@ -284,9 +334,19 @@ export function compactEvidence(
       .filter((position) => position >= 0)
       .slice(0, 2);
   });
+  const headings = degreeHeadings(excerpt);
+  const scopedPositions = programmePositions.flatMap((position) => {
+    const heading = headings.filter((item) => item.position <= position).at(-1);
+    return heading ? [heading.position, position] : [position];
+  });
   const anchors = [
     school ? school.index + school[0].length - 2 : undefined,
-    ...programmePositions,
+    ...scopedPositions,
+    ...[
+      ...excerpt.matchAll(/学费|收费标准|(?:校区|培养地点|学校地址|通讯地址)/g),
+    ]
+      .slice(0, 3)
+      .map((match) => match.index!),
   ]
     .filter(
       (position): position is number =>
@@ -297,7 +357,7 @@ export function compactEvidence(
         positions.findIndex((other) => Math.abs(other - position) < 80) ===
         index,
     )
-    .slice(0, Math.max(2, Math.min(8, Math.floor(max / 250))));
+    .slice(0, Math.max(3, Math.min(8, Math.floor(max / 250))));
   if (!anchors.length) return excerpt.slice(0, max);
   const width = Math.floor(
     (max - headerSize - anchors.length * 3) / anchors.length,

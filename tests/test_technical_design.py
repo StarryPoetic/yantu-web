@@ -1,4 +1,4 @@
-"""Check that the technical design package is navigable and traceable to V0.8."""
+"""Check that the technical design package is navigable and traceable to V0.9."""
 
 from pathlib import Path
 import re
@@ -45,7 +45,7 @@ class TechnicalDesignTests(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(module, product)
         rows = re.findall(r"^\| (R-\d{2}) \| ([^|]+) \|", index, re.MULTILINE)
-        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 30)])
+        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 32)])
         self.assertEqual(len(set(number for number, _ in rows)), len(rows))
         for number, title in rows:
             self.assertTrue(title.strip(), number)
@@ -101,7 +101,7 @@ class TechnicalDesignTests(unittest.TestCase):
 
     def test_readme_points_to_current_baseline(self):
         readme = README.read_text(encoding="utf-8")
-        self.assertIn("产品设计文档 V0.8", readme)
+        self.assertIn("产品设计文档 V0.9", readme)
         self.assertIn("技术设计文档清单", readme)
         self.assertNotIn("产品设计文档 V0.4", readme)
 
@@ -133,7 +133,7 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_acceptance_references_resolve_and_cover_every_requirement(self):
         owner = DESIGN_DIR / "05-安全运维与验证.md"
         definitions = re.findall(r"^\| (T-\d{2}) \|", owner.read_text(encoding="utf-8"), re.MULTILINE)
-        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 23)])
+        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 25)])
         covered = set()
         for document in DESIGN_DIR.glob("*.md"):
             content = document.read_text(encoding="utf-8")
@@ -159,7 +159,7 @@ class TechnicalDesignTests(unittest.TestCase):
 
     def test_current_version_and_new_contract_boundaries(self):
         for document in [INDEX, *(DESIGN_DIR / name for name in DESIGN_FILES)]:
-            self.assertIn("V0.5", document.read_text(encoding="utf-8"), document.name)
+            self.assertIn("V0.6", document.read_text(encoding="utf-8"), document.name)
         api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
         for route in (
             "PUT /api/v1/me/target", "GET /api/v1/research/status",
@@ -174,10 +174,10 @@ class TechnicalDesignTests(unittest.TestCase):
         for field in ("ResearchJob", "ResearchReport", "research-latest", "needsRefresh/refreshReasons", "valid=false"):
             self.assertIn(field, data)
 
-    def test_profile_research_v5_contract_and_budget_are_consistent(self):
+    def test_profile_research_v6_contract_and_budget_are_consistent(self):
         data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
         for field in (
-            "profile-research-v5", "failureStage", "researchDirections", "followUpQuestions",
+            "profile-research-v6", "failureStage", "researchDirections", "followUpQuestions",
             "programName", "degreeType", "fitReasons", "profileField", "profileValue",
             "tradeoffs", "admissionStatus", "current_evidence", "needs_verification",
         ):
@@ -190,7 +190,7 @@ class TechnicalDesignTests(unittest.TestCase):
         ):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for value in ("4096", "12000", "16384", "六次", "十二项", "历史", "条件性", "画像"):
+                for value in ("4096", "16384", "24", "40", "15分钟", "历史", "条件性", "画像"):
                     self.assertIn(value, content)
                 for obsolete in (
                     "最多三次搜索", "最多三次检索", "最多检索三个专业方向",
@@ -227,6 +227,51 @@ class TechnicalDesignTests(unittest.TestCase):
         for phrase in ("allowPdf:true", "maxPdfBytes:5000000", "普通问答默认false", "pdf-parse@2.4.5", "512000", "80页", "120000字符", "独立隐藏Node子进程", "不做OCR", "NODE_OPTIONS", "WEB_PDF_TIMEOUT"):
             self.assertIn(phrase, model)
 
+    def test_v6_school_tiers_evidence_budget_and_provider_retries_are_traceable(self):
+        product = PRODUCT.read_text(encoding="utf-8")
+        for phrase in ("5–10所不同学校", "每校一个主推荐专业", "未知不能默认合格", "年度预算", "不足5校", "硬限制"):
+            self.assertIn(phrase, product)
+        data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
+        for field in ("preferred/alternative/exploratory", "suitabilityTier", "suitabilityReason", "constraintChecks", "match/mismatch/unknown", "tuition", "location", "academic_year/program/semester/credit", "studyMode", "coverage", "targetMin:5", "targetMax:10", "exploratoryCount", "shortfallReasons", "旧v5报告"):
+            self.assertIn(field, data)
+        for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
+            content = path.read_text(encoding="utf-8")
+            with self.subTest(document=path.name):
+                for phrase in ("5–10所不同学校", "4–6个", "24次搜索", "40项候选来源", "24项官网正文", "15分钟", "失败不缓存", "最多6次", "24000字符", "每阶段最多3次", "整份报告最多6次", "250毫秒", "beforeRetry", "PROVIDER_BALANCE_INSUFFICIENT", "PROVIDER_INVALID_REQUEST", "PROVIDER_TEMPORARY_UNAVAILABLE", "PROVIDER_NETWORK_ERROR", "60次", "300次", "每账号每日100000、全站300000", "同一额度", "不能直接与用户年度预算比较"):
+                    self.assertIn(phrase, content)
+                self.assertNotIn("整份报告至多四次模型调用", content)
+                self.assertNotIn("默认12000", content)
+                self.assertNotIn("默认每账号每天 20000", content)
+                self.assertIn("v6学校覆盖、费用质量及真实端到端结果尚待独立验收", content)
+        acceptance = (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8")
+        self.assertIn("| T-23 |", acceptance)
+        self.assertIn("| T-24 |", acceptance)
+        self.assertIn("达到5校的比例", acceptance)
+        self.assertIn("各类失败码", acceptance)
+
+    def test_comprehensive_tiers_and_academic_https_upgrade_preserve_boundaries(self):
+        product = PRODUCT.read_text(encoding="utf-8")
+        for phrase in ("第一级·优先推荐", "第二级·适合备选", "第三级·探索选择", "同费用学校可以不同层", "无可靠综合分层理由", "费用只是其中一个因素"):
+            self.assertIn(phrase, product)
+        for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
+            content = path.read_text(encoding="utf-8")
+            with self.subTest(document=path.name):
+                for phrase in ("suitabilityTier", "suitabilityReason", "tier/tierReasons", "同费用学校可以不同层", "无可靠分层理由暂列探索", "与综合分层独立", "options.upgradeAcademicHttp:true", "sourcesOnly:true", "WebSource.retrievalNote", "显式端口", "不会发送HTTP请求", "普通聊天与用户直接提供的URL不启用"):
+                    self.assertIn(phrase, content)
+                self.assertNotIn("已取得证据确认预算或城市不符时归入", content)
+        acceptance = (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8")
+        self.assertIn("同费用不同层", acceptance)
+        self.assertIn("无可靠分层理由暂列探索", acceptance)
+
+    def test_thinking_stream_and_model_dns_preserve_transport_and_billing_limits(self):
+        for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
+            content = path.read_text(encoding="utf-8")
+            with self.subTest(document=path.name):
+                for phrase in ("stream:true", "stream_options.include_usage:true", "[DONE]", "finish_reason:stop", "reasoning_content", "8388608字节", "65536字节", "131072字节", "心跳不延长", "deepseek-transport.ts", "public-address.ts", "YANTU_DNS_MODE", "rejectUnauthorized:true", "98304字节", "不是供应商账户余额或充值"):
+                    self.assertIn(phrase, content)
+                self.assertNotIn("两层比较", content)
+                self.assertNotIn("代码只允许本次探索方向", content)
+
     def test_current_profile_references_do_not_reconstruct_cleared_values(self):
         for path in (
             DESIGN_DIR / "02-数据模型与可信数据.md",
@@ -235,7 +280,7 @@ class TechnicalDesignTests(unittest.TestCase):
         ):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("profile-research-v5", "profileField", "profileValue", "profileEvidence", "当前原值", "已清空notes", "中性优先级50", "隔离该条", "至少两个不同真实画像维度", "一次有界修复"):
+                for phrase in ("profile-research-v6", "profileField", "profileValue", "profileEvidence", "当前原值", "已清空notes", "中性优先级50", "隔离该条", "至少两个不同真实画像维度", "一次有界修复"):
                     self.assertIn(phrase, content)
         api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
         self.assertIn("新的profileVersion", api)

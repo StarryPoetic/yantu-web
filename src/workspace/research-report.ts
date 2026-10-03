@@ -17,7 +17,7 @@ export function researchOutcome(job: ResearchJob | null) {
   const reasons = report?.reason?.split(",") ?? [];
   if (
     reasons.some((reason) =>
-      /^(INVALID_|UNGROUNDED_|UNSUPPORTED_|MODEL_|PROVIDER_|BUDGET_|CONCURRENCY_|RATE_LIMITED$|TIMEOUT$|EVIDENCE_TOO_LARGE$|INSUFFICIENT_PROFILE_FIT$|RESEARCH_DIRECTION_NOT_ALLOWED$|SEARCH_(DISABLED|NOT_CONFIGURED|UNAVAILABLE|PROVIDER_ERROR|PROVIDER_INVALID|INVALID_RESPONSE|BUDGET_EXHAUSTED)$)/.test(
+      /^(INVALID_|UNGROUNDED_|UNSUPPORTED_|MODEL_|PROVIDER_|BUDGET_|CONCURRENCY_|RATE_LIMITED$|TIMEOUT$|RESPONSE_TOO_LARGE$|INCOMPLETE_RESPONSE$|UNKNOWN_USAGE$|EVIDENCE_TOO_LARGE$|INSUFFICIENT_PROFILE_FIT$|RESEARCH_DIRECTION_NOT_ALLOWED$|SEARCH_(DISABLED|NOT_CONFIGURED|UNAVAILABLE|PROVIDER_ERROR|PROVIDER_INVALID|INVALID_RESPONSE|BUDGET_EXHAUSTED)$)/.test(
         reason,
       ),
     )
@@ -46,6 +46,102 @@ export function researchOutcome(job: ResearchJob | null) {
 }
 
 export type SchoolRecommendation = ResearchReport["recommendations"][number];
+export const tierLabels = {
+  preferred: "第一级·优先推荐",
+  alternative: "第二级·适合备选",
+  exploratory: "第三级·探索选择",
+};
+export const suitabilityNotice =
+  "综合目标、兴趣、基础、跨考成本、时间、城市和预算分层。费用未知或较高不自动降级；优先推荐不代表录取率或录取保证。";
+
+export function recommendationGroups(items: SchoolRecommendation[]) {
+  return [
+    {
+      tier: "preferred",
+      title: tierLabels.preferred,
+      description: "综合目标、兴趣、基础与现实条件更契合，值得优先深入比较。",
+      items: items.filter((item) => item.tier === "preferred"),
+    },
+    {
+      tier: "alternative",
+      title: tierLabels.alternative,
+      description: "有明确匹配点，综合准备成本与个人取舍后，可作为合适的备选。",
+      items: items.filter((item) => item.tier === "alternative"),
+    },
+    {
+      tier: "exploratory",
+      title: tierLabels.exploratory,
+      description:
+        "有值得探索的可能，学习基础、跨考准备或具体目标仍需进一步了解。",
+      items: items.filter((item) => item.tier === "exploratory"),
+    },
+    {
+      tier: "unclassified",
+      title: "待补充分级的建议",
+      description: "旧报告未记录综合适合度分级，可以重新生成后比较。",
+      items: items.filter((item) => !item.tier),
+    },
+  ].filter((group) => group.items.length);
+}
+
+export function researchCoverage(report: ResearchReport) {
+  const schoolCount = new Set(
+    report.recommendations.map((item) => item.institutionName.trim()),
+  ).size;
+  const targetMin = report.coverage?.targetMin ?? 5;
+  const targetMax = report.coverage?.targetMax ?? 10;
+  const reasons = report.coverage?.shortfallReasons ?? [];
+  return {
+    schoolCount,
+    targetMin,
+    targetMax,
+    shortfall: schoolCount < targetMin,
+    reasons: reasons.length
+      ? reasons
+      : schoolCount < targetMin
+        ? [
+            "其他学校尚未查到足以支持具体专业建议的资料，现有结果不代表没有其他合适学校。",
+          ]
+        : [],
+  };
+}
+
+export function tuitionDescription(
+  item: SchoolRecommendation,
+  run: GuidanceRun,
+) {
+  const tuition = item.tuition;
+  if (!tuition)
+    return "尚未查到可核对的学费金额，暂不能判断是否符合你的年度预算。";
+  const periods = {
+    academic_year: "学年",
+    program: "全程",
+    semester: "学期",
+    credit: "学分",
+  };
+  const mode = {
+    full_time: "全日制",
+    part_time: "非全日制",
+    unspecified: "学习方式未明确",
+  };
+  const targetYear = Number(run.inputSnapshot.profile.year);
+  const reference = tuition.year === targetYear ? "学费" : "参考学费";
+  return `${tuition.year} 年${reference}：${tuition.amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 })} 元/${periods[tuition.period]}（${mode[tuition.studyMode]}）`;
+}
+
+export function tuitionCaution(item: SchoolRecommendation, run: GuidanceRun) {
+  if (!item.tuition) return "";
+  const year = Number(run.inputSnapshot.profile.year);
+  return [
+    ...(item.tuition.year !== year
+      ? ["该费用为其他年度参考，目标年度收费尚需核对。"]
+      : []),
+    ...(item.tuition.period !== "academic_year"
+      ? ["此金额不是按学年计费，不能直接与年度预算比较。"]
+      : []),
+    "金额仅为学费，生活等支出需另计。",
+  ].join("");
+}
 const profileLabels: Record<string, string> = {
   university: "本科院校",
   major: "本科专业",
@@ -97,39 +193,73 @@ export function downloadResearchReport(
   run: GuidanceRun,
   outdated: boolean,
 ) {
+  const coverage = researchCoverage(report);
   const content = [
     "# 研途 · 学校与专业推荐报告",
     report.generatedAt,
+    suitabilityNotice,
     ...(outdated ? ["历史报告：个人情况或依据已更新，仅供回顾。"] : []),
+    `本次建议 ${coverage.schoolCount} 所不同学校，目标比较 ${coverage.targetMin}–${coverage.targetMax} 所。`,
+    ...coverage.reasons.map((text) => "- 覆盖说明：" + text),
     "",
     "## 建议比较的学校与专业",
-    ...report.recommendations.flatMap((item) => [
-      "### " + item.institutionName + " · " + programName(item, run),
-      "专业类别：" + item.disciplineCode,
-      ...(item.degreeType
-        ? [item.degreeType === "academic" ? "学术学位" : "专业学位"]
-        : []),
-      admissionLabel(item, run),
-      item.rationale,
-      ...(item.fitReasons ?? []).map(
-        (fit) =>
-          "- " +
-          profileLabel(fit.profileField) +
-          "：" +
-          fit.profileValue +
-          "；" +
-          fit.reason,
-      ),
-      ...item.preparation.map((text) => "- 准备：" + text),
-      ...(item.tradeoffs ?? []).map((text) => "- 需要权衡：" + text),
-      ...item.uncertainties.map((text) => "- 待核实：" + text),
-      ...item.citations.flatMap((id) => {
-        const source = report.sources.find((entry) => entry.id === id);
-        return source
-          ? ["参考：[" + source.id + "] " + source.title + " " + source.url]
-          : [];
-      }),
-      "",
+    ...recommendationGroups(report.recommendations).flatMap((group) => [
+      "## " + group.title,
+      ...group.items.flatMap((item) => [
+        "### " + item.institutionName + " · " + programName(item, run),
+        "专业类别：" + item.disciplineCode,
+        ...(item.degreeType
+          ? [item.degreeType === "academic" ? "学术学位" : "专业学位"]
+          : []),
+        admissionLabel(item, run),
+        item.rationale,
+        ...(item.tierReasons?.map((text) => "- 分级原因：" + text) ?? []),
+        ...(item.fitReasons ?? []).map(
+          (fit) =>
+            "- " +
+            profileLabel(fit.profileField) +
+            "：" +
+            fit.profileValue +
+            "；" +
+            fit.reason,
+        ),
+        ...item.preparation.map((text) => "- 准备：" + text),
+        ...(item.tradeoffs ?? []).map((text) => "- 需要权衡：" + text),
+        tuitionDescription(item, run),
+        tuitionCaution(item, run),
+        ...(item.constraintChecks ?? []).map(
+          (check) =>
+            `- ${check.field === "budget" ? "预算" : "意向城市"}：${check.reason}`,
+        ),
+        ...(item.tuition
+          ? [
+              "学费原文：" +
+                item.tuition.quote +
+                " [" +
+                item.tuition.sourceId +
+                "]",
+            ]
+          : []),
+        ...(item.location
+          ? [
+              "城市依据：" +
+                item.location.city +
+                "；" +
+                item.location.quote +
+                " [" +
+                item.location.sourceId +
+                "]",
+            ]
+          : []),
+        ...item.uncertainties.map((text) => "- 待核实：" + text),
+        ...item.citations.flatMap((id) => {
+          const source = report.sources.find((entry) => entry.id === id);
+          return source
+            ? ["参考：[" + source.id + "] " + source.title + " " + source.url]
+            : [];
+        }),
+        "",
+      ]),
     ]),
     "## 综合分析",
     report.summary,

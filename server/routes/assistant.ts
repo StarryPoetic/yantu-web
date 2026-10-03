@@ -27,8 +27,11 @@ export function createAssistantRoutes() {
   const config = {
     enabled: process.env.YANTU_MODEL_ENABLED === "true",
     apiKey: process.env.DEEPSEEK_API_KEY,
-    userDailyTokens: Number(process.env.YANTU_MODEL_USER_DAILY_TOKENS ?? 20000),
-    globalDailyTokens: Number(process.env.YANTU_MODEL_DAILY_TOKENS ?? 100000),
+    dnsMode: dnsModeFromEnvironment(process.env),
+    userDailyTokens: Number(
+      process.env.YANTU_MODEL_USER_DAILY_TOKENS ?? 100000,
+    ),
+    globalDailyTokens: Number(process.env.YANTU_MODEL_DAILY_TOKENS ?? 300000),
   };
   const runtime = createModelRuntime(config);
   const explanations = createExplanationModule({ ...config, runtime });
@@ -38,7 +41,7 @@ export function createAssistantRoutes() {
     runtime,
     ...searchConfig,
     searchBudget: createSearchBudget(searchConfig),
-    reader: createHttpsReader({ dnsMode: dnsModeFromEnvironment(process.env) }),
+    reader: createHttpsReader({ dnsMode: config.dnsMode }),
     ...(process.env.YANTU_OFFICIAL_HOSTS
       ? {
           allowedHosts: process.env.YANTU_OFFICIAL_HOSTS.split(",")
@@ -62,7 +65,7 @@ export function createAssistantRoutes() {
         process.env.YANTU_RESEARCH_TIMEOUT_MS ?? 120000,
       ),
       researchMaxOutputTokens: Number(
-        process.env.YANTU_RESEARCH_MAX_OUTPUT_TOKENS ?? 12000,
+        process.env.YANTU_RESEARCH_MAX_OUTPUT_TOKENS ?? 16384,
       ),
     },
     { runtime, web },

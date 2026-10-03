@@ -80,9 +80,9 @@ export function searchConfigFromEnvironment(
         : env.BRAVE_SEARCH_API_KEY
       )?.trim() || undefined,
     searchDailyRequestsPerUser: Number(
-      env.YANTU_SEARCH_USER_DAILY_REQUESTS ?? 10,
+      env.YANTU_SEARCH_USER_DAILY_REQUESTS ?? 60,
     ),
-    searchDailyRequestsGlobal: Number(env.YANTU_SEARCH_DAILY_REQUESTS ?? 100),
+    searchDailyRequestsGlobal: Number(env.YANTU_SEARCH_DAILY_REQUESTS ?? 300),
   };
 }
 

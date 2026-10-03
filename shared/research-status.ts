@@ -37,6 +37,23 @@ const messages: Record<string, string> = {
   CONCURRENCY_LIMIT: "当前模型服务繁忙，请稍后再试。",
   EVIDENCE_TOO_LARGE: "本次资料较多，暂无法在当前额度内完成分析。",
   PROVIDER_AUTH_FAILED: "模型服务认证未通过，请检查服务端配置。",
+  PROVIDER_BALANCE_INSUFFICIENT:
+    "模型服务账户余额不足，服务管理员充值后可重试；无需修改画像。",
+  PROVIDER_INVALID_REQUEST:
+    "模型服务未接受请求格式或参数，请联系维护者检查服务端配置；无需重填画像。",
+  PROVIDER_TEMPORARY_UNAVAILABLE:
+    "模型服务暂时故障，本次生成未完成，请稍后重试。",
+  PROVIDER_NETWORK_ERROR:
+    "连接模型服务失败或中途断开，请检查服务器网络后重试。",
+  PROVIDER_UNAVAILABLE:
+    "模型服务未完成本次请求，请检查服务状态与配置；无需修改画像。",
+  INVALID_RESPONSE: "模型服务返回的数据无法读取，请稍后重试；无需修改画像。",
+  RESPONSE_TOO_LARGE:
+    "模型响应超过本次传输或正文长度上限，生成未完成；请重试或联系维护者，无需修改画像。",
+  INCOMPLETE_RESPONSE:
+    "模型输出被截断或未正常结束，本次生成未完成；请稍后重试，无需修改画像。",
+  UNKNOWN_USAGE:
+    "模型服务未返回有效的用量记录，本次生成未完成；请稍后重试，无需修改画像。",
   RATE_LIMITED: "模型服务请求较多，请稍后再试。",
   TIMEOUT: "本次模型分析超时，已保留可查看的网页资料。",
   MODEL_TIMEOUT: "本次模型分析超时，已保留可查看的网页资料。",

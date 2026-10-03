@@ -4,6 +4,88 @@ import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
 import { createWebAnswerModule } from "../../server/explanation/web.ts";
 import { searchResearchSources } from "../../server/explanation/research-search.ts";
 
+test("expanded discovery rotates fee lookups across directions and keeps their source ownership", async () => {
+  const directions = ["0401", "0301", "0802"].map(
+    (code) => getDisciplineCatalog().items.find((d) => d.code === code)!,
+  );
+  const schools = [
+    ["甲师范大学", "乙师范大学"],
+    ["丙政法大学", "丁政法大学"],
+    ["戊工程大学", "己工程大学"],
+  ];
+  const queries: string[] = [];
+  const web = createWebAnswerModule({
+    enabled: true,
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "test-only",
+    searchDailyRequestsPerUser: 30,
+    reader: async (_url, options) => {
+      const query = JSON.parse(options.body!).query;
+      queries.push(query);
+      const index = schools.findIndex((names) =>
+        names.some((name) => query.startsWith(name)),
+      );
+      const fee = query.includes("学费");
+      const name =
+        index < 0 ? "" : schools[index].find((name) => query.startsWith(name))!;
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({
+          code: 200,
+          data: {
+            webPages: {
+              value:
+                index < 0
+                  ? []
+                  : [
+                      {
+                        name: `${name}${fee ? "学费收费标准" : "硕士招生专业目录"}`,
+                        url: `https://school${schools.flat().indexOf(name)}.edu.cn/${fee ? "fees" : "masters"}`,
+                        summary: `${name} ${directions[index].name} ${directions[index].code} 硕士研究生招生培养`,
+                      },
+                    ],
+            },
+          },
+        }),
+      };
+    },
+  });
+  const report = await searchResearchSources({
+    web,
+    subjectId: "test",
+    disciplines: directions,
+    regions: ["杭州"],
+    schoolHints: new Map(directions.map((d, i) => [d.code, schools[i]])),
+    maxRequests: 24,
+    maxSources: 40,
+    onProgress: async () => {},
+  });
+  const fees = queries.filter((query) => query.includes("学费"));
+  assert.equal(fees.length, 6);
+  assert.deepEqual(
+    fees.map((query) => query.split(" ")[0]),
+    [
+      "甲师范大学",
+      "丙政法大学",
+      "戊工程大学",
+      "乙师范大学",
+      "丁政法大学",
+      "己工程大学",
+    ],
+  );
+  for (const source of report.sources.filter((s) => s.url.endsWith("/fees"))) {
+    const direction = schools.findIndex((names) =>
+      names.some((name) => source.title.startsWith(name)),
+    );
+    assert.equal(
+      report.sourceDirections.get(source.id),
+      directions[direction].code,
+    );
+  }
+  assert.ok(queries.length <= 24);
+});
+
 test("an empty first school search gets a different focused query within the same six-request budget", async () => {
   const discipline = getDisciplineCatalog().items.find(
     (item) => item.code === "0401",

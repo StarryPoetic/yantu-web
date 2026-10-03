@@ -153,6 +153,11 @@ test("provider, transport, quota and cancellation failures are never retried or 
     "MODEL_TIMEOUT",
     "PROVIDER_AUTH_FAILED",
     "PROVIDER_UNAVAILABLE",
+    "PROVIDER_NETWORK_ERROR",
+    "PROVIDER_BALANCE_INSUFFICIENT",
+    "PROVIDER_INVALID_REQUEST",
+    "RATE_LIMITED",
+    "INVALID_RESPONSE",
     "BUDGET_EXHAUSTED",
     "CONCURRENCY_LIMIT",
     "DATA_DELETED",
@@ -296,4 +301,169 @@ test("a context that cannot fit repair feedback stops without an additional paid
   );
   assert.equal(calls, 1);
   assert.equal(checks, 0);
+});
+
+test("a confirmed temporary provider failure retries once through the same runtime after a live check", async () => {
+  let calls = 0,
+    checks = 0;
+  const input = setup({
+    async complete(sent, sentOptions) {
+      calls++;
+      assert.deepEqual(sent, messages);
+      assert.deepEqual(sentOptions, options);
+      if (calls === 1) throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+      assert.equal(checks, 1);
+      return reply('{"ok":true}');
+    },
+  });
+  const result = await generateResearchValue({
+    ...input,
+    beforeRetry: async () => {
+      checks++;
+    },
+  });
+  assert.deepEqual(result.value, { ok: true });
+  assert.equal(calls, 2);
+  const cached = await input.runtime.run(
+    "owner",
+    { ...input.key, retry: 1 },
+    messages,
+    validate,
+    options,
+  );
+  assert.equal(cached.cached, true);
+  assert.equal(calls, 2);
+});
+
+test("temporary retry and structural repair share a one-retry ceiling in either order", async () => {
+  for (const sequence of [
+    ["temporary", "invalid", "valid"],
+    ["invalid", "temporary", "valid"],
+    ["temporary", "invalid", "temporary"],
+    ["invalid", "temporary", "temporary"],
+  ]) {
+    let calls = 0,
+      retries = 0,
+      repairs = 0;
+    const input = setup({
+      async complete() {
+        const step = sequence[calls++];
+        assert.ok(step, "must not attempt a fourth provider call");
+        if (step === "temporary")
+          throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+        return reply(step === "invalid" ? '{"wrong":true}' : '{"ok":true}');
+      },
+    });
+    const pending = generateResearchValue({
+      ...input,
+      beforeRetry: async () => {
+        retries++;
+      },
+      beforeRepair: async () => {
+        repairs++;
+      },
+    });
+    if (sequence.at(-1) === "valid")
+      assert.deepEqual((await pending).value, { ok: true });
+    else await assert.rejects(pending, code("PROVIDER_TEMPORARY_UNAVAILABLE"));
+    assert.equal(calls, 3);
+    assert.equal(retries, 1);
+    assert.equal(repairs, 1);
+  }
+});
+
+test("a temporary failure retains its reservation and retry cannot bypass the shared quota", async () => {
+  let calls = 0,
+    checks = 0;
+  const reserve = JSON.stringify(messages).length + options.maxOutputTokens!;
+  const input = setup(
+    {
+      async complete() {
+        calls++;
+        throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+      },
+    },
+    reserve,
+  );
+  await assert.rejects(
+    generateResearchValue({
+      ...input,
+      beforeRetry: async () => {
+        checks++;
+      },
+    }),
+    code("BUDGET_EXHAUSTED"),
+  );
+  assert.equal(calls, 1);
+  assert.equal(checks, 1);
+  await assert.rejects(
+    input.runtime.run("owner", { task: "chat" }, messages, validate, options),
+    code("BUDGET_EXHAUSTED"),
+  );
+});
+
+test("retry authorization failure stops before a second request and deletion during retry prevents return or caching", async () => {
+  for (const callback of ["beforeRetry", "beforeRepair"] as const) {
+    let calls = 0;
+    const input = setup({
+      async complete() {
+        calls++;
+        throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+      },
+    });
+    await assert.rejects(
+      generateResearchValue({
+        ...input,
+        [callback]: async () => {
+          throw new ModelError("DATA_DELETED");
+        },
+      }),
+      code("DATA_DELETED"),
+    );
+    assert.equal(calls, 1);
+  }
+  let calls = 0;
+  let started!: () => void;
+  let finish!: (value: ModelReply) => void;
+  const retryStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const input = setup({
+    async complete() {
+      calls++;
+      if (calls === 1) throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+      started();
+      return new Promise<ModelReply>((resolve) => {
+        finish = resolve;
+      });
+    },
+  });
+  const pending = generateResearchValue(input);
+  await retryStarted;
+  input.runtime.clearSubject("owner");
+  finish(reply('{"ok":true}'));
+  await assert.rejects(pending, code("DATA_DELETED"));
+  assert.equal(calls, 2);
+});
+
+test("a second temporary failure ends the phase and a distinct retry failure preserves its exact cause", async () => {
+  for (const second of [
+    "PROVIDER_TEMPORARY_UNAVAILABLE",
+    "MODEL_TIMEOUT",
+    "PROVIDER_AUTH_FAILED",
+    "PROVIDER_BALANCE_INSUFFICIENT",
+    "PROVIDER_NETWORK_ERROR",
+  ]) {
+    let calls = 0;
+    const input = setup({
+      async complete() {
+        calls++;
+        throw new ModelError(
+          calls === 1 ? "PROVIDER_TEMPORARY_UNAVAILABLE" : second,
+        );
+      },
+    });
+    await assert.rejects(generateResearchValue(input), code(second));
+    assert.equal(calls, 2);
+  }
 });

@@ -74,7 +74,7 @@ function reportFor(
 ): ResearchReport {
   return {
     schemaVersion: 1,
-    reportVersion: "profile-research-v5",
+    reportVersion: "profile-research-v6",
     status,
     generatedAt: retrievedAt,
     guidanceRunId: run.guidanceRunId,
@@ -88,6 +88,22 @@ function reportFor(
         disciplineCode: "0301",
         programName: "法学（民商法方向）",
         degreeType: "academic",
+        tier: "preferred",
+        tierReasons: [],
+        constraintChecks: [
+          {
+            field: "budget",
+            status: "unknown",
+            reason: "尚未查到可比较的学费资料。",
+            sourceIds: [],
+          },
+          {
+            field: "cities",
+            status: "unknown",
+            reason: "项目城市尚需核对。",
+            sourceIds: [],
+          },
+        ],
         admissionStatus:
           status === "completed" ? "current_evidence" : "needs_verification",
         rationale: "结合本科基础比较课程安排，报考条件仍需按原文确认。",
@@ -133,6 +149,142 @@ function reportFor(
 }
 
 /** Only research endpoints are mocked; registration, profile and guidance use the real server. */
+function tieredReport(run: GuidanceRun): ResearchReport {
+  const base = reportFor(run, "completed");
+  const year = Number(run.inputSnapshot.profile.year);
+  const names = [
+    "分级测试甲大学",
+    "分级测试乙大学",
+    "分级测试丙大学",
+    "分级测试丁大学",
+    "分级测试戊大学",
+  ];
+  const sources = names.map((name, index) => ({
+    id: "fee-" + index,
+    title: name + "电子信息项目与学费说明（测试）",
+    url: "https://yz.chsi.com.cn/test-fee-" + index,
+    excerpt: "仅供浏览器测试的项目、城市和收费资料。",
+    retrievedAt,
+    kind: "official_page" as const,
+    verified: false as const,
+  }));
+  return {
+    ...base,
+    sources,
+    facts: [],
+    coverage: {
+      targetMin: 5,
+      targetMax: 10,
+      schoolCount: 5,
+      preferredCount: 3,
+      alternativeCount: 1,
+      exploratoryCount: 1,
+      shortfallReasons: [],
+    },
+    recommendations: names.map((institutionName, index) => {
+      const historical = index === 2,
+        budgetMismatch = index === 3,
+        cityMismatch = index === 4;
+      const sourceId = sources[index].id;
+      const city = cityMismatch ? "上海" : "杭州";
+      const amount = historical ? 40000 : budgetMismatch ? 60000 : 8000;
+      return {
+        ...base.recommendations[0],
+        institutionName,
+        disciplineCode: "0854",
+        programName: "电子信息（人工智能技术）",
+        degreeType: "professional" as const,
+        tier:
+          index === 4
+            ? ("exploratory" as const)
+            : historical
+              ? ("alternative" as const)
+              : ("preferred" as const),
+        tierReasons: budgetMismatch
+          ? [
+              "虽然学费高于预算，但人工智能兴趣与工程基础形成较强衔接，综合学习目标和准备条件列为优先推荐。",
+            ]
+          : cityMismatch
+            ? [
+                "该项目所需学习基础跨度较大，跨考准备成本仍需评估，先作为探索选择；费用和城市另行核对。",
+              ]
+            : historical
+              ? [
+                  "与你的兴趣有联系，但课程衔接和备考投入仍需比较，综合列为适合备选。",
+                ]
+              : [
+                  "与你的人工智能兴趣和已有工程基础衔接，综合个人目标列为优先推荐。",
+                ],
+        rationale: "你愿意跨专业并关注人工智能，可比较该项目的计算与实践课程。",
+        fitReasons: [
+          {
+            profileField: "major",
+            profileValue: String(run.inputSnapshot.profile.major),
+            reason:
+              "机械课程中的工程基础可作为衔接起点，还需要补充编程和数据结构。",
+          },
+          {
+            profileField: "crossMajor",
+            profileValue: String(run.inputSnapshot.profile.crossMajor),
+            reason: "你接受跨专业，因此保留这个具体项目供比较。",
+          },
+        ],
+        constraintChecks: [
+          {
+            field: "budget" as const,
+            status:
+              index === 1 || historical
+                ? ("unknown" as const)
+                : budgetMismatch
+                  ? ("mismatch" as const)
+                  : ("match" as const),
+            reason:
+              index === 1
+                ? "尚未查到项目学费，不能判断是否在 2–5 万元年度预算内。"
+                : historical
+                  ? "仅查到历史全程费用，不能直接判断目标年度是否符合预算。"
+                  : budgetMismatch
+                    ? "已核对学费为每学年 60,000 元，高于你填写的 2–5 万元年度预算。"
+                    : "已核对学费为每学年 8,000 元，生活费和其他支出还需另外估算。",
+            sourceIds: index === 1 ? [] : [sourceId],
+          },
+          {
+            field: "cities" as const,
+            status: cityMismatch ? ("mismatch" as const) : ("match" as const),
+            reason: cityMismatch
+              ? "项目位于上海，与你选择的杭州不同。"
+              : "项目位于你选择的杭州。",
+            sourceIds: [sourceId],
+          },
+        ],
+        ...(index === 1
+          ? {}
+          : {
+              tuition: {
+                amount,
+                currency: "CNY" as const,
+                period: historical
+                  ? ("program" as const)
+                  : ("academic_year" as const),
+                year: historical ? year - 2 : year,
+                studyMode: historical
+                  ? ("part_time" as const)
+                  : ("full_time" as const),
+                quote: `${institutionName}电子信息学费${amount}元，按${historical ? "全程" : "学年"}计费。`,
+                sourceId,
+              },
+            }),
+        location: {
+          city,
+          quote: "该电子信息项目在" + city + "校区培养。",
+          sourceId,
+        },
+        citations: [sourceId],
+      };
+    }),
+  };
+}
+
 async function researchService(page: Page) {
   let current:
     | (ResearchJob & { needsRefresh?: boolean; refreshReasons?: string[] })
@@ -201,9 +353,9 @@ async function researchService(page: Page) {
         refreshReasons: ["个人画像已更新"],
       };
     },
-    stage(stage: ResearchStage) {
+    stage(stage: ResearchStage, message?: string) {
       if (!current) throw new Error("Start the report before advancing it.");
-      const step = stages[stage];
+      const step = { ...stages[stage], ...(message ? { message } : {}) };
       current = {
         ...current,
         status: "running",
@@ -486,6 +638,21 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
     await expect(
       panel.getByText(stages[stage].message, { exact: true }).first(),
     ).toBeVisible();
+    if (stage === "researching") {
+      for (const detail of [
+        "正在检索学校与专业 3/24",
+        "正在读取官网资料 8/24",
+      ]) {
+        service.stage(stage, detail);
+        await expect(
+          panel.getByRole("status").filter({ hasText: detail }),
+        ).toBeVisible();
+        await expect(panel.getByRole("progressbar")).toHaveAttribute(
+          "value",
+          "30",
+        );
+      }
+    }
   }
   await page.reload();
   await expect(
@@ -843,6 +1010,251 @@ test("跨专业画像优先展示具体学校专业、真实个人理由与成�
   expect(service.postCount()).toBe(1);
 });
 
+test("五所学校按综合适合度分三层，昂贵仍可优先且同价可不同层，费用独立核对并导出", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const service = await researchService(page);
+  const run = await openGuidance(page, async (page) => {
+    await page.getByLabel("本科专业", { exact: true }).fill("机械工程");
+    await page.getByLabel("感兴趣的专业或领域（选填）").fill("人工智能");
+    await page
+      .getByRole("combobox", { name: "跨专业意愿", exact: true })
+      .selectOption("接受跨专业");
+    await page
+      .getByRole("combobox", { name: "年度预算", exact: true })
+      .selectOption("2–5 万元");
+    await page.getByRole("button", { name: "杭州", exact: true }).click();
+  });
+  service.setRun(run);
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("completed", () => tieredReport(run));
+  await expect(
+    panel.getByText("本次建议 5 所不同学校，目标比较 5–10 所", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("complementary", { name: "报告覆盖说明" }),
+  ).toHaveCount(0);
+  const preferred = panel.getByRole("region", {
+    name: "第一级·优先推荐",
+    exact: true,
+  });
+  const alternatives = panel.getByRole("region", {
+    name: "第二级·适合备选",
+    exact: true,
+  });
+  await expect(preferred.getByRole("article")).toHaveCount(3);
+  await expect(alternatives.getByRole("article")).toHaveCount(1);
+  const exploratory = panel.getByRole("region", {
+    name: "第三级·探索选择",
+    exact: true,
+  });
+  await expect(exploratory.getByRole("article")).toHaveCount(1);
+  const expensive = preferred.getByRole("article", {
+    name: "分级测试丁大学 · 电子信息（人工智能技术）",
+    exact: true,
+  });
+  await expect(expensive.getByText("机械工程", { exact: true })).toBeVisible();
+  await expect(expensive.getByText(/你接受跨专业/)).toBeVisible();
+  await expect(
+    expensive.getByText(/60,000 元，高于你填写的 2–5 万元年度预算/),
+  ).toBeVisible();
+  await expect(
+    expensive.getByText(
+      /虽然学费高于预算，但人工智能兴趣与工程基础形成较强衔接/,
+    ),
+  ).toBeVisible();
+  await expect(
+    expensive.getByRole("list", { name: "学费依据来源" }).getByRole("link"),
+  ).toHaveAttribute("href", "https://yz.chsi.com.cn/test-fee-3");
+  await expect(
+    exploratory
+      .getByRole("definition")
+      .filter({ hasText: "项目位于上海，与你选择的杭州不同。" }),
+  ).toBeVisible();
+  const unknown = preferred.getByRole("article", {
+    name: "分级测试乙大学 · 电子信息（人工智能技术）",
+    exact: true,
+  });
+  await expect(
+    unknown.getByText(
+      "尚未查到可核对的学费金额，暂不能判断是否符合你的年度预算。",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    unknown.getByText("尚未查到项目学费，不能判断是否在 2–5 万元年度预算内。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const historical = alternatives.getByRole("article", {
+    name: "分级测试丙大学 · 电子信息（人工智能技术）",
+    exact: true,
+  });
+  await expect(
+    historical.getByText(
+      `${Number(run.inputSnapshot.profile.year) - 2} 年参考学费：40,000 元/全程（非全日制）`,
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    preferred
+      .getByRole("article", {
+        name: "分级测试甲大学 · 电子信息（人工智能技术）",
+        exact: true,
+      })
+      .getByText(/年学费：8,000 元\/学年/),
+  ).toBeVisible();
+  await expect(exploratory.getByText(/年学费：8,000 元\/学年/)).toBeVisible();
+  await expect(
+    exploratory.getByText(/跨考准备成本仍需评估，先作为探索选择/),
+  ).toBeVisible();
+  await expect(panel.getByText(/优先推荐不代表录取率或录取保证/)).toBeVisible();
+  await expect(
+    panel.getByText(/尚未发现已核实的预算或城市偏好冲突/),
+  ).toHaveCount(0);
+  await expect(
+    historical.getByText(/该费用为其他年度参考，目标年度收费尚需核对/),
+  ).toBeVisible();
+  await expect(
+    historical.getByText(/此金额不是按学年计费，不能直接与年度预算比较/),
+  ).toBeVisible();
+  await expect(panel.getByText(/这是旧版报告/)).toHaveCount(0);
+  await preferred.screenshot({
+    path: "test-results/research-tiers-desktop.png",
+  });
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await downloading).path())!, "utf8");
+  expect(content).toContain("本次建议 5 所不同学校，目标比较 5–10 所。");
+  expect(content).toContain("## 第一级·优先推荐");
+  expect(content).toContain("## 第二级·适合备选");
+  expect(content).toContain("## 第三级·探索选择");
+  expect(content).toContain("优先推荐不代表录取率或录取保证");
+  expect(content).toContain(
+    "虽然学费高于预算，但人工智能兴趣与工程基础形成较强衔接",
+  );
+  expect(content).toContain("分级测试丁大学 · 电子信息（人工智能技术）");
+  expect(content).toContain("60,000 元/学年");
+  expect(content).toContain("参考学费：40,000 元/全程");
+  expect(content).toContain("不能直接与年度预算比较");
+  expect(content).toContain("https://yz.chsi.com.cn/test-fee-3");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(expensive.getByText(/60,000 元，高于你填写/)).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await expensive.screenshot({
+    path: "test-results/research-tiers-mobile.png",
+  });
+  expect(service.postCount()).toBe(1);
+});
+
+test("不足五所仍保留适合与备选学校，并说明尚未查到而非不存在", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  const run = await openGuidance(page);
+  service.setRun(run);
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("partial", () => {
+    const report = tieredReport(run);
+    return {
+      ...report,
+      status: "partial",
+      recommendations: [report.recommendations[0], report.recommendations[2]],
+      coverage: {
+        targetMin: 5,
+        targetMax: 10,
+        schoolCount: 2,
+        preferredCount: 1,
+        alternativeCount: 1,
+        shortfallReasons: [
+          "本次只核对到两所学校的具体项目，其他候选学校的官网资料尚未查到足够依据。",
+        ],
+      },
+    };
+  });
+  await expect(
+    panel.getByText("本次建议 2 所不同学校，目标比较 5–10 所", { exact: true }),
+  ).toBeVisible();
+  const coverage = panel.getByRole("complementary", { name: "报告覆盖说明" });
+  await expect(
+    coverage.getByText("尚未达到 5 所，先保留已有建议", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    coverage.getByText(/其他候选学校的官网资料尚未查到足够依据/),
+  ).toBeVisible();
+  await expect(
+    panel
+      .getByRole("region", { name: "第一级·优先推荐", exact: true })
+      .getByRole("article"),
+  ).toHaveCount(1);
+  await expect(
+    panel
+      .getByRole("region", { name: "第二级·适合备选", exact: true })
+      .getByRole("article"),
+  ).toHaveCount(1);
+  await expect(
+    panel.getByRole("region", { name: "暂无学校推荐", exact: true }),
+  ).toHaveCount(0);
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await downloading).path())!, "utf8");
+  expect(content).toContain("本次建议 2 所不同学校");
+  expect(content).toContain("其他候选学校的官网资料尚未查到足够依据");
+});
+
+test("模型供应服务故障显示真实原因，不误称画像或资料校验失败", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.stop("preparing", "PROVIDER_UNAVAILABLE");
+  const failure = panel.getByRole("region", {
+    name: "报告生成失败",
+    exact: true,
+  });
+  await expect(
+    failure.getByText(
+      "模型服务未完成本次请求，请检查服务状态与配置；无需修改画像。",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(failure.getByText(/校验|来源核对/)).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "补充个人情况", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "重新调研并生成报告", exact: true }),
+  ).toBeEnabled();
+});
+
 test("确有待补充问题时展示问题与画像入口，保留完整排查内容", async ({
   page,
 }) => {
@@ -962,10 +1374,17 @@ test("规划技术失败显示停止阶段，刷新保留画像且仅手动重�
   expect(service.postCount()).toBe(2);
 });
 
-for (const failureStage of [undefined, "analyzing"] as const) {
+for (const { reason, failureStage } of [
+  { reason: "INVALID_RESEARCH_REPORT", failureStage: undefined },
+  { reason: "INVALID_RESEARCH_REPORT", failureStage: "analyzing" },
+  { reason: "RESPONSE_TOO_LARGE", failureStage: undefined },
+  { reason: "INCOMPLETE_RESPONSE", failureStage: undefined },
+  { reason: "UNKNOWN_USAGE", failureStage: undefined },
+] as const) {
   test(
     (failureStage ? "明确失败阶段" : "旧 partial 完成态") +
-      "中的模型错误仍显示失败，不误称部分研究报告或缺画像",
+      "中的模型错误仍显示失败，不误称部分研究报告或缺画像：" +
+      reason,
     async ({ page }) => {
       const service = await researchService(page);
       service.setRun(await openGuidance(page));
@@ -981,7 +1400,7 @@ for (const failureStage of [undefined, "analyzing"] as const) {
       ).toBeVisible();
       service.finish("partial", (report) => ({
         ...report,
-        reason: "INVALID_RESEARCH_REPORT",
+        reason,
         failureStage,
         recommendations: [],
         followUpQuestions: ["旧结果遗留的补充问题"],

@@ -2,38 +2,14 @@ import type { ResearchReport } from "../../server/explanation/research";
 import type { GuidanceRun } from "../../server/disciplines/types";
 import { researchReason } from "../../shared/research-status";
 import { safeUrl } from "./ui";
+import { ResearchSchoolCard } from "./ResearchSchoolCard";
+import { ResearchSourceLinks } from "./ResearchSourceLinks";
 import {
-  admissionLabel,
-  profileLabel,
-  programName,
+  recommendationGroups,
+  researchCoverage,
+  suitabilityNotice,
   type researchOutcome,
 } from "./research-report";
-
-function SourceLinks({
-  ids,
-  sources,
-}: {
-  ids: string[];
-  sources: ResearchReport["sources"];
-}) {
-  const links = ids.flatMap((id) => {
-    const source = sources.find((entry) => entry.id === id);
-    const url = source && safeUrl(source.url);
-    return source && url ? [{ ...source, url }] : [];
-  });
-  if (!links.length) return null;
-  return (
-    <ul className="research-reference-links" aria-label="推荐依据来源">
-      {links.map((source) => (
-        <li key={source.id}>
-          <a href={source.url} target="_blank" rel="noreferrer">
-            {source.title}
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 export function ResearchReportView({
   report,
@@ -47,8 +23,10 @@ export function ResearchReportView({
   outcome: ReturnType<typeof researchOutcome>;
 }) {
   const hasRecommendations = report.recommendations.length > 0;
+  const coverage = researchCoverage(report);
+  const groups = recommendationGroups(report.recommendations);
   const legacy =
-    report.reportVersion !== "profile-research-v5" ||
+    report.reportVersion !== "profile-research-v6" ||
     report.recommendations.some(
       (item) => !item.programName || !item.fitReasons?.length,
     );
@@ -59,101 +37,53 @@ export function ResearchReportView({
           <div className="research-result-heading">
             <h3>建议优先比较的学校与专业</h3>
             <span>
-              {report.recommendations.length} 个选项，结合你的个人情况逐项比较
+              本次建议 {coverage.schoolCount} 所不同学校，目标比较{" "}
+              {coverage.targetMin}–{coverage.targetMax} 所
             </span>
+            <p className="ws-muted">{suitabilityNotice}</p>
           </div>
-          <div className="research-school-grid">
-            {report.recommendations.map((item, index) => (
-              <article
-                className="research-school"
-                aria-label={
-                  item.institutionName + " · " + programName(item, run)
-                }
-                key={
-                  item.institutionName + ":" + item.disciplineCode + ":" + index
-                }
-              >
-                <header className="research-school-heading">
-                  <h4>{item.institutionName}</h4>
-                  <p className="research-program">{programName(item, run)}</p>
-                  {item.degreeType && (
-                    <span className="research-degree">
-                      {item.degreeType === "academic" ? "学术学位" : "专业学位"}
-                    </span>
-                  )}
-                  {!item.programName && (
-                    <small>旧报告仅记录专业类别，具体招生专业待补充</small>
-                  )}
-                </header>
-                <p
-                  className={
-                    "research-admission " +
-                    (item.admissionStatus === "current_evidence"
-                      ? "has-evidence"
-                      : "needs-verification")
-                  }
-                >
-                  {admissionLabel(item, run)}
-                </p>
-                <section className="research-fit">
-                  <h5>为什么适合你考虑</h5>
-                  <p>{item.rationale}</p>
-                  {!!item.fitReasons?.length && (
-                    <dl>
-                      {item.fitReasons.map((fit, i) => (
-                        <div key={fit.profileField + ":" + i}>
-                          <dt>
-                            {profileLabel(fit.profileField)}
-                            <strong>{fit.profileValue}</strong>
-                          </dt>
-                          <dd>{fit.reason}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  )}
-                </section>
-                <div className="research-preparation">
-                  {!!item.preparation.length && (
-                    <section>
-                      <h5>准备重点</h5>
-                      <ul>
-                        {item.preparation.map((text, i) => (
-                          <li key={i}>{text}</li>
-                        ))}
-                      </ul>
-                    </section>
-                  )}
-                  {!!item.tradeoffs?.length && (
-                    <section>
-                      <h5>需要权衡</h5>
-                      <ul>
-                        {item.tradeoffs.map((text, i) => (
-                          <li key={i}>{text}</li>
-                        ))}
-                      </ul>
-                    </section>
-                  )}
-                </div>
-                {!!item.uncertainties.length && (
-                  <details className="research-admission-details">
-                    <summary>报考前需要确认</summary>
-                    <ul>
-                      {item.uncertainties.map((text, i) => (
-                        <li key={i}>{text}</li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-                <footer className="research-school-sources">
-                  <strong>查看学校与专业依据</strong>
-                  <SourceLinks ids={item.citations} sources={report.sources} />
-                </footer>
-              </article>
-            ))}
-          </div>
+          {coverage.shortfall && (
+            <aside className="research-coverage" aria-label="报告覆盖说明">
+              <strong>尚未达到 {coverage.targetMin} 所，先保留已有建议</strong>
+              <ul>
+                {coverage.reasons.map((reason, index) => (
+                  <li key={index}>{reason}</li>
+                ))}
+              </ul>
+            </aside>
+          )}
+          {groups.map((group) => (
+            <section
+              className="research-tier-group"
+              key={group.tier}
+              aria-label={group.title}
+            >
+              <div className="research-group-heading">
+                <h3>{group.title}</h3>
+                <p>{group.description}</p>
+              </div>
+              <div className="research-school-grid">
+                {group.items.map((item, index) => (
+                  <ResearchSchoolCard
+                    item={item}
+                    run={run}
+                    sources={report.sources}
+                    key={
+                      item.institutionName +
+                      ":" +
+                      item.disciplineCode +
+                      ":" +
+                      index
+                    }
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
           {legacy && (
             <p className="research-legacy" role="status">
-              这是旧版报告。重新生成后，可查看具体招生专业、逐项个人理由与准备成本。
+              这是旧版报告。重新生成后，可按 5–10
+              所学校的目标查看分级建议、个人匹配理由与费用核对结果。
             </p>
           )}
         </>
@@ -174,6 +104,12 @@ export function ResearchReportView({
               ? researchReason(report.reason)
               : "本次没有取得可支持学校与具体专业建议的资料。你的画像已保存，可以重新发起研究。"}
           </p>
+          {outcome !== "profile" && (
+            <p>
+              本次可用学校建议为 0 所，尚未达到 {coverage.targetMin}–
+              {coverage.targetMax} 所的比较目标。尚未查到不代表不存在合适学校。
+            </p>
+          )}
           {!!report.followUpQuestions?.length && (
             <ul>
               {report.followUpQuestions.map((question, i) => (
@@ -227,7 +163,10 @@ export function ResearchReportView({
             report.facts.map((fact, i) => (
               <article className="research-excerpt" key={i}>
                 <p>{fact.text}</p>
-                <SourceLinks ids={fact.citations} sources={report.sources} />
+                <ResearchSourceLinks
+                  ids={fact.citations}
+                  sources={report.sources}
+                />
               </article>
             ))
           ) : (

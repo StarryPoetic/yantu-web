@@ -17,7 +17,7 @@ const repairable = new Set([
   "UNSUPPORTED_RESEARCH_CLAIM",
 ]);
 
-/** Repair a rejected structured reply once through the same metered runtime. Never retry transport failures. */
+/** One structural repair and one confirmed temporary HTTP retry share the same ledger and cancellation checks. */
 export async function generateResearchValue<T>(input: {
   runtime: ModelRuntime;
   subjectId: string;
@@ -26,24 +26,53 @@ export async function generateResearchValue<T>(input: {
   validate: (raw: string) => T;
   options: ModelRequestOptions;
   beforeRepair: () => Promise<void>;
+  beforeRetry?: () => Promise<void>;
 }): Promise<{ value: T; cached: boolean }> {
+  let retried = false;
+  const run = async (
+    key: Record<string, unknown>,
+    messages: ModelMessage[],
+    validate: (raw: string) => T,
+  ) => {
+    try {
+      return await input.runtime.run(
+        input.subjectId,
+        key,
+        messages,
+        validate,
+        input.options,
+      );
+    } catch (error) {
+      if (
+        !(error instanceof ModelError) ||
+        error.code !== "PROVIDER_TEMPORARY_UNAVAILABLE" ||
+        retried
+      )
+        throw error;
+      retried = true;
+      await new Promise<void>((resolve) => setTimeout(resolve, 250));
+      // Re-check the live session/profile after the backoff, before reserving tokens again.
+      await (input.beforeRetry ?? input.beforeRepair)();
+      return input.runtime.run(
+        input.subjectId,
+        { ...key, retry: 1 },
+        messages,
+        validate,
+        input.options,
+      );
+    }
+  };
   let rejectedReply = "";
   let failure: ModelError;
   try {
-    return await input.runtime.run(
-      input.subjectId,
-      input.key,
-      input.messages,
-      (raw) => {
-        try {
-          return input.validate(raw);
-        } catch (error) {
-          rejectedReply = raw;
-          throw error;
-        }
-      },
-      input.options,
-    );
+    return await run(input.key, input.messages, (raw) => {
+      try {
+        return input.validate(raw);
+      } catch (error) {
+        rejectedReply = raw;
+        throw error;
+      }
+    });
   } catch (error) {
     if (
       !(error instanceof ModelError) ||
@@ -74,11 +103,9 @@ export async function generateResearchValue<T>(input: {
     JSON.stringify(withReply).length <= limit ? withReply : context;
   if (JSON.stringify(messages).length > limit) throw failure;
   await input.beforeRepair();
-  return input.runtime.run(
-    input.subjectId,
+  return run(
     { ...input.key, repair: 1, validation: failure.code },
     messages,
     input.validate,
-    input.options,
   );
 }

@@ -34,7 +34,7 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertFalse(re.search(r"\b(?:TODO|FIXME|TBD)\b", self.content))
 
     def test_current_requirement_version_is_declared(self):
-        self.assertRegex(self.content, r"版本：V0\.8 · 日期：\d{4}-\d{2}-\d{2}")
+        self.assertRegex(self.content, r"版本：V0\.9 · 日期：\d{4}-\d{2}-\d{2}")
 
     def test_full_profile_school_guidance_is_separate_from_year_eligibility(self):
         requirements = self.content.split("### 3.3. 全国专业与推荐结论", 1)[1].split("### 3.4.", 1)[0]

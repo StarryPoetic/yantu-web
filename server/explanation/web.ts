@@ -14,6 +14,8 @@ import type { SearchConfig, SearchOptions } from "./search.ts";
 import { createPublicDohResolver } from "./dns.ts";
 import type { AddressResolver, DnsMode } from "./dns.ts";
 import { pdfText, pdfTextLimits } from "./pdf-text.ts";
+import { resolvePublicAddress } from "./public-address.ts";
+export { isPublicAddress, resolvePublicAddress } from "./public-address.ts";
 
 export interface WebSource {
   id: string;
@@ -23,6 +25,8 @@ export interface WebSource {
   excerpt: string;
   kind: "official_page" | "search_snippet";
   verified: false;
+  /** A transport-normalization note, never evidence that the page was read. */
+  retrievalNote?: string;
 }
 export interface WebAnswerInput {
   subjectId: string;
@@ -39,6 +43,12 @@ export interface WebAnswerResult {
   reason?: string;
   searched: boolean;
   needsSearch: boolean;
+}
+export interface WebAnswerOptions {
+  sourcesOnly?: boolean;
+  search?: SearchOptions;
+  /** Research-only: upgrade academic HTTP search results, never user URLs. */
+  upgradeAcademicHttp?: boolean;
 }
 export interface WebReadResult {
   text: string;
@@ -72,6 +82,50 @@ export const DEFAULT_OFFICIAL_HOSTS = [
   "yz.tsinghua.edu.cn",
 ];
 
+function searchSourceUrl(
+  value: string,
+  upgradeAcademicHttp: boolean,
+): { url: URL; retrievalNote?: string } | undefined {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return undefined;
+  }
+  let retrievalNote: string | undefined;
+  if (url.protocol === "http:" && upgradeAcademicHttp) {
+    // Inspect the raw authority: URL parsing erases :80 and empty credentials.
+    const authority = /^http:\/\/([a-z\d.-]+)(?=[/?#]|$)/i.exec(value)?.[1];
+    if (
+      !authority ||
+      value.length > 2048 ||
+      /[\s\\]/.test(value) ||
+      authority.toLowerCase() !== url.hostname ||
+      !url.hostname.endsWith(".edu.cn") ||
+      !url.hostname
+        .split(".")
+        .every((label) => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(label))
+    )
+      return undefined;
+    url.protocol = "https:";
+    retrievalNote =
+      "搜索返回 HTTP 学校链接，已转换为同一主机、路径和查询参数的 HTTPS 候选地址；尚未证明该地址可读取，正文仍须通过安全读取核验。";
+  }
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.port ||
+    isIP(url.hostname) ||
+    url.hostname === "localhost" ||
+    url.hostname.endsWith(".") ||
+    /\.(?:localhost|local|internal)$/i.test(url.hostname) ||
+    !url.hostname.includes(".")
+  )
+    return undefined;
+  return { url, ...(retrievalNote ? { retrievalNote } : {}) };
+}
+
 export function validateOutboundUrl(
   value: string,
   allowedHosts: string[],
@@ -95,55 +149,6 @@ export function validateOutboundUrl(
     throw new ModelError("WEB_HOST_NOT_ALLOWED");
   url.hash = "";
   return url;
-}
-
-/** Reject special-use networks; IPv4-mapped, tunnelling, and non-global IPv6 are denied. */
-export function isPublicAddress(address: string): boolean {
-  if (isIP(address) === 4) {
-    const [a, b, c] = address.split(".").map(Number);
-    return !(
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      a >= 224 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && (b === 168 || b === 0 || (b === 88 && c === 99))) ||
-      (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) ||
-      (a === 203 && b === 0 && c === 113)
-    );
-  }
-  if (isIP(address) === 6) {
-    const normalized = address.toLowerCase();
-    const [prefix, second] = normalized.split(":");
-    const subnet = Number.parseInt(second || "0", 16);
-    // IANA reserves 2001::/23 and 2001:db8::/32, not the entire 2001::/16.
-    // https://www.iana.org/assignments/iana-ipv6-special-registry
-    // https://www.iana.org/assignments/ipv6-unicast-address-assignments
-    return (
-      /^[23][0-9a-f]{3}:/.test(normalized) &&
-      !/[.%]/.test(normalized) &&
-      !(prefix === "2001" && (subnet <= 0x1ff || subnet === 0xdb8)) &&
-      !normalized.startsWith("2002:") &&
-      !normalized.startsWith("3ffe:") &&
-      !normalized.startsWith("3fff:")
-    );
-  }
-  return false;
-}
-
-export async function resolvePublicAddress(
-  host: string,
-  resolver: AddressResolver = lookup,
-): Promise<{ address: string; family: number }> {
-  const addresses = await resolver(host, { all: true, verbatim: true });
-  if (
-    !addresses.length ||
-    addresses.some((entry) => !isPublicAddress(entry.address))
-  )
-    throw new ModelError("WEB_ADDRESS_BLOCKED");
-  return addresses.find((entry) => entry.family === 4) ?? addresses[0];
 }
 
 /** DNS is checked once and the exact validated address is pinned at connection time. TLS still verifies the hostname. */
@@ -356,11 +361,17 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
     },
     async answer(
       input: WebAnswerInput,
-      options: { sourcesOnly?: boolean; search?: SearchOptions } = {},
+      options: WebAnswerOptions = {},
     ): Promise<WebAnswerResult> {
       const question = userQuestion(input);
       // Validate internal controls before a URL read or paid search reservation.
       validateSearchOptions(options.search);
+      if (
+        (options.upgradeAcademicHttp !== undefined &&
+          typeof options.upgradeAcademicHttp !== "boolean") ||
+        (options.upgradeAcademicHttp && options.sourcesOnly !== true)
+      )
+        throw new ModelError("SEARCH_OPTIONS_INVALID");
       const generation = generations.get(input.subjectId) ?? 0;
       const sources: WebSource[] = [];
       const notices = [
@@ -415,32 +426,22 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
               searched = true;
               for (const item of results) {
                 // Search snippets from arbitrary hosts remain display-only: never fetch them automatically.
-                let sourceUrl: URL;
-                try {
-                  sourceUrl = new URL(item.url);
-                } catch {
-                  continue;
-                }
-                if (
-                  sourceUrl.protocol !== "https:" ||
-                  sourceUrl.username ||
-                  sourceUrl.password ||
-                  sourceUrl.port ||
-                  isIP(sourceUrl.hostname) ||
-                  sourceUrl.hostname === "localhost" ||
-                  sourceUrl.hostname.endsWith(".") ||
-                  /\.(?:localhost|local|internal)$/i.test(sourceUrl.hostname) ||
-                  !sourceUrl.hostname.includes(".")
-                )
-                  continue;
+                const normalized = searchSourceUrl(
+                  item.url,
+                  options.upgradeAcademicHttp === true,
+                );
+                if (!normalized) continue;
                 sources.push({
                   id: `web-${sources.length + 1}`,
                   title: webPageText(item.title).slice(0, 200),
-                  url: sourceUrl.href,
+                  url: normalized.url.href,
                   excerpt: webPageText(item.excerpt).slice(0, 1200),
                   retrievedAt,
                   kind: "search_snippet",
                   verified: false,
+                  ...(normalized.retrievalNote
+                    ? { retrievalNote: normalized.retrievalNote }
+                    : {}),
                 });
               }
             } catch (error) {

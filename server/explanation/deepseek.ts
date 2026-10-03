@@ -1,3 +1,6 @@
+import { createDeepSeekTransport } from "./deepseek-transport.ts";
+import type { DnsMode } from "./dns.ts";
+
 export interface ModelMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -37,6 +40,221 @@ export interface DeepSeekConfig {
   endpoint?: string;
   timeoutMs?: number;
   fetch?: typeof globalThis.fetch;
+  dnsMode?: DnsMode;
+}
+
+function providerHttpFailure(status: number): ModelError {
+  if (status === 400 || status === 422)
+    return new ModelError("PROVIDER_INVALID_REQUEST");
+  if (status === 401 || status === 403)
+    return new ModelError("PROVIDER_AUTH_FAILED");
+  if (status === 402) return new ModelError("PROVIDER_BALANCE_INSUFFICIENT");
+  if (status === 429) return new ModelError("RATE_LIMITED");
+  if ([500, 502, 503, 504].includes(status))
+    return new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+  return new ModelError("PROVIDER_UNAVAILABLE");
+}
+
+function parseResponseJson(raw: string): Record<string, any> {
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new ModelError("INVALID_RESPONSE");
+  }
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new ModelError("INVALID_RESPONSE");
+  return value;
+}
+
+function validUsage(value: unknown): value is {
+  prompt_tokens: number;
+  completion_tokens: number;
+} {
+  if (!value || typeof value !== "object") return false;
+  const usage = value as Record<string, unknown>;
+  return [usage.prompt_tokens, usage.completion_tokens].every(
+    (count) => Number.isSafeInteger(count) && Number(count) >= 0,
+  );
+}
+
+/** A total byte/deadline bound also covers streamed thinking and framing. */
+async function* responseChunks(
+  response: Response,
+  maxBytes: number,
+  signal: AbortSignal,
+) {
+  if (Number(response.headers.get("content-length")) > maxBytes) {
+    void response.body?.cancel().catch(() => {});
+    throw new ModelError("RESPONSE_TOO_LARGE");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw new ModelError("INVALID_RESPONSE");
+  let bytes = 0;
+  let onAbort!: () => void;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => {
+      void reader.cancel().catch(() => {});
+      reject(new ModelError("MODEL_TIMEOUT"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    while (true) {
+      if (signal.aborted) throw new ModelError("MODEL_TIMEOUT");
+      const part = await Promise.race([reader.read(), aborted]);
+      if (signal.aborted) throw new ModelError("MODEL_TIMEOUT");
+      if (part.done) break;
+      bytes += part.value.byteLength;
+      if (bytes > maxBytes) throw new ModelError("RESPONSE_TOO_LARGE");
+      yield part.value;
+    }
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+    // Do not await an uncooperative transport's cancellation past the deadline.
+    void reader.cancel().catch(() => {});
+  }
+}
+
+/** Consume SSE internally; only final content and total usage leave this boundary. */
+async function readThinkingStream(
+  response: Response,
+  model: string,
+  signal: AbortSignal,
+): Promise<ModelReply> {
+  if (
+    !/^text\/event-stream(?:;|$)/i.test(
+      response.headers.get("content-type") ?? "",
+    )
+  ) {
+    void response.body?.cancel().catch(() => {});
+    throw new ModelError("INVALID_RESPONSE");
+  }
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  let pending = "";
+  let data: string[] = [];
+  let content = "";
+  let contentBytes = 0;
+  let eventBytes = 0;
+  let finished = false;
+  let done = false;
+  let usage: { prompt_tokens: number; completion_tokens: number } | undefined;
+  const event = () => {
+    if (!data.length) return;
+    const raw = data.join("\n");
+    data = [];
+    if (done) throw new ModelError("INVALID_RESPONSE");
+    if (raw.trim() === "[DONE]") {
+      done = true;
+      return;
+    }
+    const chunk = parseResponseJson(raw);
+    if (chunk.error || chunk.model !== model || !Array.isArray(chunk.choices))
+      throw new ModelError("INVALID_RESPONSE");
+    if (chunk.usage != null) {
+      if (!validUsage(chunk.usage)) throw new ModelError("UNKNOWN_USAGE");
+      if (
+        usage &&
+        (usage.prompt_tokens !== chunk.usage.prompt_tokens ||
+          usage.completion_tokens !== chunk.usage.completion_tokens)
+      )
+        throw new ModelError("UNKNOWN_USAGE");
+      usage = {
+        prompt_tokens: chunk.usage.prompt_tokens,
+        completion_tokens: chunk.usage.completion_tokens,
+      };
+    }
+    if (chunk.choices.length === 0) {
+      if (!finished || !validUsage(chunk.usage))
+        throw new ModelError("INVALID_RESPONSE");
+      return;
+    }
+    if (chunk.choices.length !== 1 || finished)
+      throw new ModelError("INCOMPLETE_RESPONSE");
+    const choice = chunk.choices[0];
+    const delta = choice?.delta;
+    if (
+      choice?.index !== 0 ||
+      !delta ||
+      typeof delta !== "object" ||
+      Array.isArray(delta) ||
+      (delta.role != null && delta.role !== "assistant") ||
+      (delta.content != null && typeof delta.content !== "string") ||
+      (delta.reasoning_content != null &&
+        typeof delta.reasoning_content !== "string") ||
+      (delta.tool_calls != null &&
+        (!Array.isArray(delta.tool_calls) || delta.tool_calls.length)) ||
+      delta.function_call != null
+    )
+      throw new ModelError("INCOMPLETE_RESPONSE");
+    // reasoning_content is deliberately neither accumulated nor returned/logged.
+    if (typeof delta.content === "string") {
+      contentBytes += Buffer.byteLength(delta.content);
+      if (contentBytes > 131072) throw new ModelError("RESPONSE_TOO_LARGE");
+      content += delta.content;
+    }
+    if (choice.finish_reason != null) {
+      if (choice.finish_reason !== "stop")
+        throw new ModelError("INCOMPLETE_RESPONSE");
+      finished = true;
+    }
+  };
+  const line = (value: string) => {
+    eventBytes += Buffer.byteLength(value) + 2;
+    if (eventBytes > 65536) throw new ModelError("RESPONSE_TOO_LARGE");
+    if (!value) {
+      event();
+      eventBytes = 0;
+    } else if (value === "data") data.push("");
+    else if (value.startsWith("data:"))
+      data.push(value.slice(5).replace(/^ /, ""));
+    // SSE comments/keepalives and unrelated protocol fields carry no model text.
+  };
+  const consume = (text: string, eof = false) => {
+    pending += text;
+    while (true) {
+      const index = pending.search(/[\r\n]/);
+      if (
+        index < 0 ||
+        (!eof && pending[index] === "\r" && index === pending.length - 1)
+      )
+        break;
+      const length =
+        pending[index] === "\r" && pending[index + 1] === "\n" ? 2 : 1;
+      line(pending.slice(0, index));
+      pending = pending.slice(index + length);
+    }
+    if (eventBytes + Buffer.byteLength(pending) > 65536)
+      throw new ModelError("RESPONSE_TOO_LARGE");
+    if (eof && pending) {
+      line(pending);
+      pending = "";
+    }
+    if (eof) event();
+  };
+  const decode = (bytes?: Uint8Array) => {
+    try {
+      return decoder.decode(bytes, { stream: bytes !== undefined });
+    } catch {
+      throw new ModelError("INVALID_RESPONSE");
+    }
+  };
+  for await (const bytes of responseChunks(response, 8388608, signal)) {
+    // Bound text retained for an unfinished event even if a transport yields a large chunk.
+    for (let offset = 0; offset < bytes.length; offset += 16384)
+      consume(decode(bytes.subarray(offset, offset + 16384)));
+    if (done) break;
+  }
+  consume(decode(), true);
+  if (!done || !finished || !content.trim())
+    throw new ModelError("INCOMPLETE_RESPONSE");
+  if (!usage) throw new ModelError("UNKNOWN_USAGE");
+  return {
+    content,
+    inputTokens: usage.prompt_tokens,
+    outputTokens: usage.completion_tokens,
+    model,
+  };
 }
 
 /** Called by the shared budget ledger too, so reserved output equals the provider cap. */
@@ -68,13 +286,13 @@ export function resolveModelRequest(options: ModelRequestOptions = {}) {
   };
 }
 
-/** Server task code chooses an allowlisted model; browser input never controls routing or tools. */
-export function createDeepSeekAdapter(
-  config: DeepSeekConfig = {},
-): ModelAdapter {
-  const endpoint =
-    config.endpoint ?? "https://api.deepseek.com/chat/completions";
-  const url = new URL(endpoint);
+export function validateDeepSeekEndpoint(endpoint: string): URL {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    throw new ModelError("UNSAFE_PROVIDER_ENDPOINT");
+  }
   if (
     url.protocol !== "https:" ||
     url.hostname !== "api.deepseek.com" ||
@@ -86,7 +304,26 @@ export function createDeepSeekAdapter(
     !["/chat/completions", "/v1/chat/completions"].includes(url.pathname)
   )
     throw new ModelError("UNSAFE_PROVIDER_ENDPOINT");
-  const request = config.fetch ?? globalThis.fetch;
+  return url;
+}
+
+/** Server task code chooses an allowlisted model; browser input never controls routing or tools. */
+export function createDeepSeekAdapter(
+  config: DeepSeekConfig = {},
+): ModelAdapter {
+  const endpoint =
+    config.endpoint ?? "https://api.deepseek.com/chat/completions";
+  validateDeepSeekEndpoint(endpoint);
+  if (
+    config.dnsMode !== undefined &&
+    !["system", "public-doh"].includes(config.dnsMode)
+  )
+    throw new ModelError("WEB_DNS_MODE_INVALID");
+  const request =
+    config.fetch ??
+    (config.dnsMode === "public-doh"
+      ? createDeepSeekTransport()
+      : globalThis.fetch);
   return {
     async complete(messages, options = {}) {
       if (!config.enabled) throw new ModelError("MODEL_DISABLED");
@@ -122,7 +359,10 @@ export function createDeepSeekAdapter(
             ...(selected.thinking
               ? { reasoning_effort: selected.reasoningEffort }
               : {}),
-            stream: false,
+            stream: selected.thinking,
+            ...(selected.thinking
+              ? { stream_options: { include_usage: true } }
+              : {}),
             temperature: 0,
             max_tokens: selected.maxOutputTokens,
             ...(options.format === "text"
@@ -131,34 +371,27 @@ export function createDeepSeekAdapter(
             messages,
           }),
         });
-        if (!response.ok)
-          throw new ModelError(
-            response.status === 429
-              ? "RATE_LIMITED"
-              : response.status === 401 || response.status === 403
-                ? "PROVIDER_AUTH_FAILED"
-                : "PROVIDER_UNAVAILABLE",
-          );
-        const maxResponseBytes = selected.thinking ? 524288 : 65536;
-        if (Number(response.headers.get("content-length")) > maxResponseBytes)
-          throw new ModelError("RESPONSE_TOO_LARGE");
-        const reader = response.body?.getReader();
-        if (!reader) throw new ModelError("INVALID_RESPONSE");
-        let raw = "";
-        let bytes = 0;
-        const decoder = new TextDecoder();
-        while (true) {
-          const part = await reader.read();
-          if (part.done) break;
-          bytes += part.value.byteLength;
-          if (bytes > maxResponseBytes) {
-            await reader.cancel();
-            throw new ModelError("RESPONSE_TOO_LARGE");
-          }
-          raw += decoder.decode(part.value, { stream: true });
+        if (!response.ok) {
+          // Error bodies may contain credentials or request excerpts; never parse or expose them.
+          void response.body?.cancel().catch(() => {});
+          throw providerHttpFailure(response.status);
         }
+        if (selected.thinking)
+          return await readThinkingStream(
+            response,
+            selected.model,
+            controller.signal,
+          );
+        let raw = "";
+        const decoder = new TextDecoder();
+        for await (const bytes of responseChunks(
+          response,
+          65536,
+          controller.signal,
+        ))
+          raw += decoder.decode(bytes, { stream: true });
         raw += decoder.decode();
-        const result = JSON.parse(raw);
+        const result = parseResponseJson(raw);
         const choice = result.choices?.[0];
         if (
           result.model !== selected.model ||
@@ -169,12 +402,7 @@ export function createDeepSeekAdapter(
           !choice.message.content.trim()
         )
           throw new ModelError("INCOMPLETE_RESPONSE");
-        if (
-          ![result.usage?.prompt_tokens, result.usage?.completion_tokens].every(
-            (value) => Number.isInteger(value) && value >= 0,
-          )
-        )
-          throw new ModelError("UNKNOWN_USAGE");
+        if (!validUsage(result.usage)) throw new ModelError("UNKNOWN_USAGE");
         return {
           content: choice.message.content,
           inputTokens: result.usage.prompt_tokens,
@@ -182,10 +410,9 @@ export function createDeepSeekAdapter(
           model: result.model,
         };
       } catch (error) {
+        if (controller.signal.aborted) throw new ModelError("MODEL_TIMEOUT");
         if (error instanceof ModelError) throw error;
-        throw new ModelError(
-          controller.signal.aborted ? "MODEL_TIMEOUT" : "PROVIDER_UNAVAILABLE",
-        );
+        throw new ModelError("PROVIDER_NETWORK_ERROR");
       } finally {
         clearTimeout(timeout);
       }

@@ -382,3 +382,126 @@ test("long-page evidence retains actual school identity and distant programme ro
   }
   assert.ok(large.length <= 6000 && small.length <= 600);
 });
+
+test("a real master's catalogue heading beyond the first 200 characters survives repeated compaction and still scopes distant rows", () => {
+  const text =
+    "甲大学" +
+    "导航".repeat(105) +
+    "硕士研究生招生专业目录。" +
+    "招生说明。".repeat(1500) +
+    "050301新闻学 研究方向与课程安排。";
+  const major = discipline("0503");
+  const large = compactEvidence(text, [major], 6000);
+  const small = compactEvidence(large, [major], 600);
+  for (const excerpt of [text, large, small]) {
+    assert.ok(excerpt.includes("硕士研究生招生专业目录"));
+    assert.ok(excerpt.includes("050301新闻学"));
+    assert.equal(
+      supportsProgram(source(excerpt), "甲大学", "新闻学", major),
+      true,
+    );
+    assert.ok(excerpt.split(" … ").every((part) => text.includes(part)));
+  }
+});
+
+test("actual master's authorization or degree-conferral scope proves project existence without implying current admissions", () => {
+  for (const heading of ["硕士学位授权点名单", "硕士专业学位授予类别目录"]) {
+    const professional = heading.includes("专业学位");
+    const major = discipline(professional ? "0855" : "0802");
+    const name = professional ? "机械" : "机械工程";
+    const row = professional ? "085500机械" : "080200机械工程";
+    const text = `甲大学学位建设成果。${"导览".repeat(200)}${heading}。${"建设说明。".repeat(1200)}${row}。`;
+    const large = compactEvidence(text, [major], 6000);
+    for (const excerpt of [text, large, compactEvidence(large, [major], 600)]) {
+      assert.equal(
+        supportsProgram(source(excerpt), "甲大学", name, major),
+        true,
+        heading,
+      );
+      assert.equal(
+        admissionEvidence(source(excerpt), "2027").admissionStatus,
+        "needs_verification",
+      );
+    }
+  }
+});
+
+test("compaction preserves intervening degree boundaries and a fee list never invents a master's level", () => {
+  const major = discipline("0802");
+  for (const heading of [
+    "本科专业目录",
+    "博士生招生专业目录",
+    "硕士与博士研究生招生专业目录",
+  ]) {
+    const text =
+      "甲大学硕士研究生招生专业目录。" +
+      "前文。".repeat(300) +
+      heading +
+      "。" +
+      "该层级说明。".repeat(1000) +
+      "080200机械工程。";
+    const large = compactEvidence(text, [major], 6000);
+    for (const excerpt of [text, large, compactEvidence(large, [major], 600)]) {
+      assert.ok(excerpt.includes(heading));
+      assert.equal(
+        supportsProgram(source(excerpt), "甲大学", "机械工程", major),
+        false,
+        heading,
+      );
+    }
+  }
+  for (const excerpt of [
+    "甲大学收费标准：080200机械工程学费8000元/年。",
+    "甲大学专业学位授予目录：080200机械工程。",
+    "甲大学本科专业目录：080200机械工程。导航：研究生教育。",
+  ])
+    assert.equal(
+      supportsProgram(source(excerpt), "甲大学", "机械工程", major),
+      false,
+    );
+});
+
+test("job detail pages and recruitment-domain vacancies cannot consume master's source priority or prove a program", () => {
+  const major = discipline("0802");
+  for (const url of [
+    "https://job.cjlu.edu.cn/job/view/id/123",
+    "https://jy.example.edu.cn/info/1001/123.htm",
+    "https://career.example.edu.cn/vacancies/123",
+  ]) {
+    const page = source(
+      "甲大学机械工程硕士培养背景优先，应聘机械工程师岗位。",
+      { url, title: "机械工程师" },
+    );
+    assert.ok(sourcePriority(page, major) < 0);
+    assert.equal(supportsProgram(page, "甲大学", "机械工程", major), false);
+  }
+  assert.ok(
+    sourcePriority(
+      source("甲大学机械工程硕士培养", {
+        title: "机械工程硕士专业介绍与就业方向",
+        url: "https://mech.example.edu.cn/info/1001/123.htm",
+      }),
+      major,
+    ) >= 100,
+  );
+});
+
+test("courses on a genuine master's page cannot become newly discovered degree programs", () => {
+  const math = discipline("0701");
+  for (const label of [
+    "课程设置：",
+    "必修课程包括",
+    "核心课程：",
+    "参考书目：",
+  ]) {
+    const excerpt = `甲大学机械工程硕士培养方案。${label}高等数学、机械制造基础。`;
+    assert.equal(
+      supportsProgram(source(excerpt), "甲大学", "高等数学", math),
+      false,
+    );
+  }
+  const page = source(
+    "甲大学硕士培养方案。课程设置：应用数学。另设硕士招生专业目录：070104 应用数学，培养数学研究人才。",
+  );
+  assert.equal(supportsProgram(page, "甲大学", "应用数学", math), true);
+});

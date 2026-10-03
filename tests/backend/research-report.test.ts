@@ -99,6 +99,9 @@ function reportBody() {
         institutionName: "示例研究大学",
         programName: "法学理论",
         disciplineCode: "0301",
+        suitabilityTier: "preferred",
+        suitabilityReason:
+          "综合实践就业目标、预算与准备成本，这个方向值得优先比较；年度资格仍需核验。",
         rationale:
           "结合你的职业目标，可以比较法律理论训练如何服务实践；这属于基于资料的推断。",
         fitReasons: fitReasons(),
@@ -165,7 +168,7 @@ function setup(
   const adapter: ModelAdapter = {
     async complete(messages, options) {
       const planning = messages[0].content.includes(
-        "research-direction-plan-v5",
+        "research-direction-plan-v6",
       );
       (planning ? planningCalls : calls).push({ messages, options });
       const custom = planning ? settings.planningModel : settings.model;
@@ -187,6 +190,8 @@ function setup(
     apiKey: "server-model-placeholder",
     searchEnabled: true,
     searchKey: "server-search-placeholder",
+    searchDailyRequestsPerUser: 100,
+    searchDailyRequestsGlobal: 500,
     adapter,
     reader: settings.reader ?? mockReader(),
     now,
@@ -204,6 +209,195 @@ function setup(
     config,
   };
 }
+
+test("eight schools retain holistic tiers independently of fees, while saved profile edits recompute constraint checks", async () => {
+  const schools = [
+    "甲研究大学",
+    "乙研究大学",
+    "丙研究大学",
+    "丁研究大学",
+    "戊研究大学",
+    "己研究大学",
+    "庚研究大学",
+    "辛研究大学",
+  ];
+  const feeQuote = (school: string, i: number) =>
+    `${school}2027年硕士招生：法学理论（全日制）学费${i === 0 || i >= 3 ? 20000 : 8000}元/年。`;
+  const cityQuote = (school: string) =>
+    `${school}法学理论全日制硕士培养地点：杭州市主校区。`;
+  const body = reportBody();
+  body.facts = [];
+  body.recommendations = schools.map((school, i) => ({
+    ...structuredClone(reportBody().recommendations[0]),
+    institutionName: school,
+    suitabilityTier:
+      i === 0 ? "preferred" : i === 2 ? "exploratory" : "alternative",
+    suitabilityReason:
+      i === 0
+        ? "综合实践就业目标与培养内容优先考虑，但需要衡量费用差距；价格不是唯一标准。"
+        : "培养内容仍值得比较，但需要补足研究训练，综合准备成本后列为后续选择。",
+    fitReasons: [
+      {
+        profileField: "studyGoal",
+        reason: "研究训练与个人实践就业目标相结合，是培养方向的推断。",
+      },
+      {
+        profileField: "budget",
+        reason: "按本人年度预算逐项比较官方学费，再考虑准备成本。",
+      },
+    ] as never,
+    citations: [`research-${i + 1}`],
+    tuition: {
+      amount: i === 0 || i >= 3 ? 20000 : 8000,
+      currency: "CNY",
+      period: "academic_year",
+      year: 2027,
+      studyMode: "full_time",
+      quote: feeQuote(school, i),
+      sourceId: `research-${i + 1}`,
+    },
+    location: {
+      city: "杭州",
+      quote: cityQuote(school),
+      sourceId: `research-${i + 1}`,
+    },
+  }));
+  const plan = planBody();
+  plan.directions[0].fitReasons = body.recommendations[0].fitReasons;
+  let paidSearches = 0,
+    pageReads = 0;
+  const { module } = setup({
+    body,
+    plan,
+    reader: async (url) => {
+      if (new URL(url).hostname === "api.search.brave.com") {
+        paidSearches++;
+        return {
+          contentType: "application/json",
+          text: JSON.stringify({
+            web: {
+              results: schools.map((school, i) => ({
+                url: `https://school${i}.edu.cn/master/catalog`,
+                title: `${school}法学硕士招生专业目录与学费`,
+                description: `${school}030101 法学理论 硕士招生培养与收费标准`,
+              })),
+            },
+          }),
+        };
+      }
+      pageReads++;
+      const i = Number(/school(\d+)/.exec(url)![1]);
+      return {
+        contentType: "text/html",
+        text: `${schools[i]}2027年硕士招生专业目录：030101 法学理论。${feeQuote(schools[i], i)}${cityQuote(schools[i])}`,
+      };
+    },
+  });
+  const input = { subjectId: "student", run: fixture() };
+  const first = await module.generate(input);
+  assert.equal(first.status, "completed");
+  assert.equal(first.recommendations.length, 8);
+  assert.equal(first.coverage?.schoolCount, 8);
+  assert.equal(first.coverage?.preferredCount, 1);
+  assert.equal(first.coverage?.alternativeCount, 6);
+  assert.equal(first.recommendations[3].tuition?.amount, 20000);
+  assert.equal(
+    first.recommendations[0].constraintChecks!.find(
+      (c) => c.field === "budget",
+    )!.status,
+    "mismatch",
+  );
+  assert.equal(
+    first.recommendations[0].tier,
+    "preferred",
+    "higher fee does not alone determine overall suitability",
+  );
+  assert.equal(first.recommendations[1].tuition?.amount, 8000);
+  assert.equal(first.recommendations.at(-1)?.tuition?.amount, 8000);
+  assert.equal(first.recommendations.at(-1)?.tier, "exploratory");
+  const savedSearches = paidSearches,
+    savedPages = pageReads;
+  const updated = structuredClone(input.run);
+  updated.guidanceRunId = "changed-run";
+  updated.versions.profileVersion++;
+  updated.inputSnapshot.profile.budget = "2–5 万元";
+  updated.inputSnapshot.profile.notes = "";
+  const after = await module.generate({ ...input, run: updated });
+  assert.equal(after.recommendations.length, 8);
+  assert.equal(after.coverage?.alternativeCount, 6);
+  assert.ok(
+    after.recommendations.every(
+      (item) =>
+        item.constraintChecks!.find((c) => c.field === "budget")!.status ===
+        "match",
+    ),
+  );
+  assert.equal(
+    paidSearches,
+    savedSearches,
+    "public discovery can be reused after budget changes",
+  );
+  assert.equal(
+    pageReads,
+    savedPages,
+    "profile changes never require repeating successful public reads",
+  );
+  assert.ok(
+    after.recommendations.every((item) =>
+      item.fitReasons!.some(
+        (fit) =>
+          fit.profileField === "budget" && fit.profileValue === "2–5 万元",
+      ),
+    ),
+  );
+});
+
+test("duplicate programs do not inflate school coverage and fewer than five keep useful cards with an honest shortfall", async () => {
+  const body = reportBody();
+  body.recommendations.push(structuredClone(body.recommendations[0]));
+  const { module } = setup({ body });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(report.recommendations.length, 1);
+  assert.equal(report.status, "partial");
+  assert.equal(report.coverage?.schoolCount, 1);
+  assert.match(
+    report.coverage!.shortfallReasons.join(" "),
+    /不能据此认定全国没有/,
+  );
+  assert.equal(report.recommendations[0].tuition, undefined);
+  assert.equal(
+    report.recommendations[0].constraintChecks!.find(
+      (item) => item.field === "budget",
+    )!.status,
+    "unknown",
+  );
+});
+
+test("officially discovered allowed disciplines can improve the final choice without bypassing explicit exclusions", async () => {
+  const body = reportBody();
+  body.facts = [];
+  Object.assign(body.recommendations[0], {
+    disciplineCode: "0401",
+    programName: "教育学原理",
+  });
+  const reader = mockReader({
+    content:
+      "示例研究大学2027年硕士招生专业目录：040101 教育学原理，培养教育研究与实践能力。",
+  });
+  const { module } = setup({ body, reader });
+  const first = await module.generate({ subjectId: "student", run: fixture() });
+  assert.equal(first.recommendations[0].disciplineCode, "0401");
+  const excluded = fixture();
+  excluded.inputSnapshot.excludedMajorIds = ["0401"];
+  const second = await setup({ body, reader }).module.generate({
+    subjectId: "student",
+    run: excluded,
+  });
+  assert.equal(second.recommendations.length, 0);
+});
 
 test("readiness remains local and missing providers cannot masquerade as completed research", async () => {
   let calls = 0;
@@ -245,8 +439,8 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
       stages.push(stage);
     },
   });
-  assert.equal(report.status, "completed");
-  assert.equal(report.reportVersion, "profile-research-v5");
+  assert.equal(report.status, "partial");
+  assert.equal(report.reportVersion, "profile-research-v6");
   assert.equal(report.recommendations[0].programName, "法学理论");
   assert.equal(report.recommendations[0].degreeType, "academic");
   assert.equal(report.recommendations[0].admissionStatus, "current_evidence");
@@ -280,12 +474,12 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
   assert.equal(planningCalls[0].options?.maxOutputTokens, 4096);
   assert.equal(planningCalls[0].options?.timeoutMs, 30000);
   assert.equal(calls[0].options?.thinking, true);
-  assert.equal(calls[0].options?.maxOutputTokens, 12000);
+  assert.equal(calls[0].options?.maxOutputTokens, 16384);
   assert.equal(calls[0].options?.reasoningEffort, "high");
   const queries = events
     .filter((event) => new URL(event.url).hostname === "api.search.brave.com")
     .map((event) => new URL(event.url).searchParams.get("q")!);
-  assert.equal(queries.length, 6);
+  assert.ok(queries.length > 6 && queries.length <= 24);
   assert.equal(queries[0], "上海 法学 硕士");
   assert.equal(queries[0].includes("2027"), false);
   assert.match(queries[1], /法学 硕士 培养 招生.*site:example\.edu\.cn/);
@@ -337,7 +531,7 @@ test("mechanical background and a confirmed major cannot lock planning to underg
     reader: mockReader({ year: "2024", content }),
   });
   const report = await module.generate({ subjectId: "student", run });
-  assert.equal(report.status, "completed");
+  assert.equal(report.status, "partial");
   assert.equal(report.recommendations[0].disciplineCode, "0451");
   assert.equal(report.recommendations[0].programName, "科学与技术教育");
   assert.equal(report.recommendations[0].admissionStatus, "needs_verification");
@@ -416,7 +610,7 @@ test("an undecided profile without a chosen school can repair planning once and 
   assert.equal(calls.length, 1);
   assert.equal(report.recommendations[0].institutionName, "示例研究大学");
   assert.equal(report.recommendations[0].fitReasons![1].profileValue, "90");
-  assert.equal(report.status, "completed");
+  assert.equal(report.status, "partial");
   assert.ok(messages.some((message) => message.includes("自动修正")));
   assert.equal(report.failureStage, undefined);
 });
@@ -444,7 +638,7 @@ test("rejected final citations are repaired once against the original evidence",
     run: fixture(),
   });
   assert.equal(attempts, 2);
-  assert.equal(report.status, "completed");
+  assert.equal(report.status, "partial");
   assert.deepEqual(report.recommendations[0].citations, ["research-1"]);
 });
 
@@ -479,7 +673,7 @@ test("editing and clearing profile fields regenerates both phases and binds reas
   (newRun.inputSnapshot.profile.priorities as Record<string, number>).就业机会 =
     75;
   const after = await module.generate({ subjectId: "student", run: newRun });
-  assert.equal(after.status, "completed");
+  assert.equal(after.status, "partial");
   assert.equal(after.versions.profileVersion, newRun.versions.profileVersion);
   assert.equal(after.recommendations[0].fitReasons![0].profileValue, "75");
   assert.equal(planningCalls.length, 2);
@@ -572,7 +766,7 @@ test("optional planner school names only guide searches and cannot establish a r
   )!;
   assert.equal(
     new URL(firstSearch.url).searchParams.get("q"),
-    "虚构候选大学 法学 硕士",
+    "虚构候选大学 2027 法学 硕士 招生专业目录",
   );
   assert.match(planningCalls[0].messages[0].content, /searchSchools/);
   assert.equal(report.recommendations.length, 1);
@@ -582,7 +776,7 @@ test("optional planner school names only guide searches and cannot establish a r
     ["https://invented.edu.cn"],
     ["示例研究大学 site:evil.com"],
     ["示例研究大学", "示例研究大学"],
-    ["第一研究大学", "第二研究大学", "第三研究大学"],
+    Array.from({ length: 7 }, (_, i) => `第${i}研究大学`),
   ]) {
     const invalid = structuredClone(plan);
     Object.assign(invalid.directions[0], { searchSchools: names });
@@ -668,7 +862,7 @@ test("historical and undated school-program evidence supports tentative recommen
       subjectId: "student",
       run: fixture(),
     });
-    assert.equal(report.status, "completed");
+    assert.equal(report.status, "partial");
     assert.equal(
       report.recommendations[0].admissionStatus,
       "needs_verification",
@@ -697,7 +891,7 @@ test("a current search title or footer year cannot upgrade an older school body 
       subjectId: "student",
       run: fixture(),
     });
-    assert.equal(report.status, "completed");
+    assert.equal(report.status, "partial");
     assert.equal(
       report.recommendations[0].admissionStatus,
       "needs_verification",
@@ -819,7 +1013,7 @@ test("city lists tolerate normal punctuation without accepting invented destinat
       subjectId: "student",
       run: fixture(),
     });
-    assert.equal(report.status, "completed");
+    assert.equal(report.status, "partial");
     assert.equal(
       report.recommendations[0].fitReasons![1].profileValue,
       "上海、杭州",
@@ -1043,7 +1237,7 @@ test("actual personal budget restatements and negative guarantees are allowed, e
     });
     assert.equal(
       (await module.generate({ subjectId: "student", run: fixture() })).status,
-      "completed",
+      "partial",
     );
   }
   for (const claim of [
@@ -1094,7 +1288,7 @@ test("unsupported budget comparisons become verification risks while an unsafe g
   );
 });
 
-test("retrieval rotates regions/directions within six searches, six pages and twelve sources, with both model inputs bounded", async () => {
+test("retrieval rotates regions/directions within 24 searches, 24 pages and 40 sources, with both model inputs bounded", async () => {
   let searches = 0,
     pages = 0;
   const reader: WebReader = async (url) => {
@@ -1127,9 +1321,9 @@ test("retrieval rotates regions/directions within six searches, six pages and tw
   run.inputSnapshot.profile.notes = "私密补充".repeat(750);
   run.inputSnapshot.profile.courses = "相关课程内容".repeat(600);
   const report = await module.generate({ subjectId: "student", run });
-  assert.equal(searches, 6);
-  assert.equal(pages, 6);
-  assert.equal(report.sources.length, 12);
+  assert.equal(searches, 24);
+  assert.equal(pages, 24);
+  assert.ok(report.sources.length >= 24 && report.sources.length <= 40);
   for (const call of [...calls, ...planningCalls])
     assert.ok(JSON.stringify(call.messages).length < 24000);
   assert.ok(
@@ -1340,12 +1534,13 @@ test("DeepSeek research uses official pro thinking controls, counts total comple
     fetch: async (_url, init) => {
       payload = JSON.parse(String(init!.body));
       assert.equal(init?.redirect, "error");
-      return Response.json({
+      const response = {
         model: "deepseek-v4-pro",
         choices: [
           {
+            index: 0,
             finish_reason: "stop",
-            message: {
+            delta: {
               content: "{}",
               reasoning_content: "private internal reasoning",
             },
@@ -1356,7 +1551,13 @@ test("DeepSeek research uses official pro thinking controls, counts total comple
           completion_tokens: 1500,
           completion_tokens_details: { reasoning_tokens: 1400 },
         },
-      });
+      };
+      return new Response(
+        `data: ${JSON.stringify(response)}\n\ndata: [DONE]\n\n`,
+        {
+          headers: { "Content-Type": "text/event-stream" },
+        },
+      );
     },
   });
   const reply = await adapter.complete(
@@ -1372,6 +1573,8 @@ test("DeepSeek research uses official pro thinking controls, counts total comple
   assert.equal(payload?.model, "deepseek-v4-pro");
   assert.deepEqual(payload?.thinking, { type: "enabled" });
   assert.equal(payload?.reasoning_effort, "high");
+  assert.equal(payload?.stream, true);
+  assert.deepEqual(payload?.stream_options, { include_usage: true });
   assert.equal(payload?.max_tokens, 12000);
   assert.equal(payload?.tools, undefined);
   assert.equal(reply.outputTokens, 1500);
