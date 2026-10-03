@@ -11,7 +11,7 @@ import type {
 
 export type * from "./types.ts";
 export { programMatchesDiscipline } from "../../shared/discipline-matching.ts";
-export const guidanceRuleVersion = `${signals.ruleVersion}-notes-v1`;
+export const guidanceRuleVersion = `${signals.ruleVersion}-assessment-evidence-v2-notes-v1`;
 const directory = catalogData as DisciplineCatalog;
 const byCode = new Map(directory.items.map((item) => [item.code, item]));
 

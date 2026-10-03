@@ -4,10 +4,19 @@ import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
 import {
   researchAttachments,
   researchReadingOrder,
+  researchLocationLinks,
 } from "../../server/explanation/research-pages.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
 
 const law = getDisciplineCatalog().items.find((d) => d.code === "0301")!;
+test("campus geography discovery follows real same-school links for any school with bounded safe leads", () => {
+  const parent = source("parent", "yz.qingyuan.edu.cn");
+  const html = `<a href="https://www.qingyuan.edu.cn/campuses.htm">校区介绍</a><a href="/contact.htm">联系我们</a><a href="https://else.edu.cn/campus.htm">校区介绍</a><a href="http://yz.qingyuan.edu.cn/map.htm">校区地图</a><a href="https://x:y@yz.qingyuan.edu.cn/map.htm">校区地图</a><script><a href="/fake.htm">校区地址</a></script><a href="/partner.htm">合作院校校区介绍</a><a href="/admin.htm">招生办联系方式</a>`;
+  assert.deepEqual(researchLocationLinks(parent, html), [
+    { url: "https://www.qingyuan.edu.cn/campuses.htm", title: "校区介绍" },
+    { url: "https://yz.qingyuan.edu.cn/contact.htm", title: "联系我们" },
+  ]);
+});
 function source(
   id: string,
   domain: string,
@@ -150,4 +159,45 @@ test("specific master's programme details and admission catalogues precede gener
     ["detail", "catalog"],
   );
   assert.equal(result.firstRoundCount, 2);
+});
+
+test("official directory lists recover current detail pages and linked XLS without following other schools or navigation", () => {
+  const parent = {
+    ...source("hdu-list", "grs.hdu.edu.cn", "杭州电子科技大学硕士招生简章"),
+    url: "https://grs.hdu.edu.cn/13497/list.htm",
+  };
+  const links = researchAttachments(
+    parent,
+    `
+    <a href="/2025/0926/old/page.htm">2026年硕士研究生招生专业目录</a>
+    <a href="/2026/0929/new/page.htm">2027年硕士研究生招生专业目录与自命题科目考试大纲</a>
+    <a href="/2026/0928/charter/page.htm">杭州电子科技大学2027年硕士研究生招生章程</a>
+    <a href="/2026/0914/recommended/page.htm">2027年接收推荐免试硕士研究生章程</a>
+    <a href="/13497/list.htm">硕士招生简章</a>
+    <a href="https://other.edu.cn/2027/catalog.htm">2027年硕士招生专业目录</a>`,
+    { targetYear: "2027" },
+  );
+  assert.deepEqual(
+    links.map((link) => link.url),
+    [
+      "https://grs.hdu.edu.cn/2026/0929/new/page.htm",
+      "https://grs.hdu.edu.cn/2026/0928/charter/page.htm",
+    ],
+  );
+  assert.ok(
+    links.every(
+      (link) => link.kind === "html" && link.parentSourceId === parent.id,
+    ),
+  );
+  const files = researchAttachments(
+    { ...parent, id: "directory", url: links[0].url },
+    `<a href="/files/catalog.xls">2027年硕士研究生招生专业目录.xls</a><a href="/files/exams.zip">2027年硕士考试大纲.zip</a><a href="/files/fees.xlsx">研究生学费收费标准.xlsx</a><a href="/files/macro.xlsm">硕士招生专业目录.xlsm</a>`,
+    { targetYear: "2027" },
+  );
+  assert.deepEqual(
+    files.map((link) => link.kind),
+    ["spreadsheet", "spreadsheet"],
+  );
+  assert.equal(files[0].url, "https://grs.hdu.edu.cn/files/catalog.xls");
+  assert.equal(files[0].parentSourceId, "directory");
 });

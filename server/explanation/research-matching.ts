@@ -1,0 +1,910 @@
+import signals from "../../knowledge/disciplines/signals.json" with { type: "json" };
+import {
+  affirmativePreference,
+  explicitDegreeConstraint,
+} from "../../shared/profile-preferences.ts";
+import type { Discipline, GuidanceRun } from "../disciplines/types.ts";
+import type { ResearchReport } from "./research.ts";
+import type { WebSource } from "./web.ts";
+import type {
+  DemandMatch,
+  ResearchExamEvidence,
+  ResearchCandidateAudit,
+  ResearchProgramAlternative,
+} from "../../shared/research-matching.ts";
+import {
+  researchContext,
+  profileFitEvidence,
+  researchDirectory,
+  type ResearchPlan,
+} from "./research-planning.ts";
+import {
+  sourceHasSchoolIdentity,
+  withoutSchoolLinks,
+} from "./research-school.ts";
+import {
+  admissionEvidence,
+  isSchoolPage,
+  supportsProgram,
+  knownAdmissionConflict,
+} from "./research-evidence.ts";
+import { deriveRecommendationConstraints } from "./research-constraints.ts";
+import { deriveResearchDecision } from "./research-decision.ts";
+
+type Recommendation = ResearchReport["recommendations"][number];
+const normalized = (value: unknown) => String(value ?? "").replace(/\s/g, "");
+const meaningful = (value: unknown) =>
+  !!normalized(value) &&
+  !/不确定|未确定|尚未|无偏好|不限/.test(normalized(value));
+/** Product vocabulary only connects stated interests/background to investigation leads. */
+function codesFor(value: unknown) {
+  const text = normalized(affirmativePreference(value)).replace(
+    /机械设计制造(?:及其)?自动化|机械设计制造及其自动化/g,
+    "机械制造",
+  );
+  return new Set(
+    signals.connections.flatMap(({ terms, codes }) =>
+      terms.some((term) => text.includes(term)) ? codes : [],
+    ),
+  );
+}
+function desiredDegree(profile: Record<string, unknown>) {
+  const constraint = explicitDegreeConstraint(
+    profile.degreePreference,
+    profile.notes,
+  );
+  if (constraint) return constraint;
+  const preference = affirmativePreference(profile.degreePreference);
+  if (/学硕|学术/.test(preference) && !/专硕|专业学位/.test(preference))
+    return "academic";
+  if (/专硕|专业学位/.test(preference) && !/学硕|学术/.test(preference))
+    return "professional";
+  const goal = affirmativePreference(profile.studyGoal);
+  const academic = /科研|读博|博士|学术研究|研究训练/.test(goal);
+  const professional = /就业|工程实践|行业|职业|应用实践/.test(goal);
+  return academic === professional
+    ? null
+    : academic
+      ? "academic"
+      : "professional";
+}
+
+/** Same saved profile produces the same direction plan; model wording cannot erase a route. */
+export function createDemandPlan(run: GuidanceRun): ResearchPlan {
+  const { allowed } = researchDirectory(run);
+  const profile = researchContext(run).profile;
+  const target = codesFor(profile.targetMajor);
+  const goal = codesFor(profile.studyGoal);
+  const background = codesFor(profile.major);
+  const confirmed = run.inputSnapshot.confirmedMajorId;
+  const selected = allowed.filter(
+    (d) =>
+      target.has(d.code) ||
+      goal.has(d.code) ||
+      d.code === confirmed ||
+      (!target.size && !goal.size && background.has(d.code)),
+  );
+  const ordered = [...selected].sort(
+    (a, b) =>
+      Number(target.has(b.code)) - Number(target.has(a.code)) ||
+      Number(goal.has(b.code)) - Number(goal.has(a.code)) ||
+      a.code.localeCompare(b.code),
+  );
+  const fields = profileFitEvidence(profile);
+  return {
+    directions: ordered.slice(0, 6).map((d) => ({
+      disciplineCode: d.code,
+      rationale: target.has(d.code)
+        ? "按你填写的兴趣调查，并同步比较相关学术与专业学位路线。"
+        : goal.has(d.code)
+          ? "按你填写的读研目标调查，具体培养内容另行核验。"
+          : "按所学专业关键词建立调查线索，同时比较学术与专业学位；关键词关联不等于适合或允许报考。",
+      fitReasons: fields
+        .filter((f) =>
+          [
+            "targetMajor",
+            "studyGoal",
+            "major",
+            "cities",
+            "degreePreference",
+            "hours",
+            "crossMajor",
+            "budget",
+          ].includes(f.profileField),
+        )
+        .slice(0, 4)
+        .map((f) => ({
+          ...f,
+          reason: "使用当前保存的偏好建立调查范围，学校事实须另行核验。",
+        })),
+      searchSchools: [],
+    })),
+    followUpQuestions: [],
+  };
+}
+
+/** Binds subjects to one coded program passage, never the neighbouring program/table. */
+function programRowScope(body: string, start: number, end?: number) {
+  const lineStart = body.lastIndexOf("\n", start);
+  const prefix = body.slice(Math.max(0, lineStart + 1), start);
+  const precedingLine =
+    lineStart < 0
+      ? ""
+      : body.slice(body.lastIndexOf("\n", lineStart - 1) + 1, lineStart).trim();
+  const collegePattern =
+    /(?:^|[|\s:：])\d{0,3}([\p{Script=Han}]{1,24}(?:学院|研究院|研究所|学部|中心))\s*\|?\s*$/u;
+  const collegeName =
+    prefix.match(collegePattern)?.[1] ??
+    (prefix.trim() ? undefined : precedingLine.match(collegePattern)?.[1]);
+  const row = body
+    .slice(start, end)
+    .split(/\n|复试|参考课程|参考书目|培养内容|课程设置/)[0];
+  const partTime = /非全日制/.test(row);
+  const fullTime = /全日制/.test(row.replace(/非全日制/g, ""));
+  const studyMode =
+    partTime === fullTime
+      ? undefined
+      : partTime
+        ? ("part_time" as const)
+        : ("full_time" as const);
+  return { collegeName, studyMode };
+}
+
+export function extractProgramExams(input: {
+  institutionName: string;
+  programName: string;
+  majorCode?: string;
+  collegeName?: string;
+  studyMode?: Recommendation["studyMode"];
+  discipline: Discipline;
+  sources: WebSource[];
+  targetYear: string;
+}): ResearchExamEvidence {
+  const unknown: ResearchExamEvidence = {
+    status: "unknown",
+    subjects: [],
+    reason:
+      "尚未取得能对应这个专业的初试科目原文；不能按学硕或专硕名称推定数一、数二、英一或英二。",
+  };
+  const found: ResearchExamEvidence[] = [];
+  for (const source of input.sources) {
+    if (
+      !isSchoolPage(source) ||
+      !supportsProgram(
+        source,
+        input.institutionName,
+        input.programName,
+        input.discipline,
+      ) ||
+      admissionEvidence(source, input.targetYear, input.programName).excluded
+    )
+      continue;
+    const body = withoutSchoolLinks(source.excerpt);
+    const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
+    for (let i = 0; i < rows.length; i++) {
+      const start = rows[i].index!;
+      if (!rows[i][0].startsWith(input.discipline.code)) continue;
+      if (input.majorCode && rows[i][0] !== input.majorCode) continue;
+      const scope = programRowScope(body, start, rows[i + 1]?.index);
+      if (input.collegeName && scope.collegeName !== input.collegeName)
+        continue;
+      if (
+        input.studyMode &&
+        input.studyMode !== "unspecified" &&
+        scope.studyMode !== input.studyMode
+      )
+        continue;
+      const passage = body
+        .slice(start, rows[i + 1]?.index ?? Math.min(body.length, start + 1400))
+        .split(" … ")[0];
+      const afterCode = passage
+        .slice(rows[i][0].length)
+        .replace(
+          /^[\s|:：()（）\[\]【】-]*(?:[（(](?:专业学位|学术学位|学术型)[）)]\s*)?/,
+          "",
+        );
+      const escapedName = input.programName.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
+      if (
+        !new RegExp(
+          `^${escapedName}(?=$|[\\s|（(]|学术学位|专业学位|非?全日制|\\d|①|②|③|④)`,
+          "u",
+        ).test(afterCode) ||
+        !/初试|考试科目|统考|①|②|③|④/.test(
+          `${body.slice(Math.max(0, start - 200), start)} ${passage}`,
+        )
+      )
+        continue;
+      const initialPassage = passage.split(
+        /复试|同等学力|加试|参考书目|参考课程|课程设置|培养内容/,
+      )[0];
+      const subjects = [
+        ...initialPassage.matchAll(
+          /(?:^|[^\d])(101|199|201|202|203|204|301|302|303|408)\s*[（(]?\s*(思想政治理论|管理类综合(?:能力)?|英语\s*[（(]?[一二][）)]?|俄语|日语|数学\s*[（(]?[一二三][）)]?|计算机(?:学科)?专业基础(?:综合)?)/g,
+        ),
+      ].map((m) => ({ code: m[1], name: m[2].replace(/\s/g, "") }));
+      const names: Record<string, string> = {
+        "101": "思想政治理论",
+        "199": "管理类综合能力",
+        "201": "英语一",
+        "202": "俄语",
+        "203": "日语",
+        "204": "英语二",
+        "301": "数学一",
+        "302": "数学二",
+        "303": "数学三",
+        "408": "计算机学科专业基础综合",
+      };
+      if (
+        subjects.some(
+          (s) =>
+            !s.name
+              .replace(/[（）()]/g, "")
+              .startsWith(names[s.code].replace("能力", "")),
+        )
+      )
+        continue;
+      const unique = [
+        ...new Map(
+          subjects.map((s) => [s.code, { code: s.code, name: names[s.code] }]),
+        ).values(),
+      ];
+      // Self-set subjects require an explicit initial-exam slot, not a course/reference-list mention.
+      for (const match of initialPassage.matchAll(
+        /[①②③④]\s*([1-9]\d{2})\s*([^①②③④|\n。；;]{2,80})/g,
+      )) {
+        if (
+          !names[match[1]] &&
+          !unique.some((subject) => subject.code === match[1])
+        )
+          unique.push({ code: match[1], name: match[2].trim() });
+      }
+      if (!unique.length) continue;
+      const math = unique.filter((s) => /^30/.test(s.code));
+      const english = unique.filter((s) =>
+        ["201", "202", "203", "204"].includes(s.code),
+      );
+      const current =
+        admissionEvidence(source, input.targetYear, input.programName)
+          .admissionStatus === "current_evidence";
+      const year = current
+        ? Number(input.targetYear)
+        : Number(body.match(/\b20\d{2}\b/)?.[0]);
+      found.push({
+        status:
+          math.length > 1 || english.length > 1
+            ? "ambiguous"
+            : current
+              ? "verified_current"
+              : "historical",
+        ...(Number.isFinite(year) ? { year } : {}),
+        subjects: unique,
+        quote: passage.trim(),
+        sourceId: source.id,
+        reason:
+          math.length > 1 || english.length > 1
+            ? "同一专业出现多个科目组合，需按方向、学习方式或考试组确认，暂不选定。"
+            : current
+              ? "已在目标年度官网专业条目中读到这些初试科目；方向、学习方式和考试组仍需核对完整目录。"
+              : "这是历史科目，仅供了解准备路线，不能作为目标年度科目安排。",
+      });
+    }
+  }
+  const current = found.filter(
+    (f) =>
+      f.year === Number(input.targetYear) &&
+      (f.status === "verified_current" || f.status === "ambiguous"),
+  );
+  const pool = current.length ? current : found;
+  if (!pool.length) return unknown;
+  if (new Set(pool.map((f) => JSON.stringify(f.subjects))).size > 1)
+    return {
+      status: "ambiguous",
+      subjects: [],
+      reason:
+        "同一专业的官网条目存在不同科目组合；需要核对方向或考试组后再确定。",
+    };
+  return pool[0];
+}
+
+export function evaluateDemandMatch(
+  item: Recommendation,
+  run: GuidanceRun,
+  discipline: Discipline,
+): { match: DemandMatch; tier: "preferred" | "alternative" | "exploratory" } {
+  const profile = researchContext(run).profile;
+  const target = codesFor(profile.targetMajor);
+  const background = codesFor(profile.major);
+  const goal = codesFor(profile.studyGoal);
+  const requestedDegree = desiredDegree(profile);
+  const citations = item.citations;
+  const factors: DemandMatch["factors"] = [];
+  for (const check of item.constraintChecks ?? [])
+    factors.push({
+      ...check,
+      label: check.field === "cities" ? "意向城市" : "年度预算",
+    });
+  factors.push({
+    field: "targetMajor",
+    label: "专业兴趣",
+    status: !meaningful(profile.targetMajor)
+      ? "not_requested"
+      : target.has(discipline.code)
+        ? "match"
+        : target.size
+          ? "mismatch"
+          : "unknown",
+    reason: !meaningful(profile.targetMajor)
+      ? "尚未指定具体兴趣，可继续比较相关方向。"
+      : target.has(discipline.code)
+        ? "该方向与当前填写的兴趣关键词有关联；仍需对照培养内容确认。"
+        : "尚未确认该方向与当前兴趣的对应关系。",
+    sourceIds: citations,
+  });
+  factors.push({
+    field: "major",
+    label: "已有专业基础",
+    status: background.has(discipline.code) ? "match" : "unknown",
+    reason: background.has(discipline.code)
+      ? "本科专业关键词与此方向有关联，可优先核对已学课程；这不是能力或报考资格判断。"
+      : "需要对照已学课程与专业课大纲，确定补修成本；愿意跨考不等于学校允许报考。",
+    sourceIds: citations,
+  });
+  factors.push({
+    field: "degreePreference",
+    label: "培养路线",
+    status: !requestedDegree
+      ? "not_requested"
+      : discipline.degreeType === requestedDegree
+        ? "match"
+        : "mismatch",
+    reason: !requestedDegree
+      ? "当前未明确倾向学术或专业学位，两条路线同时保留比较。"
+      : discipline.degreeType === requestedDegree
+        ? "符合当前培养偏好或读研目标的路线线索，具体培养方式仍需看学校方案。"
+        : "与当前培养偏好或读研目标的路线线索有差异，可作为另一种培养路线比较。",
+    sourceIds: citations,
+  });
+  factors.push({
+    field: "hours",
+    label: "准备时间与测评",
+    status: "unknown",
+    reason:
+      "需结合该专业实际考试科目、专项诊断和可投入时间安排；小题量练习不能判定能否考上或淘汰学校。",
+    sourceIds: [],
+  });
+  const city = factors.find((f) => f.field === "cities");
+  const directionMatch =
+    target.has(discipline.code) ||
+    goal.has(discipline.code) ||
+    (!target.size && !goal.size && background.has(discipline.code));
+  const citiesRequested =
+    Array.isArray(profile.cities) && profile.cities.length > 0;
+  const preferenceConflict =
+    (target.size > 0 && !target.has(discipline.code)) ||
+    (requestedDegree !== null && requestedDegree !== discipline.degreeType);
+  const tier =
+    directionMatch &&
+    !preferenceConflict &&
+    (!citiesRequested || city?.status === "match")
+      ? "preferred"
+      : directionMatch || background.has(discipline.code)
+        ? "alternative"
+        : "exploratory";
+  const summary =
+    tier === "preferred"
+      ? "与明确方向线索及已核验地域偏好一致，列为优先比较；费用、考试准备和年度资格缺口逐项保留。"
+      : tier === "alternative"
+        ? "有方向或课程关联，但城市、兴趣或培养路线仍有差异／待核验，列为备选并说明取舍。"
+        : "暂未形成明确需求关联，保留为探索选择，需进一步比较兴趣和补修成本。";
+  return { tier, match: { ruleVersion: "demand-match-v1", factors, summary } };
+}
+
+/** Reads all supported coded programs before model recommendations; omissions cannot hide a school. */
+export function buildEvidenceCandidates(input: {
+  run: GuidanceRun;
+  disciplines: Discipline[];
+  sources: WebSource[];
+  targetYear: string;
+  schoolNames?: string[];
+}): { recommendations: Recommendation[]; audit: ResearchCandidateAudit[] } {
+  const profile = researchContext(input.run).profile;
+  const names = new Set(input.schoolNames ?? []);
+  for (const source of input.sources) {
+    for (const match of withoutSchoolLinks(source.excerpt).matchAll(
+      /(?:^|[\s:：。；|｜])([\p{Script=Han}]{2,20}(?:大学|学院|研究院|研究所))(?=\s|\d|年|硕士|研究生|招生|专业|学科|版权所有|$)/gu,
+    )) {
+      if (sourceHasSchoolIdentity(source, match[1])) names.add(match[1]);
+    }
+  }
+  const recommendations: Recommendation[] = [];
+  const audit: ResearchCandidateAudit[] = [];
+  for (const institutionName of [...names].sort()) {
+    const schoolSources = input.sources.filter((s) =>
+      sourceHasSchoolIdentity(s, institutionName),
+    );
+    let excluded = false;
+    let added = false;
+    const seen = new Set<string>();
+    for (const source of schoolSources
+      .filter(isSchoolPage)
+      .sort(
+        (a, b) =>
+          Number(
+            admissionEvidence(b, input.targetYear).admissionStatus ===
+              "current_evidence",
+          ) -
+            Number(
+              admissionEvidence(a, input.targetYear).admissionStatus ===
+                "current_evidence",
+            ) || a.id.localeCompare(b.id),
+      )) {
+      const body = withoutSchoolLinks(source.excerpt);
+      const rows = [
+        ...body.matchAll(
+          /\b((?:0[1-9]|1[0-4])\d{4})\b[\s|:：()（）\[\]【】-]*([\p{Script=Han}]{2,30})/gu,
+        ),
+      ];
+      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        const row = rows[rowIndex];
+        const discipline = input.disciplines.find((d) =>
+          row[1].startsWith(d.code),
+        );
+        if (!discipline) continue;
+        const programName = row[2].replace(
+          /(?:专业学位|学术学位|全日制|非全日制|硕士|招生|初试|考试科目|学费).*$/,
+          "",
+        );
+        const { collegeName, studyMode } = programRowScope(
+          body,
+          row.index!,
+          rows[rowIndex + 1]?.index,
+        );
+        const key = `${row[1]}:${programName}:${collegeName ?? ""}:${studyMode ?? ""}`;
+        if (
+          seen.has(key) ||
+          !supportsProgram(source, institutionName, programName, discipline)
+        )
+          continue;
+        const scope = admissionEvidence(source, input.targetYear, programName);
+        const currentConflict = input.sources.some(
+          (other) =>
+            isSchoolPage(other) &&
+            supportsProgram(other, institutionName, programName, discipline) &&
+            admissionEvidence(other, input.targetYear).admissionStatus ===
+              "current_evidence" &&
+            (admissionEvidence(other, input.targetYear, programName).excluded ||
+              knownAdmissionConflict(
+                other,
+                programName,
+                discipline,
+                profile,
+                input.targetYear,
+              )),
+        );
+        if (scope.excluded || currentConflict) {
+          excluded = true;
+          continue;
+        }
+        seen.add(key);
+        const citations = [source.id];
+        const constraints = deriveRecommendationConstraints({
+          profile: {
+            budget: String(profile.budget ?? ""),
+            cities: Array.isArray(profile.cities)
+              ? (profile.cities as string[])
+              : [],
+          },
+          institutionName,
+          programName,
+          collegeName,
+          majorCode: row[1],
+          degreeType: discipline.degreeType,
+          studyMode,
+          targetYear: input.targetYear,
+          citations,
+          sources: input.sources,
+        });
+        for (const evidence of [constraints.location, constraints.tuition])
+          if (evidence && !citations.includes(evidence.sourceId))
+            citations.push(evidence.sourceId);
+        for (const check of constraints.constraintChecks)
+          for (const sourceId of check.sourceIds)
+            if (!citations.includes(sourceId)) citations.push(sourceId);
+        const fitReasons = profileFitEvidence(profile)
+          .filter((f) =>
+            [
+              "major",
+              "targetMajor",
+              "cities",
+              "degreePreference",
+              "studyGoal",
+              "hours",
+              "budget",
+              "crossMajor",
+            ].includes(f.profileField),
+          )
+          .slice(0, 6)
+          .map((f) => ({
+            ...f,
+            reason:
+              f.profileField === "cities"
+                ? constraints.constraintChecks.find(
+                    (c) => c.field === "cities",
+                  )!.reason
+                : f.profileField === "budget"
+                  ? constraints.constraintChecks.find(
+                      (c) => c.field === "budget",
+                    )!.reason
+                  : f.profileField === "major"
+                    ? "对照已学课程和官网专业条目，核实能复用哪些基础与需要补修哪些内容；关键词关联只是调查线索。"
+                    : f.profileField === "targetMajor"
+                      ? "以你当前明确的兴趣为比较依据，需对照实际培养内容确认。"
+                      : f.profileField === "hours"
+                        ? "用你可投入的时间安排专业课和公共课诊断，再评估具体准备成本。"
+                        : f.profileField === "crossMajor"
+                          ? "依据你当前跨专业意愿比较课程差距，招生资格另外核验。"
+                          : "依据当前培养偏好或读研目标，同时比较学术与实践训练内容。",
+          }));
+        if (fitReasons.length < 2) continue;
+        const item: Recommendation = {
+          institutionName,
+          disciplineCode: discipline.code,
+          programName,
+          majorCode: row[1],
+          ...(collegeName ? { collegeName } : {}),
+          ...(studyMode ? { studyMode } : {}),
+          degreeType: discipline.degreeType,
+          ...constraints,
+          fitReasons,
+          rationale:
+            "官网专业条目支持该学校与专业存在；按当前保存的兴趣、课程背景和地域偏好逐项比较，培养内容关联属于初步判断。",
+          preparation: [
+            "先核对完整招生目录的初试科目、方向和学习方式，再安排公共课与专业课专项诊断。",
+          ],
+          tradeoffs: [
+            "当前资料尚不能确定完整课程差距和准备进度，需要补充专项诊断与培养方案。",
+          ],
+          uncertainties: [
+            "报考条件、方向／考试组、培养校区及年度费用须逐项确认；已读到项目不等于资格通过。",
+          ],
+          admissionStatus: scope.admissionStatus,
+          citations,
+        };
+        const match = evaluateDemandMatch(item, input.run, discipline);
+        Object.assign(item, match, {
+          tierReasons: [
+            match.match.summary,
+            ...constraints.constraintChecks
+              .filter((c) => c.status !== "match")
+              .map((c) => c.reason),
+          ],
+          exams: extractProgramExams({
+            institutionName,
+            programName,
+            majorCode: row[1],
+            collegeName,
+            studyMode,
+            discipline,
+            sources: input.sources,
+            targetYear: input.targetYear,
+          }),
+        });
+        recommendations.push(item);
+        added = true;
+      }
+    }
+    audit.push({
+      institutionName,
+      status: added
+        ? "recommended"
+        : excluded
+          ? "excluded"
+          : "awaiting_evidence",
+      reasons: [
+        added
+          ? "已读取可支持具体硕士专业的官网条目，按相同需求规则比较。"
+          : excluded
+            ? "已读条目有停招、示例或明确年度资格冲突；未以待核验掩盖已知冲突。"
+            : schoolSources.some(isSchoolPage)
+              ? "已读取该校官网，但尚未解析到与本次方向对应且可核验的硕士专业条目；不能据此判定不适合。"
+              : "尚未读到可核验的学校专业正文；搜索摘要不是排除或推荐依据。",
+      ],
+      sourceIds: schoolSources.map((s) => s.id),
+    });
+  }
+  return { recommendations, audit };
+}
+
+function independentRoutes(
+  items: Recommendation[],
+  run: GuidanceRun,
+  sources: WebSource[],
+  year: string,
+): Recommendation[] {
+  const profile = researchContext(run).profile;
+  return items.flatMap(({ programAlternatives, ...main }) => [
+    main,
+    ...(programAlternatives ?? []).map((route) => {
+      // Legacy route cards may lack their own constraints. Read their own programme evidence;
+      // a school-level main card is never proof of a different programme's campus or fees.
+      const constraints = route.constraintChecks
+        ? {}
+        : deriveRecommendationConstraints({
+            profile: {
+              budget: String(profile.budget ?? ""),
+              cities: Array.isArray(profile.cities)
+                ? (profile.cities as string[])
+                : [],
+            },
+            institutionName: main.institutionName,
+            programName: route.programName,
+            collegeName: route.collegeName,
+            majorCode: route.majorCode,
+            degreeType: route.degreeType,
+            studyMode: route.studyMode,
+            targetYear: year,
+            citations: route.citations,
+            sources,
+          });
+      return {
+        ...route,
+        ...constraints,
+        institutionName: main.institutionName,
+        rationale:
+          route.rationale ??
+          "按这条专业路线自己的官网证据和当前需求逐项比较，缺少的资料另行核验。",
+        preparation: route.preparation ?? [],
+        uncertainties: route.uncertainties ?? [],
+      };
+    }),
+  ]);
+}
+
+function sameProgram(a: Recommendation, b: Recommendation) {
+  return (
+    a.institutionName === b.institutionName &&
+    a.disciplineCode === b.disciplineCode &&
+    a.programName === b.programName
+  );
+}
+function compatibleProgram(a: Recommendation, b: Recommendation) {
+  return (
+    sameProgram(a, b) &&
+    ["majorCode", "collegeName", "studyMode"].every(
+      (field) =>
+        !a[field as keyof Recommendation] ||
+        !b[field as keyof Recommendation] ||
+        a[field as keyof Recommendation] === b[field as keyof Recommendation],
+    ) &&
+    (!a.location || !b.location || a.location.city === b.location.city) &&
+    (!a.tuition ||
+      !b.tuition ||
+      a.tuition.studyMode === "unspecified" ||
+      b.tuition.studyMode === "unspecified" ||
+      a.tuition.studyMode === b.tuition.studyMode)
+  );
+}
+
+/** Merge only observations of the same programme identity, filling facts a model card omitted. */
+function consolidatePrograms(items: Recommendation[]): Recommendation[] {
+  const identitySpecificity = (item: Recommendation) =>
+    [
+      item.majorCode,
+      item.collegeName,
+      item.studyMode,
+      item.location?.city,
+    ].filter(Boolean).length;
+  const candidates: Recommendation[] = [];
+  // Fully identified inventory entries come first so a generic card cannot fuse two colleges.
+  for (const item of [...items].sort(
+    (a, b) => identitySpecificity(b) - identitySpecificity(a),
+  )) {
+    const matches = candidates.flatMap((other, index) =>
+      compatibleProgram(item, other) ? [index] : [],
+    );
+    if (matches.length > 1) continue;
+    if (!matches.length) {
+      candidates.push({ ...item });
+      continue;
+    }
+    const index = matches[0];
+    const previous = candidates[index];
+    const combined = { ...previous };
+    for (const field of [
+      "majorCode",
+      "collegeName",
+      "studyMode",
+      "location",
+      "tuition",
+      "admissionStatus",
+    ] as const)
+      if (!combined[field] && item[field])
+        Object.assign(combined, { [field]: item[field] });
+    const checks = new Map(
+      (previous.constraintChecks ?? []).map((check) => [check.field, check]),
+    );
+    for (const check of item.constraintChecks ?? [])
+      if (
+        !checks.has(check.field) ||
+        checks.get(check.field)!.status === "unknown"
+      )
+        checks.set(check.field, check);
+    combined.constraintChecks = [...checks.values()];
+    combined.citations = [
+      ...new Set([...previous.citations, ...item.citations]),
+    ];
+    combined.preparation = [
+      ...new Set([...previous.preparation, ...item.preparation]),
+    ];
+    combined.uncertainties = [
+      ...new Set([...previous.uncertainties, ...item.uncertainties]),
+    ];
+    combined.tradeoffs = [
+      ...new Set([...(previous.tradeoffs ?? []), ...(item.tradeoffs ?? [])]),
+    ];
+    combined.fitReasons = [
+      ...new Map(
+        [...(previous.fitReasons ?? []), ...(item.fitReasons ?? [])].map(
+          (reason) => [JSON.stringify(reason), reason],
+        ),
+      ).values(),
+    ];
+    candidates[index] = combined;
+  }
+  return candidates;
+}
+
+/** Rule ordering + stable identity tie-break; one main choice with same-school routes exposed. */
+export function rankDemandCandidates(
+  items: Recommendation[],
+  run: GuidanceRun,
+  disciplines: Discipline[],
+  sources: WebSource[],
+  year: string,
+) {
+  const observations = deriveResearchDecision(run).assessments;
+  const ranked = consolidatePrograms(
+    independentRoutes(items, run, sources, year),
+  ).flatMap((item) => {
+    const discipline = disciplines.find((d) => d.code === item.disciplineCode);
+    if (!discipline || !item.programName) return [];
+    if (
+      sources.some(
+        (source) =>
+          isSchoolPage(source) &&
+          supportsProgram(
+            source,
+            item.institutionName,
+            item.programName!,
+            discipline,
+          ) &&
+          admissionEvidence(source, year).admissionStatus ===
+            "current_evidence" &&
+          (admissionEvidence(source, year, item.programName).excluded ||
+            knownAdmissionConflict(
+              source,
+              item.programName!,
+              discipline,
+              researchContext(run).profile,
+              year,
+            )),
+      )
+    )
+      return [];
+    const evaluated = evaluateDemandMatch(item, run, discipline);
+    const exams = extractProgramExams({
+      institutionName: item.institutionName,
+      programName: item.programName,
+      majorCode: item.majorCode,
+      collegeName: item.collegeName,
+      studyMode: item.studyMode,
+      discipline,
+      sources,
+      targetYear: year,
+    });
+    const tasks = observations
+      .filter(
+        (observation) =>
+          observation.weakPoints.length &&
+          (exams.status !== "verified_current" ||
+            exams.subjects.some((subject) =>
+              observation.module === "math"
+                ? /^30[123]$/.test(subject.code)
+                : ["201", "204"].includes(subject.code),
+            )),
+      )
+      .map(
+        (observation) =>
+          `${observation.status === "local_diagnosis" ? "测评准备线索" : "练习回顾"}：${observation.nextSteps[0]}`,
+      );
+    return [
+      {
+        ...item,
+        programName: item.programName,
+        degreeType: discipline.degreeType,
+        constraintChecks: item.constraintChecks ?? [],
+        fitReasons: item.fitReasons ?? [],
+        tradeoffs: item.tradeoffs ?? [],
+        admissionStatus:
+          item.admissionStatus ?? ("needs_verification" as const),
+        preparation: [...new Set([...item.preparation, ...tasks])].slice(0, 7),
+        ...evaluated,
+        tierReasons: [
+          evaluated.match.summary,
+          ...(item.constraintChecks ?? [])
+            .filter((c) => c.status !== "match")
+            .map((c) => c.reason),
+        ],
+        exams,
+      },
+    ];
+  });
+  const tierOrder = { preferred: 0, alternative: 1, exploratory: 2 };
+  ranked.sort(
+    (a, b) =>
+      tierOrder[a.tier] - tierOrder[b.tier] ||
+      Number(
+        b.match.factors.some(
+          (f) => f.field === "cities" && f.status === "match",
+        ),
+      ) -
+        Number(
+          a.match.factors.some(
+            (f) => f.field === "cities" && f.status === "match",
+          ),
+        ) ||
+      Number(b.match.factors.filter((f) => f.status === "match").length) -
+        Number(a.match.factors.filter((f) => f.status === "match").length) ||
+      a.institutionName.localeCompare(b.institutionName, "zh-CN") ||
+      a.disciplineCode.localeCompare(b.disciplineCode) ||
+      a.programName!.localeCompare(b.programName!, "zh-CN") ||
+      (a.majorCode ?? "").localeCompare(b.majorCode ?? "") ||
+      (a.collegeName ?? "").localeCompare(b.collegeName ?? "", "zh-CN") ||
+      (a.studyMode ?? "").localeCompare(b.studyMode ?? "") ||
+      (a.location?.city ?? "").localeCompare(b.location?.city ?? "", "zh-CN"),
+  );
+  return ranked
+    .filter(
+      (item, index) =>
+        ranked.findIndex(
+          (other) => other.institutionName === item.institutionName,
+        ) === index,
+    )
+    .slice(0, 10)
+    .map((item) => ({
+      ...item,
+      programAlternatives: ranked
+        .filter(
+          (other) =>
+            other.institutionName === item.institutionName && other !== item,
+        )
+        .slice(0, 3)
+        .map(
+          (other): ResearchProgramAlternative => ({
+            programName: other.programName,
+            disciplineCode: other.disciplineCode,
+            ...(other.majorCode ? { majorCode: other.majorCode } : {}),
+            ...(other.collegeName ? { collegeName: other.collegeName } : {}),
+            ...(other.studyMode ? { studyMode: other.studyMode } : {}),
+            degreeType: other.degreeType!,
+            ...(other.location ? { location: other.location } : {}),
+            ...(other.tuition ? { tuition: other.tuition } : {}),
+            tierReasons: other.tierReasons,
+            constraintChecks: other.constraintChecks,
+            fitReasons: other.fitReasons,
+            rationale: other.rationale,
+            preparation: other.preparation,
+            tradeoffs: other.tradeoffs,
+            uncertainties: other.uncertainties,
+            admissionStatus: other.admissionStatus,
+            exams: other.exams,
+            match: other.match,
+            tier: other.tier,
+            citations: other.citations,
+          }),
+        ),
+    }));
+}

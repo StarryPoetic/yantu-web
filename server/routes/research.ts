@@ -42,7 +42,7 @@ export interface ResearchJob {
 const stages: Record<ResearchStage, { progress: number; message: string }> = {
   preparing: {
     progress: 10,
-    message: "正在结合完整画像与测评，由模型选择研究方向",
+    message: "正在按保存需求建立调查方向，并整理测评准备依据",
   },
   researching: {
     progress: 30,
@@ -50,7 +50,7 @@ const stages: Record<ResearchStage, { progress: number; message: string }> = {
   },
   analyzing: {
     progress: 60,
-    message: "正在结合画像、测评和检索资料进行模型分析",
+    message: "正在核对实际项目与需求，补充准备成本和培养路线分析",
   },
   writing: { progress: 90, message: "正在核对引用与专业代码，整理报告" },
 };

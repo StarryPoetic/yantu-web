@@ -44,6 +44,18 @@ export interface DisciplineCatalog {
 export interface GuidanceAssessment {
   assessmentAttemptId: string;
   diagnosisVersion: string;
+  questionBankVersion?: string;
+  submittedAt?: string;
+  scope?: Partial<Record<"math" | "english" | "politics" | "major", string>>;
+  items?: {
+    questionId: string;
+    questionRevisionId: string;
+    module: string;
+    point: string;
+    outcome: "correct" | "incorrect" | "unanswered";
+    scopes: string[];
+    calibration?: "manual_initial" | "calibrated";
+  }[];
   example: boolean;
   usableForRecommendation: boolean;
   modules: {

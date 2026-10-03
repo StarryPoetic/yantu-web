@@ -3,6 +3,10 @@ import { researchReason } from "../../shared/research-status.ts";
 import type { createWebAnswerModule, WebSource } from "./web.ts";
 import { sourcePriority } from "./research-evidence.ts";
 import { sourceHasSchoolIdentity } from "./research-school.ts";
+import {
+  preferredCityInventoryQueries,
+  type CityCandidateLead,
+} from "./research-candidates.ts";
 export { sourceHasSchoolIdentity } from "./research-school.ts";
 
 // Only public query results are cached. No profile, account or model output is retained here.
@@ -111,6 +115,8 @@ export async function searchResearchSources(input: {
   disciplines: Discipline[];
   regions: string[];
   schoolHints?: ReadonlyMap<string, readonly string[]>;
+  /** City inventory is independent of model school hints. An empty array still enables city lookups. */
+  candidateLeads?: readonly CityCandidateLead[];
   selectedSchool?: string;
   targetYear?: string;
   maxRequests?: number;
@@ -125,7 +131,7 @@ export async function searchResearchSources(input: {
     cache = new Map();
     caches.set(input.web, cache);
   }
-  const directions = input.disciplines.slice(0, 3);
+  const directions = input.disciplines.slice(0, 6);
   const states = directions.map((discipline, index) => ({
     discipline,
     index,
@@ -141,6 +147,72 @@ export async function searchResearchSources(input: {
     broadIndex: 0,
     attempts: 0,
   }));
+  const candidateAttempts = new Set<string>();
+  const inventoryAttempts = new Set<string>();
+  const candidateQueries =
+    input.candidateLeads === undefined
+      ? []
+      : [
+          ...preferredCityInventoryQueries(input.regions).map((item) => ({
+            question: item.question,
+            city: item.city,
+            state: states[0],
+            domains: [] as string[],
+            lead: undefined as CityCandidateLead | undefined,
+          })),
+          // Every demand direction gets a broad catalogue lookup before model
+          // school hints can consume the remaining discovery budget.
+          ...states.map((state) => ({
+            question: [
+              input.regions[state.index % input.regions.length],
+              state.discipline.name,
+              "硕士 招生专业目录",
+            ]
+              .filter(Boolean)
+              .join(" "),
+            city: input.regions[state.index % input.regions.length] ?? "",
+            state,
+            domains: [] as string[],
+            lead: undefined as CityCandidateLead | undefined,
+            directionOnly: true,
+          })),
+          ...input.candidateLeads.map((lead) => ({
+            question: [
+              lead.school,
+              input.targetYear,
+              "硕士 招生专业目录 招生章程",
+            ]
+              .filter(Boolean)
+              .join(" "),
+            city: lead.city,
+            state:
+              states.find((state) =>
+                lead.disciplineCodes.includes(state.discipline.code),
+              ) ?? states[0],
+            domains: [lead.officialDomain],
+            lead,
+          })),
+        ];
+  // Official navigation URLs are public investigation leads, not read evidence.
+  // They survive a search provider indexing miss and still require a safe read.
+  for (const lead of input.candidateLeads ?? []) {
+    if (!lead.discoveryUrl || !states[0]) continue;
+    const state =
+      states.find((item) =>
+        lead.disciplineCodes.includes(item.discipline.code),
+      ) ?? states[0];
+    state.pool.push({
+      id: "candidate-navigation",
+      title: `${lead.school} 硕士研究生招生专业目录查询入口`,
+      url: lead.discoveryUrl,
+      excerpt: `${lead.school}官方公开招生入口，仅作为待调查线索；学校具体专业、校区、考试科目及资格仍须读取正文核验。`,
+      retrievedAt: new Date().toISOString(),
+      kind: "search_snippet",
+      verified: false,
+      retrievalNote: `公开学校发现目录；登记依据 ${lead.provenanceUrl}，检查日期 ${lead.checkedAt}。不代表已取得专业证据。`,
+    });
+  }
+  let candidateQueryIndex = 0;
   let searched = false;
   const limitations: string[] = [];
   const requests = new Set<string>();
@@ -266,12 +338,23 @@ export async function searchResearchSources(input: {
         broadenSchool || recoverFirstSchool ? [] : availableDomains.slice(0, 2);
       let question: string;
       let resultPool = pool;
-      if (maxRequests > 6 && !discoveryHints.length) discoverySlots++;
+      const candidateQuery = candidateQueries[candidateQueryIndex];
+      if (maxRequests > 6 && !discoveryHints.length && !candidateQuery)
+        discoverySlots++;
       const feeTime =
         requests.size >= maxRequests - feeBudget ||
         discoverySlots >= maxRequests - feeBudget;
       if (maxRequests > 6 && feeTime && !feeHints) feeHints = resolveFeeHints();
-      if (
+      if (candidateQuery) {
+        candidateQueryIndex++;
+        question = candidateQuery.question;
+        resultPool = candidateQuery.state.pool;
+        domains = candidateQuery.domains;
+        if (candidateQuery.lead)
+          candidateAttempts.add(candidateQuery.lead.school);
+        else if (!("directionOnly" in candidateQuery))
+          inventoryAttempts.add(candidateQuery.city);
+      } else if (
         maxRequests > 6 &&
         feeTime &&
         feeHints &&
@@ -466,5 +549,7 @@ export async function searchResearchSources(input: {
     limitations,
     stoppedReason,
     requestCount: requests.size,
+    candidateAttempts: [...candidateAttempts],
+    inventoryAttempts: [...inventoryAttempts],
   };
 }

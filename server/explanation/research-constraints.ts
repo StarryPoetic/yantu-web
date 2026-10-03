@@ -13,12 +13,16 @@ import {
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
 } from "./research-school.ts";
+import { deriveCampusLocation } from "./research-campus.ts";
+import { admissionEvidence } from "./research-evidence.ts";
 
 export interface RecommendationConstraintInput {
   profile: Pick<Profile, "budget" | "cities">;
   targetYear: string | number;
   institutionName: string;
   programName: string;
+  collegeName?: string;
+  majorCode?: string;
   degreeType?: "academic" | "professional";
   studyMode?: ResearchStudyMode;
   citations: string[];
@@ -551,6 +555,7 @@ function programAddress(clause: string, input: RecommendationConstraintInput) {
     const between = clause
       .slice(programAt + input.programName.length, match.index)
       .replaceAll(input.institutionName, "");
+    if (/招生办|办公室|咨询|通讯|通信|联系/.test(between)) return false;
     return !/[\p{Script=Han}]{1,30}(?:大学|学院|研究院|研究所)|\b(?:0[1-9]|1[0-4])\d{4}\b|(?:[，,、]|\s)(?!全日制|非全日制|本专业|该专业|硕士)[\p{Script=Han}]{2,20}(?:专业|硕士)/u.test(
       between,
     );
@@ -635,6 +640,27 @@ function checkedLocation(
     !/^[\p{Script=Han}]{2,14}$/u.test(raw.city)
   )
     return undefined;
+  if (Array.isArray(raw.supportingEvidence)) {
+    const derived = deriveCampusLocation(input);
+    const claim = raw.supportingEvidence
+      .map((passage) => {
+        const value = record(passage);
+        return JSON.stringify([value?.sourceId, value?.quote, value?.role]);
+      })
+      .sort();
+    const proven = derived?.supportingEvidence
+      ?.map((passage) =>
+        JSON.stringify([passage.sourceId, passage.quote, passage.role]),
+      )
+      .sort();
+    return derived &&
+      raw.city === derived.city &&
+      raw.sourceId === derived.sourceId &&
+      raw.quote === derived.quote &&
+      JSON.stringify(claim) === JSON.stringify(proven)
+      ? derived
+      : undefined;
+  }
   const cited = citedQuote(raw, input);
   if (!cited) return undefined;
   const city = cityName(raw.city);
@@ -661,6 +687,21 @@ function checkedLocation(
     // A footer does not identify the candidate's campus when the page mentions
     // multiple campuses or programme-specific teaching locations.
     if (/校区|办学地点|教学地点|培养(?:地点|地址)/.test(cited.source.excerpt))
+      return undefined;
+    // A plain footer on a different page cannot override an actual current
+    // training-campus policy, including a policy whose possible cities differ.
+    if (
+      input.sources.some(
+        (source) =>
+          source.kind === "official_page" &&
+          sourceHasSchoolIdentity(source, input.institutionName) &&
+          admissionEvidence(source, String(input.targetYear))
+            .admissionStatus === "current_evidence" &&
+          /培养(?:所在)?校区|新生所在校区|(?:培养|教学|办学)(?:地点|地址)/.test(
+            withoutSchoolLinks(source.excerpt),
+          ),
+      )
+    )
       return undefined;
     if (!addresses.some((clause) => schoolAddress(clause, input)))
       return undefined;
@@ -789,7 +830,14 @@ function cityCheck(
     field: "cities",
     status: "unknown",
     reason: "尚未查到该专业可明确适用的城市或校区地址，不能仅凭学校名称推断。",
-    sourceIds: location ? [location.sourceId] : [],
+    sourceIds: location
+      ? [
+          ...new Set([
+            location.sourceId,
+            ...(location.supportingEvidence ?? []).map((item) => item.sourceId),
+          ]),
+        ]
+      : [],
   };
   if (!cities.length)
     return { ...check, reason: "尚未限定城市，未代填城市偏好或认定地域不符。" };
@@ -821,7 +869,7 @@ export function deriveRecommendationConstraints(
       : checkedTuition(input);
   const location =
     input.location === undefined
-      ? extractedLocation(input)
+      ? (deriveCampusLocation(input) ?? extractedLocation(input))
       : checkedLocation(input);
   const constraintChecks = [
     budgetCheck(input, tuition),

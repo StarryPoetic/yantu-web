@@ -4,10 +4,14 @@ import { researchReason } from "../../shared/research-status";
 import { safeUrl } from "./ui";
 import { ResearchSchoolCard } from "./ResearchSchoolCard";
 import { ResearchSourceLinks } from "./ResearchSourceLinks";
+import { ResearchDecisionBasisView } from "./ResearchDecisionBasisView";
+import { ResearchCandidateAudit } from "./ResearchCandidateAudit";
 import {
   recommendationGroups,
   researchCoverage,
   suitabilityNotice,
+  isLegacyResearchReport,
+  legacyResearchNotice,
   type researchOutcome,
 } from "./research-report";
 
@@ -25,13 +29,17 @@ export function ResearchReportView({
   const hasRecommendations = report.recommendations.length > 0;
   const coverage = researchCoverage(report);
   const groups = recommendationGroups(report.recommendations);
-  const legacy =
-    report.reportVersion !== "profile-research-v6" ||
-    report.recommendations.some(
-      (item) => !item.programName || !item.fitReasons?.length,
-    );
+  const legacy = isLegacyResearchReport(report);
   return (
     <div className="research-report">
+      {legacy && (
+        <p className="research-legacy" role="status">
+          {legacyResearchNotice}
+        </p>
+      )}
+      {report.decisionBasis && (
+        <ResearchDecisionBasisView basis={report.decisionBasis} />
+      )}
       {hasRecommendations ? (
         <>
           <div className="research-result-heading">
@@ -80,12 +88,6 @@ export function ResearchReportView({
               </div>
             </section>
           ))}
-          {legacy && (
-            <p className="research-legacy" role="status">
-              这是旧版报告。重新生成后，可按 5–10
-              所学校的目标查看分级建议、个人匹配理由与费用核对结果。
-            </p>
-          )}
         </>
       ) : outcome !== "failure" ? (
         <section className="research-empty" aria-label="暂无学校推荐">
@@ -94,11 +96,6 @@ export function ResearchReportView({
               ? "补充这些信息后继续研究"
               : "本次尚未找到足够的学校依据"}
           </h3>
-          {legacy && (
-            <p className="research-legacy" role="status">
-              这是旧版报告。点击下方“重新调研并生成报告”，可按完整画像重新调查学校与具体专业。
-            </p>
-          )}
           <p>
             {report.reason
               ? researchReason(report.reason)
@@ -130,6 +127,7 @@ export function ResearchReportView({
           )}
         </section>
       ) : null}
+      <ResearchCandidateAudit report={report} />
       <div className="research-supporting-details">
         <details>
           <summary>

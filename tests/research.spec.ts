@@ -8,6 +8,7 @@ import type {
   ResearchStage,
 } from "../server/explanation/research";
 import { registerAccount } from "./helpers/account";
+import { decisionDisplayFixture } from "./helpers/research-decision-fixture";
 
 const model = {
   name: "deepseek-v4-pro",
@@ -74,7 +75,7 @@ function reportFor(
 ): ResearchReport {
   return {
     schemaVersion: 1,
-    reportVersion: "profile-research-v6",
+    reportVersion: "profile-research-v7",
     status,
     generatedAt: retrievedAt,
     guidanceRunId: run.guidanceRunId,
@@ -88,6 +89,19 @@ function reportFor(
         disciplineCode: "0301",
         programName: "法学（民商法方向）",
         degreeType: "academic",
+        match: {
+          ruleVersion: "demand-match-v1",
+          summary: "已核对法学兴趣，其他条件仍需按资料确认。",
+          factors: [
+            {
+              field: "targetMajor",
+              label: "目标专业",
+              status: "match",
+              reason: "与保存的法学兴趣一致。",
+              sourceIds: [],
+            },
+          ],
+        },
         tier: "preferred",
         tierReasons: [],
         constraintChecks: [
@@ -701,7 +715,7 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
     .getByRole("button", { name: "下载研究报告", exact: true })
     .click();
   const downloaded = await downloading;
-  expect(downloaded.suggestedFilename()).toBe("研途-联网研究报告.txt");
+  expect(downloaded.suggestedFilename()).toBe("研途-联网研究报告.md");
   const path = await downloaded.path();
   expect(path).not.toBeNull();
   const content = await readFile(path!, "utf8");
@@ -1115,7 +1129,7 @@ test("五所学校按综合适合度分三层，昂贵仍可优先且同价可�
   await expect(
     exploratory.getByText(/跨考准备成本仍需评估，先作为探索选择/),
   ).toBeVisible();
-  await expect(panel.getByText(/优先推荐不代表录取率或录取保证/)).toBeVisible();
+  await expect(panel.getByText(/分级不换算录取率，也不保证录取/)).toBeVisible();
   await expect(
     panel.getByText(/尚未发现已核实的预算或城市偏好冲突/),
   ).toHaveCount(0);
@@ -1138,7 +1152,7 @@ test("五所学校按综合适合度分三层，昂贵仍可优先且同价可�
   expect(content).toContain("## 第一级·优先推荐");
   expect(content).toContain("## 第二级·适合备选");
   expect(content).toContain("## 第三级·探索选择");
-  expect(content).toContain("优先推荐不代表录取率或录取保证");
+  expect(content).toContain("分级不换算录取率，也不保证录取");
   expect(content).toContain(
     "虽然学费高于预算，但人工智能兴趣与工程基础形成较强衔接",
   );
@@ -1609,6 +1623,7 @@ for (const { empty, reportVersion } of [
   { empty: true, reportVersion: undefined },
   { empty: false, reportVersion: "profile-research-v3" },
   { empty: false, reportVersion: "profile-research-v4" },
+  { empty: false, reportVersion: "profile-research-v6" },
 ] as const) {
   test(
     "旧版" +
@@ -1669,3 +1684,386 @@ for (const { empty, reportVersion } of [
     },
   );
 }
+
+test("v7展示测评依据、真实科目与同校专业对比，并明确杭州候选的资料缺口和排除原因", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  const run = await openGuidance(page);
+  service.setRun(run);
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("completed", (report) => {
+    const match = {
+      ruleVersion: "demand-match-v1" as const,
+      summary: "杭州培养地址已有依据，预算尚待精确学费资料。",
+      factors: [
+        {
+          field: "cities",
+          label: "意向城市",
+          status: "match" as const,
+          reason: "已核对项目位于杭州。",
+          sourceIds: ["research-1"],
+        },
+        {
+          field: "budget",
+          label: "预算",
+          status: "unknown" as const,
+          reason: "尚未取得该项目精确收费原文。",
+          sourceIds: [],
+        },
+        {
+          field: "degreeType",
+          label: "学位偏好",
+          status: "not_requested" as const,
+          reason: "本人尚未限定学位类型，保留两条路线比较。",
+          sourceIds: [],
+        },
+      ],
+    };
+    return {
+      ...report,
+      decisionBasis: decisionDisplayFixture(),
+      candidateAudit: [
+        {
+          institutionName: "浏览器测试大学",
+          status: "recommended",
+          reasons: ["具体项目已核验，列入本次比较。"],
+          sourceIds: ["research-1"],
+        },
+        {
+          institutionName: "杭州电子科技大学",
+          status: "awaiting_evidence",
+          reasons: [
+            "已找到目录入口，电子信息项目正文尚未读取，不能据此排除杭电。",
+          ],
+          sourceIds: ["research-1"],
+        },
+        {
+          institutionName: "测试排除学院",
+          status: "excluded",
+          reasons: ["已读取目录，所申请项目明确要求本科背景条件，本次不满足。"],
+          sourceIds: ["research-1"],
+        },
+        {
+          institutionName: "测试未选学院",
+          status: "not_selected",
+          reasons: ["本次比较数量已达目标，未选入不代表不适合。"],
+          sourceIds: [],
+        },
+      ],
+      recommendations: [
+        {
+          ...report.recommendations[0],
+          degreeType: "professional",
+          collegeName: "主项目法学院",
+          majorCode: "035101",
+          match,
+          exams: {
+            status: "verified_current",
+            year: 2027,
+            subjects: [
+              { code: "301", name: "数学一" },
+              { code: "201", name: "英语一" },
+            ],
+            quote: "2027年项目目录：301数学一、201英语一。",
+            sourceId: "research-1",
+            reason: "已读取具体项目的目标年度目录。",
+          },
+          preparation: ["先复习导数基础，不用练习正确率替代项目报考科目。"],
+          programAlternatives: [
+            {
+              programName: "计算机科学与技术",
+              disciplineCode: "0812",
+              collegeName: "计算机学院",
+              majorCode: "081200",
+              degreeType: "academic",
+              tier: "alternative",
+              rationale: "按该计算机项目的独立条件保留比较。",
+              preparation: ["该项目先补数据结构与算法。"],
+              tradeoffs: ["该项目需要额外安排算法训练时间。"],
+              uncertainties: ["该项目2027年考试组仍需核对。"],
+              match: {
+                ruleVersion: "demand-match-v1",
+                summary: "该项目预算已有依据，培养城市与杭州偏好有差异。",
+                factors: [
+                  {
+                    field: "budget",
+                    label: "预算",
+                    status: "match",
+                    reason: "该计算机项目学费符合年度预算。",
+                    sourceIds: ["research-1"],
+                  },
+                  {
+                    field: "cities",
+                    label: "意向城市",
+                    status: "mismatch",
+                    reason: "该计算机项目培养地点位于杭州之外。",
+                    sourceIds: ["research-1"],
+                  },
+                ],
+              },
+              exams: {
+                status: "historical",
+                year: 2026,
+                subjects: [{ code: "302", name: "数学二" }],
+                quote: "2026年测试项目目录：302数学二。",
+                sourceId: "research-1",
+                reason: "仅取得历史目录，2027年科目仍需核验。",
+              },
+              citations: ["research-1"],
+            },
+            {
+              programName: "软件工程",
+              disciplineCode: "0835",
+              degreeType: "academic",
+              tier: "exploratory",
+              match: {
+                ruleVersion: "demand-match-v1",
+                summary: "该专业资料待独立核对。",
+                factors: [],
+              },
+              exams: {
+                status: "unknown",
+                subjects: [],
+                reason: "没有该专业的已核验目录。",
+              },
+              citations: [],
+            },
+          ],
+        },
+      ],
+    };
+  });
+  const basis = panel.getByRole("region", {
+    name: "测评与学位路线依据",
+    exact: true,
+  });
+  await expect(basis).toBeVisible();
+  await expect(basis.getByText("示例练习观察", { exact: true })).toBeVisible();
+  await expect(
+    basis.getByText("练习范围：数学一", { exact: true }),
+  ).toBeVisible();
+  await expect(basis.getByText(/练习范围：math-one/)).toHaveCount(0);
+  await expect(
+    basis.getByText(/答对 1 题，答错 1 题，未答 1 题，共 3 题/),
+  ).toBeVisible();
+  await expect(
+    basis.getByText("英语尚未测评，不推定英语基础强弱。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    basis.getByText(/不能把小题量示例换算为数学一或数学二/),
+  ).toBeVisible();
+  await basis.getByText("查看测评记录与版本", { exact: true }).click();
+  await expect(basis.getByText(/诊断版本 diagnosis-display-v1/)).toBeVisible();
+  await expect(basis.getByText(/题库版本 example-bank-v1/)).toBeVisible();
+  await expect(
+    basis
+      .getByRole("region", { name: "专业学位路线", exact: true })
+      .getByText(/不能据此认定必考数学二或英语二/),
+  ).toBeVisible();
+  const card = panel.getByRole("article", {
+    name: "浏览器测试大学 · 法学（民商法方向）",
+    exact: true,
+  });
+  await expect(
+    card.getByText("招生院系：主项目法学院", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByText("专业代码：035101", { exact: true }),
+  ).toBeVisible();
+  const exams = card.getByRole("region", { name: "实际考试科目", exact: true });
+  await expect(
+    exams.getByText("2027 年考试科目已有官网依据", { exact: true }),
+  ).toBeVisible();
+  await expect(exams.getByText("301 数学一", { exact: true })).toBeVisible();
+  await expect(exams.getByText("201 英语一", { exact: true })).toBeVisible();
+  await expect(exams.getByText(/先复习导数基础/)).toHaveCount(0);
+  await expect(
+    card
+      .getByRole("region", { name: "需求匹配依据", exact: true })
+      .getByText("尚未取得该项目精确收费原文。", { exact: true }),
+  ).toBeVisible();
+  await exams.getByText("查看考试科目原文", { exact: true }).click();
+  await expect(
+    exams.getByText("2027年项目目录：301数学一、201英语一。", { exact: true }),
+  ).toBeVisible();
+  await expect(exams.getByRole("link")).toHaveAttribute("href", sourceUrl);
+  await card.getByText("同校其他专业比较 · 2 项", { exact: true }).click();
+  const alternative = card.getByRole("region", {
+    name: "同校专业：计算机科学与技术",
+    exact: true,
+  });
+  await expect(
+    alternative.getByText("2026 年考试科目参考，目标年度待核验", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    alternative.getByText("302 数学二", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    alternative.getByText("招生院系：计算机学院", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    alternative.getByText("专业代码：081200", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    alternative.getByText("按该计算机项目的独立条件保留比较。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    alternative
+      .getByRole("definition")
+      .filter({ hasText: "该计算机项目学费符合年度预算。" }),
+  ).toBeVisible();
+  await expect(
+    alternative
+      .getByRole("definition")
+      .filter({ hasText: "该计算机项目培养地点位于杭州之外。" }),
+  ).toBeVisible();
+  await expect(
+    alternative
+      .getByRole("region", { name: "同校专业准备建议", exact: true })
+      .getByText("该项目先补数据结构与算法。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    alternative
+      .getByRole("region", { name: "同校专业需要权衡", exact: true })
+      .getByText("该项目需要额外安排算法训练时间。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    alternative
+      .getByRole("region", { name: "同校专业待确认事项", exact: true })
+      .getByText("该项目2027年考试组仍需核对。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    alternative.getByText(/主项目法学院|035101|先复习导数基础|301 数学一/),
+  ).toHaveCount(0);
+  const sparseAlternative = card.getByRole("region", {
+    name: "同校专业：软件工程",
+    exact: true,
+  });
+  await expect(
+    sparseAlternative.getByText("考试科目尚未核验", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    sparseAlternative.getByText(
+      /招生院系：|专业代码：|先复习导数基础|数据结构与算法/,
+    ),
+  ).toHaveCount(0);
+  await expect(
+    sparseAlternative.getByRole("region", {
+      name: "同校专业准备建议",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  const audit = panel.getByRole("region", {
+    name: "候选院校覆盖与排除说明",
+    exact: true,
+  });
+  await expect(
+    audit.getByText("杭州电子科技大学", { exact: true }),
+  ).toBeVisible();
+  await expect(audit.getByText("资料待补充", { exact: true })).toBeVisible();
+  await expect(audit.getByText(/不能据此排除杭电/)).toBeVisible();
+  await expect(
+    audit.getByText("已排除（有明确依据）", { exact: true }),
+  ).toBeVisible();
+  await expect(audit.getByText(/明确要求本科背景条件/)).toBeVisible();
+  await expect(panel.getByText(/这是旧版报告/)).toHaveCount(0);
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const downloaded = await downloading;
+  expect(downloaded.suggestedFilename()).toBe("研途-联网研究报告.md");
+  const content = await readFile((await downloaded.path())!, "utf8");
+  expect(content).toContain("测评与学位路线依据");
+  expect(content).toContain("diagnosis-display-v1");
+  expect(content).toContain("练习范围：数学一");
+  expect(content).not.toContain("练习范围：math-one");
+  expect(content).toContain("招生院系：主项目法学院\n专业代码：035101");
+  expect(content).toContain("招生院系：计算机学院\n专业代码：081200");
+  expect(content).toContain(
+    "###### 该专业的准备建议\n- 准备：该项目先补数据结构与算法。",
+  );
+  expect(content).toContain(
+    "###### 该专业需要权衡\n- 需要权衡：该项目需要额外安排算法训练时间。",
+  );
+  expect(content).toContain("301 数学一");
+  expect(content).toContain("2026 年考试科目参考，目标年度待核验");
+  expect(content).toContain("杭州电子科技大学 · 资料待补充");
+  expect(content).toContain("已排除（有明确依据）");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(basis).toBeVisible();
+  await expect(
+    audit.getByText("杭州电子科技大学", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await basis.screenshot({ path: "test-results/research-v7-basis-mobile.png" });
+  expect(service.postCount()).toBe(1);
+});
+
+test("v7没有可核验院校时仍展示测评和学位依据，不把资料缺口误称学校不存在", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("partial", (report) => ({
+    ...report,
+    reason: "NO_WEB_EVIDENCE",
+    recommendations: [],
+    decisionBasis: decisionDisplayFixture(),
+    candidateAudit: [
+      {
+        institutionName: "杭州电子科技大学",
+        status: "awaiting_evidence",
+        reasons: [
+          "招生目录官网本次未返回正文，不能据此认定没有符合需求的项目。",
+        ],
+        sourceIds: [],
+      },
+    ],
+  }));
+  await expect(
+    panel.getByRole("region", { name: "测评与学位路线依据", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("heading", {
+      name: "本次尚未找到足够的学校依据",
+      exact: true,
+    }),
+  ).toBeVisible();
+  const audit = panel.getByRole("region", {
+    name: "候选院校覆盖与排除说明",
+    exact: true,
+  });
+  await expect(audit.getByText(/不能据此认定没有符合需求的项目/)).toBeVisible();
+  await expect(panel.getByText(/这是旧版报告/)).toHaveCount(0);
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await downloading).path())!, "utf8");
+  expect(content).toContain("## 测评与学位路线依据");
+  expect(content).toContain("数学一、数学二");
+  expect(content).toContain("杭州电子科技大学 · 资料待补充");
+});

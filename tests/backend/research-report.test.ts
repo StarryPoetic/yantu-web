@@ -31,7 +31,7 @@ function fixture() {
       major: "法学",
       targetMajor: "法学",
       studyGoal: "专业实践与行业就业",
-      cities: ["上海", "杭州"],
+      cities: ["上海", "苏州"],
       budget: "1 万元以内",
       hours: "每天2至4小时",
       crossMajor: "接受跨专业",
@@ -210,7 +210,7 @@ function setup(
   };
 }
 
-test("eight schools retain holistic tiers independently of fees, while saved profile edits recompute constraint checks", async () => {
+test("eight schools receive rule tiers independently of model wording while profile edits recompute budget checks", async () => {
   const schools = [
     "甲研究大学",
     "乙研究大学",
@@ -294,27 +294,31 @@ test("eight schools retain holistic tiers independently of fees, while saved pro
     },
   });
   const input = { subjectId: "student", run: fixture() };
+  input.run.inputSnapshot.profile.cities = [];
   const first = await module.generate(input);
   assert.equal(first.status, "completed");
   assert.equal(first.recommendations.length, 8);
   assert.equal(first.coverage?.schoolCount, 8);
-  assert.equal(first.coverage?.preferredCount, 1);
-  assert.equal(first.coverage?.alternativeCount, 6);
-  assert.equal(first.recommendations[3].tuition?.amount, 20000);
+  assert.equal(first.coverage?.preferredCount, 0);
+  assert.equal(first.coverage?.alternativeCount, 8);
+  const expensive = first.recommendations.find(
+    (item) => item.institutionName === schools[0],
+  )!;
   assert.equal(
-    first.recommendations[0].constraintChecks!.find(
-      (c) => c.field === "budget",
-    )!.status,
+    expensive.constraintChecks!.find((c) => c.field === "budget")!.status,
     "mismatch",
   );
   assert.equal(
-    first.recommendations[0].tier,
-    "preferred",
-    "higher fee does not alone determine overall suitability",
+    expensive.tier,
+    "alternative",
+    "the academic route differs from the stated professional goal regardless of provider tier or fee",
   );
-  assert.equal(first.recommendations[1].tuition?.amount, 8000);
-  assert.equal(first.recommendations.at(-1)?.tuition?.amount, 8000);
-  assert.equal(first.recommendations.at(-1)?.tier, "exploratory");
+  assert.equal(
+    first.recommendations.find((item) => item.institutionName === schools[1])!
+      .tuition?.amount,
+    8000,
+  );
+  assert.ok(first.recommendations.every((item) => item.tier === "alternative"));
   const savedSearches = paidSearches,
     savedPages = pageReads;
   const updated = structuredClone(input.run);
@@ -324,7 +328,7 @@ test("eight schools retain holistic tiers independently of fees, while saved pro
   updated.inputSnapshot.profile.notes = "";
   const after = await module.generate({ ...input, run: updated });
   assert.equal(after.recommendations.length, 8);
-  assert.equal(after.coverage?.alternativeCount, 6);
+  assert.equal(after.coverage?.alternativeCount, 8);
   assert.ok(
     after.recommendations.every(
       (item) =>
@@ -440,7 +444,7 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
     },
   });
   assert.equal(report.status, "partial");
-  assert.equal(report.reportVersion, "profile-research-v6");
+  assert.equal(report.reportVersion, "profile-research-v7");
   assert.equal(report.recommendations[0].programName, "法学理论");
   assert.equal(report.recommendations[0].degreeType, "academic");
   assert.equal(report.recommendations[0].admissionStatus, "current_evidence");
@@ -480,9 +484,13 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
     .filter((event) => new URL(event.url).hostname === "api.search.brave.com")
     .map((event) => new URL(event.url).searchParams.get("q")!);
   assert.ok(queries.length > 6 && queries.length <= 24);
-  assert.equal(queries[0], "上海 法学 硕士");
+  assert.equal(queries[0], "上海 硕士研究生 招生单位 招生专业目录");
   assert.equal(queries[0].includes("2027"), false);
-  assert.match(queries[1], /法学 硕士 培养 招生.*site:example\.edu\.cn/);
+  assert.ok(
+    queries.some((query) =>
+      /法学 硕士 培养 招生.*site:example\.edu\.cn/.test(query),
+    ),
+  );
   assert.equal(queries[1].includes("2027"), false);
   assert.ok(
     events
@@ -495,7 +503,7 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
         q.includes("私密") ||
         q.includes("本科教育背景") ||
         q.includes("0301") ||
-        q.includes("上海 杭州"),
+        q.includes("上海 苏州"),
     ),
     false,
   );
@@ -717,20 +725,24 @@ test("personal cross-major intent and historic pages cannot invent eligibility, 
   assert.ok(!kept.preparation.some((item) => item.includes("攻克数学一")));
 });
 
-test("planning failure keeps profile intact and repair progress authorization failures cannot become reports", async () => {
+test("planning failure uses the saved deterministic demand plan while authorization failures still cancel delivery", async () => {
   const invalid = { directions: false };
   const failed = setup({ plan: invalid });
   const run = fixture();
   const snapshot = structuredClone(run);
   const report = await failed.module.generate({ subjectId: "student", run });
   assert.equal(failed.planningCalls.length, 2);
-  assert.equal(failed.calls.length, 0);
-  assert.equal(report.failureStage, "preparing");
-  assert.deepEqual(report.validationIssues, [
-    { path: "directions", code: "EXPECTED_ARRAY" },
-  ]);
-  assert.equal(report.searched, false);
-  assert.equal(report.followUpQuestions, undefined);
+  assert.equal(failed.calls.length, 1);
+  assert.equal(report.status, "partial");
+  assert.equal(report.failureStage, undefined);
+  assert.ok(
+    report.limitations.some((item) => item.includes("模型方向分析未完成")),
+  );
+  assert.equal(report.searched, true);
+  assert.ok(
+    report.researchDirections?.some((item) => item.disciplineCode === "0301"),
+  );
+  assert.equal(report.recommendations[0].institutionName, "示例研究大学");
   assert.deepEqual(run, snapshot);
   const cancelled = setup({ plan: invalid });
   const error = new Error("session revoked");
@@ -766,12 +778,21 @@ test("optional planner school names only guide searches and cannot establish a r
   )!;
   assert.equal(
     new URL(firstSearch.url).searchParams.get("q"),
-    "虚构候选大学 法学 硕士 培养方案",
+    "上海 硕士研究生 招生单位 招生专业目录",
   );
   assert.match(planningCalls[0].messages[0].content, /searchSchools/);
   assert.equal(report.recommendations.length, 1);
   assert.equal(report.recommendations[0].institutionName, "示例研究大学");
-  assert.equal(JSON.stringify(report).includes("虚构候选大学"), false);
+  assert.equal(
+    JSON.stringify(report.recommendations).includes("虚构候选大学"),
+    false,
+  );
+  assert.equal(
+    report.candidateAudit?.find(
+      (item) => item.institutionName === "虚构候选大学",
+    )?.status,
+    "awaiting_evidence",
+  );
   for (const names of [
     ["https://invented.edu.cn"],
     ["示例研究大学 site:evil.com"],
@@ -780,14 +801,34 @@ test("optional planner school names only guide searches and cannot establish a r
   ]) {
     const invalid = structuredClone(plan);
     Object.assign(invalid.directions[0], { searchSchools: names });
-    const testCase = setup({ plan: invalid });
+    const invalidEvents: WebEvent[] = [];
+    const testCase = setup({
+      plan: invalid,
+      reader: mockReader({}, invalidEvents),
+    });
     const rejected = await testCase.module.generate({
       subjectId: "student",
       run: fixture(),
     });
-    assert.equal(rejected.status, "blocked");
-    assert.equal(testCase.calls.length, 0);
-    assert.equal(rejected.searched, false);
+    assert.equal(rejected.status, "partial");
+    assert.equal(testCase.calls.length, 1);
+    assert.equal(rejected.searched, true);
+    assert.equal(rejected.recommendations[0].institutionName, "示例研究大学");
+    assert.ok(
+      rejected.limitations.some((item) => item.includes("模型方向分析未完成")),
+    );
+    assert.ok(
+      invalidEvents
+        .filter(
+          (event) => new URL(event.url).hostname === "api.search.brave.com",
+        )
+        .every(
+          (event) =>
+            !/invented\.edu\.cn|evil\.com|第\d研究大学/.test(
+              new URL(event.url).searchParams.get("q") ?? "",
+            ),
+        ),
+    );
   }
 });
 
@@ -821,12 +862,15 @@ test("blank defaults, undergraduate major alone and unknown preferences trigger 
     subjectId: "student",
     run: fixture(),
   });
-  assert.equal(result.status, "blocked");
-  assert.equal(calls.length, 0);
-  assert.equal(result.followUpQuestions![0], "更偏向教学实践还是课程研究？");
+  assert.equal(result.status, "partial");
+  assert.equal(calls.length, 1);
+  assert.ok(
+    result.researchDirections?.some((item) => item.disciplineCode === "0301"),
+  );
+  assert.equal(result.recommendations[0].institutionName, "示例研究大学");
 });
 
-test("excluded disciplines, explicit no-cross and explicit degree constraints reject conflicting plans without fallback", async () => {
+test("excluded disciplines, explicit no-cross and explicit degree constraints reject conflicting model routes and retain allowed demand routes", async () => {
   for (const constraint of [
     "excluded",
     "no-cross",
@@ -843,9 +887,19 @@ test("excluded disciplines, explicit no-cross and explicit degree constraints re
       run.inputSnapshot.profile.notes = "不考虑教育方向";
     const { module, calls } = setup({ plan: planBody(["0451"]) });
     const report = await module.generate({ subjectId: "student", run });
-    assert.equal(report.reason, "RESEARCH_DIRECTION_NOT_ALLOWED", constraint);
-    assert.equal(report.searched, false);
-    assert.equal(calls.length, 0);
+    assert.equal(report.status, "partial", constraint);
+    assert.equal(report.searched, true);
+    assert.equal(calls.length, 1);
+    assert.ok(
+      !report.researchDirections?.some(
+        (item) => item.disciplineCode === "0451",
+      ),
+      constraint,
+    );
+    assert.ok(
+      report.recommendations.every((item) => item.disciplineCode !== "0451"),
+      constraint,
+    );
   }
 });
 
@@ -991,11 +1045,11 @@ test("fit reasons must cite two real distinct relevant dimensions; neutral defau
 
 test("city lists tolerate normal punctuation without accepting invented destinations", async () => {
   for (const value of [
-    "上海,杭州",
-    "上海，杭州",
-    "杭州、上海",
-    '["上海","杭州"]',
-    '["杭州","上海"]',
+    "上海,苏州",
+    "上海，苏州",
+    "苏州、上海",
+    '["上海","苏州"]',
+    '["苏州","上海"]',
   ]) {
     const plan = planBody();
     plan.directions[0].fitReasons = [
@@ -1016,7 +1070,7 @@ test("city lists tolerate normal punctuation without accepting invented destinat
     assert.equal(report.status, "partial");
     assert.equal(
       report.recommendations[0].fitReasons![1].profileValue,
-      "上海、杭州",
+      "上海、苏州",
     );
   }
   for (const value of [
@@ -1033,7 +1087,9 @@ test("city lists tolerate normal punctuation without accepting invented destinat
       fitReasons()[0],
       { profileField: "cities", profileValue: value, reason: "城市选择" },
     ];
-    const { module } = setup({ plan });
+    const body = reportBody();
+    body.recommendations[0].fitReasons = plan.directions[0].fitReasons;
+    const { module } = setup({ plan, body });
     assert.equal(
       (await module.generate({ subjectId: "student", run: fixture() })).reason,
       "UNGROUNDED_PROFILE_FIT",
@@ -1469,7 +1525,11 @@ test("both model phases use the shared token ledger and retrieval consumes the s
   });
   assert.equal(result.reason, "BUDGET_EXHAUSTED");
   assert.equal(limited.calls.length + limited.planningCalls.length, 0);
-  assert.equal(result.searched, false);
+  assert.equal(
+    result.searched,
+    true,
+    "rule-based investigation retains sources without bypassing exhausted model tokens",
+  );
   const normal = setup();
   const web = createWebAnswerModule({
     ...normal.config,
@@ -1525,7 +1585,11 @@ test("incomplete planning responses retain their shared budget reservation inste
     },
   });
   const first = await module.generate({ subjectId: "student", run: fixture() });
-  assert.equal(first.reason, "INCOMPLETE_RESPONSE");
+  assert.equal(first.reason, "BUDGET_EXHAUSTED");
+  assert.ok(
+    first.limitations.some((item) => item.includes("模型方向分析未完成")),
+  );
+  assert.equal(first.searched, true);
   const second = await module.generate({
     subjectId: "student",
     run: fixture(),
@@ -1673,12 +1737,12 @@ test("linked school PDFs supply independently cited programme and fee evidence, 
 
 test("late fee PDFs attach exact programme evidence without losing the existing city or study mode", async () => {
   for (const feeMode of ["全日制", "非全日制"]) {
-    const address = "示例研究大学法学理论全日制硕士培养地点：杭州市主校区。";
+    const address = "示例研究大学法学理论全日制硕士培养地点：苏州市主校区。";
     const body = reportBody();
     body.facts = [];
     Object.assign(body.recommendations[0], {
       studyMode: "full_time",
-      location: { city: "杭州", quote: address, sourceId: "research-1" },
+      location: { city: "苏州", quote: address, sourceId: "research-1" },
     });
     const events: string[] = [];
     const { module } = setup({
@@ -1728,7 +1792,7 @@ test("late fee PDFs attach exact programme evidence without losing the existing 
     assert.equal(report.recommendations.length, 1);
     const item = report.recommendations[0];
     assert.equal(item.studyMode, "full_time");
-    assert.equal(item.location?.city, "杭州");
+    assert.equal(item.location?.city, "苏州");
     assert.equal(
       item.constraintChecks?.find((check) => check.field === "cities")?.status,
       "match",
@@ -1897,7 +1961,7 @@ for (const firstPage of ["timeout", "other-programme"] as const) {
   });
 }
 
-test("five outside recommendations still trigger one city supplement and never restore a locally ineligible project", async () => {
+test("coded inventory recovers a city candidate omitted by the model without a supplement and excludes local eligibility conflicts", async () => {
   for (const blocked of [false, true]) {
     const schools = [
       "甲研究大学",
@@ -1958,8 +2022,7 @@ test("five outside recommendations still trigger one city supplement and never r
     const run = fixture();
     run.inputSnapshot.profile.cities = ["杭州"];
     const report = await module.generate({ subjectId: "student", run });
-    assert.equal(calls.length, 2);
-    assert.match(calls[1].messages.at(-1)!.content, /本人意向城市是杭州/);
+    assert.equal(calls.length, 1);
     if (blocked) {
       assert.equal(report.recommendations.length, 5);
       assert.equal(report.coverage?.preferredCitySchoolCount, 0);
@@ -1982,7 +2045,7 @@ test("five outside recommendations still trigger one city supplement and never r
   }
 });
 
-test("a full outside list admits a verified city candidate and rewrites the stale school summary", async () => {
+test("a full outside model list admits a verified city candidate from the inventory and rewrites the stale school summary", async () => {
   const schools = [..."甲乙丙丁戊己庚辛壬癸"]
     .map((letter) => `${letter}研究大学`)
     .concat("杭州研究大学");
@@ -2043,14 +2106,18 @@ test("a full outside list admits a verified city candidate and rewrites the stal
   const run = fixture();
   run.inputSnapshot.profile.cities = ["杭州"];
   const report = await module.generate({ subjectId: "student", run });
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
   assert.equal(report.recommendations.length, 10);
   assert.equal(report.recommendations[0].institutionName, "杭州研究大学");
   assert.equal(report.coverage?.preferredCitySchoolCount, 1);
+  const omitted = schools
+    .slice(0, 10)
+    .sort((a, b) => a.localeCompare(b, "zh-CN"))
+    .at(-1)!;
   assert.ok(
-    !report.recommendations.some((item) => item.institutionName === schools[9]),
+    !report.recommendations.some((item) => item.institutionName === omitted),
   );
-  assert.ok(!report.summary.includes(schools[9]));
+  assert.ok(!report.summary.includes(omitted));
   assert.match(report.summary, /杭州研究大学/);
 });
 

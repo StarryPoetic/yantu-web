@@ -6,6 +6,7 @@ import {
   searchResearchSources,
   sourceHasSchoolIdentity,
 } from "../../server/explanation/research-search.ts";
+import { preferredCityCandidateLeads } from "../../server/explanation/research-candidates.ts";
 
 const discipline = getDisciplineCatalog().items.find((d) => d.code === "0854")!;
 type Hit = { name: string; url: string; summary: string };
@@ -336,4 +337,96 @@ test("shared schools keep distinct discipline queries and one preferred city is 
     ).size,
     18,
   );
+});
+
+test("city inventory and registry investigate Hangzhou schools before unrelated model names even when search returns no hits", async () => {
+  const { web, requests } = searchWeb(() => []);
+  const leads = preferredCityCandidateLeads(["杭州"], [discipline]);
+  const result = await searchResearchSources({
+    web,
+    subjectId: "deterministic-city",
+    disciplines: [discipline],
+    regions: ["杭州"],
+    targetYear: "2027",
+    schoolHints: new Map([[discipline.code, ["上海大学", "榆林学院"]]]),
+    candidateLeads: leads,
+    maxRequests: 18,
+    maxSources: 20,
+    onProgress: async () => {},
+  });
+  assert.equal(requests[0].query, "杭州 硕士研究生 招生单位 招生专业目录");
+  assert.equal(requests[1].query, `杭州 ${discipline.name} 硕士 招生专业目录`);
+  assert.equal(
+    requests[2].query,
+    "杭州电子科技大学 2027 硕士 招生专业目录 招生章程",
+  );
+  assert.equal(requests[2].include, "hdu.edu.cn");
+  assert.deepEqual(
+    result.candidateAttempts,
+    leads.map((lead) => lead.school),
+  );
+  assert.deepEqual(result.inventoryAttempts, ["杭州"]);
+  assert.ok(
+    result.sources.some(
+      (source) =>
+        source.url === "https://grs.hdu.edu.cn/13497/list.htm" &&
+        source.kind === "search_snippet",
+    ),
+  );
+  assert.ok(
+    result.sources.every(
+      (source) => source.kind === "search_snippet" && source.verified === false,
+    ),
+  );
+  assert.ok(requests.length <= 18);
+});
+
+test("all six demand directions receive deterministic catalogue discovery before model school hints", async () => {
+  const directions = getDisciplineCatalog().items.filter((item) =>
+    ["0802", "0855", "0812", "0835", "0854", "0811"].includes(item.code),
+  );
+  assert.equal(directions.length, 6);
+  const { web, requests } = searchWeb(() => []);
+  await searchResearchSources({
+    web,
+    subjectId: "six-directions",
+    disciplines: directions,
+    regions: ["南京"],
+    targetYear: "2027",
+    schoolHints: new Map(
+      directions.map((item) => [item.code, ["模型甲大学", "模型乙大学"]]),
+    ),
+    candidateLeads: [],
+    maxRequests: 18,
+    includeFeeSearch: false,
+    onProgress: async () => {},
+  });
+  assert.deepEqual(
+    requests.slice(1, 7).map(({ query }) => query),
+    directions.map((item) => `南京 ${item.name} 硕士 招生专业目录`),
+  );
+  assert.ok(requests.slice(0, 7).every(({ query }) => !query.includes("模型")));
+  assert.equal(requests.length, 18);
+});
+
+test("unregistered cities still receive live discovery before national or model fallback", async () => {
+  const { web, requests } = searchWeb(() => []);
+  const result = await searchResearchSources({
+    web,
+    subjectId: "unregistered-city",
+    disciplines: [discipline],
+    regions: ["西安", "成都"],
+    schoolHints: new Map([[discipline.code, ["甲大学"]]]),
+    candidateLeads: [],
+    maxRequests: 6,
+    onProgress: async () => {},
+  });
+  assert.deepEqual(
+    requests.slice(0, 2).map(({ query }) => query),
+    [
+      "西安 硕士研究生 招生单位 招生专业目录",
+      "成都 硕士研究生 招生单位 招生专业目录",
+    ],
+  );
+  assert.deepEqual(result.inventoryAttempts, ["西安", "成都"]);
 });

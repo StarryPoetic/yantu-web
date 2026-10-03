@@ -223,6 +223,13 @@
   font-size: 14px;
   color: #596c60;
 }
+.research-program-identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 14px;
+  font-size: 13px;
+  color: #596c60;
+}
 .research-school-heading small {
   display: block;
   line-height: 1.7;
@@ -364,7 +371,137 @@
   display: block;
   margin-top: 6px;
 }
+.research-decision-basis,
+.research-candidate-audit {
+  margin: 20px 0 28px;
+  padding: 20px;
+  border: 1px solid #cbd8ce;
+  background: #f7f9f4;
+  border-radius: 10px;
+  line-height: 1.8;
+}
+.research-decision-basis h3,
+.research-candidate-audit h3 {
+  margin: 0;
+  color: #284332;
+  font-size: 19px;
+}
+.research-basis-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+.research-assessment,
+.research-degree-route {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #e0e6dc;
+  border-radius: 7px;
+  background: #fff;
+}
+.research-decision-basis h4 {
+  margin: 0 0 9px;
+  color: #315c48;
+}
+.research-decision-basis h5 {
+  margin: 14px 0 4px;
+  font-size: 14px;
+}
+.research-decision-basis ul {
+  padding-left: 20px;
+}
+.research-decision-basis details > summary,
+.research-program-alternatives > summary,
+.research-exam-evidence summary {
+  cursor: pointer;
+  color: #315c48;
+}
+.research-exam-policy {
+  margin-top: 20px;
+}
+.research-evidence-status {
+  font-size: 13px;
+  color: #596c60;
+}
+.research-evidence-status.mismatch,
+.research-evidence-status.ambiguous,
+.research-evidence-status.historical,
+.research-evidence-status.awaiting_evidence {
+  color: #795a29;
+}
+.research-match-evidence,
+.research-exam-evidence,
+.research-program-alternatives {
+  margin-top: 18px;
+  padding-top: 2px;
+  border-top: 1px solid #e0e6dc;
+}
+.research-exam-evidence blockquote {
+  margin: 10px 0;
+  padding-left: 12px;
+  border-left: 2px solid #b9ccbd;
+  font-size: 14px;
+}
+.research-factor-list {
+  margin: 12px 0;
+}
+.research-factor-list > div {
+  margin-top: 12px;
+}
+.research-factor-list dt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  font-weight: 600;
+}
+.research-factor-list dt > span {
+  font-size: 13px;
+  font-weight: 400;
+  color: #627366;
+}
+.research-factor-list .mismatch dt > span {
+  color: #795a29;
+}
+.research-factor-list dd {
+  margin: 4px 0;
+}
+.research-program-alternatives {
+  padding-top: 14px;
+}
+.research-program-alternative {
+  margin-top: 14px;
+  padding: 1px 14px 14px;
+  background: #f7f9f4;
+  border-radius: 7px;
+}
+.research-audit-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+.research-audit-list > li {
+  padding: 13px 0;
+  border-top: 1px solid #e0e6dc;
+}
+.research-audit-list ul {
+  padding-left: 20px;
+}
+.research-audit-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
 @media (max-width: 650px) {
+  .research-basis-grid {
+    grid-template-columns: 1fr;
+  }
+  .research-decision-basis,
+  .research-candidate-audit {
+    padding: 15px;
+  }
   .research-school-grid {
     grid-template-columns: 1fr;
     gap: 16px;

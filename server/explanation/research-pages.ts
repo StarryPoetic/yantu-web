@@ -8,6 +8,58 @@ export function academicDomain(url: string) {
   return host.endsWith(".edu.cn") ? host.split(".").slice(-3).join(".") : host;
 }
 
+/** Campus geography leads from real same-school links, independent of a city registry. */
+export function researchLocationLinks(parent: WebSource, html: string) {
+  if (!new URL(parent.url).hostname.endsWith(".edu.cn")) return [];
+  const clean = html
+    .replace(/<!--[^]*?-->/g, " ")
+    .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ");
+  const links: { url: string; title: string; score: number }[] = [];
+  for (const match of clean.matchAll(
+    /<a\b[^>]*\bhref\s*=\s*(["'])([^"']+)\1[^>]*>([^]*?)<\/a\s*>/gi,
+  )) {
+    try {
+      const title = match[3]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (
+        !/校区(?:介绍|概况|地址|地图)|学校(?:简介|概况|地址)|地理位置|交通指南|联系我们|联系方式/.test(
+          title,
+        ) ||
+        /兄弟|合作|外校|招生办|招办|登录/.test(title)
+      )
+        continue;
+      const url = new URL(match[2].replace(/&amp;/gi, "&"), parent.url);
+      if (
+        url.protocol !== "https:" ||
+        url.username ||
+        url.password ||
+        url.port ||
+        url.href.length > 2048 ||
+        academicDomain(url.href) !== academicDomain(parent.url) ||
+        /\.(?:pdf|xlsx?|zip|exe|docx?)$/i.test(url.pathname)
+      )
+        continue;
+      url.hash = "";
+      if (links.some((link) => link.url === url.href)) continue;
+      links.push({
+        url: url.href,
+        title: title.slice(0, 200),
+        score: /校区/.test(title) ? 3 : /地址|地理|交通/.test(title) ? 2 : 1,
+      });
+    } catch {
+      /* Malformed website links cannot expand the read surface. */
+    }
+  }
+  return links
+    .sort((a, b) => b.score - a.score || a.url.localeCompare(b.url))
+    .slice(0, 2)
+    .map(({ url, title }) => ({ url, title }));
+}
+
 /** Give each observed school a turn before spending reads on its other pages. */
 export function researchReadingOrder(
   sources: WebSource[],
@@ -96,14 +148,24 @@ export function researchReadingOrder(
   return { pages, firstRoundCount: groups.size, priorityDomains };
 }
 
-/** Only linked school PDFs; navigation, cross-school links and executable URLs cannot expand a crawl. */
-export function researchAttachments(parent: WebSource, html: string) {
+/** Bounded linked documents; same-school provenance does not establish a programme fact. */
+export function researchAttachments(
+  parent: WebSource,
+  html: string,
+  options: { maxLinks?: number; targetYear?: string } = {},
+) {
   const parentUrl = new URL(parent.url);
   if (!parentUrl.hostname.endsWith(".edu.cn")) return [];
   const clean = html
     .replace(/<!--[^]*?-->/g, " ")
     .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ");
-  const links: { url: string; title: string; score: number }[] = [];
+  const links: {
+    url: string;
+    title: string;
+    score: number;
+    kind: "html" | "pdf" | "spreadsheet";
+    parentSourceId: string;
+  }[] = [];
   for (const match of clean.matchAll(
     /<a\b[^>]*\bhref\s*=\s*(["'])([^"']+)\1[^>]*>([^]*?)<\/a\s*>/gi,
   )) {
@@ -117,7 +179,7 @@ export function researchAttachments(parent: WebSource, html: string) {
         url.port ||
         url.href.length > 2048 ||
         academicDomain(url.href) !== academicDomain(parent.url) ||
-        !/\.pdf$/i.test(url.pathname)
+        !/\.(?:pdf|xlsx?|s?html?)$/i.test(url.pathname)
       )
         continue;
       url.hash = "";
@@ -127,7 +189,12 @@ export function researchAttachments(parent: WebSource, html: string) {
         .replace(/&amp;/gi, "&")
         .replace(/\s+/g, " ")
         .trim();
-      if (/本科|博士|录取名单|拟录取|导师|就业|招聘/.test(label)) continue;
+      if (
+        /本科|博士|录取名单|拟录取|导师|就业|招聘|推荐免试|推免|留学|国际学生|来华|港澳台/.test(
+          label,
+        )
+      )
+        continue;
       if (
         !/硕士|研究生|招生专业|培养方案|学费|收费标准|收费项目/.test(label) &&
         !(
@@ -136,15 +203,52 @@ export function researchAttachments(parent: WebSource, html: string) {
         )
       )
         continue;
+      const kind = /\.pdf$/i.test(url.pathname)
+        ? "pdf"
+        : /\.xlsx?$/i.test(url.pathname)
+          ? "spreadsheet"
+          : "html";
+      // Detail pages can recover a directory hidden behind a search-result list.
+      // Generic navigation, login routes and other list pages do not create a crawl.
+      if (
+        kind === "html" &&
+        (!/硕士[^。；]{0,35}(?:招生|专业目录)|招生专业目录|研究生[^。；]{0,25}(?:招生|培养方案|学费|收费)/.test(
+          label,
+        ) ||
+          /\/(?:list\d*|index|main|login)\.(?:html?|aspx?|php)$/i.test(
+            url.pathname,
+          ) ||
+          !(/20\d{2}/.test(label) || /培养方案|专业介绍/.test(label)))
+      )
+        continue;
       if (links.some((link) => link.url === url.href)) continue;
+      const year = Number(label.match(/20\d{2}/)?.[0] ?? 0);
+      const target = Number(options.targetYear ?? 0);
+      const directory = /招生专业|专业目录/.test(label);
       links.push({
         url: url.href,
         title: (label || `${parent.title}附件`).slice(0, 200),
-        score: /招生专业|专业目录|学费|收费/.test(label) ? 2 : 1,
+        score:
+          (directory
+            ? 50
+            : /招生(?:章程|简章)/.test(label)
+              ? 40
+              : /学费|收费/.test(label)
+                ? 20
+                : 10) +
+          (target && year === target
+            ? 30
+            : year
+              ? Math.max(0, Math.min(20, year - 2010))
+              : 0),
+        kind,
+        parentSourceId: parent.id,
       });
     } catch {
       // Invalid href is data, not a reason to discard the parent school's evidence.
     }
   }
-  return links.sort((a, b) => b.score - a.score).slice(0, 2);
+  return links
+    .sort((a, b) => b.score - a.score || a.url.localeCompare(b.url))
+    .slice(0, Math.min(4, Math.max(1, options.maxLinks ?? 2)));
 }

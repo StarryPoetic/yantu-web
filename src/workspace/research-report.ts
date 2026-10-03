@@ -2,6 +2,7 @@ import type { ResearchReport } from "../../server/explanation/research.ts";
 import type { GuidanceRun } from "../../server/disciplines/types.ts";
 import type { ResearchJob } from "../../server/routes/research.ts";
 import { researchReason } from "../../shared/research-status.ts";
+import type { ResearchDecisionBasis } from "../../shared/research-decision.ts";
 
 /** Older jobs can save a technical failure as partial/done; do not mistake it for missing profile data. */
 export function researchOutcome(job: ResearchJob | null) {
@@ -54,7 +55,63 @@ export const tierLabels = {
   exploratory: "第三级·探索选择",
 };
 export const suitabilityNotice =
-  "综合目标、兴趣、基础、跨考成本、时间、城市和预算分层。费用未知或较高不自动降级；优先推荐不代表录取率或录取保证。";
+  "按已保存需求与读取到的学校证据逐项核对，未知条件保留待确认；分级不换算录取率，也不保证录取。";
+export const legacyResearchNotice =
+  "这是旧版报告，尚未应用需求匹配与考试科目核验的新规则。重新生成后，可按完整画像重新调查学校与具体专业，查看匹配依据、测评准备和学位路线。";
+export const assessmentLabels = {
+  unassessed: "尚未测评",
+  example_practice: "示例练习观察",
+  practice_observation: "练习观察",
+  local_diagnosis: "局部正式诊断",
+};
+export function assessmentScopeLabel(scope: string) {
+  return (
+    (
+      {
+        "math-one": "数学一",
+        "math-two": "数学二",
+        "math-three": "数学三",
+        "english-one": "英语一",
+        "english-two": "英语二",
+        "common-foundation": "公共基础",
+      } as Record<string, string>
+    )[scope] ?? scope
+  );
+}
+export const degreePriorityLabels = {
+  compare: "保留比较",
+  goal_lead: "与目标更相关，优先比较",
+  explicit_preference: "本人明确偏好",
+};
+export const candidateStatusLabels = {
+  recommended: "已列入建议",
+  excluded: "已排除（有明确依据）",
+  awaiting_evidence: "资料待补充",
+  not_selected: "本次未选入",
+};
+export const factorStatusLabels = {
+  match: "已有匹配依据",
+  mismatch: "与需求有差异",
+  unknown: "尚未核实",
+  not_requested: "未限定此项",
+};
+
+export function isLegacyResearchReport(report: ResearchReport) {
+  return (
+    report.reportVersion !== "profile-research-v7" ||
+    report.recommendations.some(
+      (item) => item.match?.ruleVersion !== "demand-match-v1",
+    )
+  );
+}
+
+export function examDescription(exams?: SchoolRecommendation["exams"]) {
+  if (!exams || exams.status === "unknown") return "考试科目尚未核验";
+  if (exams.status === "ambiguous") return "考试科目存在歧义，需核对具体项目";
+  if (exams.status === "historical")
+    return `${exams.year ? exams.year + " 年" : "历史年度"}考试科目参考，目标年度待核验`;
+  return `${exams.year ? exams.year + " 年" : "目标年度"}考试科目已有官网依据`;
+}
 
 export function recommendationGroups(items: SchoolRecommendation[]) {
   return [
@@ -200,26 +257,113 @@ export function admissionLabel(item: SchoolRecommendation, run: GuidanceRun) {
     : targetYear + "报考条件待核验";
 }
 
-export function downloadResearchReport(
+function examMarkdown(exams?: SchoolRecommendation["exams"], heading = "####") {
+  return [
+    heading + " 实际考试科目",
+    examDescription(exams),
+    ...(exams?.subjects.map((subject) => `- ${subject.code} ${subject.name}`) ??
+      []),
+    exams?.reason ??
+      "尚未取得可核验的招生目录考试科目，准备建议不能替代报考要求。",
+    ...(exams?.quote
+      ? [
+          `考试科目原文：${exams.quote}${exams.sourceId ? ` [${exams.sourceId}]` : ""}`,
+        ]
+      : []),
+  ];
+}
+
+function matchMarkdown(
+  match?: SchoolRecommendation["match"],
+  heading = "####",
+) {
+  if (!match) return [];
+  return [
+    heading + " 需求匹配依据",
+    match.summary,
+    ...match.factors.map(
+      (factor) =>
+        `- ${factor.label}：${factorStatusLabels[factor.status]}；${factor.reason}${factor.sourceIds.length ? ` [${factor.sourceIds.join(", ")}]` : ""}`,
+    ),
+  ];
+}
+
+export function decisionBasisMarkdown(basis?: ResearchDecisionBasis) {
+  if (!basis) return [];
+  return [
+    "## 测评与学位路线依据",
+    basis.summary,
+    ...basis.assessments.flatMap((assessment) => [
+      `### ${assessment.module === "math" ? "数学" : "英语"}准备观察`,
+      assessmentLabels[assessment.status],
+      ...(assessment.scope
+        ? ["练习范围：" + assessmentScopeLabel(assessment.scope)]
+        : []),
+      ...(assessment.status !== "unassessed"
+        ? [
+            `答题记录：答对 ${assessment.counts.correct} 题，答错 ${assessment.counts.incorrect} 题，未答 ${assessment.counts.unanswered} 题，共 ${assessment.counts.total} 题。`,
+          ]
+        : []),
+      ...(assessment.points.length
+        ? ["已观察知识点：" + assessment.points.join("、")]
+        : []),
+      ...(assessment.weakPoints.length
+        ? ["需要复习的知识点：" + assessment.weakPoints.join("、")]
+        : []),
+      ...assessment.observations.map((text) => "- 观察：" + text),
+      ...assessment.nextSteps.map((text) => "- 下一步复习：" + text),
+      ...assessment.limitations.map((text) => "- 测评适用范围：" + text),
+      ...assessment.references.map(
+        (reference) =>
+          `- 测评记录：${reference.assessmentAttemptId}；诊断版本 ${reference.diagnosisVersion}${reference.questionBankVersion ? `；题库版本 ${reference.questionBankVersion}` : ""}${reference.submittedAt ? `；提交时间 ${reference.submittedAt}` : ""}${reference.example ? "；示例练习" : ""}`,
+      ),
+    ]),
+    ...basis.degreeRoutes.flatMap((route) => [
+      `### ${route.degreeType === "academic" ? "学术学位" : "专业学位"}路线`,
+      degreePriorityLabels[route.priority],
+      ...route.reasons.map((text) => "- 路线依据：" + text),
+      ...route.verificationNeeded.map((text) => "- 仍需核对：" + text),
+    ]),
+    "### 考试类型怎么比较",
+    basis.examPolicy.summary,
+    ...basis.examPolicy.comparisons.flatMap((comparison) => [
+      `${comparison.module === "math" ? "数学" : "英语"}科目：${comparison.options.join("、")}`,
+      comparison.assessmentUse,
+      ...comparison.nextSteps.map((text) => "- 科目比较：" + text),
+    ]),
+    ...basis.ignoredAssessments.map(
+      (item) =>
+        `- 未用于本次判断的测评：${item.assessmentAttemptId}；诊断版本 ${item.diagnosisVersion}；${item.reason}`,
+    ),
+    ...basis.limitations.map((text) => "- 判断适用范围：" + text),
+    "",
+  ];
+}
+
+export function researchReportMarkdown(
   report: ResearchReport,
   run: GuidanceRun,
   outdated: boolean,
 ) {
   const coverage = researchCoverage(report);
-  const content = [
+  return [
     "# 研途 · 学校与专业推荐报告",
     report.generatedAt,
     suitabilityNotice,
+    ...(isLegacyResearchReport(report) ? [legacyResearchNotice] : []),
     ...(outdated ? ["历史报告：个人情况或依据已更新，仅供回顾。"] : []),
     `本次建议 ${coverage.schoolCount} 所不同学校，目标比较 ${coverage.targetMin}–${coverage.targetMax} 所。`,
     ...coverage.reasons.map((text) => "- 覆盖说明：" + text),
     "",
+    ...decisionBasisMarkdown(report.decisionBasis),
     "## 建议比较的学校与专业",
     ...recommendationGroups(report.recommendations).flatMap((group) => [
       "## " + group.title,
       ...group.items.flatMap((item) => [
         "### " + item.institutionName + " · " + programName(item, run),
         "专业类别：" + item.disciplineCode,
+        ...(item.collegeName ? ["招生院系：" + item.collegeName] : []),
+        ...(item.majorCode ? ["专业代码：" + item.majorCode] : []),
         ...(item.degreeType
           ? [item.degreeType === "academic" ? "学术学位" : "专业学位"]
           : []),
@@ -235,6 +379,10 @@ export function downloadResearchReport(
             "；" +
             fit.reason,
         ),
+        ...matchMarkdown(item.match),
+        ...examMarkdown(item.exams),
+        "#### 准备建议",
+        "这些是复习任务，实际报考科目以招生目录核验结果为准。",
         ...item.preparation.map((text) => "- 准备：" + text),
         ...(item.tradeoffs ?? []).map((text) => "- 需要权衡：" + text),
         tuitionDescription(item, run),
@@ -264,6 +412,49 @@ export function downloadResearchReport(
             ]
           : []),
         ...item.uncertainties.map((text) => "- 待核实：" + text),
+        ...(item.programAlternatives?.length
+          ? [
+              "#### 同校其他专业比较",
+              ...item.programAlternatives.flatMap((alternative) => [
+                `##### ${alternative.programName} · ${alternative.disciplineCode}`,
+                `${alternative.degreeType === "academic" ? "学术学位" : "专业学位"} · ${tierLabels[alternative.tier]}`,
+                ...(alternative.collegeName
+                  ? ["招生院系：" + alternative.collegeName]
+                  : []),
+                ...(alternative.majorCode
+                  ? ["专业代码：" + alternative.majorCode]
+                  : []),
+                ...(alternative.rationale ? [alternative.rationale] : []),
+                ...matchMarkdown(alternative.match, "######"),
+                ...examMarkdown(alternative.exams, "######"),
+                ...(alternative.preparation?.length
+                  ? [
+                      "###### 该专业的准备建议",
+                      ...alternative.preparation.map(
+                        (text) => "- 准备：" + text,
+                      ),
+                    ]
+                  : []),
+                ...(alternative.tradeoffs?.length
+                  ? [
+                      "###### 该专业需要权衡",
+                      ...alternative.tradeoffs.map(
+                        (text) => "- 需要权衡：" + text,
+                      ),
+                    ]
+                  : []),
+                ...(alternative.uncertainties?.length
+                  ? [
+                      "###### 该专业仍需确认",
+                      ...alternative.uncertainties.map(
+                        (text) => "- 待确认：" + text,
+                      ),
+                    ]
+                  : []),
+                `专业依据：[${alternative.citations.join(", ")}]`,
+              ]),
+            ]
+          : []),
         ...item.citations.flatMap((id) => {
           const source = report.sources.find((entry) => entry.id === id);
           return source
@@ -273,6 +464,26 @@ export function downloadResearchReport(
         "",
       ]),
     ]),
+    ...(report.candidateAudit?.length
+      ? [
+          "## 候选院校覆盖与排除说明",
+          "待补充资料或本次未选入，不代表学校不适合或没有该专业。",
+          ...report.candidateAudit.flatMap((candidate) => [
+            `### ${candidate.institutionName} · ${candidateStatusLabels[candidate.status]}`,
+            ...candidate.reasons.map((reason) => "- " + reason),
+            ...(candidate.sourceIds.length
+              ? [`调查来源：[${candidate.sourceIds.join(", ")}]`]
+              : []),
+          ]),
+          "",
+        ]
+      : report.reportVersion === "profile-research-v7"
+        ? [
+            "## 候选院校覆盖与排除说明",
+            "本报告未记录逐校调查结果，未出现的院校不能据此排除。",
+            "",
+          ]
+        : []),
     "## 综合分析",
     report.summary,
     "",
@@ -300,12 +511,20 @@ export function downloadResearchReport(
         source.retrievedAt,
     ),
   ].join("\n");
+}
+
+export function downloadResearchReport(
+  report: ResearchReport,
+  run: GuidanceRun,
+  outdated: boolean,
+) {
+  const content = researchReportMarkdown(report, run, outdated);
   const url = URL.createObjectURL(
-    new Blob([content], { type: "text/plain;charset=utf-8" }),
+    new Blob([content], { type: "text/markdown;charset=utf-8" }),
   );
   const link = document.createElement("a");
   link.href = url;
-  link.download = "研途-联网研究报告.txt";
+  link.download = "研途-联网研究报告.md";
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

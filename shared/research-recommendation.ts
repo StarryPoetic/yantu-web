@@ -16,6 +16,12 @@ export interface LocationEvidence {
   city: string;
   quote: string;
   sourceId: string;
+  /** Multiple literal passages can bind a coded programme to a college, campus policy and city. */
+  supportingEvidence?: {
+    sourceId: string;
+    quote: string;
+    role: "program_college" | "campus_policy" | "campus_city";
+  }[];
 }
 
 export interface RecommendationConstraintCheck {

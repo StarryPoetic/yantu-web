@@ -33,7 +33,7 @@ function fixture() {
       year: "2027",
       studyGoal: "专业实践与行业就业",
       budget: "1 万元以内",
-      cities: ["杭州"],
+      cities: ["苏州"],
       crossMajor: "接受跨专业",
       hours: "4–6 小时",
     },
@@ -85,6 +85,7 @@ function setup(
     userDailyTokens?: number;
     firstUsage?: number;
     restrictedSchool?: number;
+    coded?: boolean;
   } = {},
 ) {
   const count = settings.count ?? 6;
@@ -174,7 +175,7 @@ function setup(
       );
       return {
         contentType: "text/html",
-        text: `<p>${schools[index]}2027年硕士研究生招生专业目录：030101 法学理论${settings.restrictedSchool === index ? "，仅限医学本科毕业生报考，不接受跨专业考生" : ""}。培养课程包含法律案例与研究方法。</p>`,
+        text: `<p>${schools[index]}2027年硕士研究生招生专业目录：${settings.coded ? "030101 " : ""}法学理论${settings.restrictedSchool === index ? "，仅限医学本科毕业生报考，不接受跨专业考生" : ""}。培养课程包含法律案例与研究方法。</p>`,
       };
     },
   };
@@ -319,6 +320,33 @@ test("fewer than five observed school domains cannot trigger an additional cover
     setupResult.runtimeKeys.filter((key) => key.task?.endsWith("-coverage"))
       .length,
     0,
+  );
+});
+
+test("coded official programme inventory covers model omissions without needing another model call", async () => {
+  const setupResult = setup({ coded: true });
+  const input = { subjectId: setupResult.run.subjectId, run: setupResult.run };
+  const report = await setupResult.module.generate(input);
+  assert.equal(report.recommendations.length, 6);
+  assert.equal(report.coverage?.schoolCount, 6);
+  assert.deepEqual(
+    new Set(report.recommendations.map((item) => item.institutionName)),
+    new Set(schools.slice(0, 6)),
+  );
+  assert.equal(
+    setupResult.requests.filter((request) => request.supplemental).length,
+    0,
+  );
+  assert.equal(
+    setupResult.runtimeKeys.filter((key) => key.task?.endsWith("-coverage"))
+      .length,
+    0,
+  );
+  await setupResult.module.generate(input);
+  assert.equal(
+    setupResult.requests.length,
+    2,
+    "planning and report explanations both reuse their model cache",
   );
 });
 

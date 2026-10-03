@@ -14,6 +14,7 @@ import type { SearchConfig, SearchOptions } from "./search.ts";
 import { createPublicDohResolver } from "./dns.ts";
 import type { AddressResolver, DnsMode } from "./dns.ts";
 import { pdfText, pdfTextLimits } from "./pdf-text.ts";
+import { spreadsheetText, spreadsheetTextLimits } from "./spreadsheet-text.ts";
 import { resolvePublicAddress } from "./public-address.ts";
 export { isPublicAddress, resolvePublicAddress } from "./public-address.ts";
 
@@ -27,6 +28,20 @@ export interface WebSource {
   verified: false;
   /** A transport-normalization note, never evidence that the page was read. */
   retrievalNote?: string;
+  /** Provenance for a safely read, linked same-school document; never a guessed school identity. */
+  parentSourceId?: string;
+  /** Actual links collected from a safely read HTML page, never model-generated. */
+  documentLinks?: { url: string; title: string }[];
+  /** Server-bound document context, kept separate from the document's exact words. */
+  provenance?: {
+    institutionName: string;
+    parentSourceId: string;
+    parentUrl: string;
+    linkedTitle: string;
+    identityExcerpt: string;
+    admissionYear?: string;
+    mastersScope: boolean;
+  };
 }
 export interface WebAnswerInput {
   subjectId: string;
@@ -67,6 +82,9 @@ export type WebReader = (
     allowPdf?: boolean;
     /** Separate PDF ceiling never increases HTML/JSON/text limits. */
     maxPdfBytes?: number;
+    /** Research-only opt-in for inert official XLS/XLSX documents. */
+    allowSpreadsheet?: boolean;
+    maxSpreadsheetBytes?: number;
   },
 ) => Promise<WebReadResult>;
 export interface WebAnswerConfig extends ExplanationConfig, SearchConfig {
@@ -170,12 +188,19 @@ export function createHttpsReader(
     const timeoutMs = Math.min(options.timeoutMs ?? 8000, 10000);
     const maxBytes = Math.min(options.maxBytes ?? 512000, 1000000);
     const maxPdfBytes = options.maxPdfBytes ?? maxBytes;
+    const maxSpreadsheetBytes = options.maxSpreadsheetBytes ?? maxBytes;
     if (
       !Number.isInteger(maxPdfBytes) ||
       maxPdfBytes < 1 ||
       maxPdfBytes > pdfTextLimits.maxBytes
     )
       throw new ModelError("WEB_PDF_LIMIT_INVALID");
+    if (
+      !Number.isInteger(maxSpreadsheetBytes) ||
+      maxSpreadsheetBytes < 1 ||
+      maxSpreadsheetBytes > spreadsheetTextLimits.maxBytes
+    )
+      throw new ModelError("WEB_SPREADSHEET_LIMIT_INVALID");
     const startedAt = Date.now();
     let dnsTimer: ReturnType<typeof setTimeout> | undefined;
     const address = await Promise.race([
@@ -209,7 +234,7 @@ export function createHttpsReader(
           method: options.method ?? "GET",
           servername: url.hostname,
           headers: {
-            Accept: `text/html,text/plain,application/json${options.allowPdf ? ",application/pdf" : ""}`,
+            Accept: `text/html,text/plain,application/json${options.allowPdf ? ",application/pdf" : ""}${options.allowSpreadsheet ? ",application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : ""}`,
             "Accept-Encoding": "identity",
             "User-Agent": "YantuEvidence/1.0",
             ...options.headers,
@@ -234,13 +259,21 @@ export function createHttpsReader(
             return;
           }
           const contentType = response.headers["content-type"] ?? "";
+          const isSpreadsheet =
+            options.allowSpreadsheet &&
+            (/^application\/(?:vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)(;|$)/i.test(
+              contentType,
+            ) ||
+              (/^application\/octet-stream(;|$)/i.test(contentType) &&
+                /\.xlsx?$/i.test(url.pathname)));
           if (
             (!/^(text\/(html|plain)|application\/json)(;|$)/i.test(
               contentType,
             ) &&
               !(
                 options.allowPdf && /^application\/pdf(;|$)/i.test(contentType)
-              )) ||
+              ) &&
+              !isSpreadsheet) ||
             (response.headers["content-encoding"] &&
               response.headers["content-encoding"] !== "identity")
           ) {
@@ -251,7 +284,9 @@ export function createHttpsReader(
           const responseMaxBytes =
             options.allowPdf && /^application\/pdf(;|$)/i.test(contentType)
               ? maxPdfBytes
-              : maxBytes;
+              : isSpreadsheet
+                ? maxSpreadsheetBytes
+                : maxBytes;
           if (Number(response.headers["content-length"]) > responseMaxBytes) {
             response.destroy();
             finish(new ModelError("WEB_TOO_LARGE"));
@@ -287,13 +322,34 @@ export function createHttpsReader(
       request.end(options.body);
     });
     const isPdf = /^application\/pdf(;|$)/i.test(downloaded.contentType);
+    const isSpreadsheet =
+      options.allowSpreadsheet &&
+      (/^application\/(?:vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)(;|$)/i.test(
+        downloaded.contentType,
+      ) ||
+        (/^application\/octet-stream(;|$)/i.test(downloaded.contentType) &&
+          /\.xlsx?$/i.test(url.pathname)));
     if (!isPdf && downloaded.bytes.subarray(0, 5).toString("ascii") === "%PDF-")
       throw new ModelError("WEB_FORMAT_UNSUPPORTED");
+    if (
+      !isSpreadsheet &&
+      ["504b0304", "d0cf11e0"].includes(
+        downloaded.bytes.subarray(0, 4).toString("hex"),
+      )
+    )
+      throw new ModelError("WEB_FORMAT_UNSUPPORTED");
     return {
-      contentType: downloaded.contentType,
+      // Canonical type preserves table rows when a school serves XLS as octet-stream.
+      contentType: isSpreadsheet
+        ? downloaded.bytes.subarray(0, 4).toString("hex") === "504b0304"
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : "application/vnd.ms-excel"
+        : downloaded.contentType,
       text: isPdf
         ? await pdfText(downloaded.bytes)
-        : downloaded.bytes.toString("utf8"),
+        : isSpreadsheet
+          ? await spreadsheetText(downloaded.bytes)
+          : downloaded.bytes.toString("utf8"),
     };
   };
 }
@@ -304,13 +360,18 @@ export function webPageText(html: string): string {
   return html
     .replace(/<!--[^]*?-->/g, " ")
     .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ")
+    .replace(
+      /<\/?(?:p|div|h[1-6]|section|article|header|footer|li|tr|table|br)\b[^>]*>/gi,
+      "\n",
+    )
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
-    .replace(/\s+/g, " ")
+    .replace(/[^\S\r\n]+/g, " ")
+    .replace(/ *[\r\n]+ */g, "\n")
     .trim();
 }
 

@@ -308,6 +308,28 @@ test("guidance uses submitted public-course observations only and detects withdr
     /不作为正式推荐依据/,
   );
   assert.ok(guide.body.assessmentSummary.observations.length > 0);
+  const reference = guide.body.assessmentSummary.references[0];
+  assert.equal(
+    reference.questionBankVersion,
+    submitted.body.questionBankVersion,
+  );
+  assert.equal(reference.submittedAt, submitted.body.submittedAt);
+  assert.deepEqual(reference.scope, submitted.body.scope);
+  assert.equal(reference.items.length, 5);
+  assert.ok(
+    reference.items.every(
+      (item: {
+        module: string;
+        outcome: string;
+        scopes: string[];
+        calibration: string;
+      }) =>
+        item.module === "english" &&
+        item.outcome === "unanswered" &&
+        item.scopes.includes("common-foundation") &&
+        item.calibration === "manual_initial",
+    ),
+  );
   assert.deepEqual(guide.body.highlightedIds, []);
   assert.equal(JSON.stringify(guide.body).includes("correctOption"), false);
   f.app.store.put(

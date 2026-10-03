@@ -1,4 +1,10 @@
 import { getDisciplineCatalog } from "../disciplines/index.ts";
+import signals from "../../knowledge/disciplines/signals.json" with { type: "json" };
+import {
+  preferenceClauses,
+  isNegativePreference,
+  explicitDegreeConstraint,
+} from "../../shared/profile-preferences.ts";
 import type { GuidanceRun, Discipline } from "../disciplines/types.ts";
 import { ModelError, type ModelMessage } from "./deepseek.ts";
 
@@ -95,7 +101,7 @@ export function researchContext(run: GuidanceRun) {
         modules: item.modules,
         weakPoints: item.weakPoints.slice(0, 8),
       })),
-      use: "只用于准备任务与薄弱知识点，不能推出专业适合度、考研分数或录取机会。",
+      use: "用于科目准备成本、薄弱知识点和补充诊断任务；示例和共同基础短测不决定考试范围或学位类型，不推出考研分数或录取机会。",
     },
   };
 }
@@ -186,21 +192,34 @@ export function researchDirectory(run: GuidanceRun) {
     /不接受|不愿|不跨|只考虑本专业/.test(String(profile.crossMajor ?? "")) ||
     /不接受跨专业|不跨专业|只考虑本专业/.test(notes);
   const major = String(profile.major ?? "").replace(/\s/g, "");
-  const negativeInterests = `${String(profile.targetMajor ?? "")}；${notes}`
-    .split(/[，。；！\n]|但是|不过|而是/)
-    .filter((part) =>
-      /不考虑|不想学|不愿学|不要推荐|排除|不喜欢|不感兴趣/.test(part),
-    );
-  const hardDegree = /只考虑(?:专业学位|专硕)|不考虑(?:学术学位|学硕)/.test(
-    notes,
-  )
-    ? "professional"
-    : /只考虑(?:学术学位|学硕)|不考虑(?:专业学位|专硕)/.test(notes)
-      ? "academic"
-      : null;
+  const backgroundText = major.replace(
+    /机械设计制造(?:及其)?自动化|机械设计制造及其自动化/g,
+    "机械制造",
+  );
+  const backgroundCodes = new Set(
+    signals.connections.flatMap((connection) =>
+      connection.terms.some((term) => backgroundText.includes(term))
+        ? connection.codes
+        : [],
+    ),
+  );
+  const negativeInterests = preferenceClauses(
+    `${String(profile.targetMajor ?? "")}；${notes}`,
+  ).filter(isNegativePreference);
+  const negativeCodes = new Set(
+    signals.connections.flatMap((connection) =>
+      negativeInterests.some((part) =>
+        connection.terms.some((term) => part.includes(term)),
+      )
+        ? connection.codes
+        : [],
+    ),
+  );
+  const hardDegree = explicitDegreeConstraint(profile.degreePreference, notes);
   const allowed = catalog.items.filter(
     (item) =>
       !excluded.has(item.code) &&
+      !negativeCodes.has(item.code) &&
       (!hardDegree || item.degreeType === hardDegree) &&
       !negativeInterests.some((part) =>
         [item.name, ...item.aliases].some(
@@ -208,6 +227,7 @@ export function researchDirectory(run: GuidanceRun) {
         ),
       ) &&
       (!noCross ||
+        backgroundCodes.has(item.code) ||
         [item.name, ...item.aliases].some(
           (term) => term.length >= 2 && major.includes(term.replace(/\s/g, "")),
         )),

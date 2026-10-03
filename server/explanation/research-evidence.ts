@@ -4,6 +4,7 @@ import {
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
 } from "./research-school.ts";
+import { validatedSourceProvenance } from "./research-provenance.ts";
 
 export interface AdmissionEvidence {
   excluded?: string;
@@ -180,7 +181,10 @@ export function supportsProgram(
       codeNearName;
     // A distant genuine master's heading applies to its rows until another degree
     // section starts. Do not reuse it for a subsequent undergraduate/doctoral table.
-    const graduateHeading = scope?.masters ?? false;
+    const graduateHeading =
+      scope?.masters ??
+      validatedSourceProvenance(source)?.mastersScope ??
+      false;
     return related && (localGraduate || graduateHeading);
   });
 }
@@ -309,6 +313,11 @@ export function admissionEvidence(
       ),
     ].map((match) => match[1]),
   );
+  if (!years.size) {
+    const inheritedYear = validatedSourceProvenance(source)?.admissionYear;
+    if (inheritedYear && /^20\d{2}$/.test(inheritedYear))
+      years.add(inheritedYear);
+  }
   if (
     isSchoolPage(source) &&
     /^20\d{2}$/.test(targetYear) &&

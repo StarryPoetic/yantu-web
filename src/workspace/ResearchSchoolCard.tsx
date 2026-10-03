@@ -10,6 +10,11 @@ import {
   type SchoolRecommendation,
 } from "./research-report";
 import { ResearchSourceLinks } from "./ResearchSourceLinks";
+import {
+  ResearchExamEvidence,
+  ResearchMatchEvidence,
+  ResearchProgramAlternatives,
+} from "./ResearchProgramEvidence";
 
 export function ResearchSchoolCard({
   item,
@@ -33,6 +38,12 @@ export function ResearchSchoolCard({
         )}
         <h4>{item.institutionName}</h4>
         <p className="research-program">{programName(item, run)}</p>
+        {(item.collegeName || item.majorCode) && (
+          <p className="research-program-identity">
+            {item.collegeName && <span>招生院系：{item.collegeName}</span>}
+            {item.majorCode && <span>专业代码：{item.majorCode}</span>}
+          </p>
+        )}
         {item.degreeType && (
           <span className="research-degree">
             {item.degreeType === "academic" ? "学术学位" : "专业学位"}
@@ -52,6 +63,7 @@ export function ResearchSchoolCard({
       >
         {admissionLabel(item, run)}
       </p>
+      <ResearchMatchEvidence match={item.match} sources={sources} />
       <section className="research-fit">
         <h5>为什么适合你考虑</h5>
         <p>{item.rationale}</p>
@@ -122,10 +134,14 @@ export function ResearchSchoolCard({
           </dl>
         )}
       </section>
-      <div className="research-preparation">
+      <ResearchExamEvidence exams={item.exams} sources={sources} />
+      <div className="research-preparation" aria-label="准备建议">
         {!!item.preparation.length && (
           <section>
-            <h5>准备重点</h5>
+            <h5>准备建议</h5>
+            <p className="ws-muted">
+              这些是复习任务，实际报考科目以招生目录核验结果为准。
+            </p>
             <ul>
               {item.preparation.map((text, i) => (
                 <li key={i}>{text}</li>
@@ -144,6 +160,10 @@ export function ResearchSchoolCard({
           </section>
         )}
       </div>
+      <ResearchProgramAlternatives
+        items={item.programAlternatives}
+        sources={sources}
+      />
       {!!item.uncertainties.length && (
         <details className="research-admission-details">
           <summary>报考前需要确认</summary>

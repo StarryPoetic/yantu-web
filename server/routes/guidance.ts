@@ -201,6 +201,25 @@ export function guidanceRoutes(c: Context): Reply | undefined {
     assessments.push({
       assessmentAttemptId,
       diagnosisVersion,
+      questionBankVersion: diagnosis.questionBankVersion,
+      submittedAt: attempt.submittedAt,
+      scope: structuredClone(attempt.scope),
+      items: diagnosis.items
+        .filter((item) => item.module !== "major")
+        .map((item) => {
+          const question = attempt.questions.find(
+            (question) => question.revisionId === item.questionRevisionId,
+          );
+          return {
+            questionId: item.questionId,
+            questionRevisionId: item.questionRevisionId,
+            module: item.module,
+            point: item.point,
+            outcome: item.outcome,
+            scopes: [...(question?.scopes ?? [])],
+            ...(question ? { calibration: question.calibration } : {}),
+          };
+        }),
       example: diagnosis.example,
       usableForRecommendation: diagnosis.usableForRecommendation,
       modules: structuredClone(

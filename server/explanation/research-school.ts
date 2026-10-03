@@ -1,4 +1,5 @@
 import type { WebSource } from "./web.ts";
+import { validatedSourceProvenance } from "./research-provenance.ts";
 
 /** School navigation links identify peers, not the owner of this page. */
 export function withoutSchoolLinks(text: string) {
@@ -56,10 +57,13 @@ export function sourceHasSchoolIdentity(source: WebSource, school: string) {
     `${escaped}(?!\\s*(?:城市学院|博士生导师|硕士生导师|博士导师|硕士导师|教授|教师|校友))\\s*(?:20\\d{2}[年级]?\\s*)?[\\p{Script=Han}\\d（）()\\s]{0,28}?(?:硕士(?:研究生|专业学位)?(?:招生|培养|专业|学位)|研究生(?:招生|培养|专业)|招生(?:专业)?目录|专业(?:介绍|目录|招生目录|接受|报考|报名|招收|仅限|只招收|不招收)|培养方案|收费标准|学位授权|学校简介|现有|拥有|开设)`,
     "gu",
   );
-  return [...body.matchAll(subjects)].some((match) => {
+  const direct = [...body.matchAll(subjects)].some((match) => {
     const preceding = body.slice(Math.max(0, match.index! - 24), match.index!);
     return !/(?:来自|毕业于|就读于|任职于|合作(?:单位|院校)?|伙伴(?:院校)?|转载|转发|参照|参考|访问|赴|与|和)\s*$/.test(
       preceding,
     );
   });
+  return (
+    direct || validatedSourceProvenance(source)?.institutionName === school
+  );
 }
