@@ -1,0 +1,12 @@
+# Replace this placeholder with the domain in YANTU_ORIGIN before enabling Caddy.
+your-domain.example {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8787 {
+        # The app trusts exactly this local proxy; never pass a visitor's claimed IP.
+        header_up X-Forwarded-For {remote_host}
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 180s
+        }
+    }
+}

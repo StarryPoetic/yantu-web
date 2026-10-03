@@ -1,6 +1,7 @@
 import test from "node:test";
 import type { TestContext } from "node:test";
 import assert from "node:assert/strict";
+import { resolve } from "node:path";
 import { createApplication } from "../../server/app.ts";
 import { environmentConfig } from "../../server/config.ts";
 
@@ -25,6 +26,7 @@ function isolatedEnvironment(t: TestContext, mode: string, limit?: string) {
   environment(t, {
     NODE_ENV: mode,
     YANTU_ORIGIN: "https://test.example",
+    YANTU_DATABASE_PATH: resolve("var", "rate-limit-test.sqlite"),
     YANTU_TEST_API_RATE_LIMIT: limit,
     YANTU_ADMIN_CREDENTIALS: "[]",
     YANTU_BOOTSTRAP_ADMINS: "[]",

@@ -766,7 +766,7 @@ test("optional planner school names only guide searches and cannot establish a r
   )!;
   assert.equal(
     new URL(firstSearch.url).searchParams.get("q"),
-    "虚构候选大学 2027 法学 硕士 招生专业目录",
+    "虚构候选大学 法学 硕士 培养方案",
   );
   assert.match(planningCalls[0].messages[0].content, /searchSchools/);
   assert.equal(report.recommendations.length, 1);
@@ -1288,7 +1288,7 @@ test("unsupported budget comparisons become verification risks while an unsafe g
   );
 });
 
-test("retrieval rotates regions/directions within 24 searches, 24 pages and 40 sources, with both model inputs bounded", async () => {
+test("retrieval reserves fee capacity within 24 searches and 24 pages, with all model inputs bounded", async () => {
   let searches = 0,
     pages = 0;
   const reader: WebReader = async (url) => {
@@ -1321,9 +1321,17 @@ test("retrieval rotates regions/directions within 24 searches, 24 pages and 40 s
   run.inputSnapshot.profile.notes = "私密补充".repeat(750);
   run.inputSnapshot.profile.courses = "相关课程内容".repeat(600);
   const report = await module.generate({ subjectId: "student", run });
-  assert.equal(searches, 24);
-  assert.equal(pages, 24);
-  assert.ok(report.sources.length >= 24 && report.sources.length <= 40);
+  assert.equal(
+    searches,
+    19,
+    "18 discovery requests plus the retained school's fee request",
+  );
+  assert.equal(
+    pages,
+    16,
+    "catalogue discovery leaves 8 reads for actual fee evidence",
+  );
+  assert.ok(report.sources.length >= 16 && report.sources.length <= 40);
   for (const call of [...calls, ...planningCalls])
     assert.ok(JSON.stringify(call.messages).length < 24000);
   assert.ok(
@@ -1524,6 +1532,279 @@ test("incomplete planning responses retain their shared budget reservation inste
   });
   assert.equal(second.reason, "BUDGET_EXHAUSTED");
   assert.equal(planningCalls.length, 1);
+});
+
+test("degree labels are normalized and unsupported employment generalizations cannot erase independently grounded profile advice", async () => {
+  const body = reportBody();
+  body.facts = [];
+  body.recommendations[0].programName = "（学术学位）法学理论";
+  body.recommendations[0].rationale =
+    "法学就业面广。结合本人实践目标，可比较理论训练与实际问题的联系，这属于学习方向的推断。";
+  const { module } = setup({ body });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(report.recommendations.length, 1);
+  const card = report.recommendations[0];
+  assert.equal(card.programName, "法学理论");
+  assert.equal(card.rationale.includes("就业面广"), false);
+  assert.match(card.rationale, /本人实践目标/);
+  assert.equal(card.fitReasons!.length, 2);
+  assert.equal(
+    report.status,
+    "partial",
+    "removed unsupported prose remains disclosed",
+  );
+});
+
+test("historical exam claims become an explicit verification cost without claiming a current exam requirement", async () => {
+  const body = reportBody();
+  body.facts = [];
+  body.recommendations[0].tradeoffs = ["初试数学一要求高，需要补足数学基础。"];
+  const { module } = setup({
+    body,
+    reader: mockReader({
+      year: "2024",
+      content:
+        "示例研究大学2024年硕士招生专业目录：030101法学理论，初试数学一。",
+    }),
+  });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(report.recommendations.length, 1);
+  assert.equal(
+    report.recommendations[0].tradeoffs!.some((t) => t.includes("数学一")),
+    false,
+  );
+  assert.match(report.recommendations[0].tradeoffs![0], /目标年度.*核验/);
+  assert.equal(report.recommendations[0].admissionStatus, "needs_verification");
+});
+
+test("linked school PDFs supply independently cited programme and fee evidence, and cached pages retain attachment discovery", async () => {
+  const body = reportBody();
+  const plan = planBody();
+  body.recommendations[0].fitReasons = fitReasons().map(
+    ({ profileField, reason }) => ({
+      profileField,
+      reason:
+        profileField === "budget" ? "学费与本人的年度预算仍需核对。" : reason,
+    }),
+  ) as never;
+  plan.directions[0].fitReasons = body.recommendations[0].fitReasons;
+  body.facts = [];
+  body.recommendations[0].citations = ["research-attachment-1"];
+  const reads: string[] = [];
+  const { module } = setup({
+    body,
+    plan,
+    reader: async (url) => {
+      if (new URL(url).hostname === "api.search.brave.com")
+        return {
+          contentType: "application/json",
+          text: JSON.stringify({
+            web: {
+              results: [
+                {
+                  url: "https://yz.example.edu.cn/notice",
+                  title: "示例研究大学2027年法学硕士招生专业目录",
+                  description: "硕士招生专业目录附件下载",
+                },
+              ],
+            },
+          }),
+        };
+      reads.push(url);
+      if (url.endsWith("catalog.pdf"))
+        return {
+          contentType: "application/pdf",
+          text: "示例研究大学2027年学术学位硕士招生专业目录：030101 法学理论。",
+        };
+      if (url.endsWith("fees.pdf"))
+        return {
+          contentType: "application/pdf",
+          text: "示例研究大学2027年全日制学术学位硕士研究生收费标准。法学理论学费8000元/年。",
+        };
+      return {
+        contentType: "text/html",
+        text: `<p>示例研究大学2027年硕士招生目录见附件。</p>
+          <a href="/catalog.pdf">2027年硕士招生专业目录</a>
+          <a href="/fees.pdf">2027年研究生学费收费标准</a>
+          <a href="https://other.edu.cn/wrong.pdf">硕士目录</a>`,
+      };
+    },
+  });
+  const input = { subjectId: "student", run: fixture() };
+  const first = await module.generate(input);
+  assert.equal(first.recommendations.length, 1);
+  assert.equal(first.recommendations[0].tuition?.amount, 8000);
+  assert.ok(
+    first.recommendations[0].citations.includes("research-attachment-2"),
+  );
+  assert.equal(
+    first.recommendations[0].constraintChecks!.find((c) => c.field === "budget")
+      ?.status,
+    "match",
+  );
+  assert.equal(
+    first.sources.find((s) => s.id === "research-attachment-1")?.kind,
+    "official_page",
+  );
+  assert.deepEqual(reads, [
+    "https://yz.example.edu.cn/notice",
+    "https://yz.example.edu.cn/catalog.pdf",
+    "https://yz.example.edu.cn/fees.pdf",
+  ]);
+  const updated = structuredClone(input.run);
+  updated.guidanceRunId = "changed-attachment-run";
+  updated.versions.profileVersion++;
+  updated.inputSnapshot.profile.budget = "2–5 万元";
+  const second = await module.generate({ ...input, run: updated });
+  assert.equal(second.recommendations.length, 1);
+  assert.equal(second.recommendations[0].tuition?.amount, 8000);
+  assert.equal(
+    reads.length,
+    3,
+    "successful notice and PDF bodies are reused without another network read",
+  );
+});
+
+test("late fee PDFs attach exact programme evidence without losing the existing city or study mode", async () => {
+  for (const feeMode of ["全日制", "非全日制"]) {
+    const address = "示例研究大学法学理论全日制硕士培养地点：杭州市主校区。";
+    const body = reportBody();
+    body.facts = [];
+    Object.assign(body.recommendations[0], {
+      studyMode: "full_time",
+      location: { city: "杭州", quote: address, sourceId: "research-1" },
+    });
+    const events: string[] = [];
+    const { module } = setup({
+      body,
+      reader: async (url) => {
+        events.push(url);
+        const parsed = new URL(url);
+        if (parsed.hostname === "api.search.brave.com") {
+          const fees = /学费/.test(parsed.searchParams.get("q") ?? "");
+          return {
+            contentType: "application/json",
+            text: JSON.stringify({
+              web: {
+                results: [
+                  {
+                    url: `https://yz.example.edu.cn/${fees ? "fees" : "law"}`,
+                    title: fees
+                      ? "示例研究大学硕士学费收费标准"
+                      : "示例研究大学2027年法学硕士招生目录",
+                    description: fees ? "研究生学费收费标准" : quote,
+                  },
+                ],
+              },
+            }),
+          };
+        }
+        if (parsed.pathname === "/fees")
+          return {
+            contentType: "text/html",
+            text: '<p>示例研究大学2027年硕士研究生学费收费标准</p><a href="/fees.pdf">硕士学费收费标准PDF</a>',
+          };
+        if (parsed.pathname === "/fees.pdf")
+          return {
+            contentType: "application/pdf",
+            text: `示例研究大学2027年硕士研究生收费标准\n法学理论（${feeMode}）学费8000元/生·年。`,
+          };
+        return {
+          contentType: "text/html",
+          text: `<p>2027年硕士招生目录 ${quote}</p><p>${address}</p>`,
+        };
+      },
+    });
+    const report = await module.generate({
+      subjectId: "student",
+      run: fixture(),
+    });
+    assert.equal(report.recommendations.length, 1);
+    const item = report.recommendations[0];
+    assert.equal(item.studyMode, "full_time");
+    assert.equal(item.location?.city, "杭州");
+    assert.equal(
+      item.constraintChecks?.find((check) => check.field === "cities")?.status,
+      "match",
+    );
+    assert.ok(events.some((url) => url.endsWith("/fees.pdf")));
+    if (feeMode === "全日制") {
+      assert.equal(item.tuition?.amount, 8000);
+      assert.equal(item.tuition?.studyMode, "full_time");
+      assert.ok(item.citations.includes(item.tuition!.sourceId));
+      assert.equal(
+        item.constraintChecks?.find((check) => check.field === "budget")
+          ?.status,
+        "match",
+      );
+      assert.equal(
+        report.sources.find((source) => source.id === item.tuition?.sourceId)
+          ?.url,
+        "https://yz.example.edu.cn/fees.pdf",
+      );
+    } else {
+      assert.equal(item.tuition, undefined);
+      assert.equal(
+        item.constraintChecks?.find((check) => check.field === "budget")
+          ?.status,
+        "unknown",
+      );
+    }
+  }
+});
+
+test("an empty late fee response cannot poison the public body cache on the next generation", async () => {
+  let feeReads = 0;
+  const body = reportBody();
+  body.facts = [];
+  const { module } = setup({
+    body,
+    reader: async (url) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === "api.search.brave.com") {
+        const fees = /学费/.test(parsed.searchParams.get("q") ?? "");
+        return {
+          contentType: "application/json",
+          text: JSON.stringify({
+            web: {
+              results: [
+                {
+                  url: `https://yz.example.edu.cn/${fees ? "fees" : "law"}`,
+                  title: fees
+                    ? "示例研究大学硕士学费收费标准"
+                    : "示例研究大学2027年法学硕士招生目录",
+                  description: fees ? "硕士学费收费标准" : quote,
+                },
+              ],
+            },
+          }),
+        };
+      }
+      if (parsed.pathname === "/fees")
+        return {
+          contentType: "text/html",
+          text:
+            ++feeReads === 1
+              ? "<script>not evidence</script>"
+              : "示例研究大学2027年硕士研究生收费标准：法学理论（全日制）学费8000元/年。",
+        };
+      return { contentType: "text/html", text: `2027年硕士招生目录 ${quote}` };
+    },
+  });
+  const first = await module.generate({ subjectId: "student", run: fixture() });
+  assert.equal(first.recommendations[0].tuition, undefined);
+  const second = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(feeReads, 2);
+  assert.equal(second.recommendations[0].tuition?.amount, 8000);
 });
 
 test("DeepSeek research uses official pro thinking controls, counts total completion usage, and never exposes reasoning", async () => {

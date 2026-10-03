@@ -4,8 +4,17 @@ import type { ProgramRevision } from "../catalog/types.ts";
 import { researchReason } from "../../shared/research-status.ts";
 import { searchResearchSources } from "./research-search.ts";
 import { generateResearchValue } from "./research-generation.ts";
+import { enrichResearchFees } from "./research-fees.ts";
+import {
+  academicDomain,
+  researchAttachments,
+  researchReadingOrder,
+} from "./research-pages.ts";
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
-import type { RecommendationConstraints } from "../../shared/research-recommendation.ts";
+import type {
+  RecommendationConstraints,
+  ResearchStudyMode,
+} from "../../shared/research-recommendation.ts";
 import { createModelRuntime, type ModelRuntime } from "./index.ts";
 import {
   ModelError,
@@ -44,7 +53,6 @@ import {
   isSchoolPage,
   supportsProgram,
   compactEvidence,
-  sourcePriority,
   knownAdmissionConflict,
 } from "./research-evidence.ts";
 
@@ -92,6 +100,7 @@ export interface ResearchReport {
     disciplineCode: string;
     programName?: string;
     degreeType?: "academic" | "professional";
+    studyMode?: ResearchStudyMode;
     fitReasons?: ProfileFitReason[];
     tradeoffs?: string[];
     admissionStatus?: "current_evidence" | "needs_verification";
@@ -199,11 +208,16 @@ function validateProse(
     namedExams.some((name) => !currentEvidence.includes(name))
   )
     throw new ModelError("UNSUPPORTED_RESEARCH_CLAIM");
-  const advantages =
-    prose.match(/就业机会较多|就业面广|实习机会多|口碑好/g) ?? [];
   if (
-    !/推断|一般而言|学科层面|需.{0,8}(?:调查|核实)/.test(prose) &&
-    advantages.some((claim) => !evidence.includes(claim))
+    prose
+      .split(/(?<=[。；;])/)
+      .some(
+        (sentence) =>
+          !/推断|一般而言|学科层面|需.{0,8}(?:调查|核实)/.test(sentence) &&
+          (
+            sentence.match(/就业机会较多|就业面广|实习机会多|口碑好/g) ?? []
+          ).some((claim) => !evidence.includes(claim)),
+      )
   )
     throw new ModelError("UNSUPPORTED_RESEARCH_CLAIM");
   if (
@@ -350,10 +364,10 @@ function validateReport(
     )
       throw new ModelError("UNGROUNDED_RESEARCH_RECOMMENDATION");
     const disciplineCode = text(entry.disciplineCode, 4);
-    const programName = text(entry.programName, 120).replace(
-      /(?:专业学位|学术学位)?硕士研究生$|专业学位硕士$/,
-      "",
-    );
+    const programName = text(entry.programName, 120)
+      .replace(/(?:专业学位|学术学位)?硕士研究生$|专业学位硕士$/, "")
+      .replace(/^[（(](?:专业学位|学术学位|学术型)[）)]\s*/, "")
+      .trim();
     const discipline = disciplines.find((item) => item.code === disciplineCode);
     const refs = citations(entry.citations, sources);
     if (
@@ -418,8 +432,9 @@ function validateReport(
       validateProse(prose, profile, localNames, localEvidence, currentEvidence);
       return prose;
     };
-    // Core identity/program/rationale still fail the card. Optional list items fail independently.
-    const rationale = advice(entry.rationale, 1400);
+    // Programme identity is mandatory. A failed sentence cannot erase independently
+    // supported profile reasons, and must never survive in the delivered advice.
+    const rawRationale = text(entry.rationale, 1400);
     const fitReasons = validateFitReasons(
       isolate(list(entry.fitReasons, 6), (value) => {
         const fit = validateProfileFitReason(value, profile);
@@ -427,6 +442,27 @@ function validateReport(
       }),
       profile,
     );
+    let rationale: string;
+    try {
+      rationale = advice(rawRationale, 1400);
+    } catch (failure) {
+      if (!(failure instanceof ModelError)) throw failure;
+      if (
+        failure.code !== "UNSUPPORTED_RESEARCH_CLAIM" ||
+        !/就业机会较多|就业面广|实习机会多|口碑好/.test(rawRationale) ||
+        /https?:|www\.|javascript:|data:|学费|收费|录取|报考资格|报考条件|可以报考|分数|招生人数|初试|数学[一二三]|英语[一二]|\d/.test(
+          rawRationale,
+        )
+      )
+        throw failure;
+      rejected.push(failure.code);
+      const sentences = isolate(
+        rawRationale.split(/(?<=[。；;])/).filter((s) => s.trim()),
+        (sentence) => advice(sentence, 1400),
+      );
+      rationale =
+        sentences.join("") || fitReasons.map((fit) => fit.reason).join("；");
+    }
     const uncertainties = isolate(list(entry.uncertainties, 6), (value) =>
       advice(value),
     );
@@ -434,10 +470,26 @@ function validateReport(
       uncertainties.push(
         `这是基于真实学校专业资料的暂定适合建议；${targetYear}年招生、报考资格、学费和考试科目尚待学校官网核验。`,
       );
-    const tradeoffs = isolate(list(entry.tradeoffs, 5), (value) =>
-      advice(value),
-    );
+    const rawTradeoffs = list(entry.tradeoffs, 5);
+    const tradeoffs = isolate(rawTradeoffs, (value) => advice(value));
+    if (
+      !tradeoffs.length &&
+      rawTradeoffs.some(
+        (value) =>
+          typeof value === "string" &&
+          /数学[一二三]|英语[一二]/.test(value) &&
+          !/学费|收费|录取|https?:|\d/.test(value),
+      )
+    )
+      tradeoffs.push(
+        "目标年度报考条件、考试安排及培养费用仍需逐项核验；在确认前需预留资料核对与调整准备方案的时间。",
+      );
     if (!tradeoffs.length) throw new ModelError("INSUFFICIENT_PROFILE_FIT");
+    const studyMode = ["full_time", "part_time", "unspecified"].includes(
+      String(entry.studyMode),
+    )
+      ? (entry.studyMode as ResearchStudyMode)
+      : undefined;
     const constraints = deriveRecommendationConstraints({
       profile: {
         budget: String(profile.budget ?? ""),
@@ -455,17 +507,12 @@ function validateReport(
       sources,
       tuition: entry.tuition,
       location: entry.location,
-      ...(["full_time", "part_time", "unspecified"].includes(
-        String(entry.studyMode),
-      )
-        ? {
-            studyMode: entry.studyMode as
-              | "full_time"
-              | "part_time"
-              | "unspecified",
-          }
-        : {}),
+      studyMode,
     });
+    for (const evidence of [constraints.tuition, constraints.location]) {
+      if (evidence && !refs.includes(evidence.sourceId))
+        refs.push(evidence.sourceId);
+    }
     const suitabilityReason =
       entry.suitabilityReason === undefined
         ? []
@@ -482,6 +529,7 @@ function validateReport(
       disciplineCode,
       programName,
       degreeType: discipline.degreeType,
+      ...(studyMode ? { studyMode } : {}),
       fitReasons,
       tradeoffs,
       admissionStatus,
@@ -662,7 +710,7 @@ export function createResearchReportModule(
   // Public school pages only; profile changes reuse successful reads for 15 minutes.
   const pageCache = new Map<
     string,
-    { text: string; retrievedAt: string; expires: number }
+    { text: string; contentType: string; retrievedAt: string; expires: number }
   >();
   const getReadiness = () => {
     const reasons: string[] = [];
@@ -826,7 +874,8 @@ export function createResearchReportModule(
             item.searchSchools ?? [],
           ]),
         ),
-        maxRequests: 24,
+        maxRequests: 18,
+        includeFeeSearch: false,
         maxSources: 40,
         onProgress: (detail) => stage("researching", detail),
       });
@@ -836,45 +885,28 @@ export function createResearchReportModule(
       report.limitations.push(...found.limitations);
       const sourceDirections = found.sourceDirections;
       let pageReads = 0;
-      const queues = disciplines.map((discipline) =>
-        report.sources.filter(
-          (source) =>
-            sourceDirections.get(source.id) === discipline.code &&
-            sourcePriority(source, discipline) >= 100,
-        ),
+      const { pages: readingOrder, firstRoundCount } = researchReadingOrder(
+        report.sources,
+        sourceDirections,
+        disciplines,
       );
-      const roundRobin = Array.from({ length: 40 }, (_, index) =>
-        queues.flatMap((queue) => (queue[index] ? [queue[index]] : [])),
-      ).flat();
-      const schoolHosts = new Set<string>();
-      const firstPages: WebSource[] = [];
-      const otherPages: WebSource[] = [];
-      for (const source of roundRobin) {
-        const host = new URL(source.url).hostname
-          .split(".")
-          .slice(-3)
-          .join(".");
-        (schoolHosts.has(host) ? otherPages : firstPages).push(source);
-        schoolHosts.add(host);
-      }
-      const initialPages = firstPages.slice(0, 16);
-      const feePages = [...firstPages.slice(16), ...otherPages]
-        .filter((source) => /学费|收费标准/.test(source.title))
-        .slice(0, 6);
-      const readingOrder = [
-        ...initialPages,
-        ...feePages,
-        ...[...firstPages.slice(16), ...otherPages].filter(
-          (source) => !feePages.includes(source),
-        ),
-      ];
-      for (const source of readingOrder) {
+      const seenPages = new Set(readingOrder.map((source) => source.url));
+      const attachedIds = new Set<string>();
+      const schoolReads = new Map<string, number>();
+      let attachmentCount = 0;
+      for (let pageIndex = 0; pageIndex < readingOrder.length; pageIndex++) {
+        const source = readingOrder[pageIndex];
         const url = new URL(source.url);
         const academic =
           (config.allowAcademicHosts ?? true) &&
           /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
         if (!hosts.includes(url.hostname) && !academic) continue;
-        if (pageReads >= 24) break;
+        if (pageReads >= 16) break;
+        const domain = academicDomain(source.url);
+        // Failed pages from one school cannot consume most of the 24-read budget.
+        const schoolReadCount = schoolReads.get(domain) ?? 0;
+        if (schoolReadCount >= 4) continue;
+        schoolReads.set(domain, schoolReadCount + 1);
         pageReads++;
         await stage(
           "researching",
@@ -901,16 +933,24 @@ export function createResearchReportModule(
             }));
           live();
           const excerpt = compactEvidence(
-            webPageText(result.text),
+            /^application\/pdf(?:;|$)/i.test(result.contentType)
+              ? result.text.trim()
+              : webPageText(result.text),
             disciplines,
             6000,
           );
           if (!excerpt) throw new ModelError("WEB_EMPTY");
           source.excerpt = excerpt;
           source.kind = "official_page";
-          if (source.retrievalNote)
+          if (
+            source.retrievalNote &&
+            /搜索返回 HTTP|搜索结果原为HTTP/.test(source.retrievalNote)
+          )
             source.retrievalNote =
               "搜索结果原为HTTP地址，本次按同一主机与路径的HTTPS地址成功读取；连接仍经过TLS与公网校验。";
+          else if (attachedIds.has(source.id))
+            source.retrievalNote =
+              "已从学校官网发现并成功读取本PDF附件正文，使用独立附件网址引用。";
           source.retrievedAt =
             cached?.retrievedAt ??
             new Date(config.now?.() ?? Date.now()).toISOString();
@@ -919,9 +959,45 @@ export function createResearchReportModule(
               pageCache.delete(pageCache.keys().next().value!);
             pageCache.set(safe.href, {
               text: result.text,
+              contentType: result.contentType,
               retrievedAt: source.retrievedAt,
               expires: (config.now?.() ?? Date.now()) + 15 * 60000,
             });
+          }
+          // Read attachment bodies under the same budget and transport guards.
+          // Give every school its first turn before expanding an individual notice.
+          if (
+            !attachedIds.has(source.id) &&
+            /html/i.test(result.contentType ?? "")
+          ) {
+            const children = researchAttachments(source, result.text)
+              .filter((link) => !seenPages.has(link.url))
+              .slice(0, Math.max(0, 12 - attachmentCount))
+              .map((link): WebSource => {
+                seenPages.add(link.url);
+                const child = {
+                  id: `research-attachment-${++attachmentCount}`,
+                  title: link.title,
+                  url: link.url,
+                  excerpt: "",
+                  retrievedAt: source.retrievedAt,
+                  kind: "search_snippet" as const,
+                  verified: false as const,
+                  retrievalNote: `从已读取的学校官网页面“${source.title}”发现的PDF附件，正文尚待读取。`,
+                };
+                attachedIds.add(child.id);
+                sourceDirections.set(
+                  child.id,
+                  sourceDirections.get(source.id)!,
+                );
+                return child;
+              });
+            report.sources.push(...children);
+            readingOrder.splice(
+              Math.max(pageIndex + 1, firstRoundCount),
+              0,
+              ...children,
+            );
           }
         } catch (failure) {
           live();
@@ -1036,12 +1112,192 @@ export function createResearchReportModule(
             stage("analyzing", "模型服务暂时繁忙，正在进行一次自动重试"),
         });
         live();
+        let value = result.value;
+        const schoolPages = report.sources.filter(
+          (source) =>
+            isSchoolPage(source) && /硕士|研究生/.test(source.excerpt),
+        );
+        const observedNames = new Set(
+          schoolPages.flatMap(
+            (source) =>
+              `${source.title} ${source.excerpt}`.match(
+                /[\p{Script=Han}]{2,16}(?:大学|学院)/gu,
+              ) ?? [],
+          ),
+        );
+        if (
+          value.recommendations.length < 5 &&
+          new Set(schoolPages.map((source) => academicDomain(source.url)))
+            .size >= 5 &&
+          observedNames.size >= 5
+        ) {
+          await stage(
+            "analyzing",
+            "已有多所学校官网依据，正在补充尚未充分比较的学校建议",
+          );
+          const supplemental = [
+            ...messages,
+            {
+              role: "user" as const,
+              content: `已有${value.recommendations.length}所学校通过核验，仍未达到5–10校目标。请重新检查上述真实官网资料，补充其他有据且适合本人的学校及具体专业，优先给出此前遗漏的学校；不编造项目，不放宽已知资格冲突。仍返回完整同格式JSON。已保留：${value.recommendations
+                .map((item) => item.institutionName)
+                .join("、")
+                .slice(0, 180)}。`,
+            },
+          ];
+          if (JSON.stringify(supplemental).length <= 24000) {
+            try {
+              const extra = await runtime.run(
+                input.subjectId,
+                {
+                  task: `${promptVersion}-coverage`,
+                  guidanceRunId: run.guidanceRunId,
+                  versions: run.versions,
+                  evidenceHash: hash(supplemental),
+                },
+                supplemental,
+                (raw) =>
+                  validateReport(
+                    raw,
+                    run,
+                    report.sources,
+                    evidencedDirections,
+                    year,
+                  ),
+                options,
+              );
+              live();
+              const merged = [...value.recommendations];
+              for (const item of extra.value.recommendations) {
+                if (
+                  merged.length < 10 &&
+                  !merged.some(
+                    (previous) =>
+                      previous.institutionName === item.institutionName,
+                  )
+                )
+                  merged.push(item);
+              }
+              merged.sort(
+                (a, b) =>
+                  ({ preferred: 0, alternative: 1, exploratory: 2 })[a.tier] -
+                  { preferred: 0, alternative: 1, exploratory: 2 }[b.tier],
+              );
+              value = {
+                ...value,
+                recommendations: merged.slice(0, 10),
+                rejected: [...value.rejected, ...extra.value.rejected],
+                limitations: [...value.limitations, ...extra.value.limitations],
+              };
+              if (merged.length > result.value.recommendations.length)
+                value.summary = `已保留通过官网专业与本人画像核对的${value.recommendations.length}所学校：${value.recommendations.map((item) => `${item.institutionName}的${item.programName}`).join("、")}。综合分层、准备成本及年度待核验事项见各项建议。`;
+            } catch (failure) {
+              live();
+              if (
+                failure === progressFailure ||
+                (failure instanceof ModelError &&
+                  failure.code === "DATA_DELETED")
+              )
+                throw failure;
+              report.limitations.push(
+                `学校覆盖补充未完成，已保留此前核对通过的建议：${researchReason(failure instanceof ModelError ? failure.code : "MODEL_UNAVAILABLE")}`,
+              );
+            }
+          }
+        }
         Object.assign(report, {
-          summary: result.value.summary,
-          facts: result.value.facts,
-          recommendations: result.value.recommendations,
+          summary: value.summary,
+          facts: value.facts,
+          recommendations: value.recommendations,
         });
-        report.limitations.push(...result.value.limitations);
+        report.limitations.push(...value.limitations);
+        const fees = await enrichResearchFees({
+          subjectId: input.subjectId,
+          recommendations: report.recommendations.map((item) => ({
+            ...item,
+            programName: item.programName!,
+          })),
+          sources: report.sources,
+          disciplines: evidencedDirections,
+          targetYear: year,
+          web,
+          remainingReads: Math.min(8, 24 - pageReads),
+          maxRequests: 24 - found.requestCount,
+          onProgress: (detail) => stage("analyzing", detail),
+          now: config.now,
+          readPage: async (value) => {
+            live();
+            if (pageReads >= 24) throw new ModelError("WEB_BUDGET_EXHAUSTED");
+            const url = new URL(value);
+            const academic =
+              (config.allowAcademicHosts ?? true) &&
+              /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
+            if (!hosts.includes(url.hostname) && !academic)
+              throw new ModelError("WEB_HOST_BLOCKED");
+            const domain = academicDomain(value);
+            // Initial catalogue reads reserve a separate, bounded opportunity
+            // for the same school's fee notice and its linked PDF.
+            if ((schoolReads.get(domain) ?? 0) >= 6)
+              throw new ModelError("WEB_BUDGET_EXHAUSTED");
+            schoolReads.set(domain, (schoolReads.get(domain) ?? 0) + 1);
+            pageReads++;
+            const allowedHosts = hosts.includes(url.hostname)
+              ? hosts
+              : [...hosts, url.hostname];
+            const safe = validateOutboundUrl(value, allowedHosts);
+            const saved = pageCache.get(safe.href);
+            if (saved && saved.expires > (config.now?.() ?? Date.now()))
+              return saved;
+            const page = await reader(safe.href, {
+              allowedHosts,
+              timeoutMs: 8000,
+              maxBytes: 512000,
+              allowPdf: true,
+              maxPdfBytes: 5000000,
+            });
+            live();
+            const body = /^application\/pdf(?:;|$)/i.test(page.contentType)
+              ? page.text.trim()
+              : webPageText(page.text);
+            if (!compactEvidence(body, evidencedDirections, 12000))
+              throw new ModelError("WEB_EMPTY");
+            if (pageCache.size >= 120)
+              pageCache.delete(pageCache.keys().next().value!);
+            pageCache.set(safe.href, {
+              ...page,
+              retrievedAt: new Date(config.now?.() ?? Date.now()).toISOString(),
+              expires: (config.now?.() ?? Date.now()) + 15 * 60000,
+            });
+            return page;
+          },
+        });
+        live();
+        report.sources.push(...fees.sources);
+        report.limitations.push(...fees.limitations);
+        for (const item of report.recommendations) {
+          if (item.tuition) continue;
+          const constraints = deriveRecommendationConstraints({
+            profile: {
+              budget: String(researchContext(run).profile.budget ?? ""),
+              cities: Array.isArray(cities) ? (cities as string[]) : [],
+            },
+            targetYear: year,
+            institutionName: item.institutionName,
+            programName: item.programName!,
+            degreeType: item.degreeType,
+            studyMode: item.studyMode,
+            location: item.location,
+            citations: item.citations,
+            sources: report.sources,
+          });
+          Object.assign(item, constraints);
+          if (
+            constraints.tuition &&
+            !item.citations.includes(constraints.tuition.sourceId)
+          )
+            item.citations.push(constraints.tuition.sourceId);
+        }
+        found.requestCount += fees.requestCount;
         const allHaveSchoolPage = report.recommendations.every((item) =>
           item.citations.some((id) =>
             report.sources.some(
@@ -1059,21 +1315,21 @@ export function createResearchReportModule(
             ),
           ),
         );
-        if (result.value.rejected.length)
+        if (value.rejected.length)
           report.limitations.push(
             "部分内容未通过来源与画像核对，已单独移除；其余通过核对的建议仍可查看。",
           );
         report.status =
           report.recommendations.length >= 5 &&
           allHaveSchoolPage &&
-          !result.value.rejected.length
+          !value.rejected.length
             ? "completed"
             : "partial";
         if (report.status === "partial")
-          report.reason = result.value.rejected.length
+          report.reason = value.rejected.length
             ? report.recommendations.length
               ? "RESEARCH_PARTIAL_VALIDATION"
-              : result.value.rejected[0]
+              : value.rejected[0]
             : !report.sources.some(isSchoolPage) || !allHaveSchoolPage
               ? "SEARCH_SNIPPETS_ONLY"
               : "INSUFFICIENT_RESEARCH_EVIDENCE";

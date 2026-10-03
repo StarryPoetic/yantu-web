@@ -237,9 +237,10 @@ class TechnicalDesignTests(unittest.TestCase):
         for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("5–10所不同学校", "4–6个", "24次搜索", "40项候选来源", "24项官网正文", "15分钟", "失败不缓存", "最多6次", "24000字符", "每阶段最多3次", "整份报告最多6次", "250毫秒", "beforeRetry", "PROVIDER_BALANCE_INSUFFICIENT", "PROVIDER_INVALID_REQUEST", "PROVIDER_TEMPORARY_UNAVAILABLE", "PROVIDER_NETWORK_ERROR", "60次", "300次", "每账号每日100000、全站300000", "同一额度", "不能直接与用户年度预算比较"):
+                for phrase in ("5–10所不同学校", "4–6个", "24次搜索", "40条搜索候选", "24次正文读取", "18次搜索", "16次读取", "最多6次搜索", "8次读取", "最多12条同校PDF附件候选", "15分钟", "失败不缓存", "24000字符", "规划与初次报告每阶段最多3次", "整份报告最多7次", "保留已有建议", "250毫秒", "beforeRetry", "PROVIDER_BALANCE_INSUFFICIENT", "PROVIDER_INVALID_REQUEST", "PROVIDER_TEMPORARY_UNAVAILABLE", "PROVIDER_NETWORK_ERROR", "60次", "300次", "每账号每日100000、全站300000", "同一额度", "不能直接与用户年度预算比较"):
                     self.assertIn(phrase, content)
                 self.assertNotIn("整份报告至多四次模型调用", content)
+                self.assertNotIn("整份报告最多6次", content)
                 self.assertNotIn("默认12000", content)
                 self.assertNotIn("默认每账号每天 20000", content)
                 self.assertIn("v6学校覆盖、费用质量及真实端到端结果尚待独立验收", content)
@@ -314,6 +315,17 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertIn("YANTU_DNS_MODE=system", guide)
         self.assertIn("YANTU_DNS_MODE=system", example)
         self.assertIn("YANTU_DNS_MODE=public-doh", guide)
+
+    def test_deployment_preparation_links_and_recovery_limits_are_documented(self):
+        path = ROOT / "docs" / "长期部署.md"
+        content = path.read_text(encoding="utf-8")
+        for phrase in ("没有服务器和域名", "尚未在实际 Linux 服务器执行", "一个 Node.js 应用进程", "YANTU_TRUSTED_PROXY_IPS", "/api/v1/health", "backup-database.mjs", "--source", "--destination", "integrity_check", "foreign_key_check", "删除状态", "撤销快照内旧会话", "没有设置定时备份", "不能将进程内额度当作长期账单硬上限"):
+            self.assertIn(phrase, content)
+        for target in re.findall(r"\]\(([^)]+)\)", content):
+            parts = urlsplit(target)
+            if not parts.scheme and not parts.netloc:
+                self.assertTrue((path.parent / unquote(parts.path)).resolve().is_file(), target)
+        self.assertIn("长期部署.md", README.read_text(encoding="utf-8"))
 
     def test_project_artifacts_do_not_contain_live_key_shapes(self):
         credential = re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")

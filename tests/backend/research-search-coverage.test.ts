@@ -1,0 +1,246 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
+import { createWebAnswerModule } from "../../server/explanation/web.ts";
+import { searchResearchSources } from "../../server/explanation/research-search.ts";
+
+const discipline = getDisciplineCatalog().items.find((d) => d.code === "0854")!;
+type Hit = { name: string; url: string; summary: string };
+
+function searchWeb(response: (query: string, include?: string) => Hit[]) {
+  const requests: { query: string; include?: string }[] = [];
+  const web = createWebAnswerModule({
+    searchEnabled: true,
+    searchProvider: "bocha",
+    searchKey: "test-only",
+    searchDailyRequestsPerUser: 30,
+    reader: async (url, options) => {
+      assert.equal(new URL(url).hostname, "api.bocha.cn");
+      const request = JSON.parse(options.body!);
+      requests.push(request);
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({
+          code: 200,
+          data: {
+            webPages: { value: response(request.query, request.include) },
+          },
+        }),
+      };
+    },
+  });
+  return { web, requests };
+}
+
+test("expanded discovery establishes real masters programmes before target-year indexing and narrows fees to observed domains", async () => {
+  const schools = ["甲大学", "乙大学", "丙大学", "丁大学", "戊大学"];
+  const { web, requests } = searchWeb((query) => {
+    const index = schools.findIndex((school) => query.startsWith(school));
+    if (index < 0) return [];
+    return [
+      {
+        name: `${schools[index]}电子信息硕士${query.includes("学费") ? "学费收费标准" : "培养方案"}`,
+        url: `https://grad.school${index}.edu.cn/${query.includes("学费") ? "fees" : "plan"}`,
+        summary: `${schools[index]} 085400 电子信息 硕士研究生培养方案`,
+      },
+    ];
+  });
+  const result = await searchResearchSources({
+    web,
+    subjectId: "coverage",
+    disciplines: [discipline],
+    regions: ["杭州"],
+    targetYear: "2027",
+    schoolHints: new Map([[discipline.code, schools]]),
+    maxRequests: 24,
+    maxSources: 40,
+    onProgress: async () => {},
+  });
+  assert.equal(requests.length, 24);
+  assert.ok(
+    requests
+      .slice(0, schools.length)
+      .every(
+        ({ query, include }) =>
+          !query.includes("2027") &&
+          query.endsWith("硕士 培养方案") &&
+          !include,
+      ),
+  );
+  assert.ok(
+    requests.some(
+      ({ query, include }) =>
+        query.includes("2027") && query.includes("招生专业目录") && !!include,
+    ),
+  );
+  const fees = requests.filter(({ query }) => query.includes("学费"));
+  assert.equal(fees.length, schools.length);
+  assert.deepEqual(
+    fees.map(({ include }) => include),
+    schools.map((_, index) => `school${index}.edu.cn`),
+  );
+  assert.equal(
+    new Set(result.sources.map((source) => new URL(source.url).hostname)).size,
+    5,
+  );
+});
+
+test("national discovery can add schools outside model hints and duplicate query exhaustion cannot skip reserved fees", async () => {
+  const { web, requests } = searchWeb((query) => {
+    if (query.startsWith("甲大学"))
+      return [
+        {
+          name: "甲大学电子信息硕士培养方案",
+          url: "https://grad.hinted.edu.cn/plan",
+          summary: "甲大学085400电子信息硕士研究生培养",
+        },
+      ];
+    if (query.includes("招生专业目录") && !query.includes("甲大学"))
+      return Array.from({ length: 5 }, (_, index) => ({
+        name: `${["乙", "丙", "丁", "戊", "己"][index]}大学电子信息硕士招生专业目录`,
+        url: `https://grad.discovered${index}.edu.cn/catalog`,
+        summary: `${["乙", "丙", "丁", "戊", "己"][index]}大学 085400电子信息 硕士研究生招生`,
+      }));
+    return [];
+  });
+  const result = await searchResearchSources({
+    web,
+    subjectId: "dynamic-coverage",
+    disciplines: [discipline],
+    regions: ["杭州"],
+    schoolHints: new Map([[discipline.code, ["甲大学"]]]),
+    maxRequests: 24,
+    maxSources: 40,
+    onProgress: async () => {},
+  });
+  assert.ok(
+    requests.some(
+      ({ query, include }) => query.startsWith("杭州 ") && !include,
+    ),
+  );
+  assert.ok(
+    requests.some(
+      ({ query, include }) =>
+        !query.includes("甲大学") && include?.startsWith("discovered"),
+    ),
+  );
+  assert.ok(requests.some(({ query }) => query.includes("学费")));
+  assert.ok(requests.length <= 24);
+  assert.ok(result.sources.length <= 40);
+  assert.equal(
+    new Set(result.sources.map((source) => new URL(source.url).hostname)).size,
+    6,
+  );
+  assert.ok(result.sources.every((source) => source.kind === "search_snippet"));
+});
+
+test("a large school's similar pages cannot displace other schools' follow-up evidence within the candidate cap", async () => {
+  const schools = ["甲大学", "乙大学", "丙大学", "丁大学", "戊大学"];
+  const { web } = searchWeb((query) => {
+    const index = schools.findIndex((school) => query.startsWith(school));
+    if (index < 0 || query.includes("学费")) return [];
+    const pass = query.endsWith("培养方案") ? "plan" : "catalog";
+    return Array.from({ length: 10 }, (_, page) => ({
+      name: `${schools[index]}电子信息硕士${pass === "plan" ? "培养方案" : "招生专业目录"}`,
+      url: `https://grad.school${index}.edu.cn/${pass}/${page}`,
+      summary: `${schools[index]} 085400 电子信息 硕士研究生培养与招生专业目录`,
+    }));
+  });
+  const result = await searchResearchSources({
+    web,
+    subjectId: "balanced-pages",
+    disciplines: [discipline],
+    regions: [],
+    schoolHints: new Map([[discipline.code, schools]]),
+    maxRequests: 24,
+    maxSources: 12,
+    onProgress: async () => {},
+  });
+  assert.equal(result.sources.length, 12);
+  const counts = schools.map(
+    (_, index) =>
+      result.sources.filter(
+        (source) =>
+          new URL(source.url).hostname === `grad.school${index}.edu.cn`,
+      ).length,
+  );
+  assert.ok(counts.every((count) => count >= 2));
+  assert.ok(Math.max(...counts) - Math.min(...counts) <= 1);
+});
+
+test("fees prioritize useful graduate hints and observed schools before unsuccessful model names", async () => {
+  const schools = ["甲大学", "乙大学", "丙大学", "丁大学", "戊大学", "己大学"];
+  const { web, requests } = searchWeb((query) => {
+    if (query.includes("学费")) return [];
+    const index = schools.findIndex((school) => query.startsWith(school));
+    if (index >= 0)
+      return index < 4
+        ? []
+        : [
+            {
+              name: `${schools[index]}电子信息硕士培养方案`,
+              url: `https://school${index}.edu.cn/plan`,
+              summary: `${schools[index]}085400电子信息硕士研究生培养`,
+            },
+          ];
+    return Array.from({ length: 3 }, (_, index) => ({
+      name: `${["庚", "辛", "壬"][index]}大学电子信息硕士招生专业目录`,
+      url: `https://observed${index}.edu.cn/catalog`,
+      summary: `${["庚", "辛", "壬"][index]}大学085400电子信息硕士研究生招生`,
+    }));
+  });
+  await searchResearchSources({
+    web,
+    subjectId: "useful-fees",
+    disciplines: [discipline],
+    regions: ["杭州"],
+    schoolHints: new Map([[discipline.code, schools]]),
+    maxRequests: 24,
+    maxSources: 40,
+    onProgress: async () => {},
+  });
+  const fees = requests.filter(({ query }) => query.includes("学费"));
+  assert.equal(fees.length, 6);
+  assert.deepEqual(
+    fees.slice(0, 2).map(({ query }) => query.split(" ")[0]),
+    ["戊大学", "己大学"],
+  );
+  assert.deepEqual(
+    fees.slice(2, 5).map(({ include }) => include),
+    ["observed0.edu.cn", "observed1.edu.cn", "observed2.edu.cn"],
+  );
+  assert.equal(
+    fees.filter(({ query }) =>
+      schools.slice(0, 4).some((school) => query.startsWith(school)),
+    ).length,
+    1,
+  );
+  assert.ok(requests.length <= 24);
+});
+
+test("observed school domains also receive fee lookups without any model school names", async () => {
+  const { web, requests } = searchWeb((query) =>
+    query.includes("学费")
+      ? []
+      : [
+          {
+            name: "庚大学电子信息硕士招生专业目录",
+            url: "https://observed.edu.cn/catalog",
+            summary: "庚大学085400电子信息硕士研究生招生",
+          },
+        ],
+  );
+  await searchResearchSources({
+    web,
+    subjectId: "observed-only-fees",
+    disciplines: [discipline],
+    regions: [],
+    maxRequests: 24,
+    maxSources: 40,
+    onProgress: async () => {},
+  });
+  const fees = requests.filter(({ query }) => query.includes("学费"));
+  assert.equal(fees.length, 1);
+  assert.equal(fees[0].include, "observed.edu.cn");
+  assert.ok(requests.length <= 24);
+});

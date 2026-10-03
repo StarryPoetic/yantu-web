@@ -1,3 +1,6 @@
+import { isAbsolute } from "node:path";
+import { normalizeIpAddress } from "./http.ts";
+
 export interface AdminIdentity {
   actorId: string;
   token: string;
@@ -14,6 +17,7 @@ export interface AppConfig {
   rateLimit: number;
   authRegistrationIpLimit?: number;
   authLoginIpLimit?: number;
+  trustedProxyIps?: string[];
 }
 export function environmentConfig(): AppConfig {
   const production = process.env.NODE_ENV === "production";
@@ -69,8 +73,21 @@ export function environmentConfig(): AppConfig {
     throw new Error("生产环境必须设置 HTTPS YANTU_ORIGIN。");
   if (production && !process.env.YANTU_ORIGIN?.startsWith("https://"))
     throw new Error("生产环境需要 HTTPS 来源。");
+  const databasePath = process.env.YANTU_DATABASE_PATH?.trim();
+  if (production && (!databasePath || !isAbsolute(databasePath)))
+    throw new Error(
+      "生产环境必须显式设置绝对路径 YANTU_DATABASE_PATH，并使用独立持久化数据库。",
+    );
+  const proxyValues = process.env.YANTU_TRUSTED_PROXY_IPS?.trim();
+  const trustedProxyIps = proxyValues
+    ? proxyValues.split(",").map((value) => normalizeIpAddress(value.trim()))
+    : [];
+  if (trustedProxyIps.length > 32 || trustedProxyIps.some((value) => !value))
+    throw new Error(
+      "YANTU_TRUSTED_PROXY_IPS 必须是最多 32 个明确的代理 IP，不支持网段或主机名。",
+    );
   return {
-    databasePath: process.env.YANTU_DATABASE_PATH || "./var/yantu.sqlite",
+    databasePath: databasePath || "./var/yantu.sqlite",
     sampleData: !production && process.env.YANTU_SAMPLE_DATA !== "false",
     secureCookies: production,
     origins: process.env.YANTU_ORIGIN
@@ -92,6 +109,7 @@ export function environmentConfig(): AppConfig {
     authLoginIpLimit: authRateLimit(
       process.env.YANTU_AUTH_LOGIN_IP_LIMIT ?? 40,
     ),
+    trustedProxyIps: [...new Set(trustedProxyIps as string[])],
   };
 }
 

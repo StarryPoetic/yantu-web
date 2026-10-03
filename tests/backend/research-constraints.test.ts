@@ -125,7 +125,7 @@ test("unknown budget, absent evidence and open-ended budget do not invent numeri
     assert.equal(budget(result).status, "unknown");
   }
   const absent = deriveRecommendationConstraints(
-    input({ tuition: undefined, location: undefined }),
+    input({ tuition: undefined, location: undefined, sources: [] }),
   );
   assert.equal(budget(absent).status, "unknown");
   assert.equal(cities(absent).status, "unknown");

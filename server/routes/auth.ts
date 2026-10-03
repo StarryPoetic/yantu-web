@@ -2,7 +2,7 @@ import type { IncomingMessage } from "node:http";
 import type { AppConfig } from "../config.ts";
 import type { Store, Session } from "../store.ts";
 import type { Reply } from "../http.ts";
-import { fields, HttpError } from "../http.ts";
+import { clientIpAddress, fields, HttpError } from "../http.ts";
 import { createAuthModule } from "../auth/index.ts";
 import { timingSafeEqual } from "node:crypto";
 
@@ -46,7 +46,7 @@ export function createAuthRoutes(store: Store, config: AppConfig) {
       const context = {
         session,
         sessionHash,
-        remoteAddress: request.socket.remoteAddress ?? "unknown",
+        remoteAddress: clientIpAddress(request, config.trustedProxyIps),
       };
       let result: { body: unknown; cookie: string };
       if (path === "/auth/register") {

@@ -8,6 +8,7 @@ import { environmentConfig } from "./config.ts";
 import type { AppConfig } from "./config.ts";
 import {
   canonical,
+  clientIpAddress,
   digest,
   fields,
   HttpError,
@@ -181,7 +182,39 @@ export async function createApplication(
         throw new HttpError(400, "invalid_path", "路径编码不正确。");
       }
       const write = !["GET", "HEAD"].includes(method);
-      throttle(request.socket.remoteAddress ?? "unknown", config.rateLimit);
+      const clientAddress = clientIpAddress(request, config.trustedProxyIps);
+      throttle(clientAddress, config.rateLimit);
+      if (path === "/health" && method === "GET") {
+        try {
+          store.db.prepare("SELECT version FROM migrations LIMIT 1").get();
+          return send(
+            response,
+            {
+              body: {
+                status: "ok",
+                database: "ok",
+                sampleData: config.sampleData,
+              },
+            },
+            requestId,
+          );
+        } catch {
+          return send(
+            response,
+            {
+              status: 503,
+              body: {
+                status: "unavailable",
+                database: "unavailable",
+                code: "database_unavailable",
+                message: "服务暂时不可用，请稍后重试。",
+                sampleData: config.sampleData,
+              },
+            },
+            requestId,
+          );
+        }
+      }
       const origin = request.headers.origin;
       if (
         write &&
@@ -207,7 +240,7 @@ export async function createApplication(
         fields(body, []);
         let headers: Record<string, string> = {};
         if (!session) {
-          throttle(`guest:${request.socket.remoteAddress}`, 30);
+          throttle(`guest:${clientAddress}`, 30);
           const token = randomBytes(32).toString("base64url");
           session = store.transaction(() =>
             store.createSession(
@@ -428,8 +461,6 @@ export async function createApplication(
         return reply;
       };
       const route = (): Reply => {
-        if (path === "/health" && method === "GET")
-          return { body: { status: "ok", sampleData: config.sampleData } };
         const result = admin
           ? adminRoutes(context)
           : (research.handle(context) ??

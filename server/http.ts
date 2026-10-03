@@ -1,5 +1,41 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
+import { isIP } from "node:net";
+
+export function normalizeIpAddress(value: string): string | null {
+  if (isIP(value) === 4) return value;
+  if (isIP(value) !== 6 || value.includes("%")) return null;
+  const address = new URL(`http://[${value}]`).hostname.slice(1, -1);
+  const mapped = /^::ffff:([\da-f]+):([\da-f]+)$/i.exec(address);
+  if (!mapped) return address;
+  const high = parseInt(mapped[1], 16);
+  const low = parseInt(mapped[2], 16);
+  return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
+}
+
+/** A trusted single-hop proxy must overwrite this header with the actual peer IP. */
+export function clientIpAddress(
+  request: IncomingMessage,
+  trustedProxyIps: readonly string[] = [],
+): string {
+  const remote = normalizeIpAddress(request.socket.remoteAddress ?? "");
+  if (!remote) return "unknown";
+  if (
+    !trustedProxyIps.some((address) => normalizeIpAddress(address) === remote)
+  )
+    return remote;
+  const forwarded = request.headers["x-forwarded-for"];
+  if (forwarded === undefined) return remote;
+  const address =
+    typeof forwarded === "string" ? normalizeIpAddress(forwarded.trim()) : null;
+  if (!address)
+    throw new HttpError(
+      400,
+      "invalid_forwarded_ip",
+      "代理必须提供一个有效的客户端 IP 地址。",
+    );
+  return address;
+}
 
 export class HttpError extends Error {
   status: number;

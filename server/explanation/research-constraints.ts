@@ -54,6 +54,7 @@ function projectPosition(text: string, input: RecommendationConstraintInput) {
     const starts =
       !/[\p{Script=Han}]$/u.test(before) ||
       before.endsWith(input.institutionName) ||
+      /(?:全日制|非全日制|学术(?:型|学位)|专业学位)$/.test(before) ||
       /20\d{2}[年级]$/.test(before);
     const ends =
       !/^[\p{Script=Han}]/u.test(after) ||
@@ -132,10 +133,175 @@ function statedPeriod(
     /(?:全(?:学|过)?程(?:学费|收费标准|收费)?|总学费|学费总(?:额|计)|学制内)(?:为|[:：\s])*$/.test(
       before,
     ) ||
-    /^\s*(?:[/／·（(]\s*)?(?:全(?:学|过)?程|学制内)/.test(after)
+    /^\s*(?:[/／·（(]\s*)?(?:(?:生|人)\s*[/／·]\s*)?(?:全(?:学|过)?程|学制内)/.test(
+      after,
+    )
   )
     found.push("program");
   return found.length === 1 ? found[0] : undefined;
+}
+
+/** PDF line breaks may wrap a single project row, but cannot supply another row's fee. */
+function tuitionRows(quote: string, input: RecommendationConstraintInput) {
+  const parts = [...quote.matchAll(/[^。；;\n]+/g)];
+  return parts.flatMap((part, index) => {
+    if (projectPosition(part[0], input) < 0) return [];
+    let end = part.index! + part[0].length;
+    for (const next of parts.slice(index + 1, index + 4)) {
+      if (
+        [...quote.slice(part.index!, end).matchAll(money)].length ||
+        /\s\d+(?:,\d{3})*(?:\.\d+)?\s*$/.test(quote.slice(part.index!, end))
+      )
+        break;
+      // Only a physical line wrap is joinable. A sentence/semicolon ends a row.
+      if (!/^\s*\n\s*$/.test(quote.slice(end, next.index))) break;
+      end = next.index! + next[0].length;
+    }
+    const raw = quote.slice(part.index!, end);
+    const text = raw.trim();
+    return [{ text, start: part.index! + raw.indexOf(text), end }];
+  });
+}
+
+/** Regulatory document numbers are not the cohort to which tuition applies. */
+function feeHeaders(text: string) {
+  return [
+    ...text.matchAll(
+      /(20\d{2})\s*(?:年(?:度)?|级)\s*(?:全日制|非全日制)?(?:学术(?:型|学位)|专业学位)?(?:硕士(?:研究生)?|研究生)[^。；;\n]{0,35}?(?:学费(?:标准)?|收费(?:标准|项目)?|费用)/g,
+    ),
+  ].map((match) => ({
+    year: Number(match[1]),
+    start: match.index!,
+    end: match.index! + match[0].length,
+    text: match[0],
+  }));
+}
+
+function rowHeader(source: WebSource, quote: string, rowStart: number) {
+  // Quote and section association must be unambiguous in the actually read body.
+  const first = source.excerpt.indexOf(quote);
+  if (first < 0 || source.excerpt.indexOf(quote, first + quote.length) >= 0)
+    return undefined;
+  const position = first + rowStart;
+  const header = feeHeaders(source.excerpt)
+    .filter((item) => item.end <= position)
+    .at(-1);
+  if (!header) return undefined;
+  const gap = source.excerpt.slice(header.end, position);
+  if (
+    / … |20\d{2}\s*(?:年(?:度)?|级)[^。；;\n]{0,20}?(?:学费|收费)|(?:^|\n)\s*(?:[一二三四五六七八九十]+、)?(?:本科(?:生)?|博士(?:生|研究生)?|来华留学|留学生|同等学力)/.test(
+      gap,
+    )
+  )
+    return undefined;
+  return header;
+}
+
+function rowYear(
+  source: WebSource,
+  quote: string,
+  row: string,
+  rowStart: number,
+) {
+  const local = [
+    ...new Set(
+      [...row.matchAll(/(20\d{2})\s*(?:年(?:度)?|级)/g)].map((match) =>
+        Number(match[1]),
+      ),
+    ),
+  ];
+  if (local.length) return local.length === 1 ? local[0] : undefined;
+  return rowHeader(source, quote, rowStart)?.year;
+}
+
+function sectionText(source: WebSource, header: ReturnType<typeof rowHeader>) {
+  if (!header) return "";
+  const tail = source.excerpt.slice(header.end, header.end + 180);
+  const inlineUnit = /^\s*[（(]\s*元[^）)\n]{1,25}[）)]/.exec(tail)?.[0] ?? "";
+  const columns =
+    /^\s*\n\s*((?:专业名称|专业代码|学习形式|学习方式|收费项目)[^\n。；;]{0,150})/.exec(
+      tail,
+    )?.[1] ?? "";
+  return `${header.text}${inlineUnit}${[...columns.matchAll(money)].length ? "" : columns}`;
+}
+
+function degreeConflict(text: string, input: RecommendationConstraintInput) {
+  return (
+    (input.degreeType === "academic" && /专业学位|专硕/.test(text)) ||
+    (input.degreeType === "professional" && /学术(?:型|学位)|学硕/.test(text))
+  );
+}
+
+function headerPeriod(header: string) {
+  const unit = /(?:学费|收费标准)[^。；;\n]{0,25}?元([^。；;\n]{0,25})/.exec(
+    header,
+  );
+  return unit ? statedPeriod("", unit[1]) : undefined;
+}
+
+function tuitionAmounts(row: string, header: string, programAt: number) {
+  const explicit = [...row.matchAll(money)];
+  if (explicit.length || !headerPeriod(header)) return explicit;
+  // A numeric table column needs an explicit yuan/unit header and one value;
+  // an extra numeric duration, quota, or second mode's fee makes the row ambiguous.
+  return [
+    ...row
+      .slice(programAt)
+      .matchAll(/(?<![\d.,])(\d+(?:,\d{3})*(?:\.\d+)?)(?![\d.,])/g),
+  ].map((match) => {
+    match.index! += programAt;
+    return match;
+  });
+}
+
+const specialPopulation =
+  "(?:(?:港澳台(?:地区)?|外国|国际)(?:学生|考生|研究生|硕士(?:研究生)?)|来华留学(?:生|研究生|硕士研究生)|外国留学生)";
+const ordinaryPopulation =
+  "(?:(?:普通统考|全国统考|境内|内地|大陆)(?:学生|考生|研究生|硕士(?:研究生)?)?)";
+
+/** Identity-specific tariffs cannot establish ordinary domestic tuition. Navigation does not define a fee scope. */
+function populationFeeConflict(
+  source: WebSource,
+  quote: string,
+  rowStart: number,
+) {
+  const dedicated = new RegExp(
+    `${specialPopulation}[^。；;\n]{0,24}(?:招生|招收|学费|收费)|(?:招收|招生|学费|收费)[^。；;\n]{0,24}${specialPopulation}`,
+  );
+  const titleSpecial = dedicated.test(source.title);
+  const titleOrdinary = new RegExp(ordinaryPopulation).test(source.title);
+  if (titleSpecial && !titleOrdinary) return true;
+  const quoteAt = source.excerpt.indexOf(quote);
+  if (quoteAt < 0 || source.excerpt.indexOf(quote, quoteAt + quote.length) >= 0)
+    return true;
+  const position = quoteAt + rowStart;
+  const scopeBody = source.excerpt
+    .replace(
+      /(?:友情链接|相关链接|院校链接)[\s\S]*?(?=学院地址|学校地址|联系地址|Copyright|版权所有|$)/gi,
+      (value) => " ".repeat(value.length),
+    )
+    .replace(/(?:网站)?导航[^。；;\n]*(?:[。；;\n]|$)/g, (value) =>
+      " ".repeat(value.length),
+    );
+  const scopes: { position: number; special: boolean }[] = [];
+  for (const [population, special] of [
+    [specialPopulation, true],
+    [ordinaryPopulation, false],
+  ] as const) {
+    // A continuous population-specific fee heading, or an isolated population
+    // section in a fee document, applies until the next explicitly scoped section.
+    const headings = new RegExp(
+      `${population}[^。；;\n]{0,24}?(?:学费|收费(?:标准|项目)?)|(?:学费|收费(?:标准|项目)?)[^。；;\n]{0,20}?${population}|(?:^|\n)\\s*(?:[一二三四五六七八九十]+[、.]|\\d+[、.])?\\s*${population}\\s*(?=\n|$)`,
+      "g",
+    );
+    for (const match of scopeBody.matchAll(headings)) {
+      if (match.index! <= position)
+        scopes.push({ position: match.index!, special });
+    }
+  }
+  const scope = scopes.sort((a, b) => a.position - b.position).at(-1);
+  // A mixed-identity title without a precise local scope remains unresolved.
+  return scope?.special ?? titleSpecial;
 }
 
 function checkedTuition(
@@ -159,21 +325,33 @@ function checkedTuition(
     return undefined;
   const cited = citedQuote(raw, input);
   if (!cited || !/学费|收费标准/.test(cited.quote)) return undefined;
-  const { quote } = cited;
-  const years = [...new Set(quote.match(/\b20\d{2}\b/g) ?? [])];
-  if (!years.includes(String(raw.year))) return undefined;
+  const { quote, source } = cited;
   const parts = clauses(quote);
-  const header = parts[0];
+  const header =
+    parts
+      .slice(
+        0,
+        parts.findIndex((part) => projectPosition(part, input) >= 0),
+      )
+      .slice(0, 3)
+      .join("\n") || parts[0];
   const feeHeader =
     /学费|收费标准/.test(header) &&
     /硕士|研究生/.test(header) &&
     [...header.matchAll(money)].length === 0;
   // An explicit project row is required. A university-wide amount is never silently
   // assigned to every project, and amounts from adjacent programme rows cannot migrate.
-  for (const clause of parts) {
+  for (const row of tuitionRows(quote, input)) {
+    const clause = row.text;
+    if (populationFeeConflict(source, quote, row.start)) continue;
+    if (/博士|本科|同等学力|留学生|来华留学|旁听/.test(clause)) continue;
     const programAt = projectPosition(clause, input);
     if (programAt < 0) continue;
-    const amounts = [...clause.matchAll(money)];
+    const sectionHeader = rowHeader(source, quote, row.start);
+    const applicableHeader = feeHeader
+      ? header
+      : sectionText(source, sectionHeader);
+    const amounts = tuitionAmounts(clause, applicableHeader, programAt);
     if (amounts.length !== 1) continue;
     const match = amounts[0];
     const value = Number(match[1].replace(/,/g, "")) * (match[2] ? 10_000 : 1);
@@ -184,6 +362,14 @@ function checkedTuition(
       match.index,
     );
     if (/\b(?:0[1-9]|1[0-4])\d{4}\b/.test(between)) continue;
+    // A category such as 电子信息 cannot inherit a named field/project's price.
+    const projectDetails = between
+      .replace(
+        /非全日制|全日制|学术(?:型|学位)|专业学位|研究生|硕士|本专业|该专业|专业|类别|领域|学费|收费标准|收费|标准|每学年|每年|每学期|每学分|全程|总额|总计|学制内|为/g,
+        "",
+      )
+      .replace(/[（(][A-Z.\s]+[）)]/g, "");
+    if (/[\p{Script=Han}]{2,}/u.test(projectDetails)) continue;
     if (
       /(?:[，,、]|\s)(?!全日制|非全日制|学术|专业学位|硕士研究生|本专业|该专业)[\p{Script=Han}]{2,20}(?:专业|硕士)/u.test(
         between,
@@ -200,32 +386,30 @@ function checkedTuition(
     if (feeLabels.length && feeLabels.at(-1)![0] !== "学费") continue;
     if (
       !feeLabels.length &&
-      !/^(?:[^。；;\n]{0,160})(?:学费|收费标准)/.test(quote)
+      !/^(?:[^。；;\n]{0,160})(?:学费|收费标准)/.test(quote) &&
+      !/学费|收费标准/.test(applicableHeader)
     )
       continue;
     // A nearby project statement cannot borrow a different year's heading.
-    if (
-      !clause.includes(String(raw.year)) &&
-      !(years.length === 1 && feeHeader && header.includes(String(raw.year)))
-    )
-      continue;
-    if (
+    if (rowYear(source, quote, clause, row.start) !== raw.year) continue;
+    const period =
       statedPeriod(
         clause.slice(0, match.index),
         clause.slice(match.index! + match[0].length),
-      ) !== raw.period
+      ) ?? (!/元/.test(match[0]) ? headerPeriod(applicableHeader) : undefined);
+    if (period !== raw.period) continue;
+    if (
+      degreeConflict(clause, input) ||
+      (feeHeader && degreeConflict(header, input)) ||
+      (sectionHeader && degreeConflict(sectionHeader.text, input))
     )
-      continue;
-    if (input.degreeType === "academic" && /专业学位|专硕/.test(clause))
-      continue;
-    if (input.degreeType === "professional" && /学术学位|学硕/.test(clause))
       continue;
     const localModes = statedModes(clause);
     const evidenceModes = localModes.length
       ? localModes
       : feeHeader
         ? statedModes(header)
-        : [];
+        : statedModes(sectionHeader?.text ?? "");
     if (evidenceModes.length > 1) continue;
     const studyMode = evidenceModes[0] ?? "unspecified";
     if (
@@ -251,6 +435,63 @@ function checkedTuition(
     };
   }
   return undefined;
+}
+
+/** Recover an omitted model field from exact school/project text, never from a search snippet. */
+function extractedTuition(input: RecommendationConstraintInput) {
+  const found: TuitionEvidence[] = [];
+  for (const source of input.sources) {
+    if (source.kind !== "official_page") continue;
+    for (const row of tuitionRows(source.excerpt, input)) {
+      const programAt = projectPosition(row.text, input);
+      const section = rowHeader(source, row.text, 0);
+      const header = sectionText(source, section);
+      const amounts = tuitionAmounts(row.text, header, programAt);
+      if (amounts.length !== 1) continue;
+      const match = amounts[0];
+      const year = rowYear(source, row.text, row.text, 0);
+      const period =
+        statedPeriod(
+          row.text.slice(0, match.index),
+          row.text.slice(match.index! + match[0].length),
+        ) ?? (!/元/.test(match[0]) ? headerPeriod(header) : undefined);
+      if (!year || !period) continue;
+      const modes = statedModes(row.text);
+      const studyMode = modes.length
+        ? modes[0]
+        : (statedModes(header)[0] ?? "unspecified");
+      const scopeStart = section?.start ?? row.start;
+      // A short continuous table quote includes its header. Longer tables use
+      // the exact local row, whose year is checked against the read section.
+      const quoted = source.excerpt.slice(scopeStart, row.end).trim();
+      const quote =
+        quoted.length <= 1800 && !quoted.includes(" … ") ? quoted : row.text;
+      const value = checkedTuition({
+        ...input,
+        citations: [...new Set([...input.citations, source.id])],
+        tuition: {
+          amount: Number(match[1].replace(/,/g, "")) * (match[2] ? 10_000 : 1),
+          currency: "CNY",
+          period,
+          year,
+          studyMode,
+          quote,
+          sourceId: source.id,
+        },
+      });
+      if (value) found.push(value);
+    }
+  }
+  const current = found.filter(
+    (item) => String(item.year) === String(input.targetYear),
+  );
+  const candidates = current.length ? current : found;
+  const unique = new Set(
+    candidates.map(
+      (item) => `${item.year}:${item.amount}:${item.period}:${item.studyMode}`,
+    ),
+  );
+  return unique.size === 1 ? candidates[0] : undefined;
 }
 
 function checkedLocation(
@@ -393,7 +634,11 @@ export function deriveRecommendationConstraints(
   RecommendationConstraints,
   "constraintChecks" | "tuition" | "location"
 > {
-  const tuition = checkedTuition(input);
+  // Invalid explicit claims remain rejected; only a missing field is recoverable.
+  const tuition =
+    input.tuition === undefined
+      ? extractedTuition(input)
+      : checkedTuition(input);
   const location = checkedLocation(input);
   const constraintChecks = [
     budgetCheck(input, tuition),

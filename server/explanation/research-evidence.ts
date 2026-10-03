@@ -16,11 +16,24 @@ function degreeHeadings(text: string) {
     ...text.matchAll(
       /(?:硕士(?:研究生|专业学位)?|博士(?:生|研究生|专业学位)?|本科(?:生)?|学士)[^。；;…\n]{0,28}?(?:招生(?:专业)?目录|专业目录|招生简章|专业介绍|培养方案|学位授权(?:点|学科|类别|名单|目录)?|学位授予(?:权|点|学科|类别|名单|目录)?)/g,
     ),
-  ].map((match) => ({
-    position: match.index!,
-    end: match.index! + match[0].length,
-    masters: /硕士/.test(match[0]) && !/博士|本科|学士/.test(match[0]),
-  }));
+  ]
+    .filter((match) => {
+      const preceding = text.slice(
+        Math.max(0, match.index! - 60),
+        match.index!,
+      );
+      // Master's catalogues often explain symbols such as "▲表示博士学位授权点".
+      // Such a legend describes the following master's rows; it does not start a
+      // doctoral section. Real degree headings without a symbol legend still bound scope.
+      return !/(?:带|标注|标记|标有|加注|[▲★☆*])[^。；;…\n]{0,18}(?:表示|代表|标示|为|是)[^。；;…\n]{0,6}$/.test(
+        preceding,
+      );
+    })
+    .map((match) => ({
+      position: match.index!,
+      end: match.index! + match[0].length,
+      masters: /硕士/.test(match[0]) && !/博士|本科|学士/.test(match[0]),
+    }));
 }
 
 function recruitmentPage(source: WebSource) {

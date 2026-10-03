@@ -49,32 +49,57 @@ function hasGraduateLead(sources: WebSource[], discipline: Discipline) {
   });
 }
 
+function hintedSchoolDomains(sources: WebSource[], school: string) {
+  // A result for one school can mention other institutions. Prefer the school
+  // identified in the title, then use its own description or an explicit URL clue.
+  const titled = sources.filter((source) => source.title.includes(school));
+  const related = sources.filter((source) =>
+    `${source.title} ${source.excerpt}`.includes(school),
+  );
+  return [
+    ...new Set([
+      ...titled.map(schoolDomain).filter((host): host is string => !!host),
+      ...related.map(schoolDomain).filter((host): host is string => !!host),
+      ...mentionedSchoolDomains(sources, school),
+    ]),
+  ].slice(0, 2);
+}
+
 function diverseSources(sources: WebSource[], discipline: Discipline) {
   const ranked = [...sources].sort(
     (a, b) => sourcePriority(b, discipline) - sourcePriority(a, discipline),
   );
-  const seen = new Set<string>();
-  const first: WebSource[] = [];
+  const schools = new Map<string, WebSource[]>();
   const rest: WebSource[] = [];
   for (const source of ranked) {
     const host = schoolDomain(source);
-    if (!host || seen.has(host) || sourcePriority(source, discipline) < 100)
-      rest.push(source);
+    if (!host || sourcePriority(source, discipline) < 100) rest.push(source);
     else {
-      seen.add(host);
-      first.push(source);
+      const pages = schools.get(host) ?? [];
+      pages.push(source);
+      schools.set(host, pages);
     }
   }
-  const fees = rest.filter(
-    (source) =>
-      /学费|收费标准/.test(source.title) &&
-      sourcePriority(source, discipline) >= 100,
+  const first = [...schools.values()].map((pages) => pages.shift()!);
+  const fees = [...schools.values()]
+    .map((pages) =>
+      pages.find((source) =>
+        /学费|收费(?:标准|项目)|教育收费/.test(source.title),
+      ),
+    )
+    .filter((source): source is WebSource => !!source);
+  const remaining = [...schools.values()].map((pages) =>
+    pages.filter((source) => !fees.includes(source)),
   );
-  return [
-    ...first,
-    ...fees,
-    ...rest.filter((source) => !fees.includes(source)),
-  ];
+  const additional: WebSource[] = [];
+  // A second school's useful follow-up must survive a large first school's many
+  // similar pages, even when the candidate list is truncated to forty sources.
+  while (remaining.some((pages) => pages.length))
+    for (const pages of remaining) {
+      const source = pages.shift();
+      if (source) additional.push(source);
+    }
+  return [...first, ...fees, ...additional, ...rest];
 }
 
 /** Discover schools broadly, then search their observed domains without inventing URLs. */
@@ -88,6 +113,7 @@ export async function searchResearchSources(input: {
   targetYear?: string;
   maxRequests?: number;
   maxSources?: number;
+  includeFeeSearch?: boolean;
   onProgress: (detail?: string) => Promise<void>;
 }) {
   const maxRequests = Math.min(24, Math.max(1, input.maxRequests ?? 6));
@@ -118,7 +144,9 @@ export async function searchResearchSources(input: {
   const requests = new Set<string>();
   const discoveryHints = Array.from({ length: 6 }, (_, index) =>
     states.flatMap((state) =>
-      state.hints[index] ? [{ school: state.hints[index], state }] : [],
+      state.hints[index]
+        ? [{ school: state.hints[index], state, retries: 0 }]
+        : [],
     ),
   )
     .flat()
@@ -127,9 +155,62 @@ export async function searchResearchSources(input: {
         all.findIndex((other) => other.school === item.school) === index,
     )
     .slice(0, 10);
-  const feeHints = discoveryHints.slice(0, 6);
+  const feeBudget =
+    input.includeFeeSearch === false
+      ? 0
+      : Math.min(6, Math.max(1, Math.floor(maxRequests / 4)));
+  let feeHints:
+    | { school?: string; state: (typeof states)[number]; domains: string[] }[]
+    | undefined;
+  const resolveFeeHints = () => {
+    const known = discoveryHints.map((hint) => ({
+      ...hint,
+      domains: hintedSchoolDomains(hint.state.pool, hint.school),
+      lead: hasGraduateLead(
+        hint.state.pool.filter((source) =>
+          `${source.title} ${source.excerpt}`.includes(hint.school),
+        ),
+        hint.state.discipline,
+      ),
+    }));
+    const preferred = known.filter((hint) => hint.lead);
+    const domains = new Set(preferred.flatMap((hint) => hint.domains));
+    const observed: {
+      state: (typeof states)[number];
+      domains: string[];
+    }[] = [];
+    // An actual graduate programme on another observed school domain is a
+    // stronger fee lead than an unverified model name. Search its domain without
+    // inventing a school name, URL or programme fact.
+    for (const state of states)
+      for (const source of diverseSources(state.pool, state.discipline)) {
+        const domain = schoolDomain(source);
+        if (
+          !domain ||
+          domains.has(domain) ||
+          !hasGraduateLead([source], state.discipline)
+        )
+          continue;
+        domains.add(domain);
+        observed.push({ state, domains: [domain] });
+      }
+    return [
+      ...preferred,
+      ...observed,
+      ...known.filter(
+        (hint) =>
+          !hint.lead && !hint.domains.some((domain) => domains.has(domain)),
+      ),
+    ].slice(0, feeBudget);
+  };
   let feeIndex = 0;
   let discoveryAttempt = 0;
+  let discoverySlots = 0;
+  let broadDiscovery = 0;
+  const broadDiscoveryCount = Math.min(
+    states.length,
+    Math.max(0, maxRequests - feeBudget - discoveryHints.length),
+  );
   let iterations = 0;
   let stoppedReason: string | undefined;
   // Discovery and fee lookups share one ceiling; duplicate queries cannot spin forever.
@@ -163,40 +244,94 @@ export async function searchResearchSources(input: {
         broadenSchool || recoverFirstSchool ? [] : availableDomains.slice(0, 2);
       let question: string;
       let resultPool = pool;
+      if (maxRequests > 6 && !discoveryHints.length) discoverySlots++;
+      const feeTime =
+        requests.size >= maxRequests - feeBudget ||
+        discoverySlots >= maxRequests - feeBudget;
+      if (maxRequests > 6 && feeTime && !feeHints) feeHints = resolveFeeHints();
       if (
         maxRequests > 6 &&
-        requests.size >= maxRequests - feeHints.length &&
+        feeTime &&
+        feeHints &&
         feeIndex < feeHints.length
       ) {
         const hint = feeHints[feeIndex++];
-        question = `${hint.school} 硕士 研究生 学费 收费标准`;
+        question = `${hint.school ?? hint.state.discipline.name} 硕士 研究生 学费 收费标准`;
         resultPool = hint.state.pool;
-        domains = [];
+        // These domains came from actual results for this school, never from a
+        // model's memory. Fees should not be left to third-party search snippets.
+        domains = hint.domains;
       } else if (maxRequests > 6 && discoveryHints.length) {
-        // Spend discovery slots across distinct schools before revisiting a popular one.
-        const attempt = discoveryAttempt++;
-        const hint = discoveryHints[attempt % discoveryHints.length];
-        const pass = Math.floor(attempt / discoveryHints.length);
-        const firstPass = pass === 0;
-        const related = hint.state.pool.filter((source) =>
-          `${source.title} ${source.excerpt}`.includes(hint.school),
-        );
-        domains = firstPass
-          ? []
-          : [
-              ...new Set([
-                ...related
-                  .map(schoolDomain)
-                  .filter((host): host is string => !!host),
-                ...mentionedSchoolDomains(hint.state.pool, hint.school),
-              ]),
-            ].slice(0, 2);
-        const year =
-          firstPass && /^20\d{2}$/.test(input.targetYear ?? "")
-            ? ` ${input.targetYear}`
-            : "";
-        question = `${hint.school}${year} ${hint.state.discipline.name} 硕士 ${firstPass ? "招生专业目录" : pass === 1 ? "研究生培养 专业介绍" : "学位授权点 招生计划"}`;
-        resultPool = hint.state.pool;
+        discoverySlots++;
+        if (discoveryAttempt < discoveryHints.length) {
+          const hint = discoveryHints[discoveryAttempt++];
+          // First establish the real master's programme independently of whether
+          // the target year's directory has been indexed by the search provider.
+          question = `${hint.school} ${hint.state.discipline.name} 硕士 培养方案`;
+          resultPool = hint.state.pool;
+          domains = [];
+        } else if (broadDiscovery < broadDiscoveryCount) {
+          const discovered = states[broadDiscovery++];
+          const region = input.regions[discovered.index] ?? "";
+          question = [
+            region,
+            discovered.discipline.name,
+            "硕士",
+            "招生专业目录",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          resultPool = discovered.pool;
+          domains = [];
+        } else {
+          const hint = [...discoveryHints].sort((a, b) => {
+            const lead = (item: (typeof discoveryHints)[number]) =>
+              hasGraduateLead(
+                item.state.pool.filter((source) =>
+                  `${source.title} ${source.excerpt}`.includes(item.school),
+                ),
+                item.state.discipline,
+              );
+            return a.retries - b.retries || Number(lead(a)) - Number(lead(b));
+          })[0];
+          const pass = hint.retries++;
+          if (pass < 2) {
+            domains = hintedSchoolDomains(hint.state.pool, hint.school);
+            const related = hint.state.pool.filter((source) =>
+              `${source.title} ${source.excerpt}`.includes(hint.school),
+            );
+            const year =
+              hasGraduateLead(related, hint.state.discipline) &&
+              /^20\d{2}$/.test(input.targetYear ?? "")
+                ? ` ${input.targetYear}`
+                : "";
+            question = `${hint.school}${year} ${hint.state.discipline.name} 硕士 ${["招生专业目录", "专业介绍"][pass]}`;
+            resultPool = hint.state.pool;
+          } else {
+            // Exhausted model hints must not lock out schools discovered on the
+            // public web. Explore nationally and follow newly observed domains.
+            const discovered =
+              states[(pass + hint.state.index) % states.length];
+            const nextDomain = diverseSources(
+              discovered.pool,
+              discovered.discipline,
+            )
+              .map(schoolDomain)
+              .find((host) => host && !discovered.usedDomains.has(host));
+            if (nextDomain) {
+              discovered.usedDomains.add(nextDomain);
+              domains = [nextDomain];
+              question = `${discovered.discipline.name} 硕士 招生专业目录`;
+            } else {
+              domains = [];
+              const focus = ["培养方案", "学位授权点", "专业介绍", "招生简章"][
+                discovered.broadIndex++ % 4
+              ];
+              question = `${discovered.discipline.code} ${discovered.discipline.name} 硕士 ${focus}`;
+            }
+            resultPool = discovered.pool;
+          }
+        }
       } else if (recoverFirstSchool) {
         question = `${state.hints[0]} ${discipline.name} 硕士 培养方案`;
       } else if (broadenSchool) {
