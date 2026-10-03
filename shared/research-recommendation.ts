@@ -14,6 +14,8 @@ export interface TuitionEvidence {
 
 export interface LocationEvidence {
   city: string;
+  /** Explicit cohort year; earlier years describe reference arrangements, not target-year proof. */
+  year?: number;
   quote: string;
   sourceId: string;
   /** Multiple literal passages can bind a coded programme to a college, campus policy and city. */

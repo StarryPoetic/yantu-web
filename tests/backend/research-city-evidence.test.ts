@@ -43,6 +43,121 @@ test("omitted project location is recovered from a continuous read school addres
   assert.deepEqual(cityCheck(result).sourceIds, ["address"]);
 });
 
+test("an explicitly dated historical programme address remains a reference and its year cannot be relabelled by the model", () => {
+  const text =
+    "甲大学2026年硕士研究生招生专业目录\n甲大学教育学硕士培养地点：浙江省杭州市西湖区示例路1号。";
+  const result = deriveRecommendationConstraints(input(text));
+  assert.equal(result.location?.city, "杭州");
+  assert.equal(result.location?.year, 2026);
+  assert.equal(cityCheck(result).status, "match");
+  assert.match(
+    cityCheck(result).reason,
+    /2026年历史培养安排参考.*2027年实际培养安排仍待核对/,
+  );
+  const wrong = deriveRecommendationConstraints(
+    input(text, {
+      citations: ["address"],
+      location: { ...result.location, year: 2027 },
+    }),
+  );
+  assert.equal(wrong.location, undefined);
+  const undated = "甲大学教育学硕士培养地点：杭州市西湖区示例路1号。";
+  assert.equal(
+    deriveRecommendationConstraints(
+      input(undated, {
+        citations: ["address"],
+        location: {
+          city: "杭州",
+          year: 2026,
+          quote: undated,
+          sourceId: "address",
+        },
+      }),
+    ).location,
+    undefined,
+  );
+});
+
+test("current programme addresses override conflicting historic recovery while an explicit historic claim stays rejected", () => {
+  const oldText =
+    "甲大学2026年硕士研究生招生专业目录\n甲大学教育学硕士培养地点：杭州市西湖区示例路1号。";
+  const newText =
+    "甲大学2027年硕士研究生招生专业目录\n甲大学教育学硕士培养地点：上海市徐汇区示例路1号。";
+  const sources = [source(oldText), source(newText, { id: "current-address" })];
+  const recovered = deriveRecommendationConstraints(
+    input(oldText, { sources }),
+  );
+  assert.equal(recovered.location?.city, "上海");
+  assert.equal(recovered.location?.year, 2027);
+  assert.equal(cityCheck(recovered).status, "mismatch");
+  assert.equal(cityCheck(recovered).reason.includes("历史"), false);
+  const explicit = deriveRecommendationConstraints(
+    input(oldText, {
+      sources,
+      citations: ["address"],
+      location: {
+        city: "杭州",
+        year: 2026,
+        quote: oldText.split("\n")[1],
+        sourceId: "address",
+      },
+    }),
+  );
+  assert.equal(explicit.location, undefined);
+});
+
+test("mixed explicit cohort years cannot be silently converted to an undated current city claim", () => {
+  const text =
+    "甲大学2026年硕士研究生招生专业目录\n甲大学2027年硕士研究生招生专业目录\n甲大学教育学硕士培养地点：杭州市西湖区示例路1号。";
+  assert.equal(
+    deriveRecommendationConstraints(input(text)).location,
+    undefined,
+  );
+  assert.equal(
+    deriveRecommendationConstraints(
+      input(text, {
+        citations: ["address"],
+        location: {
+          city: "杭州",
+          quote: text.split("\n")[2],
+          sourceId: "address",
+        },
+      }),
+    ).location,
+    undefined,
+  );
+});
+
+test("historical special-population addresses cannot bypass campus scope guards, while ordinary sections and navigation remain usable", () => {
+  for (const population of [
+    "港澳台硕士研究生",
+    "来华留学硕士研究生",
+    "国际学生",
+    "非全日制硕士研究生",
+    "中外合作硕士研究生",
+  ]) {
+    const text = `甲大学2026年${population}招生简章\n甲大学教育学硕士培养地点：杭州市西湖区示例路1号。`;
+    const result = deriveRecommendationConstraints(
+      input(text, {
+        sources: [source(text, { title: `甲大学2026年${population}招生简章` })],
+      }),
+    );
+    assert.equal(result.location, undefined, population);
+  }
+  const mixed =
+    "甲大学2026年硕士研究生招生简章\n一、港澳台硕士培养地点\n甲大学教育学硕士培养地点：南京市玄武区示例路1号。\n二、普通统考硕士培养地点\n甲大学教育学硕士培养地点：杭州市西湖区示例路1号。";
+  assert.equal(
+    deriveRecommendationConstraints(input(mixed)).location?.city,
+    "杭州",
+  );
+  const ordinary =
+    "甲大学2026年硕士研究生招生专业目录\n导航：港澳台招生 来华留学\n甲大学教育学硕士培养地点：杭州市西湖区示例路1号。";
+  assert.equal(
+    deriveRecommendationConstraints(input(ordinary)).location?.city,
+    "杭州",
+  );
+});
+
 test("one explicit school address is recoverable without inferring a city from the university's name", () => {
   assert.equal(
     deriveRecommendationConstraints(

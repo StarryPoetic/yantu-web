@@ -18,6 +18,7 @@ import {
   extractProgramExams,
 } from "../../server/explanation/research-matching.ts";
 import { blankProfile } from "../../server/profile.ts";
+import { safeSourceYear } from "../../server/explanation/research-years.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
 
 const mechanical = getDisciplineCatalog().items.find(
@@ -81,6 +82,49 @@ test("linked school XLS binds actual owner and master's scope while preserving e
   );
   assert.ok(exam.quote && plainRows.includes(exam.quote));
   assert.ok(!exam.quote?.includes(school));
+});
+
+test("student eligibility dates in anonymous attachments do not replace the linked admission year", () => {
+  const { parent, child } = fixture();
+  for (const qualification of [
+    "仅限2025级本科生报考",
+    "2025年毕业的本科生可报考",
+    "2025年获得学士学位的考生可报考",
+  ]) {
+    const body = `${plainRows}\n${qualification}。`;
+    const attached = normalizeAttachedEvidence(
+      { ...child, excerpt: body },
+      parent,
+      body,
+    );
+    assert.equal(attached.provenance?.admissionYear, "2027", qualification);
+    assert.equal(safeSourceYear(attached), 2027, qualification);
+    assert.equal(
+      admissionEvidence(attached, "2027").admissionStatus,
+      "current_evidence",
+      qualification,
+    );
+  }
+  const historical = `2026年硕士研究生招生专业目录\n${plainRows}\n仅限2025级本科生报考。`;
+  const old = normalizeAttachedEvidence(
+    { ...child, excerpt: historical },
+    parent,
+    historical,
+  );
+  assert.equal(old.provenance?.admissionYear, "2026");
+  assert.equal(safeSourceYear(old), 2026);
+  const mixed = `2026年硕士招生专业目录。2025年硕士招生专业目录。\n${plainRows}\n仅限2024级本科生报考。`;
+  const ambiguous = normalizeAttachedEvidence(
+    { ...child, excerpt: mixed },
+    parent,
+    mixed,
+  );
+  assert.equal(ambiguous.provenance?.admissionYear, undefined);
+  assert.equal(safeSourceYear(ambiguous), undefined);
+  assert.equal(
+    admissionEvidence(ambiguous, "2027").admissionStatus,
+    "needs_verification",
+  );
 });
 
 test("nested directory details pass validated origin to their actual file links", () => {

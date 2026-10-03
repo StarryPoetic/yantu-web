@@ -257,8 +257,17 @@ class TechnicalDesignTests(unittest.TestCase):
         for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("suitabilityTier", "suitabilityReason", "tier/tierReasons", "同费用学校可以不同层", "无可靠分层理由暂列探索", "与综合分层独立", "options.upgradeAcademicHttp:true", "sourcesOnly:true", "WebSource.retrievalNote", "显式端口", "不会发送HTTP请求", "普通聊天与用户直接提供的URL不启用"):
+                for phrase in ("suitabilityTier", "suitabilityReason", "tier/tierReasons", "同费用学校可以不同层", "options.upgradeAcademicHttp:true", "sourcesOnly:true", "WebSource.retrievalNote", "显式端口", "不会发送HTTP请求", "普通聊天与用户直接提供的URL不启用"):
                     self.assertIn(phrase, content)
+                if path == ROOT / "server" / "explanation" / "README.md":
+                    for phrase in ("demand-match-v1", "方向关联、培养路线及已核验城市", "服务端生成 `tier/tierReasons`", "模型的 `suitabilityTier/suitabilityReason` 不能改变服务端层级", "有城市偏好时，城市未知不满足优先比较条件", "费用只是一个因素", "5–10所不同学校", "不按同校多专业凑数量"):
+                        self.assertIn(phrase, content)
+                    self.assertNotIn("无可靠分层理由暂列探索", content)
+                else:
+                    # The versioned design retains its v6 boundary; current v7
+                    # behaviour is documented and checked in the module README.
+                    for phrase in ("无可靠分层理由暂列探索", "与综合分层独立"):
+                        self.assertIn(phrase, content)
                 self.assertNotIn("已取得证据确认预算或城市不符时归入", content)
         acceptance = (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8")
         self.assertIn("同费用不同层", acceptance)

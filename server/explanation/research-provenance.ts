@@ -1,5 +1,6 @@
 import type { WebSource } from "./web.ts";
 import { webPageText } from "./web.ts";
+import { explicitAdmissionsYears } from "../../shared/research-years.ts";
 import {
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
@@ -142,15 +143,7 @@ export function normalizeAttachedEvidence(
     })
   )
     return unbound;
-  const childYears = [
-    ...new Set(
-      [
-        ...actualBody.matchAll(
-          /(?:^|[^0-9])(20\d{2})\s*(?:年(?:度)?|级)?\s*[^。；\n]{0,45}?(?:招生|招收|报考|专业(?:招生)?目录|初试(?:科目(?:表|目录)?|考试(?:安排|大纲|说明)?)|复试(?:科目(?:表|目录)?|考试(?:安排|大纲|说明)?)|入学考试|考试(?:科目(?:表|目录)?|安排|大纲|说明)|培养(?:方案|政策))/g,
-        ),
-      ].map((match) => match[1]),
-    ),
-  ];
+  const childYears = explicitAdmissionsYears(actualBody).map(String);
   const linkedYear = linked.title.match(/\b(20\d{2})\b/)?.[1];
   const admissionYear =
     childYears.length === 1

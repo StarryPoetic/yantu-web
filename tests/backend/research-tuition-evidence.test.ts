@@ -131,6 +131,74 @@ test("a current official price is preferred to historical evidence using its own
   assert.equal(result.tuition?.amount, 8000);
 });
 
+test("multiple historical prices use the latest complete cohort and explicitly compare annual fees as reference", () => {
+  const sources = [2024, 2025, 2026].map((year) =>
+    source(
+      `甲大学${year}年教育学硕士全日制学费${year === 2026 ? 8000 : 12000}元/年。`,
+      { id: `fee-${year}` },
+    ),
+  );
+  const result = deriveRecommendationConstraints(input("", { sources }));
+  assert.equal(result.tuition?.year, 2026);
+  assert.equal(result.tuition?.amount, 8000);
+  assert.equal(budget(result).status, "match");
+  assert.match(
+    budget(result).reason,
+    /2026年历史学费作参考比较.*2027年收费及适用条件仍待核对/,
+  );
+});
+
+test("known current tuition supersedes a valid historical model quote and conflicting current prices never fall back to history", () => {
+  const oldQuote = "甲大学2026年教育学硕士全日制学费8000元/年。";
+  const currentQuote = "甲大学2027年教育学硕士全日制学费12000元/年。";
+  const oldClaim = {
+    amount: 8000,
+    currency: "CNY",
+    period: "academic_year",
+    year: 2026,
+    studyMode: "full_time",
+    quote: oldQuote,
+    sourceId: "fee",
+  };
+  const sources = [
+    source(oldQuote),
+    source(currentQuote, { id: "current-fee" }),
+  ];
+  const result = deriveRecommendationConstraints(
+    input(oldQuote, { sources, citations: ["fee"], tuition: oldClaim }),
+  );
+  assert.equal(result.tuition?.year, 2027);
+  assert.equal(result.tuition?.sourceId, "current-fee");
+  assert.equal(budget(result).status, "mismatch");
+  assert.equal(budget(result).reason.includes("历史"), false);
+  const conflicted = deriveRecommendationConstraints(
+    input(oldQuote, {
+      sources: [
+        ...sources,
+        source("甲大学2027年教育学硕士全日制学费9000元/年。", {
+          id: "conflict",
+        }),
+      ],
+      citations: ["fee"],
+      tuition: oldClaim,
+    }),
+  );
+  assert.equal(conflicted.tuition, undefined);
+  assert.equal(budget(conflicted).status, "unknown");
+  const invalid = deriveRecommendationConstraints(
+    input(oldQuote, {
+      sources,
+      citations: ["fee"],
+      tuition: { ...oldClaim, amount: 1 },
+    }),
+  );
+  assert.equal(
+    invalid.tuition,
+    undefined,
+    "an invalid explicit model price is never repaired by fallback",
+  );
+});
+
 test("a long fee table allows a continuous local quote and checks its cohort in the read source", () => {
   const excerpt = `甲大学2027年硕士学费标准\n${"心理学 全日制 学费9000元/年\n".repeat(120)}教育学 全日制 学费8000元/年`;
   const result = deriveRecommendationConstraints(input(excerpt));

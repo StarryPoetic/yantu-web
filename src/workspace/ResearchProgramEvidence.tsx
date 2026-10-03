@@ -6,6 +6,44 @@ import {
   type SchoolRecommendation,
 } from "./research-report";
 import { ResearchSourceLinks } from "./ResearchSourceLinks";
+import type { ResearchHistoricalExamEvidence } from "../../shared/research-matching";
+
+function HistoricalExamReference({
+  reference,
+  sources,
+}: {
+  reference: ResearchHistoricalExamEvidence;
+  sources: ResearchReport["sources"];
+}) {
+  return (
+    <section aria-label="历年备考参考科目">
+      <h5>{reference.year}年备考参考科目</h5>
+      <p>{reference.reason}</p>
+      {!!reference.subjects.length && (
+        <ul>
+          {reference.subjects.map((subject) => (
+            <li key={subject.code}>
+              {subject.code} {subject.name}
+            </li>
+          ))}
+        </ul>
+      )}
+      {reference.quote && (
+        <details>
+          <summary>查看历年科目原文</summary>
+          <blockquote>{reference.quote}</blockquote>
+        </details>
+      )}
+      {reference.sourceId && (
+        <ResearchSourceLinks
+          ids={[reference.sourceId]}
+          sources={sources}
+          label="历年科目依据来源"
+        />
+      )}
+    </section>
+  );
+}
 
 export function ResearchExamEvidence({
   exams,
@@ -16,35 +54,114 @@ export function ResearchExamEvidence({
 }) {
   return (
     <section className="research-exam-evidence" aria-label="实际考试科目">
-      <h5>实际考试科目</h5>
-      <p className={"research-evidence-status " + (exams?.status ?? "unknown")}>
-        {examDescription(exams)}
-      </p>
-      {exams?.subjects.length ? (
-        <ul>
-          {exams.subjects.map((subject, index) => (
-            <li key={subject.code + ":" + index}>
-              {subject.code} {subject.name}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      <p>
-        {exams?.reason ??
-          "尚未取得可核验的招生目录考试科目，准备建议不能替代报考要求。"}
-      </p>
-      {exams?.quote && (
+      {exams?.historicalReference && (
+        <HistoricalExamReference
+          reference={exams.historicalReference}
+          sources={sources}
+        />
+      )}
+      {exams?.history && exams.history.length > 1 && (
         <details>
-          <summary>查看考试科目原文</summary>
-          <blockquote>{exams.quote}</blockquote>
+          <summary>近年考试科目对照</summary>
+          <table>
+            <thead>
+              <tr>
+                <th>年度</th>
+                <th>初试科目</th>
+                <th>核验说明</th>
+              </tr>
+            </thead>
+            <tbody>
+              {exams.history.map((item) => (
+                <tr key={item.year}>
+                  <th>{item.year}年</th>
+                  <td>
+                    {item.subjects.length
+                      ? item.subjects
+                          .map((subject) => `${subject.code} ${subject.name}`)
+                          .join("、")
+                      : "同年科目有冲突，需核对方向或考试组"}
+                  </td>
+                  <td>
+                    {item.reason}
+                    {item.sourceId && (
+                      <ResearchSourceLinks
+                        ids={[item.sourceId]}
+                        sources={sources}
+                        label={`${item.year}年科目来源`}
+                      />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </details>
       )}
-      {exams?.sourceId && (
-        <ResearchSourceLinks
-          ids={[exams.sourceId]}
-          sources={sources}
-          label="考试科目依据来源"
-        />
+      {!!exams?.historicalChanges?.length && (
+        <section aria-label="考试科目年度变化">
+          <h5>已读到的年度科目变化</h5>
+          <ul>
+            {exams.historicalChanges.map((change, index) => (
+              <li key={index}>
+                {change.summary}
+                <ResearchSourceLinks
+                  ids={change.sourceIds}
+                  sources={sources}
+                  label="科目变化依据来源"
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {exams?.historicalReference &&
+      exams.status === "historical" &&
+      exams.year === exams.historicalReference.year ? (
+        <p className="ws-muted">
+          目标年度科目尚待补充核验，可先按上述历年科目安排准备，再核对年度变化。
+        </p>
+      ) : (
+        <>
+          <h5>
+            {exams?.historicalReference
+              ? `${exams.status === "verified_current" && exams.year ? `${exams.year}年` : "目标年度"}科目补充核验`
+              : "实际考试科目"}
+          </h5>
+          <p
+            className={
+              "research-evidence-status " + (exams?.status ?? "unknown")
+            }
+          >
+            {examDescription(exams)}
+          </p>
+          {exams?.subjects.length ? (
+            <ul>
+              {exams.subjects.map((subject, index) => (
+                <li key={subject.code + ":" + index}>
+                  {subject.code} {subject.name}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p>
+            {exams?.reason ??
+              "尚未取得可核验的招生目录考试科目，准备建议不能替代报考要求。"}
+          </p>
+          {exams?.quote && (
+            <details>
+              <summary>查看考试科目原文</summary>
+              <blockquote>{exams.quote}</blockquote>
+            </details>
+          )}
+          {exams?.sourceId && (
+            <ResearchSourceLinks
+              ids={[exams.sourceId]}
+              sources={sources}
+              label="考试科目依据来源"
+            />
+          )}
+        </>
       )}
     </section>
   );
@@ -109,6 +226,12 @@ export function ResearchProgramAlternatives({
             {tierLabels[item.tier]}
           </p>
           <ResearchMatchEvidence match={item.match} sources={sources} />
+          {item.referenceBasis && (
+            <p>
+              比较基准：{item.referenceBasis.year}年。
+              {item.referenceBasis.reason}
+            </p>
+          )}
           {(item.collegeName || item.majorCode) && (
             <p className="research-program-identity">
               {item.collegeName && <span>招生院系：{item.collegeName}</span>}

@@ -2067,3 +2067,203 @@ test("v7没有可核验院校时仍展示测评和学位依据，不把资料缺
   expect(content).toContain("数学一、数学二");
   expect(content).toContain("杭州电子科技大学 · 资料待补充");
 });
+
+test("只有一年历史资料时仍显示目标年度的已知改科并同步下载", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  const historical = {
+    status: "historical" as const,
+    year: 2026,
+    subjects: [{ code: "204", name: "英语二" }],
+    reason: "2026年科目作为备考参考。",
+    sourceId: "research-1",
+  };
+  service.finish("partial", (report) => ({
+    ...report,
+    recommendations: [
+      {
+        ...report.recommendations[0],
+        exams: {
+          status: "verified_current",
+          year: 2027,
+          subjects: [{ code: "201", name: "英语一" }],
+          reason: "2027年已改为英语一。",
+          historicalReference: historical,
+          history: [historical],
+          historicalChanges: [
+            {
+              fromYear: 2026,
+              toYear: 2027,
+              sourceIds: ["research-1"],
+              summary: "2026年至2027年英语二改为英语一，按目标年度要求确认。",
+            },
+          ],
+        },
+      },
+    ],
+  }));
+  await expect(
+    panel.getByText("近年考试科目对照", { exact: true }),
+  ).toHaveCount(0);
+  const changes = panel.getByRole("region", {
+    name: "考试科目年度变化",
+    exact: true,
+  });
+  await expect(changes).toContainText("2026年至2027年英语二改为英语一");
+  await expect(
+    panel.getByRole("heading", { name: "2027年科目补充核验", exact: true }),
+  ).toBeVisible();
+  const download = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await download).path())!, "utf8");
+  expect(content).toContain("2026年至2027年英语二改为英语一");
+  expect(content).toContain("2027 年考试科目已有官网依据");
+});
+
+test("历年政策优先展示2026备考参考与2025对照，2027科目作为补充核验并同步下载", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("partial", (report) => ({
+    ...report,
+    referencePolicy: {
+      strategy: "history-first-v1",
+      targetYear: "2027",
+      referenceYears: [2026, 2025, 2024],
+      summary:
+        "优先整合2026年、2025年、2024年官网政策；2027年资料用于补充核验与识别变化。",
+    },
+    recommendations: [
+      {
+        ...report.recommendations[0],
+        referenceBasis: {
+          year: 2026,
+          sourceIds: ["research-1"],
+          reason: "依据2026年硕士专业目录形成专业比较，2027年资格尚待确认。",
+        },
+        location: {
+          city: "南京",
+          year: 2026,
+          sourceId: "research-1",
+          quote: "2026年培养安排参考",
+        },
+        exams: {
+          status: "verified_current",
+          year: 2027,
+          subjects: [{ code: "201", name: "英语一" }],
+          reason: "2027年目录要求英语一，不能用历史英语二替代。",
+          historicalReference: {
+            status: "historical",
+            year: 2026,
+            subjects: [{ code: "204", name: "英语二" }],
+            reason: "2026年考试科目供备考参考，目标年度另行核对。",
+            sourceId: "research-1",
+          },
+          history: [
+            {
+              status: "historical",
+              year: 2026,
+              subjects: [{ code: "204", name: "英语二" }],
+              reason: "2026年参考",
+            },
+            {
+              status: "historical",
+              year: 2025,
+              subjects: [{ code: "201", name: "英语一" }],
+              reason: "2025年参考",
+            },
+          ],
+          historicalChanges: [
+            {
+              fromYear: 2025,
+              toYear: 2026,
+              sourceIds: ["research-1"],
+              summary: "2025年至2026年英语一变为英语二。",
+            },
+          ],
+        },
+      },
+    ],
+  }));
+  await expect(
+    panel.getByRole("region", { name: "资料年份与使用顺序", exact: true }),
+  ).toContainText("2026年、2025年、2024年");
+  const card = panel.getByRole("article", {
+    name: "浏览器测试大学 · 法学（民商法方向）",
+    exact: true,
+  });
+  await expect(
+    card.getByRole("heading", {
+      name: "2026年专业资料作为比较基准",
+      exact: true,
+    }),
+  ).toBeVisible();
+  const reference = card.getByRole("region", {
+    name: "历年备考参考科目",
+    exact: true,
+  });
+  await expect(
+    reference.getByText("204 英语二", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByRole("heading", { name: "2027年科目补充核验", exact: true }),
+  ).toBeVisible();
+  await expect(
+    card.getByText("项目所在城市：南京（2026年培养安排参考）", { exact: true }),
+  ).toBeVisible();
+  await card.getByText("近年考试科目对照", { exact: true }).click();
+  await expect(card.getByRole("table")).toContainText("2025年");
+  await expect(card.getByRole("table")).toContainText("201 英语一");
+  await expect(
+    card
+      .getByRole("listitem")
+      .filter({ hasText: "2025年至2026年英语一变为英语二。" }),
+  ).toBeVisible();
+  const download = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await download).path())!, "utf8");
+  expect(content).toContain("2026年备考参考科目");
+  expect(content).toContain("2025年至2026年英语一变为英语二");
+  expect(content).toContain("2027 年考试科目已有官网依据");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(reference).toBeVisible();
+  const overflow = await page.evaluate(() => ({
+    width: document.documentElement.scrollWidth,
+    viewport: innerWidth,
+    elements: [...document.querySelectorAll("*")]
+      .filter(
+        (element) => element.getBoundingClientRect().right > innerWidth + 1,
+      )
+      .slice(-10)
+      .map((element) => ({
+        tag: element.tagName,
+        className: element.className,
+        width: element.getBoundingClientRect().width,
+        right: element.getBoundingClientRect().right,
+      })),
+  }));
+  expect(overflow.width, JSON.stringify(overflow.elements)).toBeLessThanOrEqual(
+    overflow.viewport,
+  );
+});

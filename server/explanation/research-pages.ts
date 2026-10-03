@@ -2,6 +2,21 @@ import type { Discipline } from "../disciplines/types.ts";
 import type { WebSource } from "./web.ts";
 import { sourcePriority } from "./research-evidence.ts";
 import { sourceHasSchoolIdentity } from "./research-school.ts";
+import {
+  historicalReferenceYears,
+  explicitAdmissionsYears,
+  researchYearPriority,
+  isTargetYearChange,
+} from "../../shared/research-years.ts";
+
+const policyDocument = (title: string) =>
+  /招生(?:专业)?目录|专业目录|招生(?:章程|简章)|初试|考试(?:科目|安排|大纲)|培养(?:方案|政策)|学费|收费/.test(
+    title,
+  );
+const discoveryYear = (title: string) => {
+  const years = explicitAdmissionsYears(title);
+  return years.length === 1 ? years[0] : undefined;
+};
 
 export function academicDomain(url: string) {
   const host = new URL(url).hostname;
@@ -68,6 +83,7 @@ export function researchReadingOrder(
   preferences: {
     cities?: readonly string[];
     schoolHints?: readonly string[];
+    targetYear?: string;
   } = {},
 ) {
   const groups = new Map<string, WebSource[]>();
@@ -103,12 +119,54 @@ export function researchReadingOrder(
         /硕士|研究生/.test(`${source.title} ${source.excerpt}`);
       return (
         sourcePriority(source, discipline) +
-        Math.min(30, year - 2000) +
+        (preferences.targetYear
+          ? researchYearPriority(
+              policyDocument(source.title)
+                ? discoveryYear(source.title)
+                : undefined,
+              preferences.targetYear,
+            ) * 100
+          : Math.min(30, year - 2000)) +
+        (preferences.targetYear &&
+        isTargetYearChange(
+          `${source.title}\n${source.excerpt}`,
+          preferences.targetYear,
+        )
+          ? 20000
+          : 0) +
         (mastersDirectory ? 90 : programmeDetail ? 60 : 0) -
         (list ? 50 : 0)
       );
     };
     group.sort((a, b) => score(b) - score(a));
+    if (historicalReferenceYears(preferences.targetYear ?? "").length) {
+      const important = group.filter((source) =>
+        isTargetYearChange(
+          `${source.title}\n${source.excerpt}`,
+          preferences.targetYear!,
+        ),
+      );
+      const primary = [...important];
+      for (const year of [
+        ...historicalReferenceYears(preferences.targetYear!),
+        Number(preferences.targetYear),
+      ]) {
+        const page = group.find(
+          (source) =>
+            !primary.includes(source) &&
+            policyDocument(source.title) &&
+            discoveryYear(source.title) === year,
+        );
+        if (page) primary.push(page);
+      }
+      group.splice(
+        0,
+        group.length,
+        ...primary,
+        ...group.filter((source) => !primary.includes(source)),
+      );
+      continue;
+    }
     // A fee notice does not replace the primary programme evidence.
     const primary = group.findIndex(
       (source) => !/学费|收费标准|收费项目/.test(source.title),
@@ -236,11 +294,18 @@ export function researchAttachments(
               : /学费|收费/.test(label)
                 ? 20
                 : 10) +
-          (target && year === target
-            ? 30
-            : year
-              ? Math.max(0, Math.min(20, year - 2010))
-              : 0),
+          (historicalReferenceYears(options.targetYear ?? "").length
+            ? researchYearPriority(
+                policyDocument(label) ? discoveryYear(label) : undefined,
+                options.targetYear!,
+              ) *
+                100 +
+              (isTargetYearChange(label, options.targetYear!) ? 20000 : 0)
+            : target && year === target
+              ? 30
+              : year
+                ? Math.max(0, Math.min(20, year - 2010))
+                : 0),
         kind,
         parentSourceId: parent.id,
       });
@@ -248,7 +313,27 @@ export function researchAttachments(
       // Invalid href is data, not a reason to discard the parent school's evidence.
     }
   }
-  return links
-    .sort((a, b) => b.score - a.score || a.url.localeCompare(b.url))
-    .slice(0, Math.min(4, Math.max(1, options.maxLinks ?? 2)));
+  links.sort((a, b) => b.score - a.score || a.url.localeCompare(b.url));
+  const primary = options.targetYear
+    ? links.filter((link) =>
+        isTargetYearChange(link.title, options.targetYear!),
+      )
+    : [];
+  if (options.targetYear)
+    for (const year of [
+      ...historicalReferenceYears(options.targetYear),
+      Number(options.targetYear),
+    ]) {
+      const page = links.find(
+        (link) =>
+          !primary.includes(link) &&
+          policyDocument(link.title) &&
+          discoveryYear(link.title) === year,
+      );
+      if (page) primary.push(page);
+    }
+  return [...primary, ...links.filter((link) => !primary.includes(link))].slice(
+    0,
+    Math.min(4, Math.max(1, options.maxLinks ?? 2)),
+  );
 }

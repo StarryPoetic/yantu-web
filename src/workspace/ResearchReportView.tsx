@@ -37,6 +37,15 @@ export function ResearchReportView({
           {legacyResearchNotice}
         </p>
       )}
+      {report.referencePolicy && (
+        <section
+          className="research-exam-policy"
+          aria-label="资料年份与使用顺序"
+        >
+          <h3>资料年份与使用顺序</h3>
+          <p>{report.referencePolicy.summary}</p>
+        </section>
+      )}
       {report.decisionBasis && (
         <ResearchDecisionBasisView basis={report.decisionBasis} />
       )}
@@ -160,6 +169,7 @@ export function ResearchReportView({
           {report.facts.length ? (
             report.facts.map((fact, i) => (
               <article className="research-excerpt" key={i}>
+                {fact.year && <small>{fact.year}年资料摘录</small>}
                 <p>{fact.text}</p>
                 <ResearchSourceLinks
                   ids={fact.citations}

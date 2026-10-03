@@ -161,7 +161,7 @@ test("specific master's programme details and admission catalogues precede gener
   assert.equal(result.firstRoundCount, 2);
 });
 
-test("official directory lists recover current detail pages and linked XLS without following other schools or navigation", () => {
+test("official directory lists recover historical primary and target auxiliary detail pages plus linked XLS", () => {
   const parent = {
     ...source("hdu-list", "grs.hdu.edu.cn", "杭州电子科技大学硕士招生简章"),
     url: "https://grs.hdu.edu.cn/13497/list.htm",
@@ -180,8 +180,8 @@ test("official directory lists recover current detail pages and linked XLS witho
   assert.deepEqual(
     links.map((link) => link.url),
     [
+      "https://grs.hdu.edu.cn/2025/0926/old/page.htm",
       "https://grs.hdu.edu.cn/2026/0929/new/page.htm",
-      "https://grs.hdu.edu.cn/2026/0928/charter/page.htm",
     ],
   );
   assert.ok(
@@ -200,4 +200,68 @@ test("official directory lists recover current detail pages and linked XLS witho
   );
   assert.equal(files[0].url, "https://grs.hdu.edu.cn/files/catalog.xls");
   assert.equal(files[0].parentSourceId, "directory");
+});
+
+test("historical reading gives each school and reference year a turn while explicit target-year changes stay first", () => {
+  const pages = [
+    source("2027", "yz.a.edu.cn", "甲大学2027年法学硕士招生专业目录"),
+    ...[2026, 2025, 2024].flatMap((year) => [
+      source(`${year}-a`, `yz.a.edu.cn`, `甲大学${year}年法学硕士招生专业目录`),
+      source(`${year}-b`, `yz.a.edu.cn`, `甲大学${year}年法学硕士招生章程`),
+    ]),
+    source("second", "yz.b.edu.cn", "乙大学2026年法学硕士招生专业目录"),
+  ];
+  const directions = new Map(pages.map((page) => [page.id, "0301"]));
+  assert.deepEqual(
+    researchReadingOrder(pages, directions, [law], { targetYear: "2027" })
+      .pages.slice(0, 5)
+      .map((page) => page.id),
+    ["2026-a", "second", "2025-a", "2024-a", "2027"],
+  );
+  const stop = source(
+    "stop",
+    "yz.a.edu.cn",
+    "甲大学2027年法学硕士招生目录调整：暂停招生",
+  );
+  assert.equal(
+    researchReadingOrder(
+      [...pages, stop],
+      new Map([...directions, [stop.id, "0301"]]),
+      [law],
+      { targetYear: "2027" },
+    ).pages[0].id,
+    "stop",
+  );
+});
+
+test("bounded attachments keep one primary policy per historical year, target auxiliary and current hard changes", () => {
+  const parent = source("history", "yz.a.edu.cn");
+  const html =
+    [2027, 2026, 2025, 2024]
+      .flatMap((year) =>
+        Array.from(
+          { length: 8 },
+          (_, i) =>
+            `<a href="/${year}-${i}.xls">${year}年硕士研究生招生专业目录</a>`,
+        ),
+      )
+      .join("") + '<a href="/stats.pdf">2026年硕士研究生报考上线录取情况</a>';
+  assert.deepEqual(
+    researchAttachments(parent, html, { targetYear: "2027", maxLinks: 4 }).map(
+      (link) => link.title.slice(0, 4),
+    ),
+    ["2026", "2025", "2024", "2027"],
+  );
+  const withStop =
+    html + '<a href="/stop.htm">2027年硕士招生专业目录调整：暂停招生</a>';
+  const links = researchAttachments(parent, withStop, {
+    targetYear: "2027",
+    maxLinks: 4,
+  });
+  assert.equal(links[0].url, "https://yz.a.edu.cn/stop.htm");
+  assert.deepEqual(
+    links.slice(1).map((link) => link.title.slice(0, 4)),
+    ["2026", "2025", "2024"],
+  );
+  assert.equal(links.length, 4);
 });

@@ -2,6 +2,11 @@ import type { LocationEvidence } from "../../shared/research-recommendation.ts";
 import type { WebSource } from "./web.ts";
 import { admissionEvidence } from "./research-evidence.ts";
 import {
+  historicalReferenceYears,
+  explicitAdmissionsYears,
+} from "../../shared/research-years.ts";
+import { safeSourceYear } from "./research-years.ts";
+import {
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
 } from "./research-school.ts";
@@ -84,8 +89,16 @@ function restrictedPolicy(source: WebSource, body: string, position: number) {
   );
 }
 
-/** Faculty-policy + literal campus geography, without assigning a multi-campus footer to every programme. */
-export function deriveCampusLocation(input: {
+/** Reuse the same population scope for direct programme addresses and campus chains. */
+export function isRestrictedCampusQuote(source: WebSource, quote: string) {
+  const body = withoutSchoolLinks(source.excerpt);
+  const position = body.indexOf(quote);
+  if (position < 0 || body.indexOf(quote, position + quote.length) >= 0)
+    return true;
+  return restrictedPolicy(source, body, position + quote.length);
+}
+
+type CampusLocationInput = {
   institutionName: string;
   programName: string;
   collegeName?: string;
@@ -93,7 +106,13 @@ export function deriveCampusLocation(input: {
   programSourceId?: string;
   sources: WebSource[];
   targetYear: string | number;
-}): LocationEvidence | undefined {
+};
+
+/** Each programme-policy chain is bound to one explicit cohort, never a mixture of years. */
+function deriveCampusLocationForYear(
+  input: CampusLocationInput,
+  evidenceYear: number,
+): LocationEvidence | undefined {
   const { collegeName, majorCode } = input;
   if (
     !collegeName ||
@@ -123,8 +142,9 @@ export function deriveCampusLocation(input: {
       (!input.programSourceId || source.id === input.programSourceId) &&
       source.kind === "official_page" &&
       sourceHasSchoolIdentity(source, input.institutionName) &&
-      admissionEvidence(source, String(input.targetYear), input.programName)
-        .admissionStatus === "current_evidence" &&
+      safeSourceYear(source) === evidenceYear &&
+      !admissionEvidence(source, String(evidenceYear), input.programName)
+        .excluded &&
       withoutSchoolLinks(source.excerpt)
         .split(/[。；;\n]/)
         .some((row) => {
@@ -138,107 +158,161 @@ export function deriveCampusLocation(input: {
     .split(/[。；;\n]/)
     .find(boundRow)!;
   const pages = schoolPages(input.sources, input.institutionName, sameDomain);
-  const policies: { source: WebSource; quote: string; campuses: string[] }[] =
-    [];
-  for (const source of pages) {
-    if (
-      admissionEvidence(source, String(input.targetYear)).admissionStatus !==
-      "current_evidence"
-    )
-      continue;
-    const body = withoutSchoolLinks(source.excerpt);
-    const pieces = [...body.matchAll(/[^。；;\n]+/g)];
-    const generic = pieces.flatMap((piece) => {
-      if (restrictedPolicy(source, body, piece.index! + piece[0].length))
-        return [];
-      const marker =
-        /(?:培养|教学|就读|学习|所在|办学)(?:所在)?(?:地点|校区|地址)/.exec(
-          piece[0],
-        );
-      if (!marker) return [];
-      const before = piece[0]
-        .slice(0, marker.index)
-        .replaceAll(input.institutionName, "");
-      if (/(?:大学|科学院|研究院|研究所)/.test(before)) return [];
-      const faculty = new RegExp(
-        `(?:^|[、，,：:\\s])${escapedCollege}(?=$|[\\s，,、]|硕士|研究生|的|所在|培养|就读|教学|学习|办学)`,
-      ).test(before);
-      const codedProgramme =
-        before.includes(majorCode!) &&
-        new RegExp(
-          `${majorCode}\\s*${escapedProgramme}(?=$|[\\s，,、]|硕士|研究生|专业|的)`,
-        ).test(before);
-      if (!faculty && !codedProgramme) return [];
-      const names = campuses(
-        piece[0].slice(marker.index + marker[0].length),
-        input.institutionName,
-      );
-      if (!names.length) return [];
-      return [{ source, quote: piece[0].trim(), campuses: names }];
-    });
-    if (generic.length) {
-      policies.push(...generic);
-      continue;
-    }
-    const named = pieces.flatMap((piece) => {
-      if (restrictedPolicy(source, body, piece.index! + piece[0].length))
-        return [];
-      const group = /录取在([^。；\n:：]{2,150})的新生所在校区/.exec(
-        piece[0],
-      )?.[1];
-      if (!group) return [];
-      const colleges = group
-        .replaceAll(input.institutionName, "")
-        .split(/[、，,]/)
-        .map((value) => value.trim());
+  const policiesForYear = (year: number) => {
+    const policies: { source: WebSource; quote: string; campuses: string[] }[] =
+      [];
+    for (const source of pages) {
       if (
-        !colleges.length ||
-        colleges.some((value) => !/^[\p{Script=Han}]{2,30}学院$/u.test(value))
+        safeSourceYear(source) !== year ||
+        admissionEvidence(source, String(year)).excluded
       )
-        return [];
-      return [{ piece, colleges }];
-    });
-    const exact = named.filter((item) => item.colleges.includes(collegeName));
-    if (exact.length) {
-      for (const item of exact)
+        continue;
+      const body = withoutSchoolLinks(source.excerpt);
+      const pieces = [...body.matchAll(/[^。；;\n]+/g)];
+      const generic = pieces.flatMap((piece) => {
+        if (restrictedPolicy(source, body, piece.index! + piece[0].length))
+          return [];
+        const marker =
+          /(?:培养|教学|就读|学习|所在|办学)(?:所在)?(?:地点|校区|地址)/.exec(
+            piece[0],
+          );
+        if (!marker) return [];
+        const before = piece[0]
+          .slice(0, marker.index)
+          .replaceAll(input.institutionName, "");
+        if (/(?:大学|科学院|研究院|研究所)/.test(before)) return [];
+        const faculty = new RegExp(
+          `(?:^|[、，,：:\\s])${escapedCollege}(?=$|[\\s，,、]|硕士|研究生|的|所在|培养|就读|教学|学习|办学)`,
+        ).test(before);
+        const codedProgramme =
+          before.includes(majorCode!) &&
+          new RegExp(
+            `${majorCode}\\s*${escapedProgramme}(?=$|[\\s，,、]|硕士|研究生|专业|的)`,
+          ).test(before);
+        if (!faculty && !codedProgramme) return [];
+        const names = campuses(
+          piece[0].slice(marker.index + marker[0].length),
+          input.institutionName,
+        );
+        if (!names.length) return [];
+        return [{ source, quote: piece[0].trim(), campuses: names }];
+      });
+      if (generic.length) {
+        policies.push(...generic);
+        continue;
+      }
+      const named = pieces.flatMap((piece) => {
+        if (restrictedPolicy(source, body, piece.index! + piece[0].length))
+          return [];
+        const group = /录取在([^。；\n:：]{2,150})的新生所在校区/.exec(
+          piece[0],
+        )?.[1];
+        if (!group) return [];
+        const colleges = group
+          .replaceAll(input.institutionName, "")
+          .split(/[、，,]/)
+          .map((value) => value.trim());
+        if (
+          !colleges.length ||
+          colleges.some((value) => !/^[\p{Script=Han}]{2,30}学院$/u.test(value))
+        )
+          return [];
+        return [{ piece, colleges }];
+      });
+      const exact = named.filter((item) => item.colleges.includes(collegeName));
+      if (exact.length) {
+        for (const item of exact)
+          policies.push({
+            source,
+            quote: item.piece[0].trim(),
+            campuses: campuses(item.piece[0], input.institutionName),
+          });
+        continue;
+      }
+      for (const piece of pieces) {
+        if (restrictedPolicy(source, body, piece.index! + piece[0].length))
+          continue;
+        if (!/其他学院的新生所在校区(?:为|是)/.test(piece[0])) continue;
+        const preceding = named.filter(
+          (item) =>
+            item.piece.index! < piece.index! &&
+            piece.index! - item.piece.index! < 800,
+        );
+        if (
+          !preceding.length ||
+          preceding.some((item) => item.colleges.includes(collegeName))
+        )
+          continue;
+        const first = preceding[0].piece.index!;
+        const quote = body.slice(first, piece.index! + piece[0].length).trim();
+        if (quote.length > 1800) continue;
         policies.push({
           source,
-          quote: item.piece[0].trim(),
-          campuses: campuses(item.piece[0], input.institutionName),
+          quote,
+          campuses: campuses(piece[0], input.institutionName),
         });
-      continue;
+      }
     }
-    for (const piece of pieces) {
-      if (restrictedPolicy(source, body, piece.index! + piece[0].length))
-        continue;
-      if (!/其他学院的新生所在校区(?:为|是)/.test(piece[0])) continue;
-      const preceding = named.filter(
-        (item) =>
-          item.piece.index! < piece.index! &&
-          piece.index! - item.piece.index! < 800,
-      );
-      if (
-        !preceding.length ||
-        preceding.some((item) => item.colleges.includes(collegeName))
-      )
-        continue;
-      const first = preceding[0].piece.index!;
-      const quote = body.slice(first, piece.index! + piece[0].length).trim();
-      if (quote.length > 1800) continue;
-      policies.push({
-        source,
-        quote,
-        campuses: campuses(piece[0], input.institutionName),
-      });
-    }
-  }
+    return policies;
+  };
+  const policies = policiesForYear(evidenceYear);
   if (!policies.length || policies.some((policy) => !policy.campuses.length))
     return undefined;
   const expectedCampuses = [
     ...new Set(policies.flatMap((policy) => policy.campuses)),
   ];
+  if (evidenceYear !== Number(input.targetYear)) {
+    const current = policiesForYear(Number(input.targetYear));
+    const currentCampuses = [
+      ...new Set(current.flatMap((policy) => policy.campuses)),
+    ];
+    if (
+      current.length &&
+      (current.some((policy) => !policy.campuses.length) ||
+        JSON.stringify(currentCampuses.sort()) !==
+          JSON.stringify([...expectedCampuses].sort()))
+    )
+      return undefined;
+    // A current coded row that changes the owning faculty invalidates the old
+    // faculty-policy binding. It cannot be silently treated as the same route.
+    if (
+      pages.some(
+        (source) =>
+          safeSourceYear(source) === Number(input.targetYear) &&
+          withoutSchoolLinks(source.excerpt)
+            .split(/[。；;\n]/)
+            .some(
+              (piece) =>
+                new RegExp(
+                  `${majorCode}\\s*${escapedProgramme}(?=$|[\\s|｜])`,
+                ).test(piece) && !boundRow(piece),
+            ),
+      )
+    )
+      return undefined;
+  }
   const geography = new Map<string, { city: string; passage: Passage }[]>();
+  const currentGeography = new Map<
+    string,
+    { city: string; passage: Passage }[]
+  >();
   for (const source of pages) {
+    const geographyYear = safeSourceYear(source);
+    if (
+      geographyYear === undefined &&
+      explicitAdmissionsYears(withoutSchoolLinks(source.excerpt)).length
+    )
+      continue;
+    const currentOnly =
+      evidenceYear !== Number(input.targetYear) &&
+      geographyYear === Number(input.targetYear);
+    if (
+      geographyYear !== undefined &&
+      geographyYear !== evidenceYear &&
+      !currentOnly
+    )
+      continue;
+    const destination = currentOnly ? currentGeography : geography;
     // Geography quotes remain contiguous in the fetched body. Navigation removal
     // can join separate blocks and must never produce an invented quotation.
     const body = source.excerpt;
@@ -282,12 +356,12 @@ export function deriveCampusLocation(input: {
         cities[0] !== match[1]
       )
         continue;
-      const values = geography.get(relevant[0]) ?? [];
+      const values = destination.get(relevant[0]) ?? [];
       values.push({
         city: match[1],
         passage: { sourceId: source.id, quote, role: "campus_city" },
       });
-      geography.set(relevant[0], values);
+      destination.set(relevant[0], values);
     }
   }
   const mappings = expectedCampuses.map((campus) => geography.get(campus));
@@ -303,6 +377,12 @@ export function deriveCampusLocation(input: {
     mappings.flatMap((values) => values!.map((value) => value.city)),
   );
   if (cities.size !== 1) return undefined;
+  if (
+    [...currentGeography.values()].some((values) =>
+      values.some((value) => !cities.has(value.city)),
+    )
+  )
+    return undefined;
   const supportingEvidence: Passage[] = [
     { sourceId: programme.id, quote: row.trim(), role: "program_college" },
     ...policies.map((policy) => ({
@@ -323,8 +403,23 @@ export function deriveCampusLocation(input: {
     return undefined;
   return {
     city: [...cities][0],
+    year: evidenceYear,
     quote: policies[0].quote,
     sourceId: policies[0].source.id,
     supportingEvidence,
   };
+}
+
+/** Current arrangements override conflicting history; coherent earlier cohorts remain labelled references. */
+export function deriveCampusLocation(
+  input: CampusLocationInput,
+): LocationEvidence | undefined {
+  const targetYear = Number(input.targetYear);
+  if (!Number.isInteger(targetYear) || targetYear < 2000 || targetYear > 2099)
+    return undefined;
+  for (const year of [targetYear, ...historicalReferenceYears(targetYear)]) {
+    const location = deriveCampusLocationForYear(input, year);
+    if (location) return location;
+  }
+  return undefined;
 }

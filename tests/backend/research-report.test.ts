@@ -449,7 +449,10 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
   assert.equal(report.recommendations[0].degreeType, "academic");
   assert.equal(report.recommendations[0].admissionStatus, "current_evidence");
   assert.equal(report.recommendations[0].fitReasons!.length, 2);
-  assert.deepEqual(report.facts, reportBody().facts);
+  assert.deepEqual(
+    report.facts,
+    reportBody().facts.map((fact) => ({ ...fact, year: 2027 })),
+  );
   assert.equal(planningCalls.length, 1);
   assert.equal(calls.length, 1);
   assert.ok(
@@ -930,6 +933,137 @@ test("historical and undated school-program evidence supports tentative recommen
   }
 });
 
+test("recent historical facts and explicitly dated preparation survive without claiming target-year requirements", async () => {
+  const body = reportBody();
+  body.recommendations[0].preparation = [
+    "参考2026年目录的201英语一安排阅读复习。",
+    "2027年必须考201英语一。",
+  ];
+  const { module, calls } = setup({
+    body,
+    reader: mockReader({
+      year: "2026",
+      content: `${quote}\n030101 法学理论 全日制 初试科目：101思想政治理论、201英语一、611法学基础、811法学综合。`,
+    }),
+  });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.deepEqual(report.referencePolicy?.referenceYears, [2026, 2025, 2024]);
+  assert.deepEqual(report.facts, [
+    { text: quote, citations: ["research-1"], year: 2026 },
+  ]);
+  const card = report.recommendations[0];
+  assert.equal(card.referenceBasis?.year, 2026);
+  assert.equal(card.admissionStatus, "needs_verification");
+  assert.ok(
+    card.preparation.includes("参考2026年目录的201英语一安排阅读复习。"),
+  );
+  assert.ok(!card.preparation.includes("2027年必须考201英语一。"));
+  const input = JSON.parse(calls[0].messages[1].content);
+  assert.deepEqual(input.referenceYears, [2026, 2025, 2024]);
+  assert.equal(input.sources[0].sourceYear, 2026);
+});
+
+test("historical preparation cannot leak into target-year exam assertions across clauses or disclaimers", async () => {
+  const body = reportBody();
+  body.facts = [];
+  body.recommendations[0].citations = ["research-1", "research-2"];
+  const safe = "参考2026年科目，先复习数学一和英语一；2027年要求另行核验。";
+  const current = "2027年初试必须准备数学二和英语二。";
+  const invalid = [
+    "参考2026年科目，目标年度2027年初试必须准备数学一和英语一。",
+    "参考2026年科目，目标年度初试必须准备数学一和英语一。",
+    "参考2026年科目。2027年必须考数学一，其他条件待核验。",
+    "参考2026年科目，2027初试必须准备数学一和英语一。",
+    "参考2026年科目，明年初试必须准备数学一和英语一。",
+    "参考2026年科目，2027年先复习数学一和英语一。",
+  ];
+  const reader: WebReader = async (url) => {
+    if (new URL(url).hostname === "api.search.brave.com")
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({
+          web: {
+            results: [2026, 2027].map((year) => ({
+              url: `https://yz.example.edu.cn/${year}`,
+              title: `示例研究大学${year}年硕士招生目录`,
+              description: quote,
+            })),
+          },
+        }),
+      };
+    const year = new URL(url).pathname.includes("2027") ? 2027 : 2026;
+    const subjects =
+      year === 2026 ? "201英语一、301数学一" : "204英语二、302数学二";
+    return {
+      contentType: "text/html",
+      text: `示例研究大学${year}年硕士招生专业目录\n030101 法学理论 全日制 初试科目：101思想政治理论、${subjects}、811法学综合。`,
+    };
+  };
+  for (const rejected of invalid) {
+    body.recommendations[0].preparation = [safe, current, rejected];
+    const { module } = setup({ body, reader });
+    const report = await module.generate({
+      subjectId: "student",
+      run: fixture(),
+    });
+    const card = report.recommendations[0];
+    assert.equal(card.exams?.status, "verified_current");
+    assert.equal(card.exams?.historicalReference?.year, 2026);
+    assert.ok(card.preparation.includes(safe));
+    assert.ok(card.preparation.includes(current));
+    assert.ok(!card.preparation.includes(rejected), rejected);
+  }
+});
+
+test("dated preparation uses that historical year's subjects rather than another reference year's allowed set", async () => {
+  const body = reportBody();
+  body.facts = [];
+  body.recommendations[0].citations = ["research-1", "research-2"];
+  const safe = ["按2026年科目准备英语一。", "按2025年科目准备英语二。"];
+  const invalid = [
+    "按2025年科目准备英语一。",
+    "参考2026年科目，按2025年目录复习英语一。",
+  ];
+  body.recommendations[0].preparation = [...safe, ...invalid];
+  const reader: WebReader = async (url) => {
+    if (new URL(url).hostname === "api.search.brave.com")
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({
+          web: {
+            results: [2026, 2025].map((year) => ({
+              url: `https://yz.example.edu.cn/${year}`,
+              title: `示例研究大学${year}年硕士招生目录`,
+              description: quote,
+            })),
+          },
+        }),
+      };
+    const year = new URL(url).pathname.includes("2025") ? 2025 : 2026;
+    return {
+      contentType: "text/html",
+      text: `示例研究大学${year}年硕士招生目录\n030101 法学理论 初试科目：101思想政治理论、${year === 2025 ? "204英语二" : "201英语一"}、611法学基础、811法学综合。`,
+    };
+  };
+  const { module } = setup({ body, reader });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  const card = report.recommendations[0];
+  for (const sentence of safe)
+    assert.ok(card.preparation.includes(sentence), sentence);
+  for (const sentence of invalid)
+    assert.ok(!card.preparation.includes(sentence), sentence);
+  assert.deepEqual(
+    card.exams?.history?.map((item) => item.year),
+    [2026, 2025],
+  );
+});
+
 test("a current search title or footer year cannot upgrade an older school body to current admissions evidence", async () => {
   for (const page of [
     `2022年法学硕士招生目录 ${quote}`,
@@ -1142,7 +1276,10 @@ test("one invalid candidate and invented fact are isolated while a valid school-
   assert.equal(report.reason, "RESEARCH_PARTIAL_VALIDATION");
   assert.equal(report.recommendations.length, 1);
   assert.equal(report.recommendations[0].programName, "法学理论");
-  assert.deepEqual(report.facts, reportBody().facts);
+  assert.deepEqual(
+    report.facts,
+    reportBody().facts.map((fact) => ({ ...fact, year: 2027 })),
+  );
   assert.match(report.limitations.join(" "), /单独移除/);
   assert.equal(report.summary.includes("虚构候选大学"), false);
   assert.equal(
@@ -1380,7 +1517,7 @@ test("retrieval reserves fee capacity within 24 searches and 24 pages, with all 
   assert.equal(
     searches,
     19,
-    "18 discovery requests plus the retained school's fee request",
+    `18 discovery requests plus the retained school's fee request (${JSON.stringify({ reason: report.reason, failureStage: report.failureStage, recommendations: report.recommendations.length, calls: calls.length, planningCalls: planningCalls.length, limit: report.limitations.at(-1) })})`,
   );
   assert.equal(
     pages,

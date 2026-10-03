@@ -253,19 +253,67 @@ export function admissionLabel(item: SchoolRecommendation, run: GuidanceRun) {
   const year = String(run.inputSnapshot.profile.year ?? "");
   const targetYear = /^20\d{2}$/.test(year) ? year + "年" : "目标年度";
   return item.admissionStatus === "current_evidence"
-    ? "已找到" + targetYear + "相关招生依据"
-    : targetYear + "报考条件待核验";
+    ? (item.referenceBasis
+        ? `以${item.referenceBasis.year}年资料为比较基准；`
+        : "") +
+        "已找到" +
+        targetYear +
+        "相关招生依据"
+    : (item.referenceBasis
+        ? `${item.referenceBasis.year}年资料支持专业比较；`
+        : "") +
+        targetYear +
+        "报考条件待核验";
 }
 
 function examMarkdown(exams?: SchoolRecommendation["exams"], heading = "####") {
+  const historicalOnly =
+    exams?.historicalReference &&
+    exams.status === "historical" &&
+    exams.year === exams.historicalReference.year;
   return [
-    heading + " 实际考试科目",
+    ...(exams?.historicalReference
+      ? [
+          heading + ` ${exams.historicalReference.year}年备考参考科目`,
+          exams.historicalReference.reason,
+          ...exams.historicalReference.subjects.map(
+            (subject) => `- ${subject.code} ${subject.name}`,
+          ),
+          ...(exams.historicalReference.quote
+            ? [
+                `历年科目原文：${exams.historicalReference.quote}${exams.historicalReference.sourceId ? ` [${exams.historicalReference.sourceId}]` : ""}`,
+              ]
+            : []),
+          ...((exams.history?.length ?? 0) > 1
+            ? [
+                heading + " 近年考试科目对照",
+                ...(exams.history ?? []).map(
+                  (item) =>
+                    `- ${item.year}年：${item.subjects.map((subject) => `${subject.code} ${subject.name}`).join("、") || "同年科目有冲突，需核对方向或考试组"}；${item.reason}${item.sourceId ? ` [${item.sourceId}]` : ""}`,
+                ),
+              ]
+            : []),
+          ...(exams.historicalChanges ?? []).map(
+            (change) =>
+              `- 年度变化：${change.summary} [${change.sourceIds.join(", ")}]`,
+          ),
+        ]
+      : []),
+    heading +
+      (exams?.historicalReference
+        ? ` ${exams.status === "verified_current" && exams.year ? `${exams.year}年` : "目标年度"}科目补充核验`
+        : " 实际考试科目"),
     examDescription(exams),
-    ...(exams?.subjects.map((subject) => `- ${subject.code} ${subject.name}`) ??
-      []),
-    exams?.reason ??
-      "尚未取得可核验的招生目录考试科目，准备建议不能替代报考要求。",
-    ...(exams?.quote
+    ...(historicalOnly
+      ? []
+      : (exams?.subjects.map(
+          (subject) => `- ${subject.code} ${subject.name}`,
+        ) ?? [])),
+    historicalOnly
+      ? "目标年度科目尚待补充核验，可先按上述历年科目安排准备，再核对年度变化。"
+      : (exams?.reason ??
+        "尚未取得可核验的招生目录考试科目，准备建议不能替代报考要求。"),
+    ...(!historicalOnly && exams?.quote
       ? [
           `考试科目原文：${exams.quote}${exams.sourceId ? ` [${exams.sourceId}]` : ""}`,
         ]
@@ -349,6 +397,9 @@ export function researchReportMarkdown(
   return [
     "# 研途 · 学校与专业推荐报告",
     report.generatedAt,
+    ...(report.referencePolicy
+      ? ["## 资料年份与使用顺序", report.referencePolicy.summary]
+      : []),
     suitabilityNotice,
     ...(isLegacyResearchReport(report) ? [legacyResearchNotice] : []),
     ...(outdated ? ["历史报告：个人情况或依据已更新，仅供回顾。"] : []),
@@ -368,6 +419,11 @@ export function researchReportMarkdown(
           ? [item.degreeType === "academic" ? "学术学位" : "专业学位"]
           : []),
         admissionLabel(item, run),
+        ...(item.referenceBasis
+          ? [
+              `比较基准：${item.referenceBasis.year}年。${item.referenceBasis.reason} [${item.referenceBasis.sourceIds.join(", ")}]`,
+            ]
+          : []),
         item.rationale,
         ...(item.tierReasons?.map((text) => "- 分级原因：" + text) ?? []),
         ...(item.fitReasons ?? []).map(
@@ -404,6 +460,9 @@ export function researchReportMarkdown(
           ? [
               "城市依据：" +
                 item.location.city +
+                (item.location.year
+                  ? `（${item.location.year}年培养安排）`
+                  : "") +
                 "；" +
                 item.location.quote +
                 " [" +
@@ -425,6 +484,11 @@ export function researchReportMarkdown(
                   ? ["专业代码：" + alternative.majorCode]
                   : []),
                 ...(alternative.rationale ? [alternative.rationale] : []),
+                ...(alternative.referenceBasis
+                  ? [
+                      `比较基准：${alternative.referenceBasis.year}年。${alternative.referenceBasis.reason} [${alternative.referenceBasis.sourceIds.join(", ")}]`,
+                    ]
+                  : []),
                 ...matchMarkdown(alternative.match, "######"),
                 ...examMarkdown(alternative.exams, "######"),
                 ...(alternative.preparation?.length
@@ -492,7 +556,13 @@ export function researchReportMarkdown(
     "",
     "## 检索到的资料",
     ...report.facts.map(
-      (fact) => "- " + fact.text + " [" + fact.citations.join(", ") + "]",
+      (fact) =>
+        "- " +
+        (fact.year ? `${fact.year}年资料：` : "") +
+        fact.text +
+        " [" +
+        fact.citations.join(", ") +
+        "]",
     ),
     "",
     "## 适用范围",

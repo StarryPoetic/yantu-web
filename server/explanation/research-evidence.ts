@@ -5,6 +5,7 @@ import {
   withoutSchoolLinks,
 } from "./research-school.ts";
 import { validatedSourceProvenance } from "./research-provenance.ts";
+import { explicitAdmissionsYears } from "../../shared/research-years.ts";
 
 export interface AdmissionEvidence {
   excluded?: string;
@@ -306,13 +307,7 @@ export function admissionEvidence(
       admissionStatus: "needs_verification",
       excluded: "资料含停招或不招生表述，暂不据此推荐该学校专业。",
     };
-  const years = new Set(
-    [
-      ...evidence.matchAll(
-        /(?:^|[^0-9])(20\d{2})(?:\s*(?:年(?:度)?|级)\s*[^0-9。！？\n]{0,32}?|\s*(?=招生|招收|报考|硕士|研究生)[^0-9。！？\n]{0,32}?)(?:招生|招收|报考|硕士研究生考试)/g,
-      ),
-    ].map((match) => match[1]),
-  );
+  const years = new Set(explicitAdmissionsYears(evidence).map(String));
   if (!years.size) {
     const inheritedYear = validatedSourceProvenance(source)?.admissionYear;
     if (inheritedYear && /^20\d{2}$/.test(inheritedYear))

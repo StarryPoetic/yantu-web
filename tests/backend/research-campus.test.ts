@@ -79,7 +79,7 @@ test("bound program faculty, exhaustive other-faculty policy and both campus add
   );
 });
 
-test("missing geography, unknown faculty, wrong program code and historical campus policy do not fill a city gap", () => {
+test("missing geography, unknown faculty, wrong program code and a cross-year campus policy do not fill a city gap", () => {
   const cases = [
     {
       ...fixture(),
@@ -113,6 +113,179 @@ test("missing geography, unknown faculty, wrong program code and historical camp
   ];
   for (const input of cases)
     assert.equal(deriveCampusLocation(input), undefined);
+});
+
+test("a coherent 2026, 2025 or 2024 programme-policy chain is a labelled historical city reference for 2027", () => {
+  for (const year of [2026, 2025, 2024]) {
+    const input = fixture();
+    input.sources = input.sources.map((source) => ({
+      ...source,
+      excerpt: source.excerpt.replaceAll("2027", String(year)),
+    }));
+    const location = deriveCampusLocation(input);
+    assert.equal(location?.city, "杭州");
+    assert.equal(location?.year, year);
+    const result = deriveRecommendationConstraints({
+      ...input,
+      profile: { cities: ["杭州"], budget: "" },
+      citations: ["directory"],
+    });
+    const check = result.constraintChecks.find(
+      (check) => check.field === "cities",
+    )!;
+    assert.equal(check.status, "match");
+    assert.match(check.reason, new RegExp(`${year}年历史培养安排参考`));
+    assert.match(check.reason, /2027年实际培养安排仍待核对/);
+    assert.equal(check.reason.includes("符合已选城市偏好"), false);
+    assert.equal(
+      deriveRecommendationConstraints({
+        ...input,
+        profile: { cities: ["杭州"], budget: "" },
+        citations: input.sources.map((source) => source.id),
+        location: { ...location, year: 2027 },
+      }).location,
+      undefined,
+    );
+  }
+});
+
+test("different historical cohorts cannot be joined and a current conflicting campus policy blocks an old city match", () => {
+  const crossed = fixture();
+  crossed.sources[0].excerpt = crossed.sources[0].excerpt.replaceAll(
+    "2027",
+    "2026",
+  );
+  crossed.sources[1].excerpt = crossed.sources[1].excerpt.replaceAll(
+    "2027",
+    "2025",
+  );
+  assert.equal(deriveCampusLocation(crossed), undefined);
+  const conflict = fixture();
+  conflict.sources = conflict.sources.map((source) => ({
+    ...source,
+    excerpt: source.excerpt.replaceAll("2027", "2026"),
+  }));
+  conflict.sources.push(
+    source(
+      "current-policy",
+      `${school}2027年硕士研究生招生章程\n机械工程学院硕士研究生就读校区为绍兴校区。`,
+    ),
+  );
+  conflict.sources.push(
+    source(
+      "shaoxing",
+      `${school}绍兴校区\n地址：绍兴市示例路1号\n版权所有©${school}`,
+    ),
+  );
+  assert.equal(deriveCampusLocation(conflict), undefined);
+  const checked = deriveRecommendationConstraints({
+    ...conflict,
+    profile: { cities: ["杭州"], budget: "" },
+    citations: ["directory"],
+  });
+  assert.equal(
+    checked.location,
+    undefined,
+    "fallback footer cannot bypass a current conflicting policy",
+  );
+  assert.equal(
+    checked.constraintChecks.find((check) => check.field === "cities")?.status,
+    "unknown",
+  );
+});
+
+test("a complete current programme and policy override an older arrangement without crossing their years", () => {
+  const input = fixture();
+  input.sources = input.sources.map((source) => ({
+    ...source,
+    excerpt: source.excerpt.replaceAll("2027", "2026"),
+  }));
+  input.sources.push(
+    source(
+      "current-directory",
+      `${school}2027年硕士研究生招生专业目录\n${row}`,
+    ),
+  );
+  input.sources.push(
+    source(
+      "current-policy",
+      `${school}2027年硕士研究生招生章程\n机械工程学院硕士研究生就读校区为绍兴校区。`,
+    ),
+  );
+  input.sources.push(
+    source(
+      "shaoxing",
+      `${school}绍兴校区\n地址：绍兴市示例路1号\n版权所有©${school}`,
+    ),
+  );
+  const result = deriveCampusLocation({ ...input, programSourceId: undefined });
+  assert.equal(result?.city, "绍兴");
+  assert.equal(result?.year, 2027);
+  assert.ok(
+    result?.supportingEvidence?.some(
+      (passage) => passage.sourceId === "current-directory",
+    ),
+  );
+  assert.equal(
+    result?.supportingEvidence?.some(
+      (passage) => passage.sourceId === "charter",
+    ),
+    false,
+  );
+});
+
+test("a current programme's changed owning faculty prevents reuse of the historical faculty policy", () => {
+  const input = fixture();
+  input.sources = input.sources.map((source) => ({
+    ...source,
+    excerpt: source.excerpt.replaceAll("2027", "2026"),
+  }));
+  input.sources.push(
+    source(
+      "current-directory",
+      `${school}2027年硕士研究生招生专业目录\n第4行：020新机械工程学院 | 080200机械工程 | 学术学位`,
+    ),
+  );
+  assert.equal(deriveCampusLocation(input), undefined);
+});
+
+test("historical population restrictions still apply and an ambiguous geography year cannot supply a campus chain", () => {
+  for (const population of [
+    "港澳台",
+    "国际学生",
+    "非全日制硕士研究生",
+    "中外合作硕士研究生",
+  ]) {
+    const input = fixture();
+    input.sources = input.sources.map((source) => ({
+      ...source,
+      excerpt: source.excerpt.replaceAll("2027", "2026"),
+    }));
+    input.sources[1].title = `${school}2026年${population}招生章程`;
+    input.sources[1].excerpt = input.sources[1].excerpt.replace(
+      "2026年硕士研究生招生章程",
+      `2026年${population}招生章程`,
+    );
+    assert.equal(deriveCampusLocation(input), undefined, population);
+  }
+  const mixed = fixture();
+  mixed.sources[2].excerpt = `${school}2026年硕士研究生培养方案\n${school}2027年硕士研究生培养方案\n${mixed.sources[2].excerpt}`;
+  assert.equal(deriveCampusLocation(mixed), undefined);
+});
+
+test("a dated current campus address in another city cannot be bypassed using an older same-campus map", () => {
+  const input = fixture();
+  input.sources = input.sources.map((source) => ({
+    ...source,
+    excerpt: source.excerpt.replaceAll("2027", "2026"),
+  }));
+  input.sources.push(
+    source(
+      "current-geography",
+      `${school}2027年硕士研究生培养校区说明\n文一校区\n地址：绍兴市示例路1号\n版权所有©${school}`,
+    ),
+  );
+  assert.equal(deriveCampusLocation(input), undefined);
 });
 
 test("an excluded faculty cannot borrow the other-faculty Hangzhou policy and a cross-city policy remains unresolved", () => {

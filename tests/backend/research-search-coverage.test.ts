@@ -36,7 +36,7 @@ function searchWeb(response: (query: string, include?: string) => Hit[]) {
   return { web, requests };
 }
 
-test("expanded discovery establishes real masters programmes before target-year indexing and narrows fees to observed domains", async () => {
+test("expanded discovery first investigates three historical policies and target changes, then narrows school fees to observed domains", async () => {
   const schools = ["甲大学", "乙大学", "丙大学", "丁大学", "戊大学"];
   const { web, requests } = searchWeb((query) => {
     const index = schools.findIndex((school) => query.startsWith(school));
@@ -63,10 +63,11 @@ test("expanded discovery establishes real masters programmes before target-year 
   assert.equal(requests.length, 24);
   assert.ok(
     requests
-      .slice(0, schools.length)
+      .slice(4, 4 + schools.length)
       .every(
         ({ query, include }) =>
           !query.includes("2027") &&
+          query.includes("2026") &&
           query.endsWith("硕士 培养方案") &&
           !include,
       ),
@@ -74,7 +75,9 @@ test("expanded discovery establishes real masters programmes before target-year 
   assert.ok(
     requests.some(
       ({ query, include }) =>
-        query.includes("2027") && query.includes("招生专业目录") && !!include,
+        query.includes("2027") &&
+        query.includes("招生专业目录") &&
+        query.includes("停招"),
     ),
   );
   const fees = requests.filter(({ query }) => query.includes("学费"));
@@ -355,12 +358,19 @@ test("city inventory and registry investigate Hangzhou schools before unrelated 
     onProgress: async () => {},
   });
   assert.equal(requests[0].query, "杭州 硕士研究生 招生单位 招生专业目录");
-  assert.equal(requests[1].query, `杭州 ${discipline.name} 硕士 招生专业目录`);
   assert.equal(
-    requests[2].query,
-    "杭州电子科技大学 2027 硕士 招生专业目录 招生章程",
+    requests[1].query,
+    `杭州 2026 ${discipline.name} 硕士 招生专业目录`,
   );
-  assert.equal(requests[2].include, "hdu.edu.cn");
+  assert.deepEqual(
+    requests.slice(2, 5).map(({ query }) => query.match(/20\d{2}/)?.[0]),
+    ["2025", "2024", "2027"],
+  );
+  assert.equal(
+    requests[5].query,
+    "杭州电子科技大学 2026 硕士 招生专业目录 招生章程",
+  );
+  assert.equal(requests[5].include, "hdu.edu.cn");
   assert.deepEqual(
     result.candidateAttempts,
     leads.map((lead) => lead.school),
@@ -403,10 +413,75 @@ test("all six demand directions receive deterministic catalogue discovery before
   });
   assert.deepEqual(
     requests.slice(1, 7).map(({ query }) => query),
-    directions.map((item) => `南京 ${item.name} 硕士 招生专业目录`),
+    directions.map((item) => `南京 2026 ${item.name} 硕士 招生专业目录`),
   );
   assert.ok(requests.slice(0, 7).every(({ query }) => !query.includes("模型")));
   assert.equal(requests.length, 18);
+});
+
+test("all three historical years get independent attempts even when the latest and target intakes return no indexed evidence", async () => {
+  const { web, requests } = searchWeb((query) =>
+    /2025|2024/.test(query)
+      ? [
+          {
+            name: `甲大学${query.includes("2025") ? "2025" : "2024"}年电子信息硕士招生专业目录`,
+            url: `https://yz.history.edu.cn/${query.includes("2025") ? "2025" : "2024"}.htm`,
+            summary: "甲大学085400电子信息硕士招生",
+          },
+        ]
+      : [],
+  );
+  const result = await searchResearchSources({
+    web,
+    subjectId: "history-no-current",
+    disciplines: [discipline],
+    regions: ["南京"],
+    targetYear: "2027",
+    candidateLeads: [],
+    maxRequests: 24,
+    maxSources: 40,
+    onProgress: async () => {},
+  });
+  assert.deepEqual(
+    requests.slice(1, 5).map(({ query }) => query.match(/20\d{2}/)?.[0]),
+    ["2026", "2025", "2024", "2027"],
+  );
+  assert.ok(result.sources.some((source) => source.title.includes("2025")));
+  assert.ok(result.sources.some((source) => source.title.includes("2024")));
+  assert.ok(requests.length <= 24);
+});
+
+test("target-year stop evidence survives a large historical school's pages and the small source cap", async () => {
+  const { web } = searchWeb((query) =>
+    query.includes("2027")
+      ? [
+          {
+            name: "甲大学2027年电子信息硕士招生专业目录调整：暂停招生",
+            url: "https://yz.history.edu.cn/2027-stop.htm",
+            summary: "甲大学085400电子信息硕士暂停招生",
+          },
+        ]
+      : Array.from({ length: 20 }, (_, i) => ({
+          name: `甲大学2026年电子信息硕士招生专业目录${i}`,
+          url: `https://yz.history.edu.cn/2026-${i}.htm`,
+          summary: "甲大学085400电子信息硕士招生",
+        })),
+  );
+  const result = await searchResearchSources({
+    web,
+    subjectId: "history-current-stop",
+    disciplines: [discipline],
+    regions: ["南京"],
+    targetYear: "2027",
+    candidateLeads: [],
+    maxRequests: 24,
+    maxSources: 4,
+    onProgress: async () => {},
+  });
+  assert.ok(
+    result.sources.some((source) => source.url.endsWith("2027-stop.htm")),
+  );
+  assert.ok(result.sources.every((source) => source.kind === "search_snippet"));
 });
 
 test("unregistered cities still receive live discovery before national or model fallback", async () => {

@@ -23,6 +23,29 @@ export interface ResearchExamEvidence {
   quote?: string;
   sourceId?: string;
   reason: string;
+  /** History is a comparison baseline, never proof of the target year's required subjects. */
+  historicalReference?: ResearchHistoricalExamEvidence;
+  /** At most the three nearest verified historical admission years, one record per year. */
+  history?: ResearchHistoricalExamEvidence[];
+  historicalChanges?: {
+    fromYear: number;
+    toYear: number;
+    sourceIds: string[];
+    summary: string;
+  }[];
+}
+export interface ResearchHistoricalExamEvidence {
+  year: number;
+  status: "historical" | "ambiguous";
+  subjects: { code: string; name: string }[];
+  quote?: string;
+  sourceId?: string;
+  reason: string;
+}
+export interface ResearchReferenceBasis {
+  year: number;
+  sourceIds: string[];
+  reason: string;
 }
 export interface ResearchCandidateAudit {
   institutionName: string;
@@ -45,6 +68,7 @@ export interface ResearchProgramAlternative
   tradeoffs?: string[];
   uncertainties?: string[];
   admissionStatus?: "current_evidence" | "needs_verification";
+  referenceBasis?: ResearchReferenceBasis;
   exams: ResearchExamEvidence;
   match: DemandMatch;
   tier: "preferred" | "alternative" | "exploratory";

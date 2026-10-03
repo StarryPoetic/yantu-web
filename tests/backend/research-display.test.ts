@@ -10,6 +10,7 @@ import {
   isLegacyResearchReport,
   examDescription,
   assessmentScopeLabel,
+  admissionLabel,
 } from "../../src/workspace/research-report.ts";
 import type { GuidanceRun } from "../../server/disciplines/types.ts";
 import { decisionDisplayFixture } from "../helpers/research-decision-fixture.ts";
@@ -77,6 +78,97 @@ test("five recommendations remain readable with an explicit preferred-city cover
   assert.deepEqual(coverage.reasons, value.coverage!.shortfallReasons);
   assert.match(researchReason(cityReason), /可核验.*意向城市.*仍不足/);
   assert.match(researchReason(cityReason), /不代表.*没有适合/);
+});
+
+test("history-first export shows dated reference exams and annual changes while retaining target-year verification", () => {
+  const value = report();
+  const run = {
+    inputSnapshot: { profile: { year: "2027" } },
+    directions: [],
+  } as unknown as GuidanceRun;
+  value.referencePolicy = {
+    strategy: "history-first-v1",
+    targetYear: "2027",
+    referenceYears: [2026, 2025, 2024],
+    summary: "优先整合2026年、2025年、2024年官网政策；2027年资料用于补充核验。",
+  };
+  value.recommendations = value.recommendations.slice(0, 1);
+  const item = value.recommendations[0];
+  item.referenceBasis = {
+    year: 2026,
+    sourceIds: ["ref26"],
+    reason: "已读取2026年专业目录，目标年度资格另行核验。",
+  };
+  item.admissionStatus = "current_evidence";
+  item.exams = {
+    status: "verified_current",
+    year: 2027,
+    subjects: [{ code: "201", name: "英语一" }],
+    reason: "2027年目录已改为英语一。",
+    historicalReference: {
+      status: "historical",
+      year: 2026,
+      subjects: [{ code: "204", name: "英语二" }],
+      reason: "2026年科目供准备参考，不能冒充2027年要求。",
+      sourceId: "ref26",
+    },
+    history: [
+      {
+        status: "historical",
+        year: 2026,
+        subjects: [{ code: "204", name: "英语二" }],
+        reason: "2026年参考",
+      },
+      {
+        status: "historical",
+        year: 2025,
+        subjects: [{ code: "201", name: "英语一" }],
+        reason: "2025年参考",
+      },
+    ],
+    historicalChanges: [
+      {
+        fromYear: 2025,
+        toYear: 2026,
+        sourceIds: ["ref25", "ref26"],
+        summary: "2025年至2026年英语一变为英语二。",
+      },
+    ],
+  };
+  value.facts = [
+    { text: "2026年教育学硕士招生专业目录", citations: ["ref26"], year: 2026 },
+  ];
+  const markdown = researchReportMarkdown(value, run, false);
+  assert.match(markdown, /资料年份与使用顺序/);
+  assert.match(markdown, /2026年备考参考科目/);
+  assert.ok(
+    markdown.indexOf("2026年备考参考科目") <
+      markdown.indexOf("2027年科目补充核验"),
+  );
+  assert.match(markdown, /2025年至2026年英语一变为英语二/);
+  assert.match(markdown, /2027 年考试科目已有官网依据/);
+  assert.match(markdown, /2026年资料：2026年教育学/);
+  assert.match(
+    admissionLabel(item, run),
+    /2026年资料为比较基准.*2027年相关招生依据/,
+  );
+  item.admissionStatus = "needs_verification";
+  assert.match(
+    admissionLabel(item, run),
+    /2026年资料支持专业比较.*2027年报考条件待核验/,
+  );
+  item.exams = {
+    ...item.exams,
+    status: "historical",
+    year: 2026,
+    subjects: [{ code: "204", name: "英语二" }],
+    history: [item.exams.historicalReference!],
+    historicalChanges: [],
+  };
+  const historicalOnly = researchReportMarkdown(value, run, false);
+  assert.match(historicalOnly, /目标年度科目补充核验/);
+  assert.match(historicalOnly, /目标年度科目尚待补充核验/);
+  assert.equal((historicalOnly.match(/- 204 英语二/g) ?? []).length, 1);
 });
 
 test("the city-coverage reason is an evidence gap even when an older job saved it as blocked", () => {

@@ -22,6 +22,7 @@ const table =
 function fixture(
   fail: "plan" | "report" | "none" = "none",
   campusChain: "none" | "complete" | "unreadable" = "none",
+  intakeYear = 2027,
 ) {
   const reads: string[] = [];
   const calls: string[] = [];
@@ -48,7 +49,7 @@ function fixture(
       };
     },
   };
-  const reader: WebReader = async (url) => {
+  const originalReader: WebReader = async (url) => {
     if (new URL(url).hostname === "api.search.brave.com")
       return {
         contentType: "application/json",
@@ -78,6 +79,12 @@ function fixture(
         text: `<header>${school}</header><footer>地址：杭州市西湖区文一路115号 ${school}（文一校区）实验楼</footer>`,
       };
     throw new ModelError("WEB_UNAVAILABLE");
+  };
+  const reader: WebReader = async (url, options) => {
+    const page = await originalReader(url, options);
+    return intakeYear === 2027
+      ? page
+      : { ...page, text: page.text.replaceAll("2027年", `${intakeYear}年`) };
   };
   const run = generateGuidance({
     subjectId: "inventory-flow",
@@ -111,6 +118,28 @@ function fixture(
   });
   return { reads, calls, run, engine };
 }
+
+test("2026 official directory, exams and campus policy form useful reference recommendations without any 2027 document", async () => {
+  const { engine, run } = fixture("none", "complete", 2026);
+  const report = await engine.generate({ subjectId: run.subjectId, run });
+  assert.equal(report.failureStage, undefined);
+  assert.deepEqual(report.referencePolicy?.referenceYears, [2026, 2025, 2024]);
+  const main = report.recommendations[0];
+  assert.equal(main.referenceBasis?.year, 2026);
+  assert.equal(main.admissionStatus, "needs_verification");
+  assert.equal(main.tier, "preferred");
+  assert.equal(main.location?.year, 2026);
+  assert.equal(main.location?.city, "杭州");
+  assert.equal(main.exams?.status, "historical");
+  assert.equal(main.exams?.historicalReference?.year, 2026);
+  assert.deepEqual(
+    main.exams?.subjects.map((subject) => subject.code),
+    ["101", "201", "301"],
+  );
+  assert.equal(main.programAlternatives?.[0].referenceBasis?.year, 2026);
+  assert.equal(report.coverage?.preferredCitySchoolCount, 1);
+  assert.equal(report.coverage?.unknownCitySchoolCount, 0);
+});
 
 for (const campusChain of ["complete", "unreadable"] as const) {
   test(`coded faculty and charter trigger bounded campus geography lookup: ${campusChain}`, async () => {

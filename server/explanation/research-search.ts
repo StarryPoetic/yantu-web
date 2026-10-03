@@ -7,6 +7,12 @@ import {
   preferredCityInventoryQueries,
   type CityCandidateLead,
 } from "./research-candidates.ts";
+import {
+  historicalReferenceYears,
+  explicitAdmissionsYears,
+  researchYearPriority,
+  isTargetYearChange,
+} from "../../shared/research-years.ts";
 export { sourceHasSchoolIdentity } from "./research-school.ts";
 
 // Only public query results are cached. No profile, account or model output is retained here.
@@ -71,10 +77,28 @@ function hintedSchoolDomains(sources: WebSource[], school: string) {
   ].slice(0, 2);
 }
 
-function diverseSources(sources: WebSource[], discipline: Discipline) {
-  const ranked = [...sources].sort(
-    (a, b) => sourcePriority(b, discipline) - sourcePriority(a, discipline),
-  );
+function diverseSources(
+  sources: WebSource[],
+  discipline: Discipline,
+  targetYear?: string,
+) {
+  const ranked = [...sources].sort((a, b) => {
+    const score = (source: WebSource) =>
+      sourcePriority(source, discipline) +
+      (targetYear
+        ? researchYearPriority(
+            explicitAdmissionsYears(source.title).length === 1
+              ? explicitAdmissionsYears(source.title)[0]
+              : undefined,
+            targetYear,
+          ) *
+            100 +
+          (isTargetYearChange(`${source.title}\n${source.excerpt}`, targetYear)
+            ? 20000
+            : 0)
+        : 0);
+    return score(b) - score(a);
+  });
   const schools = new Map<string, WebSource[]>();
   const rest: WebSource[] = [];
   for (const source of ranked) {
@@ -86,14 +110,41 @@ function diverseSources(sources: WebSource[], discipline: Discipline) {
       schools.set(host, pages);
     }
   }
+  if (targetYear)
+    for (const pages of schools.values()) {
+      const years = [
+        ...historicalReferenceYears(targetYear),
+        Number(targetYear),
+      ];
+      const primary: WebSource[] = pages.filter((source) =>
+        isTargetYearChange(`${source.title}\n${source.excerpt}`, targetYear),
+      );
+      for (const year of years) {
+        const page = pages.find(
+          (source) =>
+            !primary.includes(source) &&
+            explicitAdmissionsYears(source.title).length === 1 &&
+            explicitAdmissionsYears(source.title)[0] === year,
+        );
+        if (page) primary.push(page);
+      }
+      pages.splice(
+        0,
+        pages.length,
+        ...primary,
+        ...pages.filter((source) => !primary.includes(source)),
+      );
+    }
   const first = [...schools.values()].map((pages) => pages.shift()!);
-  const fees = [...schools.values()]
-    .map((pages) =>
-      pages.find((source) =>
-        /学费|收费(?:标准|项目)|教育收费/.test(source.title),
-      ),
-    )
-    .filter((source): source is WebSource => !!source);
+  const fees = targetYear
+    ? []
+    : [...schools.values()]
+        .map((pages) =>
+          pages.find((source) =>
+            /学费|收费(?:标准|项目)|教育收费/.test(source.title),
+          ),
+        )
+        .filter((source): source is WebSource => !!source);
   const remaining = [...schools.values()].map((pages) =>
     pages.filter((source) => !fees.includes(source)),
   );
@@ -132,6 +183,7 @@ export async function searchResearchSources(input: {
     caches.set(input.web, cache);
   }
   const directions = input.disciplines.slice(0, 6);
+  const referenceYears = historicalReferenceYears(input.targetYear ?? "");
   const states = directions.map((discipline, index) => ({
     discipline,
     index,
@@ -149,8 +201,8 @@ export async function searchResearchSources(input: {
   }));
   const candidateAttempts = new Set<string>();
   const inventoryAttempts = new Set<string>();
-  const candidateQueries =
-    input.candidateLeads === undefined
+  const candidateQueries = [
+    ...(input.candidateLeads === undefined
       ? []
       : [
           ...preferredCityInventoryQueries(input.regions).map((item) => ({
@@ -165,6 +217,7 @@ export async function searchResearchSources(input: {
           ...states.map((state) => ({
             question: [
               input.regions[state.index % input.regions.length],
+              referenceYears[0],
               state.discipline.name,
               "硕士 招生专业目录",
             ]
@@ -176,23 +229,48 @@ export async function searchResearchSources(input: {
             lead: undefined as CityCandidateLead | undefined,
             directionOnly: true,
           })),
-          ...input.candidateLeads.map((lead) => ({
-            question: [
-              lead.school,
-              input.targetYear,
-              "硕士 招生专业目录 招生章程",
-            ]
-              .filter(Boolean)
-              .join(" "),
-            city: lead.city,
-            state:
-              states.find((state) =>
-                lead.disciplineCodes.includes(state.discipline.code),
-              ) ?? states[0],
-            domains: [lead.officialDomain],
-            lead,
-          })),
-        ];
+        ]),
+    // Distinct annual queries give all three reference years a bounded
+    // discovery opportunity. The target intake has its own change check.
+    ...(referenceYears.length
+      ? [
+          ...(input.candidateLeads === undefined
+            ? referenceYears
+            : referenceYears.slice(1)),
+          Number(input.targetYear),
+        ].map((year) => ({
+          question: [
+            input.regions[0],
+            year,
+            "硕士 招生专业目录 招生章程",
+            year === Number(input.targetYear) ? "专业调整 停招" : "初试科目",
+          ]
+            .filter(Boolean)
+            .join(" "),
+          city: input.regions[0] ?? "",
+          state: states[0],
+          domains: [] as string[],
+          lead: undefined as CityCandidateLead | undefined,
+          yearOnly: true,
+        }))
+      : []),
+    ...(input.candidateLeads ?? []).map((lead) => ({
+      question: [
+        lead.school,
+        referenceYears[0] ?? input.targetYear,
+        "硕士 招生专业目录 招生章程",
+      ]
+        .filter(Boolean)
+        .join(" "),
+      city: lead.city,
+      state:
+        states.find((state) =>
+          lead.disciplineCodes.includes(state.discipline.code),
+        ) ?? states[0],
+      domains: [lead.officialDomain],
+      lead,
+    })),
+  ];
   // Official navigation URLs are public investigation leads, not read evidence.
   // They survive a search provider indexing miss and still require a safe read.
   for (const lead of input.candidateLeads ?? []) {
@@ -277,7 +355,11 @@ export async function searchResearchSources(input: {
     // stronger fee lead than an unverified model name. Search its domain without
     // inventing a school name, URL or programme fact.
     for (const state of states)
-      for (const source of diverseSources(state.pool, state.discipline)) {
+      for (const source of diverseSources(
+        state.pool,
+        state.discipline,
+        input.targetYear,
+      )) {
         const domain = schoolDomain(source);
         if (
           !domain ||
@@ -319,7 +401,7 @@ export async function searchResearchSources(input: {
       const { discipline, pool } = state;
       const availableDomains = [
         ...new Set([
-          ...diverseSources(pool, discipline)
+          ...diverseSources(pool, discipline, input.targetYear)
             .map(schoolDomain)
             .filter((host): host is string => !!host),
           ...state.hints.flatMap((hint) => mentionedSchoolDomains(pool, hint)),
@@ -352,7 +434,10 @@ export async function searchResearchSources(input: {
         domains = candidateQuery.domains;
         if (candidateQuery.lead)
           candidateAttempts.add(candidateQuery.lead.school);
-        else if (!("directionOnly" in candidateQuery))
+        else if (
+          !("directionOnly" in candidateQuery) &&
+          !("yearOnly" in candidateQuery)
+        )
           inventoryAttempts.add(candidateQuery.city);
       } else if (
         maxRequests > 6 &&
@@ -361,7 +446,13 @@ export async function searchResearchSources(input: {
         feeIndex < feeHints.length
       ) {
         const hint = feeHints[feeIndex++];
-        question = `${hint.school ?? hint.state.discipline.name} 硕士 研究生 学费 收费标准`;
+        question = [
+          hint.school ?? hint.state.discipline.name,
+          referenceYears[0],
+          "硕士 研究生 学费 收费标准",
+        ]
+          .filter(Boolean)
+          .join(" ");
         resultPool = hint.state.pool;
         // These domains came from actual results for this school, never from a
         // model's memory. Fees should not be left to third-party search snippets.
@@ -372,7 +463,14 @@ export async function searchResearchSources(input: {
           const hint = discoveryHints[discoveryAttempt++];
           // First establish the real master's programme independently of whether
           // the target year's directory has been indexed by the search provider.
-          question = `${hint.school} ${hint.state.discipline.name} 硕士 培养方案`;
+          question = [
+            hint.school,
+            referenceYears[0],
+            hint.state.discipline.name,
+            "硕士 培养方案",
+          ]
+            .filter(Boolean)
+            .join(" ");
           resultPool = hint.state.pool;
           domains = [];
         } else if (broadDiscovery < broadDiscoveryCount) {
@@ -401,17 +499,18 @@ export async function searchResearchSources(input: {
             return a.retries - b.retries || Number(lead(a)) - Number(lead(b));
           })[0];
           const pass = hint.retries++;
-          if (pass < 2) {
+          if (pass < (referenceYears.length ? 4 : 2)) {
             domains = hintedSchoolDomains(hint.state.pool, hint.school);
             const related = hint.state.pool.filter((source) =>
               sourceHasSchoolIdentity(source, hint.school),
             );
-            const year =
-              hasGraduateLead(related, hint.state.discipline) &&
-              /^20\d{2}$/.test(input.targetYear ?? "")
+            const year = referenceYears.length
+              ? ` ${[...referenceYears, Number(input.targetYear)][pass]}`
+              : hasGraduateLead(related, hint.state.discipline) &&
+                  /^20\d{2}$/.test(input.targetYear ?? "")
                 ? ` ${input.targetYear}`
                 : "";
-            question = `${hint.school}${year} ${hint.state.discipline.name} 硕士 ${["招生专业目录", "专业介绍"][pass]}`;
+            question = `${hint.school}${year} ${hint.state.discipline.name} 硕士 ${referenceYears.length ? "招生专业目录 招生章程" : ["招生专业目录", "专业介绍"][pass]}`;
             resultPool = hint.state.pool;
           } else {
             // Exhausted model hints must not lock out schools discovered on the
@@ -421,6 +520,7 @@ export async function searchResearchSources(input: {
             const nextDomain = diverseSources(
               discovered.pool,
               discovered.discipline,
+              input.targetYear,
             )
               .map(schoolDomain)
               .find((host) => host && !discovered.usedDomains.has(host));
@@ -524,7 +624,7 @@ export async function searchResearchSources(input: {
   }
   const queues = states.map(({ discipline, pool }) => ({
     code: discipline.code,
-    sources: diverseSources(pool, discipline),
+    sources: diverseSources(pool, discipline, input.targetYear),
   }));
   const sources: WebSource[] = [];
   const sourceDirections = new Map<string, string>();

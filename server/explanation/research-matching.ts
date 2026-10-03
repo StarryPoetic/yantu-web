@@ -11,6 +11,8 @@ import type {
   ResearchExamEvidence,
   ResearchCandidateAudit,
   ResearchProgramAlternative,
+  ResearchHistoricalExamEvidence,
+  ResearchReferenceBasis,
 } from "../../shared/research-matching.ts";
 import {
   researchContext,
@@ -30,8 +32,12 @@ import {
 } from "./research-evidence.ts";
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
 import { deriveResearchDecision } from "./research-decision.ts";
+import { safeSourceYear } from "./research-years.ts";
+import { researchYearPriority } from "../../shared/research-years.ts";
 
-type Recommendation = ResearchReport["recommendations"][number];
+type Recommendation = ResearchReport["recommendations"][number] & {
+  referenceBasis?: ResearchReferenceBasis;
+};
 const normalized = (value: unknown) => String(value ?? "").replace(/\s/g, "");
 const meaningful = (value: unknown) =>
   !!normalized(value) &&
@@ -179,6 +185,10 @@ export function extractProgramExams(input: {
       admissionEvidence(source, input.targetYear, input.programName).excluded
     )
       continue;
+    const sourceYear = safeSourceYear(source);
+    // An undated body (even with a 2027 search title or copyright) cannot label an exam route.
+    if (sourceYear === undefined || sourceYear > Number(input.targetYear))
+      continue;
     const body = withoutSchoolLinks(source.excerpt);
     const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
     for (let i = 0; i < rows.length; i++) {
@@ -267,11 +277,9 @@ export function extractProgramExams(input: {
         ["201", "202", "203", "204"].includes(s.code),
       );
       const current =
+        sourceYear === Number(input.targetYear) &&
         admissionEvidence(source, input.targetYear, input.programName)
           .admissionStatus === "current_evidence";
-      const year = current
-        ? Number(input.targetYear)
-        : Number(body.match(/\b20\d{2}\b/)?.[0]);
       found.push({
         status:
           math.length > 1 || english.length > 1
@@ -279,7 +287,7 @@ export function extractProgramExams(input: {
             : current
               ? "verified_current"
               : "historical",
-        ...(Number.isFinite(year) ? { year } : {}),
+        year: sourceYear,
         subjects: unique,
         quote: passage.trim(),
         sourceId: source.id,
@@ -288,25 +296,130 @@ export function extractProgramExams(input: {
             ? "同一专业出现多个科目组合，需按方向、学习方式或考试组确认，暂不选定。"
             : current
               ? "已在目标年度官网专业条目中读到这些初试科目；方向、学习方式和考试组仍需核对完整目录。"
-              : "这是历史科目，仅供了解准备路线，不能作为目标年度科目安排。",
+              : `这是${sourceYear}年官网初试科目，可用于历史准备路线比较，不能作为目标年度科目安排。`,
       });
     }
   }
-  const current = found.filter(
-    (f) =>
-      f.year === Number(input.targetYear) &&
-      (f.status === "verified_current" || f.status === "ambiguous"),
+  const subjectIdentity = (subjects: ResearchExamEvidence["subjects"]) =>
+    JSON.stringify(
+      [...subjects].sort(
+        (a, b) => a.code.localeCompare(b.code) || a.name.localeCompare(b.name),
+      ),
+    );
+  const resolveYear = (
+    pool: ResearchExamEvidence[],
+  ): ResearchExamEvidence | undefined => {
+    if (!pool.length) return undefined;
+    const sorted = [...pool].sort(
+      (a, b) =>
+        (a.sourceId ?? "").localeCompare(b.sourceId ?? "") ||
+        (a.quote ?? "").localeCompare(b.quote ?? ""),
+    );
+    if (
+      new Set(pool.map((record) => subjectIdentity(record.subjects))).size > 1
+    )
+      return {
+        status: "ambiguous",
+        year: sorted[0].year,
+        subjects: [],
+        reason: `${sorted[0].year}年同一专业的官网条目存在不同科目组合；需要核对方向、学习形式或考试组后再确定。`,
+      };
+    return sorted[0];
+  };
+  const history: ResearchHistoricalExamEvidence[] = [
+    ...new Set(
+      found.flatMap((record) =>
+        record.year !== undefined && record.year < Number(input.targetYear)
+          ? [record.year]
+          : [],
+      ),
+    ),
+  ]
+    .sort((a, b) => b - a)
+    .slice(0, 3)
+    .map((year) => {
+      const record = resolveYear(found.filter((item) => item.year === year))!;
+      return {
+        ...record,
+        year,
+        status: record.status === "ambiguous" ? "ambiguous" : "historical",
+      };
+    });
+  const current = resolveYear(
+    found.filter(
+      (record) =>
+        record.year === Number(input.targetYear) &&
+        (record.status === "verified_current" || record.status === "ambiguous"),
+    ),
   );
-  const pool = current.length ? current : found;
-  if (!pool.length) return unknown;
-  if (new Set(pool.map((f) => JSON.stringify(f.subjects))).size > 1)
-    return {
-      status: "ambiguous",
-      subjects: [],
-      reason:
-        "同一专业的官网条目存在不同科目组合；需要核对方向或考试组后再确定。",
-    };
-  return pool[0];
+  const selected = current ?? history[0] ?? unknown;
+  if (!history.length) return selected;
+  const comparisons: [number, ResearchExamEvidence][] = [...history]
+    .reverse()
+    .map((record) => [record.year, record]);
+  if (current?.status === "verified_current")
+    comparisons.push([Number(input.targetYear), current]);
+  const historicalChanges: NonNullable<
+    ResearchExamEvidence["historicalChanges"]
+  > = [];
+  for (let index = 1; index < comparisons.length; index++) {
+    const [fromYear, before] = comparisons[index - 1];
+    const [toYear, after] = comparisons[index];
+    if (
+      before.status === "ambiguous" ||
+      after.status === "ambiguous" ||
+      subjectIdentity(before.subjects) === subjectIdentity(after.subjects)
+    )
+      continue;
+    const slots = (record: ResearchExamEvidence) =>
+      new Map(
+        record.subjects.flatMap((subject) => {
+          const labelled = record.quote?.match(
+            new RegExp(`([①②③④])\\s*${subject.code}(?!\\d)`),
+          )?.[1];
+          const slot =
+            labelled ??
+            (["201", "202", "203", "204"].includes(subject.code)
+              ? "②"
+              : /^30[123]$/.test(subject.code)
+                ? "③"
+                : subject.code === "101" || subject.code === "199"
+                  ? "①"
+                  : subject.code === "408"
+                    ? "④"
+                    : undefined);
+          return slot ? [[slot, subject] as const] : [];
+        }),
+      );
+    const beforeSlots = slots(before),
+      afterSlots = slots(after);
+    const changes = [...beforeSlots].flatMap(([slot, subject]) => {
+      const next = afterSlots.get(slot);
+      return next && (next.code !== subject.code || next.name !== subject.name)
+        ? [{ before: subject, after: next }]
+        : [];
+    });
+    // A longer excerpt is not proof that an unobserved subject was newly introduced.
+    if (!changes.length) continue;
+    const describe = (subjects: ResearchExamEvidence["subjects"]) =>
+      subjects.map((subject) => `${subject.code} ${subject.name}`).join("、");
+    historicalChanges.push({
+      fromYear,
+      toYear,
+      sourceIds: [
+        ...new Set(
+          [before.sourceId, after.sourceId].filter((id): id is string => !!id),
+        ),
+      ],
+      summary: `${fromYear}年至${toYear}年，两年都明确列出的初试科目由“${describe(changes.map((change) => change.before))}”变为“${describe(changes.map((change) => change.after))}”；未读到的科目不计作变化。${toYear === Number(input.targetYear) ? "目标年度要求与历史参考分别保留，以目标年度具体专业目录为准。" : "这是已核验历史年度之间的变化，不推定目标年度延续其中任一组合。"}`,
+    });
+  }
+  return {
+    ...selected,
+    historicalReference: history[0],
+    history,
+    ...(historicalChanges.length ? { historicalChanges } : {}),
+  };
 }
 
 export function evaluateDemandMatch(
@@ -402,6 +515,98 @@ export function evaluateDemandMatch(
   return { tier, match: { ruleVersion: "demand-match-v1", factors, summary } };
 }
 
+function sourceMatchesProgramScope(
+  source: WebSource,
+  item: Recommendation,
+  discipline: Discipline,
+) {
+  if (
+    !item.majorCode &&
+    !item.collegeName &&
+    (!item.studyMode || item.studyMode === "unspecified")
+  )
+    return true;
+  const body = withoutSchoolLinks(source.excerpt);
+  const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
+  const escaped = (item.programName ?? "").replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
+  return rows.some((row, index) => {
+    if (
+      !row[0].startsWith(discipline.code) ||
+      (item.majorCode && row[0] !== item.majorCode)
+    )
+      return false;
+    const afterCode = body
+      .slice(row.index! + row[0].length, rows[index + 1]?.index)
+      .replace(
+        /^[\s|:：()（）\[\]【】-]*(?:[（(](?:专业学位|学术学位|学术型)[）)]\s*)?/,
+        "",
+      );
+    if (
+      !new RegExp(
+        `^${escaped}(?=$|[\\s|（(]|学术学位|专业学位|非?全日制|\\d|①|②|③|④)`,
+        "u",
+      ).test(afterCode)
+    )
+      return false;
+    const scope = programRowScope(body, row.index!, rows[index + 1]?.index);
+    return (
+      (!item.collegeName || scope.collegeName === item.collegeName) &&
+      (!item.studyMode ||
+        item.studyMode === "unspecified" ||
+        scope.studyMode === item.studyMode)
+    );
+  });
+}
+
+/** The most recent supported historical programme is the baseline; current facts remain separate. */
+function programReferenceBasis(
+  item: Recommendation,
+  discipline: Discipline,
+  sources: WebSource[],
+  targetYear: string,
+): ResearchReferenceBasis | undefined {
+  const usable = sources
+    .filter(
+      (source) =>
+        isSchoolPage(source) &&
+        supportsProgram(
+          source,
+          item.institutionName,
+          item.programName!,
+          discipline,
+        ) &&
+        !admissionEvidence(source, targetYear, item.programName).excluded &&
+        sourceMatchesProgramScope(source, item, discipline),
+    )
+    .flatMap((source) => {
+      const year = safeSourceYear(source);
+      return year !== undefined && year <= Number(targetYear)
+        ? [{ source, year }]
+        : [];
+    });
+  const historical = usable
+    .filter((item) => item.year < Number(targetYear))
+    .sort((a, b) => b.year - a.year);
+  const year =
+    historical[0]?.year ??
+    usable.find((item) => item.year === Number(targetYear))?.year;
+  if (year === undefined) return undefined;
+  return {
+    year,
+    sourceIds: usable
+      .filter((item) => item.year === year)
+      .map((item) => item.source.id)
+      .sort(),
+    reason:
+      year < Number(targetYear)
+        ? `使用最近可核验的${year}年历史专业条目作为比较基线；目标${targetYear}年的实际考试科目和报考条件独立核验，历史条目不代表本年度仍开放。`
+        : `当前仅读到${targetYear}年对应专业的年度资料，作为目标年度辅助证据；未形成可核验历史基线，需继续补充前三年的对应条目。`,
+  };
+}
+
 /** Reads all supported coded programs before model recommendations; omissions cannot hide a school. */
 export function buildEvidenceCandidates(input: {
   run: GuidanceRun;
@@ -432,14 +637,10 @@ export function buildEvidenceCandidates(input: {
       .filter(isSchoolPage)
       .sort(
         (a, b) =>
-          Number(
-            admissionEvidence(b, input.targetYear).admissionStatus ===
-              "current_evidence",
-          ) -
-            Number(
-              admissionEvidence(a, input.targetYear).admissionStatus ===
-                "current_evidence",
-            ) || a.id.localeCompare(b.id),
+          researchYearPriority(safeSourceYear(b), input.targetYear) -
+            researchYearPriority(safeSourceYear(a), input.targetYear) ||
+          (safeSourceYear(b) ?? 0) - (safeSourceYear(a) ?? 0) ||
+          a.id.localeCompare(b.id),
       )) {
       const body = withoutSchoolLinks(source.excerpt);
       const rows = [
@@ -573,6 +774,51 @@ export function buildEvidenceCandidates(input: {
           admissionStatus: scope.admissionStatus,
           citations,
         };
+        const referenceBasis = programReferenceBasis(
+          item,
+          discipline,
+          input.sources,
+          input.targetYear,
+        );
+        if (referenceBasis) {
+          item.referenceBasis = referenceBasis;
+          for (const id of referenceBasis.sourceIds)
+            if (!item.citations.includes(id)) item.citations.push(id);
+        }
+        const currentSources = input.sources.filter(
+          (other) =>
+            isSchoolPage(other) &&
+            safeSourceYear(other) === Number(input.targetYear) &&
+            supportsProgram(other, institutionName, programName, discipline) &&
+            sourceMatchesProgramScope(other, item, discipline) &&
+            admissionEvidence(other, input.targetYear, programName)
+              .admissionStatus === "current_evidence" &&
+            !admissionEvidence(other, input.targetYear, programName).excluded,
+        );
+        if (currentSources.length) {
+          item.admissionStatus = "current_evidence";
+          for (const source of currentSources)
+            if (!item.citations.includes(source.id))
+              item.citations.push(source.id);
+        }
+        const exams = extractProgramExams({
+          institutionName,
+          programName,
+          majorCode: row[1],
+          collegeName,
+          studyMode,
+          discipline,
+          sources: input.sources,
+          targetYear: input.targetYear,
+        });
+        for (const id of [
+          exams.sourceId,
+          ...(exams.history ?? []).map((record) => record.sourceId),
+          ...(exams.historicalChanges ?? []).flatMap(
+            (change) => change.sourceIds,
+          ),
+        ])
+          if (id && !item.citations.includes(id)) item.citations.push(id);
         const match = evaluateDemandMatch(item, input.run, discipline);
         Object.assign(item, match, {
           tierReasons: [
@@ -581,16 +827,7 @@ export function buildEvidenceCandidates(input: {
               .filter((c) => c.status !== "match")
               .map((c) => c.reason),
           ],
-          exams: extractProgramExams({
-            institutionName,
-            programName,
-            majorCode: row[1],
-            collegeName,
-            studyMode,
-            discipline,
-            sources: input.sources,
-            targetYear: input.targetYear,
-          }),
+          exams,
         });
         recommendations.push(item);
         added = true;
@@ -794,7 +1031,6 @@ export function rankDemandCandidates(
       )
     )
       return [];
-    const evaluated = evaluateDemandMatch(item, run, discipline);
     const exams = extractProgramExams({
       institutionName: item.institutionName,
       programName: item.programName,
@@ -805,6 +1041,29 @@ export function rankDemandCandidates(
       sources,
       targetYear: year,
     });
+    const referenceBasis = programReferenceBasis(
+      item,
+      discipline,
+      sources,
+      year,
+    );
+    const examSourceIds = [
+      exams.sourceId,
+      ...(exams.history ?? []).map((record) => record.sourceId),
+      ...(exams.historicalChanges ?? []).flatMap((change) => change.sourceIds),
+    ].filter((id): id is string => !!id);
+    const citations = [
+      ...new Set([
+        ...item.citations,
+        ...(referenceBasis?.sourceIds ?? []),
+        ...examSourceIds,
+      ]),
+    ];
+    const evaluated = evaluateDemandMatch(
+      { ...item, citations },
+      run,
+      discipline,
+    );
     const tasks = observations
       .filter(
         (observation) =>
@@ -823,6 +1082,8 @@ export function rankDemandCandidates(
     return [
       {
         ...item,
+        referenceBasis,
+        citations,
         programName: item.programName,
         degreeType: discipline.degreeType,
         constraintChecks: item.constraintChecks ?? [],
@@ -900,6 +1161,9 @@ export function rankDemandCandidates(
             tradeoffs: other.tradeoffs,
             uncertainties: other.uncertainties,
             admissionStatus: other.admissionStatus,
+            ...(other.referenceBasis
+              ? { referenceBasis: other.referenceBasis }
+              : {}),
             exams: other.exams,
             match: other.match,
             tier: other.tier,

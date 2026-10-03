@@ -740,7 +740,7 @@ test("a current hard eligibility conflict cannot be rescued by an older unrestri
   }
 });
 
-test("current supported programme rows take precedence over historical rows independently of source order", () => {
+test("historical programme baselines and current supporting evidence stay independently visible in any source order", () => {
   const historical = source(
     `${school}2026年硕士研究生招生专业目录。080200 机械工程 学术学位。${school}地址：杭州市钱塘区。`,
     { id: "old-open", title: `${school}2026年硕士研究生招生专业目录` },
@@ -756,6 +756,11 @@ test("current supported programme rows take precedence over historical rows inde
       "current_evidence",
     );
     assert.ok(inventory.recommendations[0].citations.includes("hdu-catalog"));
+    assert.equal(inventory.recommendations[0].referenceBasis?.year, 2026);
+    assert.deepEqual(inventory.recommendations[0].referenceBasis?.sourceIds, [
+      "old-open",
+    ]);
+    assert.ok(inventory.recommendations[0].citations.includes("old-open"));
   }
 });
 
@@ -864,6 +869,194 @@ test("historical rows stay historical and a clear target-year row takes preceden
     current.subjects.map((item) => item.code),
     ["101", "201", "301", "811"],
   );
+  assert.equal(current.historicalReference?.year, 2026);
+  assert.deepEqual(
+    current.historicalReference?.subjects.map((item) => item.code),
+    ["101", "204", "302"],
+  );
+});
+
+test("the newest verified historical exam year is selected without treating legitimate cross-year changes as conflicts", () => {
+  const page = (entryYear: number, combo: string) =>
+    source(
+      `${school}${entryYear}年硕士研究生招生专业目录。初试考试科目：\n080200 机械工程 ${combo}。\n${school}地址：杭州市钱塘区。`,
+      {
+        id: `history-${entryYear}`,
+        title: `${school}${entryYear}年硕士研究生招生专业目录`,
+      },
+    );
+  const older = page(
+    2024,
+    "①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理",
+  );
+  const previous = page(
+    2025,
+    "①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理",
+  );
+  const latest = page(
+    2026,
+    "①101思想政治理论 ②204英语二 ③302数学二 ④812机械工程综合",
+  );
+  const current = page(
+    2027,
+    "①101思想政治理论 ②201英语一 ③301数学一 ④813机械综合",
+  );
+  const reference = exams([older, latest, previous]);
+  assert.equal(reference.status, "historical");
+  assert.equal(reference.year, 2026);
+  assert.deepEqual(
+    reference.subjects.map((subject) => subject.code),
+    ["101", "204", "302", "812"],
+  );
+  assert.deepEqual(
+    reference.history?.map((record) => record.year),
+    [2026, 2025, 2024],
+  );
+  assert.deepEqual(
+    reference.historicalChanges?.map((change) => [
+      change.fromYear,
+      change.toYear,
+    ]),
+    [[2025, 2026]],
+  );
+  assert.deepEqual(exams([previous, older, latest]), reference);
+  const target = exams([older, current, latest, previous]);
+  assert.equal(target.status, "verified_current");
+  assert.equal(target.year, 2027);
+  assert.deepEqual(
+    target.subjects.map((subject) => subject.code),
+    ["101", "201", "301", "813"],
+  );
+  assert.deepEqual(
+    target.historicalReference?.subjects.map((subject) => subject.code),
+    ["101", "204", "302", "812"],
+  );
+  assert.deepEqual(
+    target.historicalChanges?.map((change) => [change.fromYear, change.toYear]),
+    [
+      [2025, 2026],
+      [2026, 2027],
+    ],
+  );
+  assert.match(
+    target.historicalChanges!.at(-1)!.summary,
+    /目标年度要求与历史参考分别保留/,
+  );
+  const run = guidance();
+  const pages = [older, current, latest, previous];
+  const inventory = candidates(run, pages, [
+    discipline("0802"),
+  ]).recommendations;
+  assert.equal(inventory.length, 1);
+  assert.equal(inventory[0].referenceBasis?.year, 2026);
+  assert.equal(inventory[0].exams?.year, 2027);
+  const ranked = rankDemandCandidates(
+    inventory,
+    run,
+    [discipline("0802")],
+    pages,
+    year,
+  );
+  assert.deepEqual(
+    rankDemandCandidates(ranked, run, [discipline("0802")], pages, year),
+    ranked,
+  );
+});
+
+test("same-year historical subject conflicts stay ambiguous and do not silently fall back to an older clear year", () => {
+  const old = source(
+    `${school}2025年硕士研究生招生专业目录。080200 机械工程 初试科目：201英语一301数学一。`,
+    { id: "clear-2025" },
+  );
+  const first = source(
+    `${school}2026年硕士研究生招生专业目录。080200 机械工程 初试科目：201英语一301数学一。`,
+    { id: "first-2026" },
+  );
+  const second = source(
+    `${school}2026年硕士研究生招生专业目录。080200 机械工程 初试科目：204英语二302数学二。`,
+    { id: "second-2026" },
+  );
+  const result = exams([old, first, second]);
+  assert.equal(result.status, "ambiguous");
+  assert.equal(result.year, 2026);
+  assert.deepEqual(result.subjects, []);
+  assert.equal(result.historicalReference?.status, "ambiguous");
+  assert.deepEqual(
+    result.history?.map((record) => [record.year, record.status]),
+    [
+      [2026, "ambiguous"],
+      [2025, "historical"],
+    ],
+  );
+  assert.equal(result.historicalChanges, undefined);
+});
+
+test("different excerpt coverage is not labelled as an actual cross-year subject change", () => {
+  const old = source(
+    `${school}2025年硕士研究生招生专业目录。080200 机械工程 初试科目：201英语一301数学一。其他科目见完整目录。`,
+    { id: "partial-old" },
+  );
+  const latest = source(
+    `${school}2026年硕士研究生招生专业目录。080200 机械工程 初试科目：①101思想政治理论②201英语一③301数学一④812机械工程综合。`,
+    { id: "full-latest" },
+  );
+  const result = exams([old, latest]);
+  assert.equal(result.year, 2026);
+  assert.equal(result.historicalChanges, undefined);
+  assert.deepEqual(
+    result.history?.map((record) => record.year),
+    [2026, 2025],
+  );
+});
+
+test("exam records with only publication dates, copyright dates, mixed body years or future intake years do not receive an invented historical year", () => {
+  for (const body of [
+    `${school}硕士研究生招生专业目录。080200 机械工程 初试科目：201英语一301数学一。发布时间：2026年9月1日。版权所有2027。`,
+    `${school}2026年硕士研究生招生专业目录、2025年硕士研究生招生专业目录。080200 机械工程 初试科目：201英语一301数学一。`,
+    `${school}2028年硕士研究生招生专业目录。080200 机械工程 初试科目：201英语一301数学一。`,
+  ]) {
+    const result = exams([source(body)]);
+    assert.equal(result.status, "unknown", body);
+    assert.equal(result.year, undefined, body);
+    assert.equal(result.historicalReference, undefined, body);
+    assert.deepEqual(result.subjects, [], body);
+  }
+});
+
+test("a historical combination in another college or study mode cannot become the current route's comparison baseline", () => {
+  const old = source(
+    `${school}2026年硕士研究生招生专业目录。\n技术研究院 | 080200 机械工程 非全日制 初试科目：204英语二302数学二。`,
+    { id: "old-other-scope" },
+  );
+  const current = source(
+    `${school}2027年硕士研究生招生专业目录。\n机械工程学院 | 080200 机械工程 全日制 初试科目：201英语一301数学一。`,
+    { id: "current-scope" },
+  );
+  const result = extractProgramExams({
+    institutionName: school,
+    programName: "机械工程",
+    majorCode: "080200",
+    collegeName: "机械工程学院",
+    studyMode: "full_time",
+    discipline: discipline("0802"),
+    sources: [old, current],
+    targetYear: year,
+  });
+  assert.equal(result.status, "verified_current");
+  assert.equal(result.historicalReference, undefined);
+  const run = guidance();
+  const ranked = rankDemandCandidates(
+    candidates(run, [old, current], [discipline("0802")]).recommendations,
+    run,
+    [discipline("0802")],
+    [old, current],
+    year,
+  );
+  const route = [ranked[0], ...ranked[0].programAlternatives].find(
+    (item) => item.collegeName === "机械工程学院",
+  )!;
+  assert.equal(route.referenceBasis?.year, 2027);
+  assert.deepEqual(route.referenceBasis?.sourceIds, ["current-scope"]);
 });
 
 test("historical ambiguous combinations cannot outweigh one clear target-year combination", () => {

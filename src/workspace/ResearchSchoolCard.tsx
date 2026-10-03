@@ -64,6 +64,17 @@ export function ResearchSchoolCard({
         {admissionLabel(item, run)}
       </p>
       <ResearchMatchEvidence match={item.match} sources={sources} />
+      {item.referenceBasis && (
+        <section aria-label="历史资料比较依据">
+          <h5>{item.referenceBasis.year}年专业资料作为比较基准</h5>
+          <p>{item.referenceBasis.reason}</p>
+          <ResearchSourceLinks
+            ids={item.referenceBasis.sourceIds}
+            sources={sources}
+            label="历年专业依据来源"
+          />
+        </section>
+      )}
       <section className="research-fit">
         <h5>为什么适合你考虑</h5>
         <p>{item.rationale}</p>
@@ -104,7 +115,15 @@ export function ResearchSchoolCard({
             />
           </>
         )}
-        {item.location && <p>项目所在城市：{item.location.city}</p>}
+        {item.location && (
+          <p>
+            项目所在城市：{item.location.city}
+            {item.location.year &&
+            item.location.year !== Number(run.inputSnapshot.profile.year)
+              ? `（${item.location.year}年培养安排参考）`
+              : ""}
+          </p>
+        )}
         {!!item.constraintChecks?.length && (
           <dl className="research-constraint-list">
             {item.constraintChecks.map((check) => (

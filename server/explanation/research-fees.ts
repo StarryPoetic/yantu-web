@@ -4,6 +4,10 @@ import type {
   TuitionEvidence,
 } from "../../shared/research-recommendation.ts";
 import { researchReason } from "../../shared/research-status.ts";
+import {
+  historicalReferenceYears,
+  researchYearPriority,
+} from "../../shared/research-years.ts";
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
 import { compactEvidence } from "./research-evidence.ts";
 import { academicDomain, researchAttachments } from "./research-pages.ts";
@@ -116,7 +120,7 @@ export async function enrichResearchFees(input: {
           })
           .map((source) => academicDomain(source.url)),
       ),
-    ];
+    ].slice(0, 2);
   }
   function permitted(url: string, domains: string[]) {
     try {
@@ -158,7 +162,8 @@ export async function enrichResearchFees(input: {
       );
       continue;
     }
-    const question = `${recommendation.institutionName} ${recommendation.programName} 硕士 研究生 学费 收费标准`;
+    const referenceYear = historicalReferenceYears(input.targetYear)[0];
+    const question = `${recommendation.institutionName} ${recommendation.programName} ${referenceYear ? referenceYear + "年 " : ""}硕士 研究生 学费 收费标准`;
     const key = JSON.stringify([question, [...domains].sort()]);
     requestCount++;
     await input.onProgress(
@@ -212,8 +217,16 @@ export async function enrichResearchFees(input: {
       )
       .sort(
         (a, b) =>
+          researchYearPriority(
+            Number(b.title.match(/20\d{2}/)?.[0]) || undefined,
+            input.targetYear,
+          ) -
+            researchYearPriority(
+              Number(a.title.match(/20\d{2}/)?.[0]) || undefined,
+              input.targetYear,
+            ) ||
           Number(b.title.includes(recommendation.programName)) -
-          Number(a.title.includes(recommendation.programName)),
+            Number(a.title.includes(recommendation.programName)),
       )
       .map(({ url, title }) => ({ url, title }));
     jobs.push({ recommendation, domains, queue });

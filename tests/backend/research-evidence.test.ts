@@ -9,6 +9,7 @@ import {
   compactEvidence,
 } from "../../server/explanation/research-evidence.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
+import { normalizeAttachedEvidence } from "../../server/explanation/research-provenance.ts";
 
 const discipline = (code: string) =>
   getDisciplineCatalog().items.find((item) => item.code === code)!;
@@ -198,6 +199,134 @@ test("only clear current restrictions establish a known conflict, not historical
     ).excluded,
     undefined,
   );
+});
+
+test("current and historical programme policies keep their own year when entry restrictions mention student cohort or graduation years", () => {
+  for (const qualification of [
+    "仅限2025级本科生报考",
+    "2025年毕业的考生可报考",
+    "2025年取得本科毕业证的考生可报考",
+  ]) {
+    const current = source(
+      `甲大学2027年硕士招生专业目录：030101法学理论。${qualification}。`,
+    );
+    assert.equal(
+      admissionEvidence(current, "2027").admissionStatus,
+      "current_evidence",
+      qualification,
+    );
+    assert.equal(
+      admissionEvidence(
+        { ...current, excerpt: current.excerpt.replace("2027年", "2026年") },
+        "2027",
+      ).admissionStatus,
+      "needs_verification",
+      qualification,
+    );
+  }
+  const current = source(
+    "甲大学2027年硕士招生专业目录：0503新闻传播学，仅限新闻传播学本科毕业生报考。2025年毕业的考生可报考。",
+  );
+  assert.equal(
+    knownAdmissionConflict(
+      current,
+      "新闻传播学",
+      discipline("0503"),
+      { major: "机械工程" },
+      "2027",
+    ),
+    true,
+  );
+  assert.equal(
+    knownAdmissionConflict(
+      { ...current, excerpt: current.excerpt.replace("2027年", "2026年") },
+      "新闻传播学",
+      discipline("0503"),
+      { major: "机械工程" },
+      "2027",
+    ),
+    false,
+  );
+});
+
+test("admission years reject title-only years, publication metadata, copyright and genuinely mixed policies", () => {
+  for (const excerpt of [
+    "甲大学硕士招生专业目录：030101法学理论。",
+    "甲大学硕士招生专业目录：030101法学理论。发布时间：2027年硕士招生通知。",
+    "甲大学硕士招生专业目录：030101法学理论。版权所有©2027年研究生招生办公室。",
+    "甲大学2027年硕士招生目录。2026年硕士招生目录。030101法学理论。",
+  ])
+    assert.equal(
+      admissionEvidence(
+        source(excerpt, { title: "甲大学2027年硕士招生专业目录" }),
+        "2027",
+      ).admissionStatus,
+      "needs_verification",
+      excerpt,
+    );
+  assert.ok(
+    admissionEvidence(
+      source(
+        "甲大学2027年硕士招生目录：030101法学理论，本专业暂停招生。仅限2025级本科生报考。",
+      ),
+      "2027",
+      "法学理论",
+    ).excluded,
+  );
+});
+
+test("a linked undated attachment inherits its verified year while explicit mixed attachment years cannot inherit the parent", () => {
+  const parent = source("甲大学2027年硕士研究生招生专业目录。下载附件。", {
+    id: "admission-parent",
+    documentLinks: [
+      {
+        title: "2027年硕士研究生招生专业目录.xls",
+        url: "https://yz.example.edu.cn/catalog.xls",
+      },
+    ],
+  });
+  const child = (excerpt: string): WebSource =>
+    source(excerpt, {
+      id: "admission-child",
+      url: parent.documentLinks![0].url,
+      parentSourceId: parent.id,
+      title: parent.documentLinks![0].title,
+    });
+  const plain = "080200 机械工程 201英语一301数学一";
+  const linked = normalizeAttachedEvidence(child(plain), parent, plain);
+  assert.equal(
+    admissionEvidence(linked, "2027").admissionStatus,
+    "current_evidence",
+  );
+  for (const [body, status] of [
+    [
+      "2026年硕士招生目录。080200机械工程。仅限2025级本科生报考。",
+      "needs_verification",
+    ],
+    [
+      "2027年硕士招生目录。080200机械工程。2025年毕业的本科生可报考。",
+      "current_evidence",
+    ],
+    [
+      "2027年硕士招生目录。2026年硕士招生目录。080200机械工程。",
+      "needs_verification",
+    ],
+  ] as const) {
+    const attached = normalizeAttachedEvidence(child(body), parent, body);
+    assert.equal(
+      admissionEvidence(
+        {
+          ...attached,
+          provenance: attached.provenance
+            ? { ...attached.provenance, admissionYear: "2027" }
+            : undefined,
+        },
+        "2027",
+      ).admissionStatus,
+      status,
+      body,
+    );
+  }
 });
 
 test("official programme documents are read before admission rosters, recruitment and alumni lists", () => {

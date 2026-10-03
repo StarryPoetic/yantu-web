@@ -99,9 +99,8 @@ test("annual tuition over the real budget and an out-of-city address record inde
   assert.equal("tier" in result, false);
 });
 
-test("history and non-annual pricing remain quoted references and are never converted to annual budget fit", () => {
+test("non-annual pricing remains quoted reference and is never converted to annual budget fit", () => {
   for (const [text, values] of [
-    ["甲大学2026年教育学硕士全日制学费8000元/年。", { year: 2026 }],
     ["甲大学2027年教育学硕士全日制全程学费8000元。", { period: "program" }],
     ["甲大学2027年教育学硕士全日制学费8000元/学期。", { period: "semester" }],
     ["甲大学2027年教育学硕士全日制学费8000元/学分。", { period: "credit" }],
@@ -115,6 +114,50 @@ test("history and non-annual pricing remain quoted references and are never conv
       "unknown cannot be described as a proven mismatch",
     );
   }
+});
+
+test("historical annual fees support explicitly dated reference comparisons, not target-year promises", () => {
+  for (const year of [2026, 2025, 2024]) {
+    const matched = deriveRecommendationConstraints(
+      fee(`甲大学${year}年教育学硕士全日制学费8000元/年。`, { year }),
+    );
+    assert.equal(budget(matched).status, "match");
+    assert.match(
+      budget(matched).reason,
+      new RegExp(`${year}年历史学费作参考比较`),
+    );
+    assert.match(budget(matched).reason, /2027年收费及适用条件仍待核对/);
+    assert.equal(budget(matched).reason.includes("2027年度学费"), false);
+    const over = deriveRecommendationConstraints(
+      fee(`甲大学${year}年教育学硕士全日制学费12000元/年。`, {
+        year,
+        amount: 12000,
+      }),
+    );
+    assert.equal(budget(over).status, "mismatch");
+    assert.match(
+      budget(over).reason,
+      new RegExp(`${year}年历史学费作参考比较`),
+    );
+    assert.match(budget(over).reason, /2027年收费及适用条件仍待核对/);
+  }
+  const whole = deriveRecommendationConstraints(
+    fee("甲大学2026年教育学硕士全日制全程学费8000元。", {
+      year: 2026,
+      period: "program",
+    }),
+  );
+  assert.equal(budget(whole).status, "unknown");
+  assert.match(budget(whole).reason, /2026年历史.*全程/);
+  const unspecified = deriveRecommendationConstraints(
+    fee(
+      "甲大学2026年教育学硕士学费8000元/年。",
+      { year: 2026, studyMode: "unspecified" },
+      { studyMode: undefined },
+    ),
+  );
+  assert.equal(budget(unspecified).status, "unknown");
+  assert.match(budget(unspecified).reason, /未明确学习形式/);
 });
 
 test("unknown budget, absent evidence and open-ended budget do not invent numeric limits", () => {

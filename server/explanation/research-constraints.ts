@@ -13,8 +13,13 @@ import {
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
 } from "./research-school.ts";
-import { deriveCampusLocation } from "./research-campus.ts";
+import {
+  deriveCampusLocation,
+  isRestrictedCampusQuote,
+} from "./research-campus.ts";
 import { admissionEvidence } from "./research-evidence.ts";
+import { safeSourceYear } from "./research-years.ts";
+import { explicitAdmissionsYears } from "../../shared/research-years.ts";
 
 export interface RecommendationConstraintInput {
   profile: Pick<Profile, "budget" | "cities">;
@@ -443,7 +448,7 @@ function checkedTuition(
 }
 
 /** Recover an omitted model field from exact school/project text, never from a search snippet. */
-function extractedTuition(input: RecommendationConstraintInput) {
+function extractedTuitionCandidates(input: RecommendationConstraintInput) {
   const found: TuitionEvidence[] = [];
   for (const source of input.sources) {
     if (source.kind !== "official_page") continue;
@@ -487,16 +492,35 @@ function extractedTuition(input: RecommendationConstraintInput) {
       if (value) found.push(value);
     }
   }
+  return found;
+}
+
+function selectedTuition(
+  found: TuitionEvidence[],
+  input: RecommendationConstraintInput,
+) {
   const current = found.filter(
     (item) => String(item.year) === String(input.targetYear),
   );
-  const candidates = current.length ? current : found;
+  const historical = found.filter(
+    (item) => item.year < Number(input.targetYear),
+  );
+  const latestHistorical = Math.max(...historical.map((item) => item.year));
+  const candidates = current.length
+    ? current
+    : historical.length
+      ? historical.filter((item) => item.year === latestHistorical)
+      : found;
   const unique = new Set(
     candidates.map(
       (item) => `${item.year}:${item.amount}:${item.period}:${item.studyMode}`,
     ),
   );
   return unique.size === 1 ? candidates[0] : undefined;
+}
+
+function extractedTuition(input: RecommendationConstraintInput) {
+  return selectedTuition(extractedTuitionCandidates(input), input);
 }
 
 function otherProjectOwner(prefix: string, institutionName: string) {
@@ -657,6 +681,7 @@ function checkedLocation(
       raw.city === derived.city &&
       raw.sourceId === derived.sourceId &&
       raw.quote === derived.quote &&
+      (raw.year === undefined || raw.year === derived.year) &&
       JSON.stringify(claim) === JSON.stringify(proven)
       ? derived
       : undefined;
@@ -664,6 +689,13 @@ function checkedLocation(
   const cited = citedQuote(raw, input);
   if (!cited) return undefined;
   const city = cityName(raw.city);
+  const year = safeSourceYear(cited.source);
+  if (
+    year === undefined &&
+    explicitAdmissionsYears(substantive(cited.source.excerpt)).length
+  )
+    return undefined;
+  if (raw.year !== undefined && raw.year !== year) return undefined;
   const addresses = clauses(cited.quote).filter(
     (clause) =>
       /地址|校址|办学地点|教学地点|培养地点|所在城市/.test(clause) &&
@@ -671,6 +703,8 @@ function checkedLocation(
         new RegExp(`${city}(?:[，,\\s]|[^，,。；;]{0,12}区)`).test(clause)),
   );
   if (!addresses.length) return undefined;
+  if (addresses.some((clause) => isRestrictedCampusQuote(cited.source, clause)))
+    return undefined;
   if (
     addresses.some((clause) => {
       const firstAddress = /地址|校址|办学地点|教学地点|培养地点|所在城市/.exec(
@@ -683,6 +717,55 @@ function checkedLocation(
   const programLocal = addresses.some((clause) =>
     programAddress(clause, input),
   );
+  if (year !== undefined && year !== Number(input.targetYear)) {
+    if (year > Number(input.targetYear)) return undefined;
+    const currentPages = input.sources.filter(
+      (source) =>
+        source.kind === "official_page" &&
+        sourceHasSchoolIdentity(source, input.institutionName) &&
+        safeSourceYear(source) === Number(input.targetYear),
+    );
+    // Compare actual current programme addresses, never school names or generic
+    // footers. An explicit old claim is rejected when newer evidence disagrees.
+    for (const source of currentPages) {
+      for (const clause of clauses(source.excerpt)) {
+        if (!programAddress(clause, input)) continue;
+        const currentCities = addressCities(clause);
+        if (currentCities.length !== 1) continue;
+        const current = checkedLocation({
+          ...input,
+          citations: [...new Set([...input.citations, source.id])],
+          location: {
+            city: currentCities[0],
+            quote: clause,
+            sourceId: source.id,
+          },
+        });
+        if (current && current.city !== city) return undefined;
+      }
+    }
+    if (
+      currentPages.some(
+        (source) =>
+          /培养(?:所在)?校区|新生所在校区|(?:培养|教学|办学)(?:地点|地址)/.test(
+            withoutSchoolLinks(source.excerpt),
+          ) &&
+          !clauses(source.excerpt).some((clause) =>
+            programAddress(clause, input),
+          ),
+      )
+    ) {
+      const currentCampus = deriveCampusLocation({
+        ...input,
+        sources: input.sources.filter(
+          (source) =>
+            safeSourceYear(source) === Number(input.targetYear) ||
+            safeSourceYear(source) === undefined,
+        ),
+      });
+      if (!currentCampus || currentCampus.city !== city) return undefined;
+    }
+  }
   if (!programLocal) {
     // A footer does not identify the candidate's campus when the page mentions
     // multiple campuses or programme-specific teaching locations.
@@ -707,7 +790,12 @@ function checkedLocation(
       return undefined;
     if (addresses.length !== 1) return undefined;
   }
-  return { city, quote: cited.quote, sourceId: String(raw.sourceId) };
+  return {
+    city,
+    ...(year !== undefined ? { year } : {}),
+    quote: cited.quote,
+    sourceId: String(raw.sourceId),
+  };
 }
 
 /** An omitted model address can be recovered only from literal read school evidence. */
@@ -744,7 +832,20 @@ function extractedLocation(input: RecommendationConstraintInput) {
       }
     }
   }
-  const found = project.length ? project : school;
+  const available = project.length ? project : school;
+  const current = available.filter(
+    (value) => value.year === Number(input.targetYear),
+  );
+  const past = available.filter(
+    (value) =>
+      value.year !== undefined && value.year < Number(input.targetYear),
+  );
+  const latest = Math.max(...past.map((value) => value.year!));
+  const found = current.length
+    ? current
+    : past.length
+      ? past.filter((value) => value.year === latest)
+      : available;
   return new Set(found.map((value) => value.city)).size === 1
     ? found[0]
     : undefined;
@@ -779,21 +880,27 @@ function budgetCheck(
   if (!budget)
     return { ...check, reason: "年度预算尚未明确，未代填预算或认定费用符合。" };
   if (!tuition) return check;
-  if (String(tuition.year) !== String(input.targetYear))
+  if (tuition.year > Number(input.targetYear))
     return {
       ...check,
       reason: `所列学费为${tuition.year}年历史或其他年度参考，不据此判断${input.targetYear}年是否符合预算。`,
     };
+  const reference =
+    tuition.year < Number(input.targetYear)
+      ? `依据${tuition.year}年历史学费作参考比较，${input.targetYear}年收费及适用条件仍待核对。`
+      : "";
   if (tuition.period !== "academic_year")
     return {
       ...check,
       reason:
+        reference +
         "官网费用按全程、学期或学分计费，与年度预算口径不同；未推算学制、学期数或学分数。",
     };
   if (tuition.studyMode === "unspecified")
     return {
       ...check,
       reason:
+        reference +
         "学费原文未明确学习形式，须确认全日制或非全日制及其适用项目后再比较年度预算。",
     };
   const maximum = budget.upper ?? budget.lower!;
@@ -801,18 +908,23 @@ function budgetCheck(
     return {
       ...check,
       status: "match",
-      reason: `该${tuition.studyMode === "full_time" ? "全日制" : "非全日制"}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元未超过所选年度预算${budget.upper ? "上限" : "起点"}；仅比较学费，住宿和生活等总费用仍待核验。`,
+      reason:
+        reference +
+        `该${tuition.studyMode === "full_time" ? "全日制" : "非全日制"}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元未超过所选年度预算${budget.upper ? "上限" : "起点"}；仅比较学费，住宿和生活等总费用仍待核验。`,
     };
   if (!budget.upper)
     return {
       ...check,
       reason:
+        reference +
         "年度预算选择为10万元以上，未给出上限；不能将更高学费直接认定为超预算。",
     };
   return {
     ...check,
     status: "mismatch",
-    reason: `该${tuition.studyMode === "full_time" ? "全日制" : "非全日制"}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元，已高于所选年度预算上限${maximum.toLocaleString("zh-CN")}元，且尚未包括住宿和生活等费用；需放宽预算条件，是否值得选择仍须综合本人其他目标判断。`,
+    reason:
+      reference +
+      `该${tuition.studyMode === "full_time" ? "全日制" : "非全日制"}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元，已高于所选年度预算上限${maximum.toLocaleString("zh-CN")}元，且尚未包括住宿和生活等费用；需放宽预算条件，是否值得选择仍须综合本人其他目标判断。`,
   };
 }
 
@@ -842,16 +954,24 @@ function cityCheck(
   if (!cities.length)
     return { ...check, reason: "尚未限定城市，未代填城市偏好或认定地域不符。" };
   if (!location) return check;
+  const reference =
+    location.year !== undefined && location.year < Number(input.targetYear)
+      ? `${location.year}年历史培养安排参考，${input.targetYear}年实际培养安排仍待核对。`
+      : "";
   if (cities.includes(location.city))
     return {
       ...check,
       status: "match",
-      reason: `官网所列地址位于${location.city}，符合已选城市偏好；具体培养校区仍以当年项目安排为准。`,
+      reason:
+        reference +
+        `官网所列地址位于${location.city}，${reference ? "作为历史参考与已选城市偏好一致" : "符合已选城市偏好"}；具体培养校区仍以当年项目安排为准。`,
     };
   return {
     ...check,
     status: "mismatch",
-    reason: `官网所列地址位于${location.city}，不在偏好城市${cities.join("、")}内；需放宽城市条件，是否值得选择仍须综合本人其他目标判断。`,
+    reason:
+      reference +
+      `官网所列地址位于${location.city}，${reference ? "该历史安排" : ""}不在偏好城市${cities.join("、")}内；需放宽城市条件，是否值得选择仍须综合本人其他目标判断。`,
   };
 }
 
@@ -863,10 +983,16 @@ export function deriveRecommendationConstraints(
   "constraintChecks" | "tuition" | "location"
 > {
   // Invalid explicit claims remain rejected; only a missing field is recoverable.
-  const tuition =
+  let tuition =
     input.tuition === undefined
       ? extractedTuition(input)
       : checkedTuition(input);
+  if (tuition && tuition.year < Number(input.targetYear)) {
+    const current = extractedTuitionCandidates(input).filter(
+      (item) => item.year === Number(input.targetYear),
+    );
+    if (current.length) tuition = selectedTuition(current, input);
+  }
   const location =
     input.location === undefined
       ? (deriveCampusLocation(input) ?? extractedLocation(input))
