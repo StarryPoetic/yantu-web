@@ -42,6 +42,72 @@ test("an unrelated university in a friendship link is not the owner of a master'
   );
 });
 
+test("Southeast University programme evidence cannot be assigned to Tongji University through its peer-school footer", () => {
+  const text =
+    "东南大学硕士研究生培养方案（081420 土木工程建造与管理） 首页 学院概况 招生与就业。" +
+    "东南大学硕士研究生培养方案：（一级学科代码：0814 一级学科名称：土木工程）" +
+    "（二级学科代码：081420 二级学科名称：土木工程建造与管理）。" +
+    "本学科培养具有土木工程建造技术、合同与造价管理知识的人才。" +
+    "联系我们 地址：江苏省南京市江宁区东南大学路2号土木教学科研楼。" +
+    "快速导航 学校主页 兄弟院校 同济大学土木工程学院 Ｗe are 土木，Ｗe are family! " +
+    "版权所有 © 东南大学土木工程学院";
+  const page = source(text, {
+    title: "东南大学硕士研究生培养方案(081420 土木工程建造与管理)",
+    url: "https://civil.seu.edu.cn/2009/1022/c20027a93071/page.htm",
+  });
+  for (const excerpt of [
+    text,
+    compactEvidence(text, [discipline("0814")], 600),
+  ]) {
+    assert.equal(
+      supportsProgram(
+        { ...page, excerpt },
+        "东南大学",
+        "土木工程建造与管理",
+        discipline("0814"),
+      ),
+      true,
+    );
+    assert.equal(
+      supportsProgram(
+        { ...page, excerpt },
+        "同济大学",
+        "土木工程建造与管理",
+        discipline("0814"),
+      ),
+      false,
+    );
+    assert.equal(
+      supportsProgram(
+        { ...page, excerpt },
+        "同济大学",
+        "工业工程与管理",
+        discipline("1256"),
+      ),
+      false,
+    );
+  }
+});
+
+test("a referenced university or search title cannot supply a fetched programme's school subject", () => {
+  for (const excerpt of [
+    "硕士研究生招生专业目录：030101法学理论。",
+    "乙大学硕士研究生招生专业目录：030101法学理论，拥有甲大学博士生导师。",
+    "乙大学硕士研究生招生专业目录：030101法学理论。兄弟院校：甲大学。",
+  ]) {
+    assert.equal(
+      supportsProgram(
+        source(excerpt),
+        "甲大学",
+        "法学理论",
+        discipline("0301"),
+      ),
+      false,
+      excerpt,
+    );
+  }
+});
+
 test("doctoral content and doctoral URL paths cannot establish a master's program or convert an exam code to an admissions year", () => {
   const content =
     "甲大学博士研究生招生专业目录：0503 新闻传播学，博士研究生培养方案。2027新闻传播学专业基础。";
@@ -504,4 +570,49 @@ test("courses on a genuine master's page cannot become newly discovered degree p
     "甲大学硕士培养方案。课程设置：应用数学。另设硕士招生专业目录：070104 应用数学，培养数学研究人才。",
   );
   assert.equal(supportsProgram(page, "甲大学", "应用数学", math), true);
+});
+
+test("long-page compaction reserves an ordinary address passage without removing programme or tuition evidence", () => {
+  const major = discipline("0301");
+  const text =
+    "甲大学硕士研究生招生专业目录。" +
+    "招生说明。".repeat(1200) +
+    "030101 法学理论。" +
+    "培养介绍。".repeat(900) +
+    "法学理论2027年全日制硕士研究生学费8000元/年。" +
+    "其他信息。".repeat(800) +
+    "联系方式：甲大学地址：杭州市大学路一号。";
+  const large = compactEvidence(text, [major], 6000);
+  const small = compactEvidence(large, [major], 600);
+  for (const [excerpt, budget] of [
+    [large, 6000],
+    [small, 600],
+  ] as const) {
+    assert.ok(excerpt.length <= budget);
+    assert.ok(excerpt.includes("030101 法学理论"));
+    assert.ok(excerpt.includes("学费8000元/年"));
+    assert.ok(excerpt.includes("地址：杭州市大学路一号"));
+    assert.ok(excerpt.split(" … ").every((part) => text.includes(part)));
+    assert.equal(
+      supportsProgram(source(excerpt), "甲大学", "法学理论", major),
+      true,
+    );
+  }
+});
+
+test("a late contact address is retained ahead of addresses inside a friendship-links clause", () => {
+  const major = discipline("0301");
+  const text =
+    "甲大学硕士研究生招生专业目录。" +
+    "招生说明。".repeat(900) +
+    "030101 法学理论。" +
+    "培养介绍。".repeat(700) +
+    "友情链接：乙大学地址：北京市其他学校路。" +
+    "链接介绍。".repeat(20) +
+    "版权所有：甲大学。联系地址：杭州市大学路一号。";
+  const excerpt = compactEvidence(text, [major], 600);
+  assert.ok(excerpt.includes("联系地址：杭州市大学路一号"));
+  assert.ok(!excerpt.includes("北京市其他学校路"));
+  assert.ok(excerpt.length <= 600);
+  assert.ok(excerpt.split(" … ").every((part) => text.includes(part)));
 });

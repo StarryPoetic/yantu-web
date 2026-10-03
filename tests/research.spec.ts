@@ -1160,6 +1160,91 @@ test("五所学校按综合适合度分三层，昂贵仍可优先且同价可�
   expect(service.postCount()).toBe(1);
 });
 
+test("五所外地学校仍显示真实部分结果及杭州覆盖缺口，不误报失败或缺画像", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  const run = await openGuidance(page, async (page) => {
+    await page.getByRole("button", { name: "杭州", exact: true }).click();
+  });
+  service.setRun(run);
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  const cityGap =
+    "意向城市杭州：目前可核验符合杭州的学校建议为 0 所；已保留五所外地学校供比较，这不代表杭州没有适合学校。";
+  service.finish("partial", () => {
+    const report = tieredReport(run);
+    return {
+      ...report,
+      status: "partial",
+      reason: "PREFERRED_CITY_COVERAGE_INCOMPLETE",
+      coverage: {
+        ...report.coverage!,
+        preferredCities: ["杭州"],
+        preferredCitySchoolCount: 0,
+        unknownCitySchoolCount: 0,
+        shortfallReasons: [cityGap],
+      },
+      recommendations: report.recommendations.map((item) => ({
+        ...item,
+        tierReasons: ["已有学校与专业依据，可作为需权衡城市偏好的备选。"],
+        location: {
+          ...item.location!,
+          city: "上海",
+          quote: "该电子信息项目在上海校区培养。",
+        },
+        constraintChecks: item.constraintChecks!.map((check) =>
+          check.field === "cities"
+            ? {
+                ...check,
+                status: "mismatch",
+                reason: "官网培养地址位于上海，与意向城市杭州不同。",
+              }
+            : check,
+        ),
+      })),
+    };
+  });
+  await expect(panel.getByText("部分研究报告", { exact: true })).toBeVisible();
+  await expect(
+    panel.getByText("本次建议 5 所不同学校，目标比较 5–10 所", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("article", {
+      name: /^分级测试[甲乙丙丁戊]大学 · 电子信息/,
+    }),
+  ).toHaveCount(5);
+  const coverage = panel.getByRole("complementary", { name: "报告覆盖说明" });
+  await expect(
+    coverage.getByText("意向城市覆盖仍不足，先保留已有建议", { exact: true }),
+  ).toBeVisible();
+  await expect(coverage.getByText(cityGap, { exact: true })).toBeVisible();
+  await expect(panel.getByText(/尚未达到 5 所/)).toHaveCount(0);
+  await expect(
+    panel.getByRole("region", { name: "报告生成失败", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "补充个人情况", exact: true }),
+  ).toHaveCount(0);
+  await expect(panel.getByText("需要补充信息", { exact: true })).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "下载研究报告", exact: true }),
+  ).toBeEnabled();
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await downloading).path())!, "utf8");
+  expect(content).toContain(cityGap);
+  expect(content).toContain("本次建议 5 所不同学校");
+  expect(service.postCount()).toBe(1);
+});
+
 test("不足五所仍保留适合与备选学校，并说明尚未查到而非不存在", async ({
   page,
 }) => {

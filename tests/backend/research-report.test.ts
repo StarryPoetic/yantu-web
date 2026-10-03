@@ -1807,6 +1807,324 @@ test("an empty late fee response cannot poison the public body cache on the next
   assert.equal(second.recommendations[0].tuition?.amount, 8000);
 });
 
+for (const firstPage of ["timeout", "other-programme"] as const) {
+  test(`a ${firstPage} preferred-city page gets an observed alternative before outside fee reads consume the reserve`, async () => {
+    let readsBeforeAnalysis = 0;
+    let analyzing = false;
+    let readGoodAlternative = false;
+    const { module } = setup({
+      plan: {
+        ...planBody(),
+        directions: [
+          { ...planBody().directions[0], searchSchools: ["杭州研究大学"] },
+        ],
+      },
+      reader: async (url) => {
+        const parsed = new URL(url);
+        if (parsed.hostname === "api.search.brave.com") {
+          const pass = (parsed.searchParams.get("q") ?? "").includes("培养方案")
+            ? 0
+            : 1;
+          return {
+            contentType: "application/json",
+            text: JSON.stringify({
+              web: {
+                results: [
+                  {
+                    url: "https://bad.local.edu.cn/catalog",
+                    title: "杭州研究大学2027年法学硕士招生目录",
+                    description: "030101法学理论硕士",
+                  },
+                  {
+                    url: "https://good.local.edu.cn/detail",
+                    title: "杭州研究大学2027年法学硕士招生目录",
+                    description: "030101法学理论硕士",
+                  },
+                  ...Array.from({ length: 8 }, (_, i) => ({
+                    url: `https://school${pass * 8 + i}.edu.cn/catalog`,
+                    title: "外地研究大学2027年法学硕士招生目录",
+                    description: "030101法学理论硕士",
+                  })),
+                ],
+              },
+            }),
+          };
+        }
+        if (!analyzing) readsBeforeAnalysis++;
+        if (parsed.hostname === "bad.local.edu.cn" && firstPage === "timeout")
+          throw new ModelError("WEB_TIMEOUT");
+        if (parsed.hostname === "good.local.edu.cn") readGoodAlternative = true;
+        return {
+          contentType: "text/html",
+          text:
+            parsed.hostname === "bad.local.edu.cn"
+              ? "杭州研究大学2027年硕士招生专业目录：030101法学理论。金融硕士培养地点：杭州市主校区。"
+              : parsed.hostname === "good.local.edu.cn"
+                ? "杭州研究大学2027年硕士招生专业目录：030101法学理论。杭州研究大学法学理论培养地点：杭州市主校区。"
+                : "外地研究大学2027年硕士招生专业目录：030101法学理论。",
+        };
+      },
+      model: {
+        async complete(messages) {
+          analyzing = true;
+          const sources = JSON.parse(messages[1].content).sources;
+          const read = sources.find(
+            (source: { kind: string; excerpt: string }) =>
+              source.kind === "official_page" &&
+              source.excerpt.includes("杭州研究大学法学理论培养地点"),
+          );
+          const body = reportBody();
+          body.facts = [];
+          body.recommendations[0].institutionName = "杭州研究大学";
+          body.recommendations[0].citations = [read?.id ?? "missing-source"];
+          return {
+            content: JSON.stringify(body),
+            inputTokens: 100,
+            outputTokens: 500,
+            model: "deepseek-v4-pro",
+          };
+        },
+      },
+    });
+    const run = fixture();
+    run.inputSnapshot.profile.cities = ["杭州"];
+    const report = await module.generate({ subjectId: "student", run });
+    assert.ok(readsBeforeAnalysis > 16 && readsBeforeAnalysis <= 20);
+    assert.equal(readGoodAlternative, true);
+    assert.equal(report.recommendations[0].institutionName, "杭州研究大学");
+    assert.equal(report.recommendations[0].location?.city, "杭州");
+    assert.equal(report.coverage?.preferredCitySchoolCount, 1);
+  });
+}
+
+test("five outside recommendations still trigger one city supplement and never restore a locally ineligible project", async () => {
+  for (const blocked of [false, true]) {
+    const schools = [
+      "甲研究大学",
+      "乙研究大学",
+      "丙研究大学",
+      "丁研究大学",
+      "戊研究大学",
+      "杭州研究大学",
+    ];
+    const { module, calls } = setup({
+      reader: async (url) => {
+        const parsed = new URL(url);
+        if (parsed.hostname === "api.search.brave.com")
+          return {
+            contentType: "application/json",
+            text: JSON.stringify({
+              web: {
+                results: schools.map((school, index) => ({
+                  url: `https://school${index}.edu.cn/catalog`,
+                  title: `${school}2027年法学硕士招生目录`,
+                  description: "030101法学理论硕士",
+                })),
+              },
+            }),
+          };
+        const index = Number(parsed.hostname.match(/school(\d+)/)?.[1]);
+        return {
+          contentType: "text/html",
+          text: `${schools[index]}2027年硕士招生专业目录：030101法学理论${blocked && index === 5 ? "，仅限医学本科毕业生报考，不接受跨专业考生" : ""}。${schools[index]}法学理论培养地点：${index === 5 ? "杭州" : "上海"}市主校区。`,
+        };
+      },
+      model: {
+        async complete(messages) {
+          const supplemental = messages.at(-1)!.content.includes("已保留：");
+          const sources = JSON.parse(messages[1].content).sources;
+          const body = reportBody();
+          body.facts = [];
+          body.recommendations = (supplemental ? [5] : [0, 1, 2, 3, 4]).map(
+            (index) => ({
+              ...structuredClone(reportBody().recommendations[0]),
+              institutionName: schools[index],
+              citations: [
+                sources.find((source: { title: string }) =>
+                  source.title.startsWith(schools[index]),
+                ).id,
+              ],
+            }),
+          );
+          return {
+            content: JSON.stringify(body),
+            inputTokens: 100,
+            outputTokens: 500,
+            model: "deepseek-v4-pro",
+          };
+        },
+      },
+    });
+    const run = fixture();
+    run.inputSnapshot.profile.cities = ["杭州"];
+    const report = await module.generate({ subjectId: "student", run });
+    assert.equal(calls.length, 2);
+    assert.match(calls[1].messages.at(-1)!.content, /本人意向城市是杭州/);
+    if (blocked) {
+      assert.equal(report.recommendations.length, 5);
+      assert.equal(report.coverage?.preferredCitySchoolCount, 0);
+      assert.equal(report.status, "partial");
+      assert.ok(
+        !report.recommendations.some(
+          (item) => item.institutionName === "杭州研究大学",
+        ),
+      );
+      assert.match(
+        report.coverage!.shortfallReasons.join(" "),
+        /意向城市为杭州.*尚未形成可核验/,
+      );
+    } else {
+      assert.equal(report.recommendations.length, 6);
+      assert.equal(report.recommendations[0].institutionName, "杭州研究大学");
+      assert.equal(report.coverage?.preferredCitySchoolCount, 1);
+      assert.equal(report.status, "completed");
+    }
+  }
+});
+
+test("a full outside list admits a verified city candidate and rewrites the stale school summary", async () => {
+  const schools = [..."甲乙丙丁戊己庚辛壬癸"]
+    .map((letter) => `${letter}研究大学`)
+    .concat("杭州研究大学");
+  let searches = 0;
+  const { module, calls } = setup({
+    reader: async (url) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === "api.search.brave.com") {
+        const ordered = searches++
+          ? [10, 0, 1, 2, 3, 4, 5, 6, 7, 8]
+          : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+        return {
+          contentType: "application/json",
+          text: JSON.stringify({
+            web: {
+              results: ordered.map((index) => ({
+                url: `https://school${index}.edu.cn/catalog`,
+                title: `${schools[index]}2027年法学硕士招生目录`,
+                description: "030101法学理论硕士",
+              })),
+            },
+          }),
+        };
+      }
+      const index = Number(parsed.hostname.match(/school(\d+)/)?.[1]);
+      return {
+        contentType: "text/html",
+        text: `${schools[index]}2027年硕士招生专业目录：030101法学理论。${schools[index]}法学理论培养地点：${index === 10 ? "杭州" : "上海"}市主校区。`,
+      };
+    },
+    model: {
+      async complete(messages) {
+        const extra = messages.at(-1)!.content.includes("已保留：");
+        const sources = JSON.parse(messages[1].content).sources;
+        const body = reportBody();
+        body.facts = [];
+        body.summary = `可以进一步比较${schools.slice(0, 10).join("、")}，年度条件仍需核验。`;
+        body.recommendations = (
+          extra ? [10] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        ).map((index) => ({
+          ...structuredClone(reportBody().recommendations[0]),
+          institutionName: schools[index],
+          citations: [
+            sources.find((source: { title: string }) =>
+              source.title.startsWith(schools[index]),
+            ).id,
+          ],
+        }));
+        return {
+          content: JSON.stringify(body),
+          inputTokens: 100,
+          outputTokens: 500,
+          model: "deepseek-v4-pro",
+        };
+      },
+    },
+  });
+  const run = fixture();
+  run.inputSnapshot.profile.cities = ["杭州"];
+  const report = await module.generate({ subjectId: "student", run });
+  assert.equal(calls.length, 2);
+  assert.equal(report.recommendations.length, 10);
+  assert.equal(report.recommendations[0].institutionName, "杭州研究大学");
+  assert.equal(report.coverage?.preferredCitySchoolCount, 1);
+  assert.ok(
+    !report.recommendations.some((item) => item.institutionName === schools[9]),
+  );
+  assert.ok(!report.summary.includes(schools[9]));
+  assert.match(report.summary, /杭州研究大学/);
+});
+
+test("quantity alone cannot mark a report complete when the saved city has no verified coverage", async () => {
+  const schools = [
+    "甲研究大学",
+    "乙研究大学",
+    "丙研究大学",
+    "丁研究大学",
+    "戊研究大学",
+  ];
+  const { module, calls } = setup({
+    reader: async (url) => {
+      const parsed = new URL(url);
+      if (parsed.hostname === "api.search.brave.com")
+        return {
+          contentType: "application/json",
+          text: JSON.stringify({
+            web: {
+              results: schools.map((school, index) => ({
+                url: `https://school${index}.edu.cn/catalog`,
+                title: `${school}2027年法学硕士招生目录`,
+                description: "030101法学理论硕士",
+              })),
+            },
+          }),
+        };
+      const index = Number(parsed.hostname.match(/school(\d+)/)?.[1]);
+      return {
+        contentType: "text/html",
+        text: `${schools[index]}2027年硕士招生专业目录：030101法学理论。`,
+      };
+    },
+    model: {
+      async complete(messages) {
+        const sources = JSON.parse(messages[1].content).sources;
+        const body = reportBody();
+        body.facts = [];
+        body.recommendations = schools.map((school) => ({
+          ...structuredClone(reportBody().recommendations[0]),
+          institutionName: school,
+          citations: [
+            sources.find((source: { title: string }) =>
+              source.title.startsWith(school),
+            ).id,
+          ],
+        }));
+        return {
+          content: JSON.stringify(body),
+          inputTokens: 100,
+          outputTokens: 500,
+          model: "deepseek-v4-pro",
+        };
+      },
+    },
+  });
+  const run = fixture();
+  run.inputSnapshot.profile.cities = ["杭州"];
+  const report = await module.generate({ subjectId: "student", run });
+  assert.equal(calls.length, 1);
+  assert.equal(report.recommendations.length, 5);
+  assert.equal(report.reason, "PREFERRED_CITY_COVERAGE_INCOMPLETE");
+  assert.equal(report.coverage?.unknownCitySchoolCount, 5);
+  assert.equal(report.coverage?.preferredCitySchoolCount, 0);
+  assert.match(
+    report.coverage!.shortfallReasons.join(" "),
+    /不代表杭州没有适合/,
+  );
+  assert.doesNotMatch(
+    report.coverage!.shortfallReasons.join(" "),
+    /追加\d+次官网读取|借用最多4次/,
+  );
+});
+
 test("DeepSeek research uses official pro thinking controls, counts total completion usage, and never exposes reasoning", async () => {
   let payload: Record<string, unknown> | undefined;
   const adapter = createDeepSeekAdapter({

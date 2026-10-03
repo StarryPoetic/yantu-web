@@ -31,6 +31,8 @@ const messages: Record<string, string> = {
   SEARCH_SNIPPETS_ONLY: "目前只有搜索摘要，尚需核对对应学校的官网原文。",
   INSUFFICIENT_RESEARCH_EVIDENCE:
     "资料覆盖不足，暂不能形成完整的学校与专业建议。",
+  PREFERRED_CITY_COVERAGE_INCOMPLETE:
+    "已取得部分学校资料，但可核验的意向城市学校建议仍不足；这不代表意向城市没有适合的学校。",
   ADMISSION_EVIDENCE_NOT_APPLICABLE:
     "部分资料的目标年度或招生适用性尚未核实，相关资格摘录与学校建议已移除。",
   BUDGET_EXHAUSTED: "今日模型额度不足，请调整服务额度或稍后再试。",

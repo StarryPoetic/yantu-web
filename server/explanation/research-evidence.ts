@@ -1,5 +1,9 @@
 import type { WebSource } from "./web.ts";
 import type { Discipline } from "../disciplines/types.ts";
+import {
+  sourceHasSchoolIdentity,
+  withoutSchoolLinks,
+} from "./research-school.ts";
 
 export interface AdmissionEvidence {
   excluded?: string;
@@ -77,13 +81,10 @@ export function supportsProgram(
   programName: string,
   discipline: Discipline,
 ) {
-  const evidence = (
+  const evidence = withoutSchoolLinks(
     source.kind === "official_page"
       ? source.excerpt
-      : `${source.title} ${source.excerpt}`
-  ).replace(
-    /(?:友情链接|相关链接|院校链接)[\s\S]*?(?=学院地址|学校地址|联系地址|Copyright|版权所有|$)/gi,
-    "",
+      : `${source.title} ${source.excerpt}`,
   );
   if (
     /(?:\/|_)(?:BS|boshi|phd|doctoral)(?:\/|_|\.|$)/i.test(
@@ -97,7 +98,7 @@ export function supportsProgram(
   if (
     programName.length < 2 ||
     /^(?:专业|学科|硕士|研究生|研究方向|硕士研究生)$/.test(programName) ||
-    !evidence.includes(institutionName)
+    !sourceHasSchoolIdentity(source, institutionName)
   )
     return false;
   const escaped = programName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -352,12 +353,36 @@ export function compactEvidence(
     const heading = headings.filter((item) => item.position <= position).at(-1);
     return heading ? [heading.position, position] : [position];
   });
+  const locationMatches = [
+    ...excerpt.matchAll(
+      /(?:学校地址|学院地址|联系地址|通讯地址|通信地址|办公地址|办学地址|培养地点|学习地点|教学地点|校址|地址)\s*[:：]/g,
+    ),
+    ...excerpt.matchAll(/校区|培养地点|学校地址|通讯地址/g),
+  ];
+  const location = locationMatches.find((match) => {
+    if (match.index! < headerSize) return false;
+    const preceding = excerpt.slice(
+      Math.max(0, match.index! - 120),
+      match.index!,
+    );
+    const links = Math.max(
+      preceding.lastIndexOf("友情链接"),
+      preceding.lastIndexOf("相关链接"),
+      preceding.lastIndexOf("院校链接"),
+    );
+    const contact = Math.max(
+      ...["联系方式", "联系我们", "版权所有", "Copyright", "CONTACT"].map(
+        (label) => preceding.lastIndexOf(label),
+      ),
+    );
+    // Do not preferentially retain a peer school's address from a links clause.
+    // This only selects source passages; it does not establish place ownership.
+    return links < 0 || contact > links;
+  })?.index;
   const anchors = [
     school ? school.index + school[0].length - 2 : undefined,
     ...scopedPositions,
-    ...[
-      ...excerpt.matchAll(/学费|收费标准|(?:校区|培养地点|学校地址|通讯地址)/g),
-    ]
+    ...[...excerpt.matchAll(/学费|收费标准|收费项目/g)]
       .slice(0, 3)
       .map((match) => match.index!),
   ]
@@ -371,6 +396,13 @@ export function compactEvidence(
         index,
     )
     .slice(0, Math.max(3, Math.min(8, Math.floor(max / 250))));
+  // An address late in a long page must survive an already full programme/fee
+  // anchor list. Share the same character budget instead of dropping its peers.
+  if (
+    location !== undefined &&
+    !anchors.some((position) => Math.abs(position - location) < 80)
+  )
+    anchors.push(location);
   if (!anchors.length) return excerpt.slice(0, max);
   const width = Math.floor(
     (max - headerSize - anchors.length * 3) / anchors.length,

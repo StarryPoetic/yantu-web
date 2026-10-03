@@ -77,3 +77,77 @@ test("attachment selection is bounded and only PDFs are followed", () => {
     `<a href="/other.htm">硕士招生目录</a><a href="/other.docx">硕士招生目录</a>`;
   assert.equal(researchAttachments(parent, html).length, 2);
 });
+
+test("preferred city or owned school hints prioritize observed domains without skipping any school's first turn", () => {
+  const sources = [
+    source("outside", "law.outside.edu.cn", "甲大学2027年法学硕士招生专业目录"),
+    {
+      ...source("city", "yz.city.edu.cn", "乙大学2027年法学硕士招生专业目录"),
+      excerpt: "乙大学2027年030101法学理论硕士招生，学校地址：杭州市。",
+    },
+    source("hint", "yz.hint.edu.cn", "丙大学2027年法学硕士招生专业目录"),
+    source("hint2", "law.hint.edu.cn", "丙大学2026年法学硕士招生专业目录"),
+  ];
+  const result = researchReadingOrder(
+    sources,
+    new Map(sources.map((s) => [s.id, "0301"])),
+    [law],
+    { cities: ["杭州"], schoolHints: ["丙大学"] },
+  );
+  assert.deepEqual(result.priorityDomains, ["city.edu.cn", "hint.edu.cn"]);
+  assert.equal(result.firstRoundCount, 3);
+  assert.deepEqual(
+    result.pages.map((s) => s.id),
+    ["city", "hint", "outside", "hint2"],
+  );
+});
+
+test("a university mentioned as another school's faculty is not an owned school preference", () => {
+  const page = {
+    ...source(
+      "partners",
+      "yz.hzcu.edu.cn",
+      "电子信息 - 浙大城市学院研究生招生网",
+    ),
+    excerpt: "030101 法学理论硕士研究生培养，拥有浙江大学博士生导师。",
+  };
+  const result = researchReadingOrder(
+    [page],
+    new Map([[page.id, "0301"]]),
+    [law],
+    { schoolHints: ["浙江大学"] },
+  );
+  assert.deepEqual(result.priorityDomains, []);
+  assert.equal(result.pages.length, 1);
+});
+
+test("specific master's programme details and admission catalogues precede generic list pages on the same school", () => {
+  const pages = [
+    {
+      ...source("list", "yz.a.edu.cn", "培养方案"),
+      url: "https://yz.a.edu.cn/1728/list.htm",
+    },
+    {
+      ...source("detail", "yz.a.edu.cn", "法学 - 甲大学研究生招生网"),
+      url: "https://yz.a.edu.cn/a/programme/584.html",
+    },
+    {
+      ...source("catalog", "yz.b.edu.cn", "乙大学2027年硕士招生专业目录"),
+      excerpt: "乙大学硕士招生专业目录附件下载。",
+    },
+    {
+      ...source("otherList", "yz.b.edu.cn", "法学硕士培养方案"),
+      url: "https://yz.b.edu.cn/123/list.htm",
+    },
+  ];
+  const result = researchReadingOrder(
+    pages,
+    new Map(pages.map((s) => [s.id, "0301"])),
+    [law],
+  );
+  assert.deepEqual(
+    result.pages.slice(0, 2).map((s) => s.id),
+    ["detail", "catalog"],
+  );
+  assert.equal(result.firstRoundCount, 2);
+});

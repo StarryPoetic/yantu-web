@@ -8,6 +8,11 @@ import type {
   TuitionPeriod,
 } from "../../shared/research-recommendation.ts";
 import type { WebSource } from "./web.ts";
+import { CITY_OPTIONS, normalizeCityName } from "../../shared/cities.ts";
+import {
+  sourceHasSchoolIdentity,
+  withoutSchoolLinks,
+} from "./research-school.ts";
 
 export interface RecommendationConstraintInput {
   profile: Pick<Profile, "budget" | "cities">;
@@ -40,11 +45,7 @@ const record = (value: unknown): Record<string, unknown> | undefined =>
     ? (value as Record<string, unknown>)
     : undefined;
 const cityName = (value: string) => value.trim().replace(/市$/, "");
-const substantive = (text: string) =>
-  text.replace(
-    /(?:友情链接|相关链接|院校链接)[\s\S]*?(?=学院地址|学校地址|联系地址|Copyright|版权所有|$)/gi,
-    "",
-  );
+const substantive = withoutSchoolLinks;
 
 function projectPosition(text: string, input: RecommendationConstraintInput) {
   let position = text.indexOf(input.programName);
@@ -97,7 +98,7 @@ function citedQuote(
     source.kind !== "official_page" ||
     url.protocol !== "https:" ||
     /(^|\.)chsi\.com\.cn$/.test(url.hostname) ||
-    !substantive(source.excerpt).includes(input.institutionName) ||
+    !sourceHasSchoolIdentity(source, input.institutionName) ||
     !substantive(source.excerpt).includes(raw.quote.trim())
   )
     return undefined;
@@ -494,6 +495,136 @@ function extractedTuition(input: RecommendationConstraintInput) {
   return unique.size === 1 ? candidates[0] : undefined;
 }
 
+function otherProjectOwner(prefix: string, institutionName: string) {
+  if (/大学/.test(prefix.replaceAll(institutionName, ""))) return true;
+  const externalRelation = /合作|联合(?:培养)?单位|外校|其他|别校|友校|独立/;
+  const connectsOtherOwner = (text: string) =>
+    /(?:^|科学院|研究院|研究所|学院)[\s的]*(?:与|和|及|对|邀请|联系|来自|到访)/.test(
+      text,
+    );
+  for (const owner of prefix.matchAll(
+    /[\p{Script=Han}]{1,30}(?:科学院|研究院|研究所|学院)/gu,
+  )) {
+    const throughOwner = prefix.slice(0, owner.index! + owner[0].length);
+    const ownAt = throughOwner.lastIndexOf(institutionName);
+    // An explicitly named school and its own college/institute remain usable;
+    // a collaboration relation after that school names a separate owner.
+    if (
+      ownAt >= 0 &&
+      !externalRelation.test(
+        throughOwner.slice(ownAt + institutionName.length),
+      ) &&
+      !connectsOtherOwner(throughOwner.slice(ownAt + institutionName.length))
+    )
+      continue;
+    if (
+      /^(?:本校|我校|本大学|该校)(?:的|附属|下属|所属|直属)?/u.test(owner[0]) &&
+      !externalRelation.test(owner[0]) &&
+      !connectsOtherOwner(owner[0].replace(/^(?:本校|我校|本大学|该校)/, ""))
+    )
+      continue;
+    // A labelled admissions faculty is an internal unit. A standalone named
+    // college or institute has unresolved ownership and cannot borrow the title.
+    if (
+      /(?:招生院系|所属院系|培养院系|所属学院|培养学院|院系名称|院系|系所)\s*[:：]\s*$/.test(
+        prefix.slice(0, owner.index),
+      ) &&
+      !externalRelation.test(owner[0])
+    )
+      continue;
+    return true;
+  }
+  return false;
+}
+
+function programAddress(clause: string, input: RecommendationConstraintInput) {
+  const programAt = projectPosition(clause, input);
+  if (programAt < 0) return false;
+  // The institution owning the local programme beats the surrounding page title.
+  if (otherProjectOwner(clause.slice(0, programAt), input.institutionName))
+    return false;
+  return [
+    ...clause.matchAll(/地址|校址|办学地点|教学地点|培养地点|所在城市/g),
+  ].some((match) => {
+    if (match.index! < programAt || match.index! - programAt > 160)
+      return false;
+    const between = clause
+      .slice(programAt + input.programName.length, match.index)
+      .replaceAll(input.institutionName, "");
+    return !/[\p{Script=Han}]{1,30}(?:大学|学院|研究院|研究所)|\b(?:0[1-9]|1[0-4])\d{4}\b|(?:[，,、]|\s)(?!全日制|非全日制|本专业|该专业|硕士)[\p{Script=Han}]{2,20}(?:专业|硕士)/u.test(
+      between,
+    );
+  });
+}
+
+function addressCities(text: string) {
+  return [
+    ...new Set(
+      CITY_OPTIONS.filter(({ name }) =>
+        /[州盟区县]$/.test(name)
+          ? text.includes(name)
+          : text.includes(`${name}市`),
+      ).map(({ name }) => name),
+    ),
+  ];
+}
+
+function schoolCopyright(text: string, institutionName: string) {
+  const escaped = institutionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const ownerAfter = new RegExp(
+    `^[\\s©:：()（）cC\\d–—.,，-]*${escaped}(?=$|[\\s:：,，.。;；]|[\\p{Script=Han}]{0,20}(?:学院|研究生院|研究院|研究所|中心|办公室|管理处))`,
+    "u",
+  );
+  const ownerBefore = new RegExp(
+    `${escaped}(?:[\\p{Script=Han}]{0,20}(?:学院|研究生院|研究院|研究所|中心|办公室|管理处))?[\\s©:：()（）cC\\d–—.,，-]*$`,
+    "u",
+  );
+  const namedOwnerAfter =
+    /^[\s©:：()（）cC\d–—.,，-]*[\p{Script=Han}]{1,30}(?:大学|科学院|研究院|研究所|学院)/u;
+  const body = withoutSchoolLinks(text);
+  return [...body.matchAll(/版权所有|Copyright/gi)].some((marker) => {
+    const after = body.slice(
+      marker.index! + marker[0].length,
+      marker.index! + marker[0].length + 80,
+    );
+    if (ownerAfter.test(after)) return true;
+    // An explicit owner after the marker wins over any earlier navigation name.
+    if (namedOwnerAfter.test(after)) return false;
+    const before = body.slice(Math.max(0, marker.index! - 80), marker.index);
+    return (
+      !/快速导航|学校主页|友情链接|兄弟院校|相关链接/.test(before) &&
+      ownerBefore.test(before)
+    );
+  });
+}
+
+function schoolAddress(clause: string, input: RecommendationConstraintInput) {
+  for (const match of clause.matchAll(
+    /地址|校址|办学地点|教学地点|培养地点|所在城市/g,
+  )) {
+    const before = clause.slice(0, match.index);
+    const ownAt = before.lastIndexOf(input.institutionName);
+    if (
+      ownAt >= 0 &&
+      /^[\s：:、，,]*(?:学校|通讯|通信|联系)?\s*$/.test(
+        before.slice(ownAt + input.institutionName.length),
+      )
+    )
+      return true;
+    // An owner printed after an address is usable only in a plain school footer;
+    // another institution or programme named before it cannot borrow that footer.
+    const after = clause.slice(match.index);
+    if (
+      !/[\p{Script=Han}]{1,30}(?:大学|学院|研究院|研究所)|硕士|专业|培养/u.test(
+        before,
+      ) &&
+      schoolCopyright(after, input.institutionName)
+    )
+      return true;
+  }
+  return false;
+}
+
 function checkedLocation(
   input: RecommendationConstraintInput,
 ): LocationEvidence | undefined {
@@ -514,19 +645,68 @@ function checkedLocation(
         new RegExp(`${city}(?:[，,\\s]|[^，,。；;]{0,12}区)`).test(clause)),
   );
   if (!addresses.length) return undefined;
-  const programLocal = addresses.some(
-    (clause) => projectPosition(clause, input) >= 0,
+  if (
+    addresses.some((clause) => {
+      const firstAddress = /地址|校址|办学地点|教学地点|培养地点|所在城市/.exec(
+        clause,
+      )!;
+      return addressCities(clause.slice(firstAddress.index)).length > 1;
+    })
+  )
+    return undefined;
+  const programLocal = addresses.some((clause) =>
+    programAddress(clause, input),
   );
   if (!programLocal) {
     // A footer does not identify the candidate's campus when the page mentions
     // multiple campuses or programme-specific teaching locations.
-    if (/校区|办学地点|教学地点|培养地点/.test(cited.source.excerpt))
+    if (/校区|办学地点|教学地点|培养(?:地点|地址)/.test(cited.source.excerpt))
       return undefined;
-    if (!addresses.some((clause) => clause.includes(input.institutionName)))
+    if (!addresses.some((clause) => schoolAddress(clause, input)))
       return undefined;
     if (addresses.length !== 1) return undefined;
   }
   return { city, quote: cited.quote, sourceId: String(raw.sourceId) };
+}
+
+/** An omitted model address can be recovered only from literal read school evidence. */
+function extractedLocation(input: RecommendationConstraintInput) {
+  const project: LocationEvidence[] = [];
+  const school: LocationEvidence[] = [];
+  for (const source of input.sources) {
+    if (source.kind !== "official_page") continue;
+    for (const clause of clauses(source.excerpt)) {
+      const address = /地址|校址|办学地点|教学地点|培养地点|所在城市/.exec(
+        clause,
+      );
+      if (!address) continue;
+      const quote =
+        clause.length <= 1800
+          ? clause
+          : clause.slice(Math.max(0, address.index - 160), address.index + 350);
+      const candidates = [
+        ...new Set([
+          ...addressCities(clause.slice(address.index)),
+          ...input.profile.cities
+            .map(normalizeCityName)
+            .filter((city) => city && quote.includes(`${city}市`)),
+        ]),
+      ];
+      for (const city of candidates) {
+        const value = checkedLocation({
+          ...input,
+          citations: [...new Set([...input.citations, source.id])],
+          location: { city, quote, sourceId: source.id },
+        });
+        if (value)
+          (programAddress(quote, input) ? project : school).push(value);
+      }
+    }
+  }
+  const found = project.length ? project : school;
+  return new Set(found.map((value) => value.city)).size === 1
+    ? found[0]
+    : undefined;
 }
 
 function annualBudget(
@@ -639,7 +819,10 @@ export function deriveRecommendationConstraints(
     input.tuition === undefined
       ? extractedTuition(input)
       : checkedTuition(input);
-  const location = checkedLocation(input);
+  const location =
+    input.location === undefined
+      ? extractedLocation(input)
+      : checkedLocation(input);
   const constraintChecks = [
     budgetCheck(input, tuition),
     cityCheck(input, location),

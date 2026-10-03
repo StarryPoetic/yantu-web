@@ -1,6 +1,7 @@
 import type { Discipline } from "../disciplines/types.ts";
 import type { WebSource } from "./web.ts";
 import { sourcePriority } from "./research-evidence.ts";
+import { sourceHasSchoolIdentity } from "./research-school.ts";
 
 export function academicDomain(url: string) {
   const host = new URL(url).hostname;
@@ -12,6 +13,10 @@ export function researchReadingOrder(
   sources: WebSource[],
   sourceDirections: Map<string, string>,
   disciplines: Discipline[],
+  preferences: {
+    cities?: readonly string[];
+    schoolHints?: readonly string[];
+  } = {},
 ) {
   const groups = new Map<string, WebSource[]>();
   for (const source of sources) {
@@ -31,7 +36,25 @@ export function researchReadingOrder(
         (item) => item.code === sourceDirections.get(source.id),
       )!;
       const year = Number(source.title.match(/\b(20\d{2})\b/)?.[1] ?? 2000);
-      return sourcePriority(source, discipline) + Math.min(30, year - 2000);
+      const list =
+        /\/(?:list\d*|index|project|newsList)\.(?:html?|aspx?|php)$/i.test(
+          new URL(source.url).pathname,
+        );
+      const mastersDirectory =
+        /硕士[^。；]{0,24}(?:招生(?:专业)?目录|专业目录|招生简章|招生章程)|硕士生招生专业目录/.test(
+          source.title,
+        );
+      const programmeDetail =
+        !list &&
+        (source.title.includes(discipline.name) ||
+          source.title.includes(discipline.code)) &&
+        /硕士|研究生/.test(`${source.title} ${source.excerpt}`);
+      return (
+        sourcePriority(source, discipline) +
+        Math.min(30, year - 2000) +
+        (mastersDirectory ? 90 : programmeDetail ? 60 : 0) -
+        (list ? 50 : 0)
+      );
     };
     group.sort((a, b) => score(b) - score(a));
     // A fee notice does not replace the primary programme evidence.
@@ -45,13 +68,32 @@ export function researchReadingOrder(
     );
     if (fee > 1) group.splice(1, 0, ...group.splice(fee, 1));
   }
+  const priorityDomains = [...groups.entries()]
+    .filter(([, group]) =>
+      group.some(
+        (source) =>
+          (preferences.cities ?? []).some(
+            (city) =>
+              city.length >= 2 &&
+              `${source.title} ${source.excerpt}`.includes(city),
+          ) ||
+          (preferences.schoolHints ?? []).some((school) =>
+            sourceHasSchoolIdentity(source, school),
+          ),
+      ),
+    )
+    .map(([domain]) => domain);
+  const priority = new Set(priorityDomains);
+  const orderedGroups = [...groups.entries()]
+    .sort((a, b) => Number(priority.has(b[0])) - Number(priority.has(a[0])))
+    .map(([, group]) => group);
   const pages: WebSource[] = [];
   for (let round = 0; round < sources.length; round++) {
-    for (const group of groups.values()) {
+    for (const group of orderedGroups) {
       if (group[round]) pages.push(group[round]);
     }
   }
-  return { pages, firstRoundCount: groups.size };
+  return { pages, firstRoundCount: groups.size, priorityDomains };
 }
 
 /** Only linked school PDFs; navigation, cross-school links and executable URLs cannot expand a crawl. */

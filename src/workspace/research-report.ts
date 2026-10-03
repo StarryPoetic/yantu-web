@@ -1,6 +1,7 @@
-import type { ResearchReport } from "../../server/explanation/research";
-import type { GuidanceRun } from "../../server/disciplines/types";
-import type { ResearchJob } from "../../server/routes/research";
+import type { ResearchReport } from "../../server/explanation/research.ts";
+import type { GuidanceRun } from "../../server/disciplines/types.ts";
+import type { ResearchJob } from "../../server/routes/research.ts";
+import { researchReason } from "../../shared/research-status.ts";
 
 /** Older jobs can save a technical failure as partial/done; do not mistake it for missing profile data. */
 export function researchOutcome(job: ResearchJob | null) {
@@ -36,6 +37,7 @@ export function researchOutcome(job: ResearchJob | null) {
     "RESEARCH_PARTIAL_VALIDATION",
     "KNOWN_ADMISSION_CONFLICT",
     "ADMISSION_EVIDENCE_NOT_APPLICABLE",
+    "PREFERRED_CITY_COVERAGE_INCOMPLETE",
   ];
   if (
     job.status === "blocked" &&
@@ -91,18 +93,28 @@ export function researchCoverage(report: ResearchReport) {
   const targetMin = report.coverage?.targetMin ?? 5;
   const targetMax = report.coverage?.targetMax ?? 10;
   const reasons = report.coverage?.shortfallReasons ?? [];
+  const countShortfall = schoolCount < targetMin;
+  const cityShortfall =
+    report.reason?.split(",").includes("PREFERRED_CITY_COVERAGE_INCOMPLETE") ||
+    (!!report.coverage?.preferredCities?.length &&
+      report.coverage.preferredCitySchoolCount === 0);
   return {
     schoolCount,
     targetMin,
     targetMax,
-    shortfall: schoolCount < targetMin,
+    shortfall: countShortfall || !!cityShortfall,
+    noticeTitle: countShortfall
+      ? `尚未达到 ${targetMin} 所，先保留已有建议`
+      : "意向城市覆盖仍不足，先保留已有建议",
     reasons: reasons.length
       ? reasons
-      : schoolCount < targetMin
-        ? [
-            "其他学校尚未查到足以支持具体专业建议的资料，现有结果不代表没有其他合适学校。",
-          ]
-        : [],
+      : cityShortfall
+        ? [researchReason("PREFERRED_CITY_COVERAGE_INCOMPLETE")]
+        : countShortfall
+          ? [
+              "其他学校尚未查到足以支持具体专业建议的资料，现有结果不代表没有其他合适学校。",
+            ]
+          : [],
   };
 }
 

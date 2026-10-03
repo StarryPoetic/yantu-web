@@ -133,7 +133,7 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_acceptance_references_resolve_and_cover_every_requirement(self):
         owner = DESIGN_DIR / "05-安全运维与验证.md"
         definitions = re.findall(r"^\| (T-\d{2}) \|", owner.read_text(encoding="utf-8"), re.MULTILINE)
-        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 25)])
+        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 26)])
         covered = set()
         for document in DESIGN_DIR.glob("*.md"):
             content = document.read_text(encoding="utf-8")
@@ -289,6 +289,15 @@ class TechnicalDesignTests(unittest.TestCase):
         guide = (ROOT / "docs" / "本地模型与联网测试.md").read_text(encoding="utf-8")
         for phrase in ("未保存原始模型回答", "不能断定是哪一字段", "不是本次v5真实生成结果", "新画像版本4"):
             self.assertIn(phrase, guide)
+
+    def test_preferred_city_coverage_and_location_ownership_are_traceable(self):
+        for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
+            content = path.read_text(encoding="utf-8")
+            with self.subTest(document=path.name):
+                for phrase in ("最多4次读取", "初期最多20次", "总计仍最多24次正文读取", "同一综合推荐层级", "preferredCities", "preferredCitySchoolCount", "unknownCitySchoolCount", "PREFERRED_CITY_COVERAGE_INCOMPLETE", "城市未知不计入匹配", "最多一次覆盖分析", "合作单位地址", "历史报告保留原内容"):
+                    self.assertIn(phrase, content)
+        self.assertIn("| T-25 |", (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8"))
+        self.assertIn("shared/cities.ts", (ROOT / "docs" / "city-data.md").read_text(encoding="utf-8"))
 
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")

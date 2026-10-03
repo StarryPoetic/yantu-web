@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
 import { createWebAnswerModule } from "../../server/explanation/web.ts";
-import { searchResearchSources } from "../../server/explanation/research-search.ts";
+import {
+  searchResearchSources,
+  sourceHasSchoolIdentity,
+} from "../../server/explanation/research-search.ts";
 
 const discipline = getDisciplineCatalog().items.find((d) => d.code === "0854")!;
 type Hit = { name: string; url: string; summary: string };
@@ -243,4 +246,94 @@ test("observed school domains also receive fee lookups without any model school 
   assert.equal(fees.length, 1);
   assert.equal(fees[0].include, "observed.edu.cn");
   assert.ok(requests.length <= 24);
+});
+
+test("a partner school's university tutors cannot redirect a named university's focused lookup", async () => {
+  const wrong = {
+    name: "电子信息 - 浙大城市学院研究生招生网",
+    url: "https://yz.hzcu.edu.cn/programme",
+    summary:
+      "电子信息硕士研究生培养，拥有浙江大学博士生导师，浙江大学等硕士生导师。",
+  };
+  const titleCollision = {
+    name: "浙江大学城市学院电子信息硕士培养方案",
+    url: "https://yz.hzcu.edu.cn/legacy",
+    summary: "浙江大学城市学院电子信息硕士研究生培养。",
+  };
+  const { web, requests } = searchWeb(() => [wrong, titleCollision]);
+  await searchResearchSources({
+    web,
+    subjectId: "school-ownership",
+    disciplines: [discipline],
+    regions: ["杭州"],
+    targetYear: "2027",
+    schoolHints: new Map([[discipline.code, ["浙江大学"]]]),
+    maxRequests: 18,
+    maxSources: 40,
+    includeFeeSearch: false,
+    onProgress: async () => {},
+  });
+  assert.ok(
+    requests.filter(({ query }) => query.startsWith("浙江大学 ")).length >= 2,
+  );
+  assert.ok(
+    requests
+      .filter(({ query }) => query.startsWith("浙江大学 "))
+      .every(({ include }) => include === undefined),
+  );
+  const sources = await web.answer(
+    { subjectId: "school-ownership", question: "检验学校标题", search: true },
+    { sourcesOnly: true },
+  );
+  assert.equal(sourceHasSchoolIdentity(sources.sources[0], "浙江大学"), false);
+  assert.equal(sourceHasSchoolIdentity(sources.sources[1], "浙江大学"), false);
+  assert.equal(
+    sourceHasSchoolIdentity(
+      { ...sources.sources[0], title: "2025年浙江大学硕士招生专业目录" },
+      "浙江大学",
+    ),
+    true,
+  );
+});
+
+test("shared schools keep distinct discipline queries and one preferred city is used for every regional discovery direction", async () => {
+  const directions = ["0854", "0855", "1256"].map(
+    (code) => getDisciplineCatalog().items.find((d) => d.code === code)!,
+  );
+  const { web, requests } = searchWeb(() => []);
+  await searchResearchSources({
+    web,
+    subjectId: "one-city-directions",
+    disciplines: directions,
+    regions: ["杭州"],
+    schoolHints: new Map(
+      directions.map((d) => [
+        d.code,
+        ["甲大学", "乙大学", "丙大学", "丁大学", "戊大学"],
+      ]),
+    ),
+    maxRequests: 18,
+    maxSources: 40,
+    includeFeeSearch: false,
+    onProgress: async () => {},
+  });
+  assert.equal(requests.length, 18);
+  for (const direction of directions) {
+    assert.ok(
+      requests.some(
+        ({ query }) => query === `甲大学 ${direction.name} 硕士 培养方案`,
+      ),
+    );
+    assert.ok(
+      requests.some(
+        ({ query }) => query === `杭州 ${direction.name} 硕士 招生专业目录`,
+      ),
+    );
+  }
+  assert.equal(
+    new Set(
+      requests.map(({ query, include }) => JSON.stringify([query, include])),
+    ).size,
+    18,
+  );
 });

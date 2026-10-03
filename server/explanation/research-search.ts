@@ -2,6 +2,8 @@ import type { Discipline } from "../disciplines/types.ts";
 import { researchReason } from "../../shared/research-status.ts";
 import type { createWebAnswerModule, WebSource } from "./web.ts";
 import { sourcePriority } from "./research-evidence.ts";
+import { sourceHasSchoolIdentity } from "./research-school.ts";
+export { sourceHasSchoolIdentity } from "./research-school.ts";
 
 // Only public query results are cached. No profile, account or model output is retained here.
 const caches = new WeakMap<
@@ -28,7 +30,7 @@ function mentionedSchoolDomains(sources: WebSource[], school?: string) {
   if (!school) return [];
   return sources.flatMap((source) => {
     const text = `${source.title} ${source.excerpt}`;
-    if (!text.includes(school)) return [];
+    if (!sourceHasSchoolIdentity(source, school)) return [];
     // A public search snippet can identify a domain to search. It is never
     // promoted to school evidence, and no URL is fetched from this text.
     return [...text.matchAll(/\b(?:[a-z0-9-]+\.)+edu\.cn\b/gi)].map(([host]) =>
@@ -52,10 +54,10 @@ function hasGraduateLead(sources: WebSource[], discipline: Discipline) {
 function hintedSchoolDomains(sources: WebSource[], school: string) {
   // A result for one school can mention other institutions. Prefer the school
   // identified in the title, then use its own description or an explicit URL clue.
-  const titled = sources.filter((source) => source.title.includes(school));
   const related = sources.filter((source) =>
-    `${source.title} ${source.excerpt}`.includes(school),
+    sourceHasSchoolIdentity(source, school),
   );
+  const titled = related.filter((source) => source.title.includes(school));
   return [
     ...new Set([
       ...titled.map(schoolDomain).filter((host): host is string => !!host),
@@ -142,7 +144,7 @@ export async function searchResearchSources(input: {
   let searched = false;
   const limitations: string[] = [];
   const requests = new Set<string>();
-  const discoveryHints = Array.from({ length: 6 }, (_, index) =>
+  const schoolDirections = Array.from({ length: 6 }, (_, index) =>
     states.flatMap((state) =>
       state.hints[index]
         ? [{ school: state.hints[index], state, retries: 0 }]
@@ -152,9 +154,24 @@ export async function searchResearchSources(input: {
     .flat()
     .filter(
       (item, index, all) =>
-        all.findIndex((other) => other.school === item.school) === index,
-    )
-    .slice(0, 10);
+        all.findIndex(
+          (other) =>
+            other.school === item.school &&
+            other.state.discipline.code === item.state.discipline.code,
+        ) === index,
+    );
+  const distinctSchools = schoolDirections.filter(
+    (item, index, all) =>
+      all.findIndex((other) => other.school === item.school) === index,
+  );
+  const maxDiscoveryHints = Math.min(
+    10,
+    Math.max(0, maxRequests - states.length),
+  );
+  const discoveryHints = [
+    ...distinctSchools,
+    ...schoolDirections.filter((item) => !distinctSchools.includes(item)),
+  ].slice(0, maxDiscoveryHints);
   const feeBudget =
     input.includeFeeSearch === false
       ? 0
@@ -168,12 +185,17 @@ export async function searchResearchSources(input: {
       domains: hintedSchoolDomains(hint.state.pool, hint.school),
       lead: hasGraduateLead(
         hint.state.pool.filter((source) =>
-          `${source.title} ${source.excerpt}`.includes(hint.school),
+          sourceHasSchoolIdentity(source, hint.school),
         ),
         hint.state.discipline,
       ),
     }));
-    const preferred = known.filter((hint) => hint.lead);
+    const preferred = known.filter(
+      (hint, index, all) =>
+        hint.lead &&
+        all.findIndex((other) => other.lead && other.school === hint.school) ===
+          index,
+    );
     const domains = new Set(preferred.flatMap((hint) => hint.domains));
     const observed: {
       state: (typeof states)[number];
@@ -272,7 +294,8 @@ export async function searchResearchSources(input: {
           domains = [];
         } else if (broadDiscovery < broadDiscoveryCount) {
           const discovered = states[broadDiscovery++];
-          const region = input.regions[discovered.index] ?? "";
+          const region =
+            input.regions[discovered.index % input.regions.length] ?? "";
           question = [
             region,
             discovered.discipline.name,
@@ -288,7 +311,7 @@ export async function searchResearchSources(input: {
             const lead = (item: (typeof discoveryHints)[number]) =>
               hasGraduateLead(
                 item.state.pool.filter((source) =>
-                  `${source.title} ${source.excerpt}`.includes(item.school),
+                  sourceHasSchoolIdentity(source, item.school),
                 ),
                 item.state.discipline,
               );
@@ -298,7 +321,7 @@ export async function searchResearchSources(input: {
           if (pass < 2) {
             domains = hintedSchoolDomains(hint.state.pool, hint.school);
             const related = hint.state.pool.filter((source) =>
-              `${source.title} ${source.excerpt}`.includes(hint.school),
+              sourceHasSchoolIdentity(source, hint.school),
             );
             const year =
               hasGraduateLead(related, hint.state.discipline) &&

@@ -44,7 +44,7 @@ export function ResearchReportView({
           </div>
           {coverage.shortfall && (
             <aside className="research-coverage" aria-label="报告覆盖说明">
-              <strong>尚未达到 {coverage.targetMin} 所，先保留已有建议</strong>
+              <strong>{coverage.noticeTitle}</strong>
               <ul>
                 {coverage.reasons.map((reason, index) => (
                   <li key={index}>{reason}</li>
