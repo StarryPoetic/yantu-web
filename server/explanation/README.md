@@ -28,8 +28,31 @@ XLS/XLSX显式启用`allowSpreadsheet`，同样经过HTTPS、公网DNS、固定I
 | `chat.ts` / `POST /assessment-attempts/:id/tutor`         | 每题教学入口；作答中仅返回固定知识点提示，交卷后才提供本题解析与持续模型追问。                             |
 | `guidance.ts` / `POST /guidance/:id/explanation`          | 整理已生成专业结论的有限依据；模型只选择、排序存在的依据 ID，最终文字由代码取回对应原文。                  |
 | `research.ts` / `POST /guidance/:id/research`             | 独立联网研究报告：结合画像、公共课诊断与实际检索资料，使用思考模式生成带来源的事实、分析建议及待核验事项。 |
+| `research.ts` / `POST /guidance/:id/research/supplement`  | 继续补查已有报告的逐专业缺项，复用公开原文与真实读取记录，在同一资源边界内更新证据。                       |
 
 普通咨询的 HTTP 校验、所有权、会话与持久化在 `server/routes/assistant.ts`；研究任务、进度和报告持久化在 `server/routes/research.ts`。模型模块不接受前端指定提供商、密钥、系统提示词或任意工具。
+
+## 逐专业资料覆盖、公共资料库与继续补查
+
+`POST /api/v1/guidance/{guidanceRunId}/research/supplement` 使用同源 JSON，空请求体 `{}`，必须携带 `X-CSRF-Token` 与 `Idempotency-Key`。客户端不提交缺项、学校、报告或模型配置；服务端以本人已有报告及固定基础结论确定补查范围。无已有报告返回 409，失效会话、删除状态和版本变化先于幂等回放检查。相同幂等键和输入返回原任务最新状态；即使使用不同键，同一结论已有 queued/running 任务时也返回同一在途任务，生成和补查不会并行重复创建任务。
+
+`ResearchJob.mode` 为 `generate/supplement`。补查 queued 响应携带上次基础报告（base report），`GET /guidance/:id/research/latest` 同样返回该基础报告，页面刷新、排队和运行时仍可阅读、导出已有内容。补查请求失败或任务失败保留历史报告与来源，并显示本次失败原因；不会用空失败结果覆盖已核对内容，也不自动付费重试。前端在提交请求和 queued/running 时禁用两个操作按钮；再次点击复用当前任务，用户结束后可显式重试。
+
+`candidateAudit[].coverage.programs` 按具体专业身份记录目录代码、学院、学习形式及参考年度，分别给出 `program/exams/location/tuition/eligibility/curriculum` 六项状态：`supported_current/supported_reference/missing/ambiguous/not_applicable/excluded`。每项保留 `reason/sourceIds/references` 与实际原文年度。同校不同学院或学习形式不能互相继承事实，目录已有依据时不会因费用、考试或城市缺项把整校改成缺目录。历史依据只作为参考，资料覆盖状态不能代替资格核验。
+
+`evidenceCoverage.strategy` 为 `program-evidence-v1`，包含学校/专业/已有专业依据/实质待补专业计数、`gaps/reusedSourceCount/supplementedSourceCount/lookupKeys/attempts`。缺项记录稳定 ID、专业与年度范围、优先级、原文引用、原因及下一动作；实际读取记录保留 URL、成功或失败、失败原因及尝试时间。低优先级的目标年度核对与实质缺证分开统计。数量仅统计本次实际调查，不代表全国院校资料已全部覆盖；未调查学校不作为排除依据。
+
+公共资料库只保存符合来源与安全边界的官方公开正文、来源版本、真实获取时间和读取诊断，不保存个人画像、提示词或模型回答，也不自动写入正式招生知识库。时效检查决定能否复用，缓存命中保留原始获取时间。缺项修复按优先级和学校轮流补查，只使用实际观察到的学校域名、官方附件与定向查询；查询去重键和失败冷却记录跨补查保留。补查共享最多 24 次搜索、24 次正文读取及会话取消边界，不承诺一次补齐，不做无界重试。
+
+| 模块                                                                            | 责任                                                                               |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `shared/research-coverage.ts`                                                   | 定义六字段状态、逐专业原文引用、缺项与读取记录契约。                               |
+| `server/explanation/research-coverage.ts`                                       | 按具体专业及适用原文计算覆盖、稳定缺项与有限范围计数；不决定推荐层级。             |
+| `server/explanation/research-library.ts`                                        | SQLite 公共资料库，按学校、方向与年度复用来源版本及诊断，保留实际获取时间。        |
+| `server/explanation/research-repair.ts`                                         | 执行有界缺项修复，按专业、字段、年度定向搜索和读取，保存真实失败记录。             |
+| `server/explanation/research.ts`                                                | 调度资料复用、补查与报告核验，共享搜索/读取预算，输出更新后的逐专业覆盖。          |
+| `server/routes/research.ts`                                                     | 核验会话、所有权和版本，处理 CSRF/幂等防重复、持久任务及失败后的基础报告保留。     |
+| `src/workspace/ResearchEvidenceCoverage.tsx`、`src/workspace/ResearchPanel.tsx` | 展示具体原文、缺项与读取失败原因，继续补查及恢复基础报告，保持 Markdown 导出一致。 |
 
 ## 自由对话与逐题教学
 

@@ -28,7 +28,9 @@ import {
   admissionEvidence,
   isSchoolPage,
   supportsProgram,
-  knownAdmissionConflict,
+  scopedAdmissionEvidence,
+  scopedKnownAdmissionConflict,
+  scopedProgramPassages,
 } from "./research-evidence.ts";
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
 import { deriveResearchDecision } from "./research-decision.ts";
@@ -165,6 +167,8 @@ export function extractProgramExams(input: {
   discipline: Discipline;
   sources: WebSource[];
   targetYear: string;
+  /** Opt-in after programme code/college/mode binding: a sibling row's closure cannot exclude this row. */
+  admissionScope?: "program_row";
 }): ResearchExamEvidence {
   const unknown: ResearchExamEvidence = {
     status: "unknown",
@@ -182,7 +186,11 @@ export function extractProgramExams(input: {
         input.programName,
         input.discipline,
       ) ||
-      admissionEvidence(source, input.targetYear, input.programName).excluded
+      admissionEvidence(
+        source,
+        input.targetYear,
+        input.admissionScope === "program_row" ? undefined : input.programName,
+      ).excluded
     )
       continue;
     const sourceYear = safeSourceYear(source);
@@ -207,6 +215,13 @@ export function extractProgramExams(input: {
       const passage = body
         .slice(start, rows[i + 1]?.index ?? Math.min(body.length, start + 1400))
         .split(" … ")[0];
+      if (
+        input.admissionScope === "program_row" &&
+        /不(?:再)?招生|停招|(?:暂停|停止|取消|暂缓).{0,8}招生|不招收(?:硕士|研究生|本专业|该专业)(?:[。；，、\s]|$)/.test(
+          passage,
+        )
+      )
+        continue;
       const afterCode = passage
         .slice(rows[i][0].length)
         .replace(
@@ -278,8 +293,13 @@ export function extractProgramExams(input: {
       );
       const current =
         sourceYear === Number(input.targetYear) &&
-        admissionEvidence(source, input.targetYear, input.programName)
-          .admissionStatus === "current_evidence";
+        admissionEvidence(
+          source,
+          input.targetYear,
+          input.admissionScope === "program_row"
+            ? undefined
+            : input.programName,
+        ).admissionStatus === "current_evidence";
       found.push({
         status:
           math.length > 1 || english.length > 1
@@ -526,39 +546,59 @@ function sourceMatchesProgramScope(
     (!item.studyMode || item.studyMode === "unspecified")
   )
     return true;
-  const body = withoutSchoolLinks(source.excerpt);
-  const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
-  const escaped = (item.programName ?? "").replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&",
+  // A programme-wide notice may restrict all routes, but cannot prove a missing explicit code.
+  if (
+    item.majorCode &&
+    !new RegExp(`\\b${item.majorCode}\\b`).test(
+      withoutSchoolLinks(source.excerpt),
+    )
+  )
+    return false;
+  return (
+    scopedProgramPassages(source, {
+      ...item,
+      programName: item.programName!,
+      disciplineCode: discipline.code,
+    }).length > 0
   );
-  return rows.some((row, index) => {
-    if (
-      !row[0].startsWith(discipline.code) ||
-      (item.majorCode && row[0] !== item.majorCode)
-    )
-      return false;
-    const afterCode = body
-      .slice(row.index! + row[0].length, rows[index + 1]?.index)
-      .replace(
-        /^[\s|:：()（）\[\]【】-]*(?:[（(](?:专业学位|学术学位|学术型)[）)]\s*)?/,
-        "",
-      );
-    if (
-      !new RegExp(
-        `^${escaped}(?=$|[\\s|（(]|学术学位|专业学位|非?全日制|\\d|①|②|③|④)`,
-        "u",
-      ).test(afterCode)
-    )
-      return false;
-    const scope = programRowScope(body, row.index!, rows[index + 1]?.index);
-    return (
-      (!item.collegeName || scope.collegeName === item.collegeName) &&
-      (!item.studyMode ||
-        item.studyMode === "unspecified" ||
-        scope.studyMode === item.studyMode)
-    );
-  });
+}
+
+function currentProgramConflict(
+  source: WebSource,
+  item: Pick<
+    Recommendation,
+    | "institutionName"
+    | "programName"
+    | "majorCode"
+    | "collegeName"
+    | "studyMode"
+  >,
+  discipline: Discipline,
+  profile: Record<string, unknown>,
+  year: string,
+) {
+  if (
+    !isSchoolPage(source) ||
+    !sourceHasSchoolIdentity(source, item.institutionName) ||
+    safeSourceYear(source) !== Number(year) ||
+    !item.programName
+  )
+    return false;
+  const scope = {
+    ...item,
+    programName: item.programName,
+    disciplineCode: discipline.code,
+  };
+  const wholePage = admissionEvidence(source, year);
+  if (wholePage.exclusionKind === "closure") return true;
+  if (
+    !supportsProgram(source, item.institutionName, item.programName, discipline)
+  )
+    return false;
+  return (
+    scopedAdmissionEvidence(source, year, scope).exclusionKind === "closure" ||
+    scopedKnownAdmissionConflict(source, scope, discipline, profile, year)
+  );
 }
 
 /** The most recent supported historical programme is the baseline; current facts remain separate. */
@@ -578,7 +618,11 @@ function programReferenceBasis(
           item.programName!,
           discipline,
         ) &&
-        !admissionEvidence(source, targetYear, item.programName).excluded &&
+        !scopedAdmissionEvidence(source, targetYear, {
+          ...item,
+          programName: item.programName!,
+          disciplineCode: discipline.code,
+        }).excluded &&
         sourceMatchesProgramScope(source, item, discipline),
     )
     .flatMap((source) => {
@@ -655,7 +699,7 @@ export function buildEvidenceCandidates(input: {
         );
         if (!discipline) continue;
         const programName = row[2].replace(
-          /(?:专业学位|学术学位|全日制|非全日制|硕士|招生|初试|考试科目|学费).*$/,
+          /(?:专业学位|学术学位|全日制|非全日制|硕士|(?:正常|继续|恢复)?招生|初试|考试科目|学费).*$/,
           "",
         );
         const { collegeName, studyMode } = programRowScope(
@@ -669,21 +713,28 @@ export function buildEvidenceCandidates(input: {
           !supportsProgram(source, institutionName, programName, discipline)
         )
           continue;
-        const scope = admissionEvidence(source, input.targetYear, programName);
-        const currentConflict = input.sources.some(
-          (other) =>
-            isSchoolPage(other) &&
-            supportsProgram(other, institutionName, programName, discipline) &&
-            admissionEvidence(other, input.targetYear).admissionStatus ===
-              "current_evidence" &&
-            (admissionEvidence(other, input.targetYear, programName).excluded ||
-              knownAdmissionConflict(
-                other,
-                programName,
-                discipline,
-                profile,
-                input.targetYear,
-              )),
+        const programScope = {
+          institutionName,
+          programName,
+          majorCode: row[1],
+          collegeName,
+          studyMode,
+          disciplineCode: discipline.code,
+        };
+        const scope = scopedAdmissionEvidence(
+          source,
+          input.targetYear,
+          programScope,
+        );
+        if (!scope.scopeMatched) continue;
+        const currentConflict = input.sources.some((other) =>
+          currentProgramConflict(
+            other,
+            programScope,
+            discipline,
+            profile,
+            input.targetYear,
+          ),
         );
         if (scope.excluded || currentConflict) {
           excluded = true;
@@ -791,9 +842,10 @@ export function buildEvidenceCandidates(input: {
             safeSourceYear(other) === Number(input.targetYear) &&
             supportsProgram(other, institutionName, programName, discipline) &&
             sourceMatchesProgramScope(other, item, discipline) &&
-            admissionEvidence(other, input.targetYear, programName)
+            scopedAdmissionEvidence(other, input.targetYear, programScope)
               .admissionStatus === "current_evidence" &&
-            !admissionEvidence(other, input.targetYear, programName).excluded,
+            !scopedAdmissionEvidence(other, input.targetYear, programScope)
+              .excluded,
         );
         if (currentSources.length) {
           item.admissionStatus = "current_evidence";
@@ -810,6 +862,7 @@ export function buildEvidenceCandidates(input: {
           discipline,
           sources: input.sources,
           targetYear: input.targetYear,
+          admissionScope: "program_row",
         });
         for (const id of [
           exams.sourceId,
@@ -1009,25 +1062,14 @@ export function rankDemandCandidates(
     const discipline = disciplines.find((d) => d.code === item.disciplineCode);
     if (!discipline || !item.programName) return [];
     if (
-      sources.some(
-        (source) =>
-          isSchoolPage(source) &&
-          supportsProgram(
-            source,
-            item.institutionName,
-            item.programName!,
-            discipline,
-          ) &&
-          admissionEvidence(source, year).admissionStatus ===
-            "current_evidence" &&
-          (admissionEvidence(source, year, item.programName).excluded ||
-            knownAdmissionConflict(
-              source,
-              item.programName!,
-              discipline,
-              researchContext(run).profile,
-              year,
-            )),
+      sources.some((source) =>
+        currentProgramConflict(
+          source,
+          item,
+          discipline,
+          researchContext(run).profile,
+          year,
+        ),
       )
     )
       return [];
@@ -1040,6 +1082,7 @@ export function rankDemandCandidates(
       discipline,
       sources,
       targetYear: year,
+      admissionScope: "program_row",
     });
     const referenceBasis = programReferenceBasis(
       item,

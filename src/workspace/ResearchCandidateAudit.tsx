@@ -1,6 +1,7 @@
 import type { ResearchReport } from "../../server/explanation/research.ts";
 import { candidateStatusLabels } from "./research-report";
 import { ResearchSourceLinks } from "./ResearchSourceLinks";
+import { ResearchSchoolEvidenceCoverage } from "./ResearchEvidenceCoverage";
 
 export function ResearchCandidateAudit({ report }: { report: ResearchReport }) {
   if (!report.candidateAudit?.length)
@@ -42,6 +43,13 @@ export function ResearchCandidateAudit({ report }: { report: ResearchReport }) {
               sources={report.sources}
               label={candidate.institutionName + "调查来源"}
             />
+            {candidate.coverage && (
+              <ResearchSchoolEvidenceCoverage
+                institutionName={candidate.institutionName}
+                coverage={candidate.coverage}
+                sources={report.sources}
+              />
+            )}
           </li>
         ))}
       </ul>

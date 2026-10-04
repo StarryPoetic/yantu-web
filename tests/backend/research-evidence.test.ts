@@ -7,6 +7,9 @@ import {
   supportsProgram,
   sourcePriority,
   compactEvidence,
+  scopedAdmissionEvidence,
+  scopedKnownAdmissionConflict,
+  scopedProgramPassages,
 } from "../../server/explanation/research-evidence.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
 import { normalizeAttachedEvidence } from "../../server/explanation/research-provenance.ts";
@@ -28,6 +31,89 @@ function source(
     ...overrides,
   };
 }
+
+test("scoped admission evidence isolates faculty and study-mode restrictions without rejecting the entire directory", () => {
+  const page = source(
+    "甲大学2027年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制 正常招生\n001机械学院 | 085500 机械 非全日制 本专业停招\n002工程学院 | 085500 机械 全日制 仅限法学本科毕业生报考",
+  );
+  const scope = {
+    institutionName: "甲大学",
+    programName: "机械",
+    majorCode: "085500",
+    collegeName: "机械学院",
+    studyMode: "full_time" as const,
+  };
+  assert.equal(admissionEvidence(page, "2027").excluded, undefined);
+  const active = scopedAdmissionEvidence(page, "2027", scope);
+  assert.equal(active.scopeMatched, true);
+  assert.equal(active.admissionStatus, "current_evidence");
+  assert.equal(active.excluded, undefined);
+  assert.equal(
+    scopedAdmissionEvidence(page, "2027", { ...scope, studyMode: "part_time" })
+      .exclusionKind,
+    "closure",
+  );
+  assert.equal(
+    scopedKnownAdmissionConflict(
+      page,
+      scope,
+      discipline("0855"),
+      { major: "机械工程" },
+      "2027",
+    ),
+    false,
+  );
+  assert.equal(
+    scopedKnownAdmissionConflict(
+      page,
+      { ...scope, collegeName: "工程学院" },
+      discipline("0855"),
+      { major: "机械工程" },
+      "2027",
+    ),
+    true,
+  );
+  const unknown = scopedAdmissionEvidence(page, "2027", {
+    ...scope,
+    collegeName: "未知学院",
+  });
+  assert.equal(unknown.scopeMatched, false);
+  assert.equal(unknown.excluded, undefined);
+  assert.ok(
+    scopedProgramPassages(page, scope).every(
+      (quote) => !/非全日制|法学/.test(quote),
+    ),
+  );
+});
+
+test("programme-wide notices remain applicable while title-only years cannot establish current restrictions", () => {
+  const notice = source("甲大学2027年硕士研究生招生通知。机械硕士专业停招。");
+  const scope = {
+    institutionName: "甲大学",
+    programName: "机械",
+    majorCode: "085500",
+    collegeName: "机械学院",
+    studyMode: "full_time" as const,
+  };
+  assert.equal(
+    scopedAdmissionEvidence(notice, "2027", scope).exclusionKind,
+    "closure",
+  );
+  const historical = source(
+    "甲大学2026年硕士研究生招生目录。\n001机械学院 | 085500 机械 全日制 仅限法学本科毕业生报考",
+    { title: "甲大学2027年招生目录" },
+  );
+  assert.equal(
+    scopedKnownAdmissionConflict(
+      historical,
+      scope,
+      discipline("0855"),
+      { major: "机械工程" },
+      "2027",
+    ),
+    false,
+  );
+});
 
 test("an unrelated university in a friendship link is not the owner of a master's program", () => {
   const page = source(

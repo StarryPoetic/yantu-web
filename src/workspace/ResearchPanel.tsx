@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, RefreshCw, Sparkles } from "lucide-react";
 import type { ResearchJob, ResearchEngine } from "../../server/routes/research";
 import type { GuidanceRun } from "../../server/disciplines/types";
@@ -8,9 +8,15 @@ import { ErrorNotice } from "./ui";
 import { ResearchReportView } from "./ResearchReportView";
 import { ResearchProgress, researchStageName } from "./ResearchProgress";
 import { downloadResearchReport, researchOutcome } from "./research-report";
+import { startResearchJob, type ResearchRequestMode } from "./research-request";
+import type { ResearchReport } from "../../server/explanation/research.ts";
 import "./research.css";
 
-type Job = ResearchJob & { needsRefresh?: boolean; refreshReasons?: string[] };
+type Job = ResearchJob & {
+  needsRefresh?: boolean;
+  refreshReasons?: string[];
+  mode?: ResearchRequestMode;
+};
 type Readiness = ReturnType<ResearchEngine["getReadiness"]>;
 const active = (job: Job | null) =>
   !!job && ["queued", "running"].includes(job.status);
@@ -27,9 +33,44 @@ export function ResearchPanel({
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
+  const [startingMode, setStartingMode] = useState<ResearchRequestMode | null>(
+    null,
+  );
+  const [savedReport, setSavedReport] = useState<{
+    guidanceRunId: string;
+    report: ResearchReport;
+  } | null>(null);
+  const startLock = useRef(false);
+  const startController = useRef<AbortController | null>(null);
+  const starting = startingMode !== null;
   const [error, setError] = useState<unknown>();
   const [reload, setReload] = useState(0);
+  function acceptJob(next: Job | null) {
+    setJob(next);
+    if (!next || (next.mode !== "supplement" && !next.report))
+      setSavedReport(null);
+    else if (
+      next.report &&
+      !(
+        next.mode === "supplement" &&
+        (next.report.failureStage ||
+          ["failed", "cancelled", "blocked"].includes(next.status))
+      )
+    ) {
+      setSavedReport({
+        guidanceRunId: next.guidanceRunId,
+        report: next.report,
+      });
+    }
+  }
+  useEffect(() => {
+    setStartingMode(null);
+    return () => {
+      startController.current?.abort();
+      startController.current = null;
+      startLock.current = false;
+    };
+  }, [run.guidanceRunId]);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -44,7 +85,7 @@ export function ResearchPanel({
       .then(([configuration, latest]) => {
         if (!controller.signal.aborted) {
           setReadiness(configuration.data);
-          setJob(latest.data.job);
+          acceptJob(latest.data.job);
         }
       })
       .catch((failure) => {
@@ -66,7 +107,7 @@ export function ResearchPanel({
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
-        setJob(result.data);
+        acceptJob(result.data);
         if (active(result.data)) timer = setTimeout(() => void poll(), 1000);
       } catch (failure) {
         if (!controller.signal.aborted) setError(failure);
@@ -78,25 +119,54 @@ export function ResearchPanel({
       clearTimeout(timer);
     };
   }, [job?.jobId, running, reload]);
-  async function generate() {
-    setStarting(true);
+  async function generate(mode: ResearchRequestMode = "generate") {
+    if (
+      startLock.current ||
+      loading ||
+      running ||
+      !readiness?.ready ||
+      outdated
+    )
+      return;
+    if (mode === "supplement" && !report) return;
+    startLock.current = true;
+    const controller = new AbortController();
+    startController.current = controller;
+    setStartingMode(mode);
     setError(null);
     try {
-      const result = await request<Job>(
-        "/guidance/" + run.guidanceRunId + "/research",
-        { method: "POST", body: {} },
+      const result = await startResearchJob(
+        run.guidanceRunId,
+        mode,
+        controller.signal,
       );
-      setJob(result.data);
+      if (!controller.signal.aborted)
+        acceptJob({ ...result.data, mode: result.data.mode ?? mode });
     } catch (failure) {
-      setError(failure);
+      if (!controller.signal.aborted) setError(failure);
     } finally {
-      setStarting(false);
+      if (startController.current === controller) {
+        startLock.current = false;
+        startController.current = null;
+        setStartingMode(null);
+      }
     }
   }
   const outdated = stale || !!job?.needsRefresh;
-  const report = job?.report;
-  const outcome = researchOutcome(job);
-  const failed = outcome === "failure";
+  const supplementFailed =
+    job?.mode === "supplement" &&
+    (["failed", "cancelled", "blocked"].includes(job.status) ||
+      !!job.report?.failureStage);
+  const retained =
+    savedReport?.guidanceRunId === run.guidanceRunId
+      ? savedReport.report
+      : undefined;
+  const report =
+    (supplementFailed ? (retained ?? job?.report) : job?.report) ?? retained;
+  const outcome = researchOutcome(report && job ? { ...job, report } : job);
+  const failed = outcome === "failure" && !supplementFailed;
+  const supplementing =
+    startingMode === "supplement" || (running && job?.mode === "supplement");
   const failureStage =
     job && researchStageName(report?.failureStage ?? job.stage);
   const serviceNotice = readiness && !readiness.ready && (
@@ -150,6 +220,17 @@ export function ResearchPanel({
           画像、测评、目标或资料已更新。已有报告仅供回顾，请先重新生成基础结论，再进行联网调研。
         </p>
       )}
+      {supplementing && (
+        <p className="research-supplement-status" role="status">
+          正在补查缺少的资料，已有报告可继续查看。
+        </p>
+      )}
+      {supplementFailed && (
+        <section className="research-empty" aria-label="补查未完成">
+          <h3>本次补查未完成，已有报告已保留</h3>
+          <p>{job?.message || "可继续查看已取得的资料，稍后重试补查。"}</p>
+        </section>
+      )}
       {failed && (
         <section className="research-empty" aria-label="报告生成失败">
           <h3>系统未能完成本次报告</h3>
@@ -179,6 +260,27 @@ export function ResearchPanel({
       )}
       {!report && serviceNotice}
       <div className="ws-actions research-actions">
+        {report && !failed && (
+          <button
+            className="ws-primary"
+            onClick={() => void generate("supplement")}
+            disabled={
+              loading ||
+              starting ||
+              running ||
+              !readiness?.ready ||
+              outdated ||
+              report.evidenceCoverage?.gaps.length === 0
+            }
+          >
+            <RefreshCw size={17} />
+            {startingMode === "supplement"
+              ? "正在创建补查任务…"
+              : supplementing
+                ? "正在补查资料…"
+                : "继续补查缺少的资料"}
+          </button>
+        )}
         <button
           className={
             outcome === "recommendations" ? "ws-secondary" : "ws-primary"
@@ -189,13 +291,15 @@ export function ResearchPanel({
           }
         >
           <Sparkles size={17} />
-          {starting
+          {startingMode === "generate"
             ? "正在创建报告任务…"
-            : running
-              ? "报告生成中…"
-              : report || failed
-                ? "重新调研并生成报告"
-                : "联网调研并生成报告"}
+            : supplementing
+              ? "补查进行中…"
+              : running
+                ? "报告生成中…"
+                : report || failed
+                  ? "重新调研并生成报告"
+                  : "联网调研并生成报告"}
         </button>
         <button
           className="ws-secondary"
@@ -218,11 +322,22 @@ export function ResearchPanel({
       {!report && readiness?.ready && (
         <small className="ws-muted">点击生成后会使用联网搜索与模型服务。</small>
       )}
+      {report && !failed && (
+        <small className="ws-muted">
+          {report.evidenceCoverage?.gaps.length === 0
+            ? "本次记录的待补查项已补齐。需要重新调查时，可重新生成报告。"
+            : "继续补查会复用已有资料，优先补齐缺少的原文；已有报告在补查期间仍可查看。"}
+        </small>
+      )}
       {job &&
         (report ? (
           <details className="research-job-details">
-            <summary>生成过程与服务信息</summary>
-            <ResearchProgress job={job} failed={failed} />
+            <summary>
+              {job.mode === "supplement"
+                ? "补查过程与服务信息"
+                : "生成过程与服务信息"}
+            </summary>
+            <ResearchProgress job={job} failed={failed || supplementFailed} />
             {serviceNotice}
             {readiness?.ready && (
               <p>使用模型：{readiness.model.name}，已启用思考。</p>

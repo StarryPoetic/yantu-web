@@ -308,6 +308,43 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertIn("| T-25 |", (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8"))
         self.assertIn("shared/cities.ts", (ROOT / "docs" / "city-data.md").read_text(encoding="utf-8"))
 
+    def test_program_evidence_supplement_contract_is_bounded_and_traceable(self):
+        documents = (
+            DESIGN_DIR / "04-接口与前端交互.md",
+            ROOT / "server" / "explanation" / "README.md",
+        )
+        modules = (
+            "shared/research-coverage.ts",
+            "server/explanation/research-coverage.ts",
+            "server/explanation/research-library.ts",
+            "server/explanation/research-repair.ts",
+            "server/explanation/research.ts",
+            "server/routes/research.ts",
+            "src/workspace/ResearchEvidenceCoverage.tsx",
+            "src/workspace/ResearchPanel.tsx",
+        )
+        for module in modules:
+            with self.subTest(module=module):
+                self.assertTrue((ROOT / module).is_file(), module)
+        for document in documents:
+            content = document.read_text(encoding="utf-8")
+            with self.subTest(document=document.name):
+                for value in (
+                    "POST /api/v1/guidance/{guidanceRunId}/research/supplement",
+                    "{}", "X-CSRF-Token", "Idempotency-Key", "queued/running",
+                    "同一在途任务", "base report", "queued", "latest",
+                    "失败保留历史报告", "不自动", "付费重试",
+                    "candidateAudit[].coverage.programs", "program-evidence-v1",
+                    "program/exams/location/tuition/eligibility/curriculum",
+                    "supported_current/supported_reference/missing/ambiguous/not_applicable/excluded",
+                    "sourceIds/references", "下一动作", "失败原因", "尝试时间",
+                    "reusedSourceCount/supplementedSourceCount/lookupKeys/attempts",
+                    "仅统计本次实际调查", "不代表全国院校资料已全部覆盖",
+                    "24 次搜索", "24 次正文读取", "不做无界重试",
+                    *modules,
+                ):
+                    self.assertIn(value, content)
+
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
         routes = re.findall(r"^\| `(GET|POST|PUT|PATCH|DELETE) (/api/v1/[^`]+)` \|", content, re.MULTILINE)

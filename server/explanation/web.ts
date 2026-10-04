@@ -26,6 +26,13 @@ export interface WebSource {
   excerpt: string;
   kind: "official_page" | "search_snippet";
   verified: false;
+  /** Public evidence reuse metadata; keeps the original retrieval time. */
+  library?: {
+    status: "fresh" | "stale";
+    storedAt: string;
+    expiresAt: string;
+    version: number;
+  };
   /** A transport-normalization note, never evidence that the page was read. */
   retrievalNote?: string;
   /** Provenance for a safely read, linked same-school document; never a guessed school identity. */

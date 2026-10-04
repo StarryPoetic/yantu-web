@@ -169,14 +169,16 @@ function deriveCampusLocationForYear(
         continue;
       const body = withoutSchoolLinks(source.excerpt);
       const pieces = [...body.matchAll(/[^。；;\n]+/g)];
+      // Check the local policy marker before scanning the full document's population scope.
+      // Ordinary directory rows must not cause one whole-body scan per paragraph and programme.
       const generic = pieces.flatMap((piece) => {
-        if (restrictedPolicy(source, body, piece.index! + piece[0].length))
-          return [];
         const marker =
           /(?:培养|教学|就读|学习|所在|办学)(?:所在)?(?:地点|校区|地址)/.exec(
             piece[0],
           );
         if (!marker) return [];
+        if (restrictedPolicy(source, body, piece.index! + piece[0].length))
+          return [];
         const before = piece[0]
           .slice(0, marker.index)
           .replaceAll(input.institutionName, "");
@@ -202,12 +204,12 @@ function deriveCampusLocationForYear(
         continue;
       }
       const named = pieces.flatMap((piece) => {
-        if (restrictedPolicy(source, body, piece.index! + piece[0].length))
-          return [];
         const group = /录取在([^。；\n:：]{2,150})的新生所在校区/.exec(
           piece[0],
         )?.[1];
         if (!group) return [];
+        if (restrictedPolicy(source, body, piece.index! + piece[0].length))
+          return [];
         const colleges = group
           .replaceAll(input.institutionName, "")
           .split(/[、，,]/)
@@ -230,9 +232,9 @@ function deriveCampusLocationForYear(
         continue;
       }
       for (const piece of pieces) {
+        if (!/其他学院的新生所在校区(?:为|是)/.test(piece[0])) continue;
         if (restrictedPolicy(source, body, piece.index! + piece[0].length))
           continue;
-        if (!/其他学院的新生所在校区(?:为|是)/.test(piece[0])) continue;
         const preceding = named.filter(
           (item) =>
             item.piece.index! < piece.index! &&

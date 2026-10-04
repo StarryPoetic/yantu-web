@@ -2,6 +2,7 @@ import type {
   RecommendationConstraints,
   ResearchStudyMode,
 } from "./research-recommendation.ts";
+import type { ResearchCandidateCoverage } from "./research-coverage.ts";
 
 /** Transparent preference comparisons, never an admission probability or ability score. */
 export interface DemandMatchFactor {
@@ -52,6 +53,8 @@ export interface ResearchCandidateAudit {
   status: "recommended" | "excluded" | "awaiting_evidence" | "not_selected";
   reasons: string[];
   sourceIds: string[];
+  /** Optional on legacy reports; per-programme missing fields are never inferred from a school tier. */
+  coverage?: ResearchCandidateCoverage;
 }
 /** Each route retains its own evidence; school identity is the only inherited field. */
 export interface ResearchProgramAlternative

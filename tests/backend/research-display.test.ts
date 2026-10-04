@@ -14,6 +14,10 @@ import {
 } from "../../src/workspace/research-report.ts";
 import type { GuidanceRun } from "../../server/disciplines/types.ts";
 import { decisionDisplayFixture } from "../helpers/research-decision-fixture.ts";
+import {
+  withEvidenceCoverage,
+  withSupplementedTuition,
+} from "../helpers/research-coverage-fixture.ts";
 
 const cityReason = "PREFERRED_CITY_COVERAGE_INCOMPLETE";
 function report(): ResearchReport {
@@ -461,4 +465,95 @@ test("assessment scopes use Chinese labels and preserve descriptive legacy scope
     assert.equal(assessmentScopeLabel(scope), label);
   }
   assert.equal(assessmentScopeLabel("函数与导数"), "函数与导数");
+});
+
+test("Markdown keeps programme-specific source coverage, missing fields, actual read failures and next actions separate from school coverage", () => {
+  const value = withEvidenceCoverage(report());
+  const run = {
+    inputSnapshot: { profile: { year: 2027 } },
+    directions: [],
+  } as unknown as GuidanceRun;
+  const markdown = researchReportMarkdown(value, run, false);
+  assert.match(
+    markdown,
+    /本次调查 2 所学校、2 个专业；2 个专业已有项目原文，2 个专业仍有实质缺项/,
+  );
+  assert.match(markdown, /仅统计本次实际调查的学校与专业/);
+  assert.match(
+    markdown,
+    /#### 机械工程 · 080200\n招生院系：机械工程学院\n学习形式：全日制\n项目原文年度：2026 年/,
+  );
+  const academic = markdown
+    .split("#### 机械工程 · 080200")[1]
+    .split("#### 机械 · 085500")[0];
+  assert.match(academic, /具体专业与招生目录：已有历史参考原文/);
+  assert.match(academic, /学费：尚缺原文；机械工程目录已有原文/);
+  assert.match(academic, /报考资格：原文有歧义，待核对/);
+  assert.match(academic, /课程与培养：此项不适用/);
+  assert.match(
+    academic,
+    /初试科目 · 目标年度核对：已有2026年初试科目原文，2027年安排仍待核对/,
+  );
+  assert.match(academic, /下一步：继续读取机械工程学院的2026年收费附件/);
+  assert.match(
+    academic,
+    /读取未成功：官网收费附件读取超时.*mechanical-fees-2026.pdf/,
+  );
+  assert.equal(
+    academic.includes("36000"),
+    false,
+    "another programme's fee cannot fill this programme's missing field",
+  );
+  const professional = markdown
+    .split("#### 机械 · 085500")[1]
+    .split("### 杭州电子科技大学")[0];
+  assert.match(professional, /培养城市与校区：目标年度已有原文/);
+  assert.match(
+    professional,
+    /原文（2025年）：\[research-1\] 2025年机械非全日制学费36000元\/学年/,
+  );
+  assert.match(professional, /报考资格：原文不适用本项目/);
+  assert.match(
+    markdown,
+    /具体专业与招生目录 · 优先补齐：招生目录附件读取未成功/,
+  );
+  assert.match(markdown, /官网返回403，当前入口无法读取/);
+});
+
+test("supplemented coverage replaces only the resolved gap, preserves other programme facts, and legacy reports need no new fields", () => {
+  const original = withEvidenceCoverage(report());
+  const next = withSupplementedTuition(original);
+  const run = {
+    inputSnapshot: { profile: { year: 2027 } },
+    directions: [],
+  } as unknown as GuidanceRun;
+  const markdown = researchReportMarkdown(next, run, false);
+  assert.match(markdown, /复用已有资料 2 条，本轮新增资料 1 条/);
+  assert.match(
+    markdown,
+    /学费：已有历史参考原文；已补得机械工程全日制的2026年学年收费参考原文/,
+  );
+  assert.equal(
+    markdown.includes("下一步：继续读取机械工程学院的2026年收费附件"),
+    false,
+  );
+  assert.match(markdown, /尚缺机械工程学院对应的培养校区地址/);
+  assert.match(markdown, /2025年机械非全日制学费36000/);
+  assert.equal(
+    original.evidenceCoverage?.gaps.length,
+    5,
+    "render and export helpers leave the saved baseline immutable",
+  );
+  const legacy = report();
+  legacy.candidateAudit = [
+    {
+      institutionName: "旧资料大学",
+      status: "awaiting_evidence",
+      reasons: ["旧报告仅有概要记录。"],
+      sourceIds: [],
+    },
+  ];
+  const oldMarkdown = researchReportMarkdown(legacy, run, false);
+  assert.match(oldMarkdown, /旧报告仅有概要记录/);
+  assert.equal(oldMarkdown.includes("## 专业资料覆盖与缺项"), false);
 });

@@ -33,6 +33,7 @@ import { SESSION_COOKIE, sessionCookie } from "./auth/index.ts";
 import { guidanceRoutes } from "./routes/guidance.ts";
 import { createResearchRoutes } from "./routes/research.ts";
 import type { ResearchEngine } from "./routes/research.ts";
+import { createResearchEvidenceLibrary } from "./explanation/research-library.ts";
 
 const safeEqual = (a: string, b: string) => {
   const left = Buffer.from(a);
@@ -125,7 +126,13 @@ export async function createApplication(
         "正式实例不能使用含示例发布的数据文件，请指定独立的 YANTU_DATABASE_PATH。",
       );
   }
-  const assistant = createAssistantRoutes();
+  const assistant = createAssistantRoutes({
+    library: createResearchEvidenceLibrary(store, {
+      allowedHosts: process.env.YANTU_OFFICIAL_HOSTS?.split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    }),
+  });
   const research = createResearchRoutes(
     store,
     dependencies.research ?? assistant.research,

@@ -22,6 +22,17 @@ import { normalizeAttachedEvidence } from "./research-provenance.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
 import { safeSourceYear as researchSourceYear } from "./research-years.ts";
 import { sourceHasSchoolIdentity } from "./research-school.ts";
+import type {
+  ResearchEvidenceGap,
+  ResearchReadAttempt,
+  ResearchCoverageSummary,
+} from "../../shared/research-coverage.ts";
+import { deriveResearchCoverage } from "./research-coverage.ts";
+import type { ResearchEvidenceLibrary } from "./research-library.ts";
+import {
+  repairResearchEvidence,
+  reusableResearchSources,
+} from "./research-repair.ts";
 import { generateResearchValue } from "./research-generation.ts";
 import { enrichResearchFees } from "./research-fees.ts";
 import {
@@ -103,6 +114,16 @@ export interface ResearchReport {
     | "profile-research-v7";
   decisionBasis?: ResearchDecisionBasis;
   candidateAudit?: ResearchCandidateAudit[];
+  evidenceCoverage?: ResearchCoverageSummary & {
+    strategy: "program-evidence-v1";
+    mode: "generate" | "supplement";
+    summary: string;
+    gaps: ResearchEvidenceGap[];
+    reusedSourceCount: number;
+    supplementedSourceCount: number;
+    lookupKeys: string[];
+    attempts: ResearchReadAttempt[];
+  };
   referencePolicy?: {
     strategy: "history-first-v1";
     targetYear: string;
@@ -170,6 +191,8 @@ export interface ResearchInput {
   subjectId: string;
   run: GuidanceRun;
   selectedProgram?: ProgramRevision;
+  mode?: "generate" | "supplement";
+  previousReport?: ResearchReport;
   onProgress?: (stage: ResearchStage, message?: string) => void | Promise<void>;
 }
 export interface ResearchReportModule {
@@ -891,6 +914,7 @@ export function createResearchReportModule(
   dependencies: {
     runtime?: ModelRuntime;
     web?: ReturnType<typeof createWebAnswerModule>;
+    library?: ResearchEvidenceLibrary;
   } = {},
 ): ResearchReportModule {
   const options: ModelRequestOptions = {
@@ -966,6 +990,13 @@ export function createResearchReportModule(
       };
       await stage("preparing");
       const run = input.run;
+      if (
+        input.previousReport &&
+        (input.previousReport.guidanceRunId !== run.guidanceRunId ||
+          JSON.stringify(input.previousReport.versions) !==
+            JSON.stringify(run.versions))
+      )
+        throw new ModelError("GUIDANCE_NOT_FOUND");
       const targetYear = String(run.inputSnapshot.profile.year ?? "");
       const referenceYears = historicalReferenceYears(targetYear);
       const report: ResearchReport = {
@@ -1126,32 +1157,263 @@ export function createResearchReportModule(
         (config.allowAcademicHosts ?? true)
           ? preferredCityCandidateLeads(regions, disciplines)
           : [];
-      const found = await searchResearchSources({
-        web,
-        subjectId: input.subjectId,
+      const library = dependencies.library;
+      const loaded =
+        library?.load({
+          disciplineCodes: disciplines.map((item) => item.code),
+          targetYear: year,
+          schoolNames: [
+            selectedSchool,
+            ...candidateLeads.map((item) => item.school),
+            ...plan.directions.flatMap((item) => item.searchSchools ?? []),
+          ].filter(Boolean),
+          maxSources: 40,
+        }) ?? [];
+      const seeds = reusableResearchSources(
+        [...loaded, ...(input.previousReport?.sources ?? [])],
+        config.now?.() ?? Date.now(),
+      );
+      const attempts: ResearchReadAttempt[] = [
+        ...(input.previousReport?.evidenceCoverage?.attempts ?? []),
+        ...(library?.attempts(seeds.map((source) => source.url)) ?? []),
+      ];
+      let lookupKeys = input.previousReport?.evidenceCoverage?.lookupKeys ?? [];
+      const reusedSourceCount = seeds.length;
+      let supplementedSourceCount = 0;
+      let coveredDisciplines = disciplines;
+      const recordAttempt = (attempt: ResearchReadAttempt) => {
+        live();
+        if (
+          attempts.some(
+            (old) =>
+              old.url === attempt.url &&
+              old.status === attempt.status &&
+              old.attemptedAt === attempt.attemptedAt,
+          )
+        )
+          return;
+        attempts.push(attempt);
+        library?.recordAttempt(attempt);
+      };
+      const fetchPage = async (value: string) => {
+        const url = new URL(value);
+        const academic =
+          (config.allowAcademicHosts ?? true) &&
+          /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
+        if (!hosts.includes(url.hostname) && !academic)
+          throw new ModelError("WEB_HOST_BLOCKED");
+        const allowedHosts = hosts.includes(url.hostname)
+          ? hosts
+          : [...hosts, url.hostname];
+        const safe = validateOutboundUrl(value, allowedHosts);
+        const cached = pageCache.get(safe.href);
+        if (cached && cached.expires > (config.now?.() ?? Date.now()))
+          return cached;
+        try {
+          const result = await reader(safe.href, {
+            allowedHosts,
+            timeoutMs: 8000,
+            maxBytes: 512000,
+            allowPdf: true,
+            maxPdfBytes: 5000000,
+            allowSpreadsheet: true,
+            maxSpreadsheetBytes: 5000000,
+          });
+          live();
+          const actualBody = /^(?:application\/pdf|application\/vnd\.)/i.test(
+            result.contentType,
+          )
+            ? result.text.trim()
+            : webPageText(result.text);
+          if (!actualBody) throw new ModelError("WEB_EMPTY");
+          if (actualBody.length > 200000)
+            throw new ModelError("WEB_TEXT_TOO_LARGE");
+          const readAt = new Date(config.now?.() ?? Date.now()).toISOString();
+          recordAttempt({
+            url: safe.href,
+            status: "success",
+            attemptedAt: readAt,
+          });
+          if (pageCache.size >= 120)
+            pageCache.delete(pageCache.keys().next().value!);
+          const resultWithTime = {
+            ...result,
+            retrievedAt: readAt,
+            expires: (config.now?.() ?? Date.now()) + 15 * 60000,
+          };
+          pageCache.set(safe.href, resultWithTime);
+          return resultWithTime;
+        } catch (error) {
+          live();
+          if (error instanceof ModelError && error.code === "DATA_DELETED")
+            throw error;
+          recordAttempt({
+            url: safe.href,
+            status: "failed",
+            reason:
+              error instanceof ModelError ? error.code : "WEB_UNAVAILABLE",
+            attemptedAt: new Date(config.now?.() ?? Date.now()).toISOString(),
+          });
+          throw error;
+        }
+      };
+      const refreshCoverage = () => {
+        const value = deriveResearchCoverage({
+          run,
+          disciplines: coveredDisciplines,
+          sources: report.sources,
+          recommendations: report.recommendations,
+          candidateAudit: report.candidateAudit ?? [],
+          targetYear: year,
+          attempts,
+        });
+        report.candidateAudit = value.candidates;
+        report.evidenceCoverage = {
+          strategy: "program-evidence-v1",
+          mode: input.mode ?? "generate",
+          summary: `已记录${value.summary.schoolCount}所学校、${value.summary.programCount}个相关专业；每个专业分别保留官网依据与待补查事项。`,
+          ...value.summary,
+          gaps: value.gaps,
+          reusedSourceCount,
+          supplementedSourceCount,
+          lookupKeys,
+          attempts: attempts.slice(-240),
+        };
+      };
+      const priorInventory = buildEvidenceCandidates({
+        run,
         disciplines,
-        regions,
-        selectedSchool,
+        sources: seeds,
         targetYear: year,
-        candidateLeads,
-        schoolHints: new Map(
-          plan.directions.map((item) => [
-            item.disciplineCode,
-            item.searchSchools ?? [],
-          ]),
-        ),
-        maxRequests: 18,
-        includeFeeSearch: false,
-        maxSources: 40,
-        onProgress: (detail) => stage("researching", detail),
+        schoolNames: [
+          ...candidateLeads.map((item) => item.school),
+          ...(input.previousReport?.candidateAudit?.map(
+            (item) => item.institutionName,
+          ) ?? []),
+        ],
       });
+      const priorCoverage = deriveResearchCoverage({
+        run,
+        disciplines,
+        sources: seeds,
+        recommendations: priorInventory.recommendations,
+        candidateAudit: priorInventory.audit,
+        targetYear: year,
+        attempts,
+      });
+      let checkedSources: readonly WebSource[] = seeds;
+      let pendingGapIds = new Set(priorCoverage.gaps.map((gap) => gap.id));
+      const needsEvidence = (
+        gap: ResearchEvidenceGap,
+        current: readonly WebSource[],
+      ) => {
+        if (
+          current.length !== checkedSources.length ||
+          current.some((source, index) => source !== checkedSources[index])
+        ) {
+          pendingGapIds = new Set(
+            deriveResearchCoverage({
+              run,
+              disciplines,
+              sources: [...current],
+              recommendations: [],
+              candidateAudit: priorInventory.audit,
+              targetYear: year,
+              attempts,
+            }).gaps.map((item) => item.id),
+          );
+          checkedSources = [...current];
+        }
+        return pendingGapIds.has(gap.id);
+      };
+      const supplement = input.mode === "supplement";
+      const repaired = supplement
+        ? await repairResearchEvidence({
+            subjectId: input.subjectId,
+            gaps: priorCoverage.gaps,
+            sources: seeds,
+            targetYear: year,
+            web,
+            maxRequests: 18,
+            maxReads: 16,
+            lookupKeys,
+            attempts,
+            readPage: fetchPage,
+            onSource: (source) => {
+              live();
+              library?.save(source);
+            },
+            onAttempt: recordAttempt,
+            onProgress: (detail) => stage("researching", detail),
+            now: config.now,
+            needsEvidence,
+          })
+        : undefined;
+      if (repaired) {
+        lookupKeys = repaired.lookupKeys;
+        supplementedSourceCount = repaired.sources.filter(
+          (source) =>
+            source.kind === "official_page" &&
+            !seeds.some(
+              (seed) =>
+                seed.url === source.url && seed.excerpt === source.excerpt,
+            ),
+        ).length;
+      }
+      const found = repaired
+        ? {
+            sources: repaired.sources,
+            searched: repaired.searched,
+            limitations: repaired.limitations,
+            requestCount: repaired.requestCount,
+            stoppedReason: undefined,
+            sourceDirections: new Map(
+              repaired.sources.map((source) => [
+                source.id,
+                disciplines.find((item) =>
+                  new RegExp(`\\b${item.code}\\d{0,2}\\b`).test(source.excerpt),
+                )?.code ??
+                  disciplines[0]?.code ??
+                  "",
+              ]),
+            ),
+          }
+        : await searchResearchSources({
+            web,
+            subjectId: input.subjectId,
+            disciplines,
+            regions,
+            selectedSchool,
+            targetYear: year,
+            candidateLeads,
+            schoolHints: new Map(
+              plan.directions.map((item) => [
+                item.disciplineCode,
+                item.searchSchools ?? [],
+              ]),
+            ),
+            maxRequests: 18,
+            includeFeeSearch: false,
+            maxSources: 40,
+            onProgress: (detail) => stage("researching", detail),
+          });
       live();
-      report.sources = found.sources;
+      report.sources = repaired
+        ? found.sources
+        : [
+            ...seeds,
+            ...found.sources.filter(
+              (source) => !seeds.some((seed) => seed.url === source.url),
+            ),
+          ];
       report.searched = found.searched;
       report.limitations.push(...found.limitations);
       report.candidateAudit = [
         ...new Set([
           ...candidateLeads.map((item) => item.school),
+          ...(input.previousReport?.candidateAudit?.map(
+            (item) => item.institutionName,
+          ) ?? []),
           ...plan.directions.flatMap((item) => item.searchSchools ?? []),
           ...report.sources.flatMap((source) =>
             [
@@ -1178,7 +1440,16 @@ export function createResearchReportModule(
             .map((source) => source.id),
         }));
       const sourceDirections = found.sourceDirections;
-      let pageReads = 0;
+      for (const source of seeds)
+        sourceDirections.set(
+          source.id,
+          disciplines.find((item) =>
+            new RegExp(`\\b${item.code}\\d{0,2}\\b`).test(source.excerpt),
+          )?.code ??
+            disciplines[0]?.code ??
+            "",
+        );
+      let pageReads = repaired?.readCount ?? 0;
       let cityRecoveryReads = 0;
       const {
         pages: readingOrder,
@@ -1203,6 +1474,19 @@ export function createResearchReportModule(
       let attachmentCount = 0;
       for (let pageIndex = 0; pageIndex < readingOrder.length; pageIndex++) {
         const source = readingOrder[pageIndex];
+        if (isSchoolPage(source) && source.library?.status !== "stale")
+          continue;
+        if (
+          repaired &&
+          attempts.some(
+            (attempt) =>
+              attempt.url === source.url &&
+              attempt.status === "failed" &&
+              (config.now?.() ?? Date.now()) - Date.parse(attempt.attemptedAt) <
+                5 * 60000,
+          )
+        )
+          continue;
         const url = new URL(source.url);
         const academic =
           (config.allowAcademicHosts ?? true) &&
@@ -1246,17 +1530,7 @@ export function createResearchReportModule(
             cachedPage && cachedPage.expires > (config.now?.() ?? Date.now())
               ? cachedPage
               : undefined;
-          const result =
-            cached ??
-            (await reader(safe.href, {
-              allowedHosts,
-              timeoutMs: 8000,
-              maxBytes: 512000,
-              allowPdf: true,
-              maxPdfBytes: 5000000,
-              allowSpreadsheet: true,
-              maxSpreadsheetBytes: 5000000,
-            }));
+          const result = cached ?? (await fetchPage(safe.href));
           live();
           const readBody =
             /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
@@ -1264,10 +1538,13 @@ export function createResearchReportModule(
             )
               ? result.text.trim()
               : webPageText(result.text);
-          const excerpt = compactEvidence(readBody, disciplines, 6000);
+          const excerpt = readBody;
           if (!excerpt) throw new ModelError("WEB_EMPTY");
+          if (excerpt.length > 200000)
+            throw new ModelError("WEB_TEXT_TOO_LARGE");
           source.excerpt = excerpt;
           source.kind = "official_page";
+          delete source.library;
           Object.assign(
             source,
             normalizeAttachedEvidence(
@@ -1317,10 +1594,18 @@ export function createResearchReportModule(
               targetYear: year,
               maxLinks: 4,
             });
-            source.documentLinks = documentLinks.map(({ url, title }) => ({
-              url,
-              title,
-            }));
+            source.documentLinks = [
+              ...researchAttachments(source, result.text, {
+                targetYear: year,
+                maxLinks: 12,
+              }),
+              ...researchLocationLinks(source, result.text),
+            ]
+              .slice(0, 24)
+              .map(({ url, title }) => ({
+                url,
+                title,
+              }));
             const children = documentLinks
               .filter((link) => !seenPages.has(link.url))
               .slice(0, Math.max(0, 12 - attachmentCount))
@@ -1355,8 +1640,16 @@ export function createResearchReportModule(
               ...children,
             );
           }
+          library?.save(source);
         } catch (failure) {
           live();
+          recordAttempt({
+            url: source.url,
+            status: "failed",
+            reason:
+              failure instanceof ModelError ? failure.code : "WEB_UNAVAILABLE",
+            attemptedAt: new Date(config.now?.() ?? Date.now()).toISOString(),
+          });
           report.limitations.push(
             `未能读取一项学校网页正文：${researchReason(failure instanceof ModelError ? failure.code : "WEB_UNAVAILABLE")}已保留搜索摘要。`,
           );
@@ -1366,6 +1659,8 @@ export function createResearchReportModule(
           `已读取 ${pageReads} 项学校网页，继续核对专业与费用`,
         );
       }
+      for (const source of report.sources.filter(isSchoolPage))
+        library?.save(source);
       // Campus geography is a separate bounded lookup, only after reading an
       // actual coded programme and a current campus policy. Discovery metadata
       // never establishes the candidate's city by itself.
@@ -1464,13 +1759,7 @@ export function createResearchReportModule(
             saved && saved.expires > (config.now?.() ?? Date.now())
               ? saved
               : undefined;
-          const page =
-            cached ??
-            (await reader(safe.href, {
-              allowedHosts,
-              timeoutMs: 8000,
-              maxBytes: 512000,
-            }));
+          const page = cached ?? (await fetchPage(safe.href));
           live();
           const excerpt = compactEvidence(
             webPageText(page.text),
@@ -1505,6 +1794,51 @@ export function createResearchReportModule(
             `尚未取得${lead.school}的一项校区所在地资料，城市证据仍按已读取正文核验。`,
           );
         }
+      }
+      refreshCoverage();
+      if (
+        library &&
+        !supplement &&
+        report.evidenceCoverage!.gaps.some((gap) => gap.priority === "high") &&
+        pageReads < 24 &&
+        found.requestCount < 24
+      ) {
+        const extra = await repairResearchEvidence({
+          subjectId: input.subjectId,
+          gaps: report.evidenceCoverage!.gaps.filter(
+            (gap) => gap.priority === "high",
+          ),
+          sources: report.sources,
+          targetYear: year,
+          web,
+          maxRequests: Math.min(4, 24 - found.requestCount),
+          maxReads: Math.min(4, 24 - pageReads),
+          lookupKeys,
+          attempts,
+          readPage: fetchPage,
+          onSource: (source) => {
+            live();
+            library.save(source);
+          },
+          onAttempt: recordAttempt,
+          onProgress: (detail) => stage("researching", detail),
+          now: config.now,
+          needsEvidence,
+        });
+        supplementedSourceCount += extra.sources.filter(
+          (source) =>
+            source.kind === "official_page" &&
+            !report.sources.some(
+              (old) => old.url === source.url && old.excerpt === source.excerpt,
+            ),
+        ).length;
+        report.sources = extra.sources;
+        lookupKeys = extra.lookupKeys;
+        pageReads += extra.readCount;
+        found.requestCount += extra.requestCount;
+        report.searched ||= extra.searched;
+        report.limitations.push(...extra.limitations);
+        refreshCoverage();
       }
       if (
         (!report.searched && !report.sources.some(isSchoolPage)) ||
@@ -1567,6 +1901,7 @@ export function createResearchReportModule(
           new RegExp(`\\b${discipline.code}\\d{0,2}\\b`).test(evidenceText) ||
           evidenceText.includes(discipline.name),
       );
+      coveredDisciplines = evidencedDirections;
       const inventory = buildEvidenceCandidates({
         run,
         disciplines: evidencedDirections,
@@ -1574,6 +1909,9 @@ export function createResearchReportModule(
         targetYear: year,
         schoolNames: [
           ...candidateLeads.map((item) => item.school),
+          ...(input.previousReport?.candidateAudit?.map(
+            (item) => item.institutionName,
+          ) ?? []),
           ...plan.directions.flatMap((item) => item.searchSchools ?? []),
         ],
       });
@@ -1833,15 +2171,7 @@ export function createResearchReportModule(
             const saved = pageCache.get(safe.href);
             if (saved && saved.expires > (config.now?.() ?? Date.now()))
               return saved;
-            const page = await reader(safe.href, {
-              allowedHosts,
-              timeoutMs: 8000,
-              maxBytes: 512000,
-              allowPdf: true,
-              maxPdfBytes: 5000000,
-              allowSpreadsheet: true,
-              maxSpreadsheetBytes: 5000000,
-            });
+            const page = await fetchPage(safe.href);
             live();
             const body =
               /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
@@ -2038,6 +2368,9 @@ export function createResearchReportModule(
           : {}),
       };
       report.limitations = [...new Set(report.limitations)];
+      for (const source of report.sources.filter(isSchoolPage))
+        library?.save(source);
+      refreshCoverage();
       return report;
     },
   };

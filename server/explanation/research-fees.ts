@@ -9,8 +9,8 @@ import {
   researchYearPriority,
 } from "../../shared/research-years.ts";
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
-import { compactEvidence } from "./research-evidence.ts";
 import { academicDomain, researchAttachments } from "./research-pages.ts";
+import { normalizeAttachedEvidence } from "./research-provenance.ts";
 import { webPageText } from "./web.ts";
 import type { createWebAnswerModule, WebReadResult, WebSource } from "./web.ts";
 
@@ -151,7 +151,7 @@ export async function enrichResearchFees(input: {
   const jobs: {
     recommendation: ResearchFeeRecommendation;
     domains: string[];
-    queue: { url: string; title: string }[];
+    queue: { url: string; title: string; parent?: WebSource }[];
   }[] = [];
   for (const recommendation of recommendations) {
     if (requestCount >= maxRequests) break;
@@ -264,26 +264,28 @@ export async function enrichResearchFees(input: {
       );
       try {
         const result = await input.readPage(next.url);
-        const discipline = input.disciplines.find(
-          (item) => item.code === job.recommendation.disciplineCode,
-        );
-        const excerpt = compactEvidence(
-          /^application\/pdf(?:;|$)/i.test(result.contentType)
+        const excerpt =
+          /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
+            result.contentType,
+          )
             ? result.text.trim()
-            : webPageText(result.text),
-          discipline ? [discipline] : [],
-          12000,
-        );
+            : webPageText(result.text);
         if (!excerpt) {
           limitations.push(
             `${job.recommendation.institutionName}费用网页未返回可用正文。`,
           );
           continue;
         }
+        if (excerpt.length > 200000) {
+          limitations.push(
+            `${job.recommendation.institutionName}费用网页净正文超过200000字符，本次未保存不完整证据。`,
+          );
+          continue;
+        }
         while (usedIds.has(`fee-${++feeId}`)) {
           /* source IDs cannot shadow existing evidence. */
         }
-        const source: WebSource = {
+        let source: WebSource = {
           id: `fee-${feeId}`,
           title: next.title,
           url: next.url,
@@ -291,7 +293,16 @@ export async function enrichResearchFees(input: {
           kind: "official_page",
           verified: false,
           excerpt,
+          ...(next.parent ? { parentSourceId: next.parent.id } : {}),
         };
+        if (next.parent)
+          source = normalizeAttachedEvidence(source, next.parent, excerpt);
+        if (/html/i.test(result.contentType))
+          source.documentLinks = researchAttachments(source, result.text, {
+            maxLinks: 12,
+          })
+            .filter((link) => permitted(link.url, job.domains))
+            .map(({ url, title }) => ({ url, title }));
         usedIds.add(source.id);
         sources.push(source);
         if (/html/i.test(result.contentType)) {
@@ -299,7 +310,9 @@ export async function enrichResearchFees(input: {
             (link) =>
               permitted(link.url, job.domains) && !attempted.has(link.url),
           );
-          job.queue.unshift(...attachments);
+          job.queue.unshift(
+            ...attachments.map((link) => ({ ...link, parent: source })),
+          );
         }
       } catch (error) {
         if (cancelled(error)) throw error;

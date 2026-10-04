@@ -66,6 +66,208 @@ const twoRoutes = () =>
     `${school}2027年硕士研究生招生专业目录。初试考试科目：\n080200 机械工程 学术学位 ①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理。\n085500 机械 专业学位 ①101思想政治理论 ②204英语二 ③302数学二 ④811机械原理。\n${school}地址：浙江省杭州市钱塘区大学路1号。`,
   );
 
+test("opt-in scoped exam extraction preserves an active college's same-code programme beside a stopped college", () => {
+  const page = source(
+    `${school}2027年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制 初试科目：①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理\n002工程学院 | 085500 机械 全日制 本专业停招`,
+  );
+  const base = {
+    institutionName: school,
+    programName: "机械",
+    majorCode: "085500",
+    collegeName: "机械学院",
+    studyMode: "full_time" as const,
+    discipline: discipline("0855"),
+    sources: [page],
+    targetYear: year,
+  };
+  assert.equal(
+    extractProgramExams(base).status,
+    "unknown",
+    "legacy callers retain the conservative whole-name guard",
+  );
+  const scoped = extractProgramExams({
+    ...base,
+    admissionScope: "program_row",
+  });
+  assert.equal(scoped.status, "verified_current");
+  assert.deepEqual(
+    scoped.subjects.map((subject) => subject.code),
+    ["101", "201", "301", "811"],
+  );
+  assert.equal(
+    extractProgramExams({
+      ...base,
+      collegeName: "工程学院",
+      admissionScope: "program_row",
+    }).status,
+    "unknown",
+  );
+  const closed = source(
+    `${school}2027年硕士研究生招生目录。全校所有硕士专业均停招。\n001机械学院 | 085500 机械 全日制 初试科目：①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理`,
+  );
+  assert.equal(
+    extractProgramExams({
+      ...base,
+      sources: [closed],
+      admissionScope: "program_row",
+    }).status,
+    "unknown",
+  );
+});
+
+test("inventory and ranking retain the active college when a same-code sibling college currently stops enrolment", () => {
+  const old = source(
+    `${school}2026年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制 初试科目：①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理\n002工程学院 | 085500 机械 全日制 初试科目：①101思想政治理论 ②204英语二 ③302数学二 ④812工程基础`,
+    { id: "old-college", title: `${school}2026年硕士招生目录` },
+  );
+  const current = source(
+    `${school}2027年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制 初试科目：①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理\n002工程学院 | 085500 机械 全日制 本专业停招`,
+    { id: "current-college" },
+  );
+  const run = guidance();
+  const prior = candidates(run, [old], [discipline("0855")]).recommendations;
+  assert.equal(prior.length, 2);
+  for (const sources of [
+    [old, current],
+    [current, old],
+  ]) {
+    const inventory = candidates(run, sources, [discipline("0855")]);
+    assert.equal(inventory.recommendations.length, 1);
+    assert.equal(inventory.recommendations[0].collegeName, "机械学院");
+    assert.equal(
+      inventory.recommendations[0].admissionStatus,
+      "current_evidence",
+    );
+    assert.equal(inventory.recommendations[0].referenceBasis?.year, 2026);
+    assert.equal(
+      inventory.recommendations[0].exams?.status,
+      "verified_current",
+    );
+    assert.equal(inventory.audit[0].status, "recommended");
+    const ranked = rankDemandCandidates(
+      prior,
+      run,
+      [discipline("0855")],
+      sources,
+      year,
+    );
+    assert.equal(ranked.length, 1);
+    assert.equal(ranked[0].collegeName, "机械学院");
+    assert.equal(ranked[0].programAlternatives.length, 0);
+    assert.equal(ranked[0].exams.status, "verified_current");
+  }
+});
+
+test("current stop rules are isolated by study mode and cannot be rescued by the earlier same-mode programme", () => {
+  const row = (mode: string, combo: string) =>
+    `001机械学院 | 085500 机械 ${mode} ${combo}`;
+  const old = source(
+    `${school}2026年硕士研究生招生专业目录。\n${row("全日制", "初试科目：①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理")}\n${row("非全日制", "初试科目：①101思想政治理论 ②204英语二 ③302数学二 ④812工程基础")}`,
+    { id: "old-mode" },
+  );
+  const current = source(
+    `${school}2027年硕士研究生招生专业目录。\n${row("全日制", "初试科目：①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理")}\n${row("非全日制", "本专业暂停招生")}`,
+    { id: "current-mode" },
+  );
+  const run = guidance();
+  const oldItems = candidates(run, [old], [discipline("0855")]).recommendations;
+  assert.equal(oldItems.length, 2);
+  for (const sources of [
+    [old, current],
+    [current, old],
+  ]) {
+    const inventory = candidates(run, sources, [discipline("0855")]);
+    assert.equal(inventory.recommendations.length, 1);
+    assert.equal(inventory.recommendations[0].studyMode, "full_time");
+    assert.equal(
+      inventory.recommendations[0].exams?.status,
+      "verified_current",
+    );
+    const ranked = rankDemandCandidates(
+      oldItems,
+      run,
+      [discipline("0855")],
+      sources,
+      year,
+    );
+    assert.equal(ranked.length, 1);
+    assert.equal(ranked[0].studyMode, "full_time");
+    assert.equal(ranked[0].programAlternatives.length, 0);
+  }
+});
+
+test("a hard current entry restriction in another college cannot exclude a qualified same-code college", () => {
+  const old = source(
+    `${school}2026年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制\n002工程学院 | 085500 机械 全日制`,
+    { id: "old-qualification" },
+  );
+  const current = source(
+    `${school}2027年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制 仅限机械工程本科毕业生报考\n002工程学院 | 085500 机械 全日制 仅限法学本科毕业生报考`,
+    { id: "current-qualification" },
+  );
+  const run = guidance({ major: "机械工程" });
+  const previous = candidates(run, [old], [discipline("0855")]).recommendations;
+  const inventory = candidates(run, [old, current], [discipline("0855")]);
+  assert.equal(inventory.recommendations.length, 1);
+  assert.equal(inventory.recommendations[0].collegeName, "机械学院");
+  const ranked = rankDemandCandidates(
+    previous,
+    run,
+    [discipline("0855")],
+    [old, current],
+    year,
+  );
+  assert.equal(ranked.length, 1);
+  assert.equal(ranked[0].collegeName, "机械学院");
+  assert.equal(ranked[0].programAlternatives.length, 0);
+});
+
+test("current programme-wide and school-wide notices still override older exact-code evidence", () => {
+  const old = source(
+    `${school}2026年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制`,
+    { id: "old-wide" },
+  );
+  const run = guidance();
+  const previous = candidates(run, [old], [discipline("0855")]).recommendations;
+  for (const notice of [
+    `${school}2027年硕士研究生招生通知。机械硕士专业停招。`,
+    `${school}2027年硕士研究生招生通知。全校所有硕士专业均停招。`,
+  ]) {
+    const current = source(notice, { id: "current-wide" });
+    assert.equal(
+      candidates(run, [old, current], [discipline("0855")]).recommendations
+        .length,
+      0,
+    );
+    assert.equal(
+      rankDemandCandidates(
+        previous,
+        run,
+        [discipline("0855")],
+        [old, current],
+        year,
+      ).length,
+      0,
+    );
+  }
+});
+
+test("a current example page cannot establish a factual stop against a real historical programme", () => {
+  const old = source(
+    `${school}2026年硕士研究生招生专业目录。\n001机械学院 | 085500 机械 全日制`,
+    { id: "old-real" },
+  );
+  const fake = source(
+    `${school}2027年硕士研究生招生目录。以下为演示数据。\n001机械学院 | 085500 机械 全日制 本专业停招`,
+    { id: "current-fake" },
+  );
+  assert.equal(
+    candidates(guidance(), [old, fake], [discipline("0855")]).recommendations
+      .length,
+    1,
+  );
+});
+
 function candidates(
   run = guidance(),
   sources = [twoRoutes()],

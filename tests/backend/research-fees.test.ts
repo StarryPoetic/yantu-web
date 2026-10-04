@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
 import { enrichResearchFees } from "../../server/explanation/research-fees.ts";
 import { deriveRecommendationConstraints } from "../../server/explanation/research-constraints.ts";
+import { validatedSourceProvenance } from "../../server/explanation/research-provenance.ts";
+import { safeSourceYear } from "../../server/explanation/research-years.ts";
 import { createWebAnswerModule } from "../../server/explanation/web.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
 
@@ -409,4 +411,143 @@ test("combined undergraduate and graduate fee notices may be read while undergra
   assert.deepEqual(reads, ["https://finance.a.edu.cn/combined.pdf"]);
   assert.equal(result.sources.length, 1);
   assert.equal(tuition(original, result.sources).tuition?.amount, 8000);
+});
+
+test("late fee bodies retain another programme's exact row at the end of a long official table", async () => {
+  const { web } = search(() => [
+    { name: "甲大学研究生学费标准", url: "https://finance.a.edu.cn/fees.pdf" },
+  ]);
+  const tail = "机械工程 全日制 学费12000元/年";
+  const body = [
+    "甲大学2026年硕士研究生学费标准",
+    "教育学 全日制 学费8000元/年",
+    ...Array.from(
+      { length: 500 },
+      (_, index) =>
+        `第${index + 1}项收费管理说明：公开标准请结合本人实际培养专业和学习形式核对，其他服务费用不属于研究生学费。`,
+    ),
+    tail,
+  ].join("\n");
+  assert.ok(body.length > 12000 && body.length < 200000);
+  const original = input(web, {
+    readPage: async () => ({ contentType: "application/pdf", text: body }),
+  });
+  const result = await enrichResearchFees(original);
+  assert.equal(result.sources.length, 1);
+  assert.equal(result.sources[0].excerpt, body);
+  assert.ok(result.sources[0].excerpt.endsWith(tail));
+  assert.equal(tuition(original, result.sources).tuition?.amount, 8000);
+  const other = deriveRecommendationConstraints({
+    profile: { budget: "1万元以内", cities: [] },
+    targetYear: 2027,
+    institutionName: "甲大学",
+    programName: "机械工程",
+    degreeType: "academic",
+    studyMode: "full_time",
+    citations: [],
+    sources: result.sources,
+  });
+  assert.equal(other.tuition?.amount, 12000);
+  assert.equal(other.tuition?.year, 2026);
+  assert.equal(other.tuition?.quote, tail);
+  assert.equal(other.tuition?.sourceId, result.sources[0].id);
+});
+
+test("actual fee attachment links bind anonymous PDF context without borrowing parent words into its body", async () => {
+  const parentUrl = "https://finance.a.edu.cn/notice";
+  const childUrl = "https://finance.a.edu.cn/anonymous.pdf";
+  const { web } = search(() => [
+    { name: "甲大学2026年研究生收费标准", url: parentUrl },
+  ]);
+  for (const body of [
+    "2026年硕士研究生学费标准\n教育学 全日制 学费8000元/年",
+    "硕士研究生学费标准\n教育学 全日制 学费8000元/年",
+  ]) {
+    const original = input(web, {
+      readPage: async (url) =>
+        url === parentUrl
+          ? {
+              contentType: "text/html",
+              text: '<p>甲大学2026年硕士研究生学费标准，实际金额见附件。</p><a href="/anonymous.pdf">2026年硕士研究生学费标准</a><a href="https://finance.b.edu.cn/other.pdf">2026年硕士研究生学费标准</a>',
+            }
+          : { contentType: "application/pdf", text: body },
+    });
+    const result = await enrichResearchFees(original);
+    assert.equal(result.readCount, 2);
+    const parent = result.sources.find((source) => source.url === parentUrl)!;
+    const child = result.sources.find((source) => source.url === childUrl)!;
+    assert.deepEqual(parent.documentLinks, [
+      { url: childUrl, title: "2026年硕士研究生学费标准" },
+    ]);
+    assert.equal(child.parentSourceId, parent.id);
+    assert.equal(child.excerpt, body);
+    assert.ok(!child.excerpt.includes("甲大学"));
+    const context = validatedSourceProvenance(child);
+    assert.equal(context?.institutionName, "甲大学");
+    assert.equal(context?.admissionYear, "2026");
+    assert.equal(context?.parentUrl, parentUrl);
+    assert.equal(context?.linkedTitle, "2026年硕士研究生学费标准");
+    assert.equal(safeSourceYear(child), 2026);
+    if (body.startsWith("2026年")) {
+      assert.equal(tuition(original, result.sources).tuition?.amount, 8000);
+      assert.equal(
+        tuition(original, result.sources).tuition?.sourceId,
+        child.id,
+      );
+    } else {
+      // A contextual year must not be inserted into the literal fee quote.
+      assert.equal(tuition(original, result.sources).tuition, undefined);
+    }
+  }
+});
+
+test("oversized net fee bodies are rejected instead of storing a truncated official page", async () => {
+  const { web } = search(() => [
+    { name: "甲大学教育学学费", url: "https://finance.a.edu.cn/fee" },
+  ]);
+  const body = `甲大学2026年教育学全日制硕士学费8000元/年。${"说明".repeat(100000)}`;
+  for (const contentType of ["application/pdf", "text/html"]) {
+    const result = await enrichResearchFees(
+      input(web, {
+        readPage: async () => ({
+          contentType,
+          text:
+            contentType === "text/html" ? `<article>${body}</article>` : body,
+        }),
+      }),
+    );
+    assert.equal(result.readCount, 1);
+    assert.deepEqual(result.sources, []);
+    assert.ok(result.limitations.some((reason) => /200000/.test(reason)));
+  }
+  const clean = "甲大学2026年教育学全日制硕士学费8000元/年。";
+  const usable = await enrichResearchFees(
+    input(web, {
+      readPage: async () => ({
+        contentType: "text/html",
+        text: `<script>${"x".repeat(200001)}</script><p>${clean}</p>`,
+      }),
+    }),
+  );
+  assert.equal(usable.sources[0].excerpt, clean);
+});
+
+test("a search-result title cannot bind an anonymous fee PDF to a school or year", async () => {
+  const { web } = search(() => [
+    {
+      name: "甲大学2026年硕士研究生学费标准",
+      url: "https://finance.a.edu.cn/anonymous.pdf",
+    },
+  ]);
+  const body = "硕士研究生学费标准\n教育学 全日制 学费8000元/年";
+  const original = input(web, {
+    readPage: async () => ({ contentType: "application/pdf", text: body }),
+  });
+  const result = await enrichResearchFees(original);
+  assert.equal(result.sources.length, 1);
+  assert.equal(result.sources[0].excerpt, body);
+  assert.equal(result.sources[0].parentSourceId, undefined);
+  assert.equal(validatedSourceProvenance(result.sources[0]), undefined);
+  assert.equal(safeSourceYear(result.sources[0]), undefined);
+  assert.equal(tuition(original, result.sources).tuition, undefined);
 });

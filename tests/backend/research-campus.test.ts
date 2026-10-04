@@ -115,6 +115,28 @@ test("missing geography, unknown faculty, wrong program code and a cross-year ca
     assert.equal(deriveCampusLocation(input), undefined);
 });
 
+test("a long ordinary directory body and campus footer cannot become a programme cultivation policy", () => {
+  const input = fixture();
+  const explanation = "公开说明：普通统考、非全日制等类型需分别核验。\n".repeat(
+    800,
+  );
+  const body = `${school}2027年硕士研究生招生专业目录\n${row}\n${explanation}联系我们：下沙校区招生办公室。地址：杭州市钱塘区2号大街1158号`;
+  assert.ok(body.length > 10000);
+  input.sources = [source("directory", body), input.sources[2]];
+  const original = JSON.stringify(input.sources);
+  assert.equal(deriveCampusLocation(input), undefined);
+  const result = deriveRecommendationConstraints({
+    ...input,
+    profile: { cities: ["杭州"], budget: "不确定" },
+    citations: ["directory"],
+  });
+  assert.equal(
+    result.constraintChecks.find((check) => check.field === "cities")!.status,
+    "unknown",
+  );
+  assert.equal(JSON.stringify(input.sources), original);
+});
+
 test("a coherent 2026, 2025 or 2024 programme-policy chain is a labelled historical city reference for 2027", () => {
   for (const year of [2026, 2025, 2024]) {
     const input = fixture();

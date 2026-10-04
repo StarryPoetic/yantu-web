@@ -3,6 +3,11 @@ import type { GuidanceRun } from "../../server/disciplines/types.ts";
 import type { ResearchJob } from "../../server/routes/research.ts";
 import { researchReason } from "../../shared/research-status.ts";
 import type { ResearchDecisionBasis } from "../../shared/research-decision.ts";
+import {
+  RESEARCH_EVIDENCE_FIELDS,
+  type ResearchCandidateCoverage,
+  type ResearchEvidenceGap,
+} from "../../shared/research-coverage.ts";
 
 /** Older jobs can save a technical failure as partial/done; do not mistake it for missing profile data. */
 export function researchOutcome(job: ResearchJob | null) {
@@ -88,6 +93,27 @@ export const candidateStatusLabels = {
   excluded: "已排除（有明确依据）",
   awaiting_evidence: "资料待补充",
   not_selected: "本次未选入",
+};
+export const evidenceFieldLabels = {
+  program: "具体专业与招生目录",
+  exams: "初试科目",
+  location: "培养城市与校区",
+  tuition: "学费",
+  eligibility: "报考资格",
+  curriculum: "课程与培养",
+};
+export const evidenceStatusLabels = {
+  supported_current: "目标年度已有原文",
+  supported_reference: "已有历史参考原文",
+  missing: "尚缺原文",
+  ambiguous: "原文有歧义，待核对",
+  not_applicable: "此项不适用",
+  excluded: "原文不适用本项目",
+};
+export const evidencePriorityLabels = {
+  high: "优先补齐",
+  normal: "继续补齐",
+  low: "目标年度核对",
 };
 export const factorStatusLabels = {
   match: "已有匹配依据",
@@ -388,6 +414,74 @@ export function decisionBasisMarkdown(basis?: ResearchDecisionBasis) {
   ];
 }
 
+function evidenceGapsMarkdown(gaps: ResearchEvidenceGap[], heading: string) {
+  if (!gaps.length) return [];
+  return [
+    heading + " 待补资料与下一步",
+    ...gaps.flatMap((gap) => [
+      `- ${evidenceFieldLabels[gap.field]} · ${evidencePriorityLabels[gap.priority]}：${gap.reason}`,
+      `  下一步：${gap.nextAction}`,
+      `  目标年度：${gap.targetYear} 年；参考年度：${gap.referenceYears.join("、") || "未记录"}`,
+      ...gap.references.map(
+        (reference) =>
+          `  已有原文${reference.year ? `（${reference.year}年）` : ""}：[${reference.sourceId}] ${reference.quote}`,
+      ),
+      ...gap.attempts
+        .filter((attempt) => attempt.status === "failed")
+        .map(
+          (attempt) =>
+            `  读取未成功：${attempt.reason || "未记录具体原因"}；${attempt.url}；${attempt.attemptedAt}`,
+        ),
+      ...(gap.sourceIds.length
+        ? [`  调查来源：[${gap.sourceIds.join(", ")}]`]
+        : []),
+    ]),
+  ];
+}
+
+function schoolEvidenceMarkdown(coverage?: ResearchCandidateCoverage) {
+  if (!coverage) return [];
+  const programGapIds = new Set(
+    coverage.programs.flatMap((program) =>
+      program.missing.map((gap) => gap.id),
+    ),
+  );
+  return [
+    ...coverage.programs.flatMap((program) => [
+      `#### ${program.programName} · ${program.majorCode || program.disciplineCode}`,
+      ...(program.collegeName ? ["招生院系：" + program.collegeName] : []),
+      ...(program.studyMode
+        ? [
+            "学习形式：" +
+              (program.studyMode === "full_time"
+                ? "全日制"
+                : program.studyMode === "part_time"
+                  ? "非全日制"
+                  : "待核对"),
+          ]
+        : []),
+      ...(program.referenceYear
+        ? [`项目原文年度：${program.referenceYear} 年`]
+        : []),
+      ...RESEARCH_EVIDENCE_FIELDS.flatMap((field) => [
+        `- ${evidenceFieldLabels[field]}：${evidenceStatusLabels[program.fields[field].status]}；${program.fields[field].reason}`,
+        ...program.fields[field].references.map(
+          (reference) =>
+            `  原文${reference.year ? `（${reference.year}年）` : ""}：[${reference.sourceId}] ${reference.quote}`,
+        ),
+        ...(program.fields[field].sourceIds.length
+          ? [`  来源：[${program.fields[field].sourceIds.join(", ")}]`]
+          : []),
+      ]),
+      ...evidenceGapsMarkdown(program.missing, "#####"),
+    ]),
+    ...evidenceGapsMarkdown(
+      coverage.missing.filter((gap) => !programGapIds.has(gap.id)),
+      "####",
+    ),
+  ];
+}
+
 export function researchReportMarkdown(
   report: ResearchReport,
   run: GuidanceRun,
@@ -407,6 +501,32 @@ export function researchReportMarkdown(
     ...coverage.reasons.map((text) => "- 覆盖说明：" + text),
     "",
     ...decisionBasisMarkdown(report.decisionBasis),
+    ...(report.evidenceCoverage
+      ? [
+          "## 专业资料覆盖与缺项",
+          report.evidenceCoverage.summary,
+          `本次调查 ${report.evidenceCoverage.schoolCount} 所学校、${report.evidenceCoverage.programCount} 个专业；${report.evidenceCoverage.supportedProgramCount} 个专业已有项目原文，${report.evidenceCoverage.pendingProgramCount} 个专业仍有实质缺项。`,
+          "仅统计本次实际调查的学校与专业；未出现的学校不据此排除。目录已有原文时，学费、校区或考试缺项会分别记录。",
+          ...(report.evidenceCoverage.reusedSourceCount !== undefined ||
+          report.evidenceCoverage.supplementedSourceCount !== undefined
+            ? [
+                `复用已有资料 ${report.evidenceCoverage.reusedSourceCount ?? 0} 条，本轮新增资料 ${report.evidenceCoverage.supplementedSourceCount ?? 0} 条。`,
+              ]
+            : []),
+          ...evidenceGapsMarkdown(
+            report.evidenceCoverage.gaps.filter(
+              (gap) =>
+                !report.candidateAudit?.some((candidate) =>
+                  candidate.coverage?.missing.some(
+                    (known) => known.id === gap.id,
+                  ),
+                ),
+            ),
+            "###",
+          ),
+          "",
+        ]
+      : []),
     "## 建议比较的学校与专业",
     ...recommendationGroups(report.recommendations).flatMap((group) => [
       "## " + group.title,
@@ -535,6 +655,7 @@ export function researchReportMarkdown(
           ...report.candidateAudit.flatMap((candidate) => [
             `### ${candidate.institutionName} · ${candidateStatusLabels[candidate.status]}`,
             ...candidate.reasons.map((reason) => "- " + reason),
+            ...schoolEvidenceMarkdown(candidate.coverage),
             ...(candidate.sourceIds.length
               ? [`调查来源：[${candidate.sourceIds.join(", ")}]`]
               : []),

@@ -99,6 +99,179 @@ async function fixture(t: TestContext, engine: ResearchReportModule) {
   assert.equal(guidance.status, 201);
   return { app, request, client, runId: guidance.body.guidanceRunId };
 }
+
+test("supplement requires an owned base report and passes its immutable snapshot while preventing duplicate jobs", async (t) => {
+  const firstDone = deferred(),
+    started = deferred(),
+    release = deferred(),
+    finished = deferred();
+  const inputs: ResearchInput[] = [];
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {
+      release.resolve();
+    },
+    generate: async (input) => {
+      inputs.push(input);
+      if (input.mode !== "supplement") {
+        firstDone.resolve();
+        return output(input);
+      }
+      await input.onProgress?.("researching", "正在按缺项继续补查");
+      started.resolve();
+      await release.promise;
+      finished.resolve();
+      return { ...output(input), summary: "补查资料已整合" };
+    },
+  };
+  const { request, client, runId } = await fixture(t, engine);
+  t.after(() => release.resolve());
+  assert.equal(
+    (await request(`/guidance/${runId}/research/supplement`, "POST", {}))
+      .status,
+    409,
+  );
+  const original = await request(`/guidance/${runId}/research`, "POST", {});
+  await firstDone.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const base = (await request(`/research-jobs/${original.body.jobId}`)).body
+    .report;
+  const key = randomUUID();
+  const next = await request(
+    `/guidance/${runId}/research/supplement`,
+    "POST",
+    {},
+    { "Idempotency-Key": key },
+  );
+  assert.equal(next.status, 202);
+  assert.equal(next.body.mode, "supplement");
+  assert.deepEqual(next.body.report, base);
+  await started.promise;
+  assert.deepEqual(inputs[1].previousReport, base);
+  assert.equal(inputs[1].run.guidanceRunId, inputs[0].run.guidanceRunId);
+  const duplicate = await request(
+    `/guidance/${runId}/research/supplement`,
+    "POST",
+    {},
+  );
+  assert.equal(duplicate.body.jobId, next.body.jobId);
+  assert.equal(inputs.length, 2);
+  assert.deepEqual(
+    (await request(`/guidance/${runId}/research/latest`)).body.job.report,
+    base,
+  );
+  const other = await client();
+  assert.equal(
+    (await other(`/guidance/${runId}/research/supplement`, "POST", {})).status,
+    404,
+  );
+  assert.equal((await other(`/research-jobs/${next.body.jobId}`)).status, 404);
+  release.resolve();
+  await finished.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const replay = await request(
+    `/guidance/${runId}/research/supplement`,
+    "POST",
+    {},
+    { "Idempotency-Key": key },
+  );
+  assert.equal(replay.body.jobId, next.body.jobId);
+  assert.equal(replay.body.status, "completed");
+  assert.equal(inputs.length, 2);
+  const profile = await request("/me/profile");
+  await request(
+    "/me/profile",
+    "PUT",
+    { ...profile.body.profile, hours: "4–6 小时" },
+    { "If-Match": profile.etag },
+  );
+  assert.equal(
+    (await request(`/guidance/${runId}/research/supplement`, "POST", {}))
+      .status,
+    409,
+  );
+});
+
+test("a thrown supplementation failure retains the base report across latest-job reload", async (t) => {
+  const done = deferred(),
+    failed = deferred();
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    generate: async (input) => {
+      if (input.mode === "supplement") {
+        failed.resolve();
+        throw new Error("provider unavailable");
+      }
+      done.resolve();
+      return { ...output(input), summary: "此前取得的官网依据" };
+    },
+  };
+  const { request, runId } = await fixture(t, engine);
+  await request(`/guidance/${runId}/research`, "POST", {});
+  await done.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const base = (await request(`/guidance/${runId}/research/latest`)).body.job
+    .report;
+  await request(`/guidance/${runId}/research/supplement`, "POST", {});
+  await failed.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const job = (await request(`/guidance/${runId}/research/latest`)).body.job;
+  assert.equal(job.status, "failed");
+  assert.deepEqual(job.report, base);
+  assert.ok(job.progress < 100);
+});
+
+test("an invalid model response during supplementation does not erase previously grounded recommendations", async (t) => {
+  const done = deferred(),
+    failed = deferred();
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    generate: async (input) => {
+      if (input.mode === "supplement") {
+        await input.onProgress?.("analyzing");
+        failed.resolve();
+        return {
+          ...output(input),
+          status: "partial",
+          failureStage: "analyzing",
+          reason: "INVALID_RESEARCH_REPORT",
+          summary: "补查报告未通过核对",
+        };
+      }
+      done.resolve();
+      return {
+        ...output(input),
+        recommendations: [
+          {
+            institutionName: "示例研究大学",
+            disciplineCode: "0301",
+            programName: "法学理论",
+            rationale: "来自已读目录",
+            preparation: [],
+            uncertainties: [],
+            citations: [],
+          },
+        ],
+      };
+    },
+  };
+  const { request, runId } = await fixture(t, engine);
+  await request(`/guidance/${runId}/research`, "POST", {});
+  await done.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const base = (await request(`/guidance/${runId}/research/latest`)).body.job
+    .report;
+  await request(`/guidance/${runId}/research/supplement`, "POST", {});
+  await failed.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const job = (await request(`/guidance/${runId}/research/latest`)).body.job;
+  assert.equal(job.report.failureStage, "analyzing");
+  assert.equal(job.report.summary, "补查报告未通过核对");
+  assert.deepEqual(job.report.recommendations, base.recommendations);
+  assert.equal(job.progress, 60);
+});
 test("research readiness blocks missing configuration without starting a provider or claiming progress", async (t) => {
   let calls = 0;
   const engine: ResearchReportModule = {

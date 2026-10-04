@@ -9,6 +9,10 @@ import type {
 } from "../server/explanation/research";
 import { registerAccount } from "./helpers/account";
 import { decisionDisplayFixture } from "./helpers/research-decision-fixture";
+import {
+  withEvidenceCoverage,
+  withSupplementedTuition,
+} from "./helpers/research-coverage-fixture";
 
 const model = {
   name: "deepseek-v4-pro",
@@ -305,7 +309,11 @@ async function researchService(page: Page) {
     | null = null;
   let run: GuidanceRun | null = null;
   let postCount = 0,
-    latestCount = 0;
+    latestCount = 0,
+    supplementCount = 0;
+  let supplementError:
+    | { status: number; code: string; message: string }
+    | undefined;
   const jobId = "browser-research-" + randomUUID();
   await page.route("**/api/v1/research/status", (route) =>
     route.fulfill({
@@ -314,24 +322,47 @@ async function researchService(page: Page) {
     }),
   );
   await page.route(
-    /\/api\/v1\/guidance\/[^/]+\/research(?:\/latest)?$/,
+    /\/api\/v1\/guidance\/[^/]+\/research(?:\/(?:latest|supplement))?$/,
     async (route) => {
       if (route.request().method() === "POST") {
+        const mode = new URL(route.request().url()).pathname.endsWith(
+          "/supplement",
+        )
+          ? "supplement"
+          : "generate";
         expect(run).not.toBeNull();
         expect(route.request().postDataJSON()).toEqual({});
         expect(route.request().headers()["x-csrf-token"]).toBeTruthy();
         expect(route.request().headers()["idempotency-key"]).toBeTruthy();
-        postCount++;
+        if (mode === "supplement") {
+          supplementCount++;
+          if (supplementError) {
+            const failure = supplementError;
+            supplementError = undefined;
+            await route.fulfill({
+              status: failure.status,
+              json: { code: failure.code, message: failure.message },
+            });
+            return;
+          }
+        } else postCount++;
+        const previousReport =
+          mode === "supplement" ? current?.report : undefined;
         current = {
           jobId,
+          mode,
           guidanceRunId: run!.guidanceRunId,
           status: "queued",
           stage: "queued",
           progress: 0,
-          message: "已接收请求，即将开始整理依据",
+          message:
+            mode === "supplement"
+              ? "已接收补查请求，继续核验缺少的原文"
+              : "已接收请求，即将开始整理依据",
           createdAt: retrievedAt,
           updatedAt: retrievedAt,
           events: [],
+          ...(previousReport ? { report: previousReport } : {}),
         };
         await route.fulfill({
           status: 202,
@@ -358,6 +389,25 @@ async function researchService(page: Page) {
       run = value;
     },
     postCount: () => postCount,
+    supplementCount: () => supplementCount,
+    failNextSupplement() {
+      supplementError = {
+        status: 503,
+        code: "search_unavailable",
+        message: "补查服务暂不可用，已取得的报告仍保留。",
+      };
+    },
+    failSupplementJobWithoutReport() {
+      if (!current || current.mode !== "supplement")
+        throw new Error("Start supplement before failing it.");
+      current = {
+        ...current,
+        status: "failed",
+        stage: "done",
+        message: "补查超时，未取得新的原文。",
+        report: undefined,
+      };
+    },
     latestCount: () => latestCount,
     invalidate() {
       if (!current) throw new Error("Start the report before invalidating it.");
@@ -387,7 +437,10 @@ async function researchService(page: Page) {
     ) {
       if (!current || !run)
         throw new Error("Start the report before completing it.");
-      const report = reportFor(run, status);
+      const report =
+        current.mode === "supplement" && current.report
+          ? current.report
+          : reportFor(run, status);
       current = {
         ...current,
         status,
@@ -2266,4 +2319,293 @@ test("历年政策优先展示2026备考参考与2025对照，2027科目作为�
   expect(overflow.width, JSON.stringify(overflow.elements)).toBeLessThanOrEqual(
     overflow.viewport,
   );
+});
+
+async function openProgrammeCoverage(page: Page) {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("partial", withEvidenceCoverage);
+  await expect(
+    panel.getByRole("region", { name: "专业资料覆盖与缺项", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText(
+      "继续补查会复用已有资料，优先补齐缺少的原文；已有报告在补查期间仍可查看。",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  return { service, panel };
+}
+
+test("逐专业缺项独立展示已读原文、历史与当年状态、失败原因和补查动作，并同步导出", async ({
+  page,
+}) => {
+  const { panel } = await openProgrammeCoverage(page);
+  const overview = panel.getByRole("region", {
+    name: "专业资料覆盖与缺项",
+    exact: true,
+  });
+  await expect(
+    overview.getByText(/本次调查 2 所学校、2 个专业；2 个专业已有项目原文/),
+  ).toBeVisible();
+  await expect(
+    overview.getByText(/仅统计本次实际调查的学校与专业/),
+  ).toBeVisible();
+  const school = panel.getByRole("region", {
+    name: "浏览器测试大学逐专业资料",
+    exact: true,
+  });
+  const academic = school.getByRole("region", {
+    name: "机械工程 · 080200 · 机械工程学院资料核验",
+    exact: true,
+  });
+  await academic
+    .getByText("机械工程 · 080200 · 机械工程学院", { exact: true })
+    .click();
+  await expect(
+    academic.getByText(/学术学位 · 全日制 · 2026 年项目原文/),
+  ).toBeVisible();
+  await expect(
+    academic.getByRole("term").filter({ hasText: "具体专业与招生目录" }),
+  ).toContainText("已有历史参考原文");
+  await expect(
+    academic.getByRole("term").filter({ hasText: "学费" }),
+  ).toContainText("尚缺原文");
+  await expect(
+    academic.getByRole("term").filter({ hasText: "报考资格" }),
+  ).toContainText("原文有歧义，待核对");
+  await expect(
+    academic.getByRole("term").filter({ hasText: "课程与培养" }),
+  ).toContainText("此项不适用");
+  const programProof = academic
+    .getByRole("definition")
+    .filter({ hasText: "已取得2026年机械工程学院的具体专业目录原文。" });
+  await programProof
+    .getByText("查看已取得的原文 · 1 条", { exact: true })
+    .click();
+  await expect(
+    programProof.getByText("机械工程学院 | 080200机械工程 | 全日制学术学位。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const academicGaps = academic.getByRole("region", {
+    name: "该专业待补资料",
+    exact: true,
+  });
+  await expect(
+    academicGaps.getByText(
+      "下一步：继续读取机械工程学院的2026年收费附件，并核对学习形式与计费单位。",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    academicGaps.getByText("目标年度核对", { exact: true }),
+  ).toBeVisible();
+  await academicGaps.getByText("查看读取失败记录", { exact: true }).click();
+  await expect(
+    academicGaps.getByText("读取未成功：官网收费附件读取超时。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    academicGaps.getByRole("link", { name: "查看已尝试的网址", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    "https://grad.example.edu.cn/mechanical-fees-2026.pdf",
+  );
+  await expect(academic.getByText(/36000/)).toHaveCount(0);
+  const professional = school.getByRole("region", {
+    name: "机械 · 085500 · 先进制造学院资料核验",
+    exact: true,
+  });
+  await professional
+    .getByText("机械 · 085500 · 先进制造学院", { exact: true })
+    .click();
+  await expect(
+    professional.getByRole("term").filter({ hasText: "培养城市与校区" }),
+  ).toContainText("目标年度已有原文");
+  await expect(
+    professional.getByRole("term").filter({ hasText: "报考资格" }),
+  ).toContainText("原文不适用本项目");
+  const feeProof = professional
+    .getByRole("definition")
+    .filter({ hasText: "仅该非全日制机械专业有2025年学年收费参考。" });
+  await feeProof.getByText("查看已取得的原文 · 1 条", { exact: true }).click();
+  await expect(
+    feeProof.getByText("2025年机械非全日制学费36000元/学年。", { exact: true }),
+  ).toBeVisible();
+  const hdu = panel.getByRole("region", {
+    name: "杭州电子科技大学逐专业资料",
+    exact: true,
+  });
+  await expect(
+    hdu.getByText("尚未取得可列出具体专业的目录原文，先补查目录。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await hdu.getByText("查看读取失败记录", { exact: true }).click();
+  await expect(
+    hdu.getByText("读取未成功：官网返回403，当前入口无法读取。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const download = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await download).path())!, "utf8");
+  expect(content).toContain("专业资料覆盖与缺项");
+  expect(content).toContain("课程与培养：此项不适用");
+  expect(content).toContain("机械工程学院 | 080200机械工程");
+  expect(content).toContain("官网收费附件读取超时");
+  expect(content).toContain("官网返回403");
+  expect(content).toContain("目标年度核对");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(overview).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await overview.screenshot({
+    path: "test-results/research-program-coverage-mobile.png",
+  });
+});
+
+test("继续补查复用已有报告，重复点击和刷新不创建第二个任务，新增原文只解决对应专业缺项", async ({
+  page,
+}) => {
+  const { service, panel } = await openProgrammeCoverage(page);
+  await panel
+    .getByRole("button", { name: "继续补查缺少的资料", exact: true })
+    .dblclick();
+  await expect(
+    panel.getByText("正在补查缺少的资料，已有报告可继续查看。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "正在补查资料…", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    panel.getByRole("button", { name: "补查进行中…", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    panel.getByRole("heading", { name: "浏览器测试大学", exact: true }),
+  ).toBeVisible();
+  expect(service.supplementCount()).toBe(1);
+  await panel.getByText("补查过程与服务信息", { exact: true }).click();
+  await expect(
+    panel.getByText("已接收补查请求，继续核验缺少的原文", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    panel.getByText("正在补查缺少的资料，已有报告可继续查看。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("region", { name: "专业资料覆盖与缺项", exact: true }),
+  ).toBeVisible();
+  expect(service.supplementCount()).toBe(1);
+  service.finish("completed", withSupplementedTuition);
+  await expect(
+    panel.getByText("已补入机械工程2026年学费原文，其他资料缺项仍逐项保留。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "继续补查缺少的资料", exact: true }),
+  ).toBeEnabled();
+  const academic = panel.getByRole("region", {
+    name: "机械工程 · 080200 · 机械工程学院资料核验",
+    exact: true,
+  });
+  await academic
+    .getByText("机械工程 · 080200 · 机械工程学院", { exact: true })
+    .click();
+  await expect(
+    academic.getByRole("term").filter({ hasText: "学费" }),
+  ).toContainText("已有历史参考原文");
+  await expect(
+    academic.getByText("已补得机械工程全日制的2026年学年收费参考原文。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    academic.getByText(/尚缺机械工程学院对应的培养校区地址/).first(),
+  ).toBeVisible();
+  await expect(
+    academic.getByText(/下一步：继续读取机械工程学院的2026年收费附件/),
+  ).toHaveCount(0);
+  const download = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await download).path())!, "utf8");
+  expect(content).toContain("本轮新增资料 1 条");
+  expect(content).toContain("2026年机械工程全日制学费8000元/学年");
+  expect(content).toContain("2025年机械非全日制学费36000元/学年");
+  expect(service.postCount()).toBe(1);
+  expect(service.supplementCount()).toBe(1);
+});
+
+test("补查请求错误及后台失败均保留已有报告与逐专业缺项，允许重试补查", async ({
+  page,
+}) => {
+  const { service, panel } = await openProgrammeCoverage(page);
+  service.failNextSupplement();
+  await panel
+    .getByRole("button", { name: "继续补查缺少的资料", exact: true })
+    .click();
+  await expect(
+    panel
+      .getByRole("alert")
+      .getByText("补查服务暂不可用，已取得的报告仍保留。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("heading", { name: "浏览器测试大学", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("region", { name: "专业资料覆盖与缺项", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "继续补查缺少的资料", exact: true }),
+  ).toBeEnabled();
+  await panel
+    .getByRole("button", { name: "继续补查缺少的资料", exact: true })
+    .click();
+  await expect(
+    panel.getByText("正在补查缺少的资料，已有报告可继续查看。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  service.failSupplementJobWithoutReport();
+  await expect(
+    panel.getByRole("region", { name: "补查未完成", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText("本次补查未完成，已有报告已保留", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("heading", { name: "浏览器测试大学", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("region", { name: "专业资料覆盖与缺项", exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", { name: "下载研究报告", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    panel.getByRole("button", { name: "继续补查缺少的资料", exact: true }),
+  ).toBeEnabled();
+  expect(service.supplementCount()).toBe(2);
+  expect(service.postCount()).toBe(1);
 });

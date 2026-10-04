@@ -22,8 +22,11 @@ import { createGuidanceExplainer } from "../explanation/guidance.ts";
 import { guidanceFreshness } from "./guidance.ts";
 import type { GuidanceRun } from "../disciplines/types.ts";
 import { createResearchReportModule } from "../explanation/research.ts";
+import type { ResearchEvidenceLibrary } from "../explanation/research-library.ts";
 
-export function createAssistantRoutes() {
+export function createAssistantRoutes(
+  dependencies: { library?: ResearchEvidenceLibrary } = {},
+) {
   const config = {
     enabled: process.env.YANTU_MODEL_ENABLED === "true",
     apiKey: process.env.DEEPSEEK_API_KEY,
@@ -68,7 +71,7 @@ export function createAssistantRoutes() {
         process.env.YANTU_RESEARCH_MAX_OUTPUT_TOKENS ?? 16384,
       ),
     },
-    { runtime, web },
+    { runtime, web, library: dependencies.library },
   );
   const chat = createGeneralChatModule(webConfig);
   const guidanceExplainer = createGuidanceExplainer(runtime);

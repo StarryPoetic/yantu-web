@@ -33,6 +33,7 @@ export interface ResearchJob {
   updatedAt: string;
   events: { stage: string; message: string; at: string }[];
   report?: ResearchReport;
+  mode?: "generate" | "supplement";
   target?: {
     programId: string;
     programRevisionId: string;
@@ -139,6 +140,7 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
     run: GuidanceRun,
     initial: ResearchJob,
     selectedProgram?: ProgramRevision,
+    previousReport?: ResearchReport,
   ) {
     const owner = c.session.subjectId;
     const promise = new Promise<void>((resolve) => setImmediate(resolve))
@@ -151,6 +153,8 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             subjectId: owner,
             run,
             selectedProgram,
+            mode: initial.mode,
+            previousReport,
             onProgress: async (stage, detail) => {
               live(c, run, job);
               const step = stages[stage];
@@ -169,6 +173,26 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             },
           });
           live(c, run, job);
+          const delivered =
+            previousReport &&
+            report.failureStage &&
+            !report.recommendations.length
+              ? {
+                  ...previousReport,
+                  status: report.status,
+                  reason: report.reason,
+                  failureStage: report.failureStage,
+                  validationIssues: report.validationIssues,
+                  summary: report.summary,
+                  limitations: [
+                    ...new Set([
+                      ...previousReport.limitations,
+                      ...report.limitations,
+                      "本次补查未完成，已保留上次核对过的报告与来源。",
+                    ]),
+                  ],
+                }
+              : report;
           const done = report.status !== "blocked" && !report.failureStage;
           const message = report.failureStage
             ? report.summary
@@ -179,7 +203,7 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
                 : report.summary || "生成条件尚不具备，请检查配置或补充资料";
           job = {
             ...job,
-            report,
+            report: delivered,
             status: report.status,
             stage: done ? "done" : job.stage,
             progress: done ? 100 : job.progress,
@@ -234,9 +258,10 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             ).value,
           ),
         };
-      const route = /^\/guidance\/([^/]+)\/research(?:\/(latest))?$/.exec(
-        c.path,
-      );
+      const route =
+        /^\/guidance\/([^/]+)\/research(?:\/(latest|supplement))?$/.exec(
+          c.path,
+        );
       if (!route) return;
       const owner = c.session.subjectId;
       const run = currentRun(c, route[1], c.method === "POST");
@@ -249,13 +274,20 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
         ? store.get<ResearchJob>(owner, "research-job", latest.value.jobId)
             ?.value
         : undefined;
-      if (route[2] && c.method === "GET")
+      if (route[2] === "latest" && c.method === "GET")
         return { body: { job: previous ? view(c, previous) : null } };
-      if (route[2] || c.method !== "POST") return;
+      if (route[2] === "latest" || c.method !== "POST") return;
       fields(c.body, []);
       live(c, run);
       if (previous && activeStatus(previous))
         return { status: 202, body: view(c, previous) };
+      const supplement = route[2] === "supplement";
+      if (supplement && !previous?.report)
+        throw new HttpError(
+          409,
+          "research_missing",
+          "请先生成研究报告，再按已记录缺项继续补查。",
+        );
       const active = [...running.values()].filter(
         (item) => item.owner === owner,
       );
@@ -283,6 +315,8 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
         createdAt: created,
         updatedAt: created,
         events: [],
+        mode: supplement ? "supplement" : "generate",
+        ...(supplement ? { report: previous!.report } : {}),
         ...(selectedProgram
           ? {
               target: {
@@ -297,13 +331,20 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
       store.put(owner, "research-latest", run.guidanceRunId, {
         jobId: job.jobId,
       });
-      if (readiness.ready) launch(c, run, job, selectedProgram);
+      if (readiness.ready)
+        launch(
+          c,
+          run,
+          job,
+          selectedProgram,
+          supplement ? previous!.report : undefined,
+        );
       return { status: 202, body: view(c, job) };
     },
     replay(c: Context, saved: Record<string, unknown>): Reply | undefined {
       if (
         c.method !== "POST" ||
-        !/^\/guidance\/[^/]+\/research$/.test(c.path) ||
+        !/^\/guidance\/[^/]+\/research(?:\/supplement)?$/.test(c.path) ||
         typeof saved.jobId !== "string"
       )
         return;

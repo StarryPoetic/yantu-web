@@ -6,6 +6,7 @@ import { ResearchSchoolCard } from "./ResearchSchoolCard";
 import { ResearchSourceLinks } from "./ResearchSourceLinks";
 import { ResearchDecisionBasisView } from "./ResearchDecisionBasisView";
 import { ResearchCandidateAudit } from "./ResearchCandidateAudit";
+import { ResearchEvidenceCoverage } from "./ResearchEvidenceCoverage";
 import {
   recommendationGroups,
   researchCoverage,
@@ -136,6 +137,7 @@ export function ResearchReportView({
           )}
         </section>
       ) : null}
+      <ResearchEvidenceCoverage report={report} />
       <ResearchCandidateAudit report={report} />
       <div className="research-supporting-details">
         <details>

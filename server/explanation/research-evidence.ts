@@ -6,12 +6,27 @@ import {
 } from "./research-school.ts";
 import { validatedSourceProvenance } from "./research-provenance.ts";
 import { explicitAdmissionsYears } from "../../shared/research-years.ts";
+import type { ResearchStudyMode } from "../../shared/research-recommendation.ts";
+import { safeSourceYear } from "./research-years.ts";
 
 export interface AdmissionEvidence {
   excluded?: string;
+  exclusionKind?: "sample" | "closure";
   admissionStatus: "current_evidence" | "needs_verification";
   notice?: string;
 }
+
+export interface AdmissionProgramScope {
+  institutionName?: string;
+  programName: string;
+  disciplineCode?: string;
+  majorCode?: string;
+  collegeName?: string;
+  studyMode?: ResearchStudyMode;
+}
+
+const closure =
+  /不(?:再)?招生|停招|(?:暂停|停止|取消|暂缓).{0,8}招生|不招收(?:硕士|研究生|本专业|该专业)(?:[。；，、\s]|$)/;
 export const isSchoolPage = (source: WebSource) =>
   source.kind === "official_page" &&
   !/(^|\.)chsi\.com\.cn$/.test(new URL(source.url).hostname);
@@ -76,6 +91,197 @@ function programPassages(excerpt: string, programName: string) {
     }
     return [parts.join("；")];
   });
+}
+
+function rowScope(body: string, start: number, end?: number) {
+  const lineStart = body.lastIndexOf("\n", start);
+  const prefix = body.slice(Math.max(0, lineStart + 1), start);
+  const previous =
+    lineStart < 0
+      ? ""
+      : body.slice(body.lastIndexOf("\n", lineStart - 1) + 1, lineStart).trim();
+  const college =
+    /(?:^|[|\s:：])\d{0,3}([\p{Script=Han}]{1,24}(?:学院|研究院|研究所|学部|中心))\s*\|?\s*$/u;
+  const collegeName =
+    prefix.match(college)?.[1] ??
+    (prefix.trim() ? undefined : previous.match(college)?.[1]);
+  const line = body
+    .slice(start, end)
+    .split(/\n|复试|参考课程|参考书目|培养内容|课程设置/)[0];
+  const partTime = /非全日制/.test(line);
+  const fullTime = /全日制/.test(line.replace(/非全日制/g, ""));
+  return {
+    collegeName,
+    studyMode:
+      partTime === fullTime ? undefined : partTime ? "part_time" : "full_time",
+  };
+}
+
+/** Literal programme passages with code, faculty and learning-mode boundaries preserved. */
+export function scopedProgramPassages(
+  source: WebSource,
+  scope: AdmissionProgramScope,
+): string[] {
+  if (
+    scope.institutionName &&
+    !sourceHasSchoolIdentity(source, scope.institutionName)
+  )
+    return [];
+  const body = withoutSchoolLinks(source.excerpt);
+  const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
+  const escaped = scope.programName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headings = degreeHeadings(body);
+  if (rows.length)
+    return rows.flatMap((row, index) => {
+      if (
+        (scope.majorCode && row[0] !== scope.majorCode) ||
+        (scope.disciplineCode && !row[0].startsWith(scope.disciplineCode))
+      )
+        return [];
+      const heading = headings
+        .filter((item) => item.position <= row.index!)
+        .at(-1);
+      if (heading && !heading.masters) return [];
+      const afterCode = body
+        .slice(row.index! + row[0].length, rows[index + 1]?.index)
+        .replace(
+          /^[\s|:：()（）\[\]【】-]*(?:[（(](?:专业学位|学术学位|学术型)[）)]\s*)?/,
+          "",
+        );
+      if (
+        !new RegExp(
+          `^${escaped}(?=$|[\\s|（(，,。；;]|学术学位|专业学位|非?全日制|\\d|①|②|③|④|正常招生)`,
+          "u",
+        ).test(afterCode)
+      )
+        return [];
+      const actual = rowScope(body, row.index!, rows[index + 1]?.index);
+      if (
+        (scope.collegeName && actual.collegeName !== scope.collegeName) ||
+        (scope.studyMode &&
+          scope.studyMode !== "unspecified" &&
+          actual.studyMode !== scope.studyMode)
+      )
+        return [];
+      const next = rows[index + 1]?.index;
+      const nextLine =
+        next === undefined ? undefined : body.lastIndexOf("\n", next);
+      const end =
+        nextLine !== undefined && nextLine > row.index! ? nextLine : next;
+      return [body.slice(row.index!, end).split(" … ")[0].trim()];
+    });
+  return programPassages(body, scope.programName).filter((passage) => {
+    const colleges =
+      passage.match(
+        /[\p{Script=Han}]{1,24}(?:学院|研究院|研究所|学部|中心)/gu,
+      ) ?? [];
+    if (
+      scope.collegeName &&
+      colleges.length &&
+      !passage.includes(scope.collegeName)
+    )
+      return false;
+    // An unqualified programme-wide notice can apply to every college; a faculty-specific page cannot.
+    if (scope.collegeName && !colleges.length) {
+      const preceding = body.slice(0, body.indexOf(passage.split("；")[0]));
+      const heading = [
+        ...preceding.matchAll(
+          /(?:^|[\n|\s:：])\d{0,3}([\p{Script=Han}]{1,24}(?:学院|研究院|研究所|学部))(?=\s|\||\n|20\d{2}|$)/gu,
+        ),
+      ].at(-1)?.[1];
+      if (heading && !heading.endsWith(scope.collegeName)) return false;
+    }
+    const partTime = /非全日制/.test(passage);
+    const fullTime = /全日制/.test(passage.replace(/非全日制/g, ""));
+    return (
+      !(scope.studyMode === "full_time" && partTime && !fullTime) &&
+      !(scope.studyMode === "part_time" && fullTime && !partTime)
+    );
+  });
+}
+
+/** Page-wide invalidity stays global; a local restriction requires the requested programme scope. */
+export function scopedAdmissionEvidence(
+  source: WebSource,
+  targetYear: string,
+  scope: AdmissionProgramScope,
+): AdmissionEvidence & { scopeMatched: boolean } {
+  if (
+    scope.institutionName &&
+    !sourceHasSchoolIdentity(source, scope.institutionName)
+  )
+    return { admissionStatus: "needs_verification", scopeMatched: false };
+  const wholePage = admissionEvidence(source, targetYear);
+  if (wholePage.excluded) return { ...wholePage, scopeMatched: true };
+  const passages = scopedProgramPassages(source, scope);
+  if (!passages.length)
+    return {
+      admissionStatus: "needs_verification",
+      scopeMatched: false,
+      notice:
+        "尚未绑定到同一专业代码、学院和学习方式，其他条目的限制不能用于排除此项目。",
+    };
+  if (passages.some((passage) => closure.test(passage)))
+    return {
+      admissionStatus: "needs_verification",
+      scopeMatched: true,
+      exclusionKind: "closure",
+      excluded: "对应专业代码、学院和学习方式的条目含停招或不招生表述。",
+    };
+  return { ...wholePage, scopeMatched: true };
+}
+
+function admissionConflictInPassage(
+  context: string,
+  programName: string,
+  discipline: Discipline,
+  profile: Record<string, unknown>,
+) {
+  const major = String(profile.major ?? "").replace(/\s/g, "");
+  if (!major) return false;
+  const only =
+    /(?:仅限|只招收|限招)([\p{Script=Han}、（）()]{2,35}?)(?:专业)?本科(?:毕业生|背景|专业|考生)/u.exec(
+      context,
+    )?.[1];
+  if (only && !/相关|相近|大类|类|等|本校/.test(only)) {
+    const choices = only
+      .replace(/专业$/, "")
+      .split(/[、与或]/)
+      .filter(Boolean);
+    if (
+      choices.length &&
+      choices.every(
+        (choice) => !major.includes(choice) && !choice.includes(major),
+      )
+    )
+      return true;
+  }
+  return (
+    /不(?:接受|接收|招收)跨专业|禁止跨专业/.test(context) &&
+    ![programName, discipline.name, ...discipline.aliases].some(
+      (term) =>
+        term.length >= 2 && (major.includes(term) || term.includes(major)),
+    )
+  );
+}
+
+/** Only a dated, owned current programme restriction can reject this particular profile. */
+export function scopedKnownAdmissionConflict(
+  source: WebSource,
+  scope: AdmissionProgramScope,
+  discipline: Discipline,
+  profile: Record<string, unknown>,
+  year: string,
+) {
+  if (
+    !isSchoolPage(source) ||
+    safeSourceYear(source) !== Number(year) ||
+    scopedAdmissionEvidence(source, year, scope).exclusionKind === "sample"
+  )
+    return false;
+  return scopedProgramPassages(source, scope).some((context) =>
+    admissionConflictInPassage(context, scope.programName, discipline, profile),
+  );
 }
 export function supportsProgram(
   source: WebSource,
@@ -203,34 +409,9 @@ export function knownAdmissionConflict(
     "current_evidence"
   )
     return false;
-  const major = String(profile.major ?? "").replace(/\s/g, "");
-  if (!major) return false;
-  return programPassages(source.excerpt, programName).some((context) => {
-    const only =
-      /(?:仅限|只招收|限招)([\p{Script=Han}、（）()]{2,35}?)(?:专业)?本科(?:毕业生|背景|专业|考生)/u.exec(
-        context,
-      )?.[1];
-    if (only && !/相关|相近|大类|类|等|本校/.test(only)) {
-      const choices = only
-        .replace(/专业$/, "")
-        .split(/[、与或]/)
-        .filter(Boolean);
-      if (
-        choices.length &&
-        choices.every(
-          (choice) => !major.includes(choice) && !choice.includes(major),
-        )
-      )
-        return true;
-    }
-    return (
-      /不(?:接受|接收|招收)跨专业|禁止跨专业/.test(context) &&
-      ![programName, discipline.name, ...discipline.aliases].some(
-        (term) =>
-          term.length >= 2 && (major.includes(term) || term.includes(major)),
-      )
-    );
-  });
+  return programPassages(source.excerpt, programName).some((context) =>
+    admissionConflictInPassage(context, programName, discipline, profile),
+  );
 }
 
 export function sourcePriority(source: WebSource, discipline: Discipline) {
@@ -289,13 +470,12 @@ export function admissionEvidence(
   )
     return {
       admissionStatus: "needs_verification",
+      exclusionKind: "sample",
       excluded: "资料含明确示例或测试标记，不能证明真实学校专业。",
     };
   // A directory may close one programme while continuing others. Without a
   // specific programme only an explicit school-wide closure excludes the page.
   const evidence = source.kind === "official_page" ? source.excerpt : all;
-  const closure =
-    /不(?:再)?招生|停招|(?:暂停|停止|取消|暂缓).{0,8}招生|不招收(?:硕士|研究生|本专业|该专业)(?:[。；，、\s]|$)/;
   if (
     /(?:全校|本校所有|全校所有|全部)(?:硕士|研究生|专业|学位|项目|招生|\s){0,8}(?:均|全部|一律)?(?:停招|暂停招生|停止招生|不再招生)/.test(
       evidence,
@@ -305,6 +485,7 @@ export function admissionEvidence(
   )
     return {
       admissionStatus: "needs_verification",
+      exclusionKind: "closure",
       excluded: "资料含停招或不招生表述，暂不据此推荐该学校专业。",
     };
   const years = new Set(explicitAdmissionsYears(evidence).map(String));

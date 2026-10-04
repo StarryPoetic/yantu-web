@@ -380,6 +380,94 @@
   border-radius: 10px;
   line-height: 1.8;
 }
+.research-evidence-coverage {
+  margin: 22px 0;
+  padding: 18px 20px;
+  border: 1px solid #cbd8ce;
+  border-radius: 10px;
+  background: #f7f9f4;
+  line-height: 1.8;
+}
+.research-evidence-coverage h3,
+.research-school-evidence h4,
+.research-evidence-gaps h5 {
+  margin: 0 0 10px;
+  color: #284332;
+}
+.research-school-evidence {
+  margin-top: 18px;
+}
+.research-program-coverage {
+  margin-top: 12px;
+  padding: 13px 16px;
+  border: 1px solid #dbe3d8;
+  border-radius: 7px;
+  background: #fff;
+}
+.research-program-coverage > summary {
+  cursor: pointer;
+  color: #315c48;
+  font-weight: 600;
+}
+.research-evidence-route-meta {
+  font-size: 13px;
+  color: #627366;
+}
+.research-coverage-fields > div {
+  padding: 12px 0;
+  border-top: 1px solid #e5e9e0;
+}
+.research-coverage-fields dt,
+.research-gap-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-weight: 600;
+}
+.research-coverage-fields dt > span,
+.research-gap-heading > span {
+  font-size: 13px;
+  font-weight: 400;
+  color: #627366;
+}
+.research-coverage-fields .missing dt > span,
+.research-coverage-fields .ambiguous dt > span,
+.research-coverage-fields .supported_reference dt > span {
+  color: #795a29;
+}
+.research-coverage-fields dd {
+  margin: 4px 0 0;
+}
+.research-coverage-fields p,
+.research-evidence-gaps p {
+  margin: 5px 0;
+}
+.research-field-references > summary,
+.research-read-attempts > summary {
+  cursor: pointer;
+  color: #315c48;
+}
+.research-field-references blockquote {
+  margin: 10px 0;
+  padding-left: 12px;
+  border-left: 2px solid #b9ccbd;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.research-evidence-gaps {
+  margin-top: 18px;
+}
+.research-evidence-gaps > ul > li {
+  margin: 14px 0;
+}
+.research-read-attempts small {
+  display: block;
+  color: #627366;
+}
+.research-supplement-status {
+  color: #315c48;
+}
 .research-decision-basis h3,
 .research-candidate-audit h3 {
   margin: 0;
