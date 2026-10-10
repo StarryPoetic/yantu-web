@@ -116,9 +116,10 @@ test("multi-page campus binding retains all phase-2 supporting passages and thei
       ),
     );
     assert.ok(
-      !library
+      library
         .queryFacts(query)
         .some((f) => f.field === "campus" && f.status === "bound"),
+      "documented campus hints suffice for city binding",
     );
     library.save(
       page(
@@ -141,7 +142,7 @@ test("multi-page campus binding retains all phase-2 supporting passages and thei
         sources.find((s) => s.id === e.sourceId)?.excerpt.includes(e.quote),
       ),
     );
-    clock += 8 * 86400000;
+    clock += 11 * 86400000;
     const expired = library
       .queryFacts(query)
       .find((f) => f.field === "campus" && f.status === "bound");
@@ -179,7 +180,7 @@ test("facts use complete project identity, exact quotes, canonical schools, expl
           f.status === "bound" &&
           f.targetYearApplicable &&
           catalogue.includes(f.quote) &&
-          f.extractor === "phase2-program-binding@1",
+          f.extractor === "phase2-program-binding@2",
       ),
     );
     assert.doesNotMatch(

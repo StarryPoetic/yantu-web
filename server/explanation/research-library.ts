@@ -445,7 +445,12 @@ export function createResearchEvidenceLibrary(
       }
   }
   if (
-    !db.prepare("SELECT 1 FROM research_program_facts LIMIT 1").get() &&
+    (!db.prepare("SELECT 1 FROM research_program_facts LIMIT 1").get() ||
+      db
+        .prepare(
+          "SELECT 1 FROM research_program_facts WHERE json_extract(payload, '$.extractor') != 'phase2-program-binding@2' LIMIT 1",
+        )
+        .get()) &&
     db.prepare("SELECT 1 FROM research_public_sources LIMIT 1").get()
   )
     store.transaction(() => rebuildFacts());

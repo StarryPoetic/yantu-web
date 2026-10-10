@@ -602,22 +602,39 @@ export function createHttpsReader(
 export const readOfficialHttps = createHttpsReader();
 
 export function webPageText(html: string): string {
-  return html
-    .replace(/<!--[^]*?-->/g, " ")
-    .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ")
-    .replace(
-      /<\/?(?:p|div|h[1-6]|section|article|header|footer|li|tr|table|br)\b[^>]*>/gi,
-      "\n",
-    )
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/[^\S\r\n]+/g, " ")
-    .replace(/ *[\r\n]+ */g, "\n")
-    .trim();
+  return (
+    html
+      .replace(/<!--[^]*?-->/g, " ")
+      .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ")
+      // Keep table cells on their physical row despite paragraph wrappers inside cells.
+      .replace(
+        /<tr\b[^>]*>([^]*?)<\/tr\s*>/gi,
+        (_row, cells: string) =>
+          "\n" +
+          cells.replace(
+            /<(?:td|th)\b[^>]*>([^]*?)<\/(?:td|th)\s*>/gi,
+            (_cell, content: string) =>
+              content
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s+/g, " ")
+                .trim() + " | ",
+          ) +
+          "\n",
+      )
+      .replace(
+        /<\/?(?:p|div|h[1-6]|section|article|header|footer|li|tr|table|br)\b[^>]*>/gi,
+        "\n",
+      )
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/[^\S\r\n]+/g, " ")
+      .replace(/ *[\r\n]+ */g, "\n")
+      .trim()
+  );
 }
 
 function userQuestion(input: WebAnswerInput): string {

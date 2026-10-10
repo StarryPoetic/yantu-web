@@ -6,6 +6,9 @@ import {
   explicitAdmissionsYears,
 } from "../../shared/research-years.ts";
 import { safeSourceYear } from "./research-years.ts";
+import { schoolRegistry } from "../schools/index.ts";
+import { CITY_OPTIONS } from "../../shared/cities.ts";
+import { programNamePattern } from "./research-program-scope.ts";
 import {
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
@@ -16,6 +19,37 @@ type Passage = {
   quote: string;
   role: "program_college" | "campus_policy" | "campus_city";
 };
+
+/** Pending quotations obey the same named/other-faculty exclusion boundary. */
+export function collegeCampusPolicyApplies(
+  passage: string,
+  body: string,
+  collegeName?: string,
+) {
+  const pattern =
+    /(?:录取在)?([^。；\n:：]{2,150})的新生(?:所在校区|培养地点|学习地点)/g;
+  const local = [...passage.matchAll(pattern)].at(-1);
+  if (!local) return undefined;
+  if (!collegeName || !/学院$/.test(collegeName)) return false;
+  const colleges = (group: string) =>
+    group
+      .replace(/^录取在/, "")
+      .split(/[、，,]/)
+      .map((name) => name.trim());
+  if (!local[1].includes("其他学院"))
+    return colleges(local[1]).includes(collegeName);
+  const start = body.indexOf(passage);
+  const named = [...body.matchAll(pattern)].filter(
+    (rule) =>
+      rule.index! < start &&
+      start - rule.index! < 800 &&
+      !rule[1].includes("其他学院"),
+  );
+  return (
+    named.length > 0 &&
+    !named.some((rule) => colleges(rule[1]).includes(collegeName))
+  );
+}
 function domain(value: string) {
   try {
     const url = new URL(value);
@@ -37,6 +71,15 @@ function campuses(text: string, institutionName: string) {
         .filter((name) => name !== "校区" && name.length <= 12),
     ),
   ];
+}
+export function hasCampusLocationDetails(
+  text: string,
+  institutionName: string,
+) {
+  return (
+    campuses(text, institutionName).length > 0 ||
+    CITY_OPTIONS.some(({ name }) => text.includes(name))
+  );
 }
 function schoolPages(
   sources: WebSource[],
@@ -121,10 +164,7 @@ function deriveCampusLocationForYear(
   )
     return undefined;
   const escapedCollege = collegeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const escapedProgramme = input.programName.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&",
-  );
+  const escapedProgramme = programNamePattern(input.programName, majorCode);
   const boundRow = (row: string) => {
     const codeAt = row.indexOf(majorCode!);
     return (
@@ -204,9 +244,10 @@ function deriveCampusLocationForYear(
         continue;
       }
       const named = pieces.flatMap((piece) => {
-        const group = /录取在([^。；\n:：]{2,150})的新生所在校区/.exec(
-          piece[0],
-        )?.[1];
+        const group =
+          /(?:录取在)?([^。；\n:：]{2,150})的新生(?:所在校区|培养地点|学习地点)/.exec(
+            piece[0],
+          )?.[1];
         if (!group) return [];
         if (restrictedPolicy(source, body, piece.index! + piece[0].length))
           return [];
@@ -232,7 +273,12 @@ function deriveCampusLocationForYear(
         continue;
       }
       for (const piece of pieces) {
-        if (!/其他学院的新生所在校区(?:为|是)/.test(piece[0])) continue;
+        if (
+          !/其他学院的新生(?:所在校区|培养地点|学习地点)(?:为|是|[:：])/.test(
+            piece[0],
+          )
+        )
+          continue;
         if (restrictedPolicy(source, body, piece.index! + piece[0].length))
           continue;
         const preceding = named.filter(
@@ -365,6 +411,33 @@ function deriveCampusLocationForYear(
       });
       destination.set(relevant[0], values);
     }
+  }
+  // Literal city-named campuses and documented registry hints supplement address pages.
+  const seed = schoolRegistry.byName(input.institutionName);
+  for (const campus of expectedCampuses) {
+    if (geography.has(campus)) continue;
+    const cities = [
+      ...new Set([
+        ...CITY_OPTIONS.filter(({ name }) => campus.startsWith(name)).map(
+          ({ name }) => name,
+        ),
+        ...(seed?.campusHints
+          .filter((hint) => hint.name === campus)
+          .map((hint) => hint.city) ?? []),
+      ]),
+    ];
+    const policy = policies.find((p) => p.campuses.includes(campus));
+    if (cities.length === 1 && policy)
+      geography.set(campus, [
+        {
+          city: cities[0],
+          passage: {
+            sourceId: policy.source.id,
+            quote: policy.quote,
+            role: "campus_city",
+          },
+        },
+      ]);
   }
   const mappings = expectedCampuses.map((campus) => geography.get(campus));
   if (

@@ -21,6 +21,7 @@ import {
   prefetchSchools,
   parseArguments,
   discoverLinks,
+  discoveryScore,
 } from "../../scripts/prefetch-schools.mjs";
 import type { WebReader, WebSource } from "../../server/explanation/web.ts";
 
@@ -28,6 +29,52 @@ const school = schoolRegistry.byName("杭州电子科技大学")!;
 const root = "https://grs.hdu.edu.cn/";
 const catalogue =
   "杭州电子科技大学2027年硕士研究生招生专业目录。\n080200 机械工程 全日制 ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合";
+
+test("priority discovery reaches target catalogue attachment before sibling navigation within four reads", async () => {
+  assert.equal(parseArguments([]).maxPagesPerSchool, 20);
+  assert.ok(
+    discoveryScore({ url: root, title: "2027硕士专业目录" }, 2027) >
+      discoveryScore({ url: root, title: "2022博士招生简章" }, 2027),
+  );
+  const store = new Store(),
+    clock = fakeClock(),
+    library = createResearchEvidenceLibrary(store, clock),
+    reads: string[] = [];
+  const reader: WebReader = async (url) => {
+    if (url.endsWith("robots.txt"))
+      return { text: "User-agent: *\nAllow: /", contentType: "text/plain" };
+    reads.push(new URL(url).pathname);
+    const path = new URL(url).pathname;
+    const html =
+      path === "/"
+        ? `<a href='/doctor'>博士招生简章</a><a href='/old'>2022硕士招生简章</a><a href='/masters'>硕士招生信息</a>`
+        : path === "/masters"
+          ? `<a href='/article'>2027年硕士招生专业目录</a>`
+          : path === "/article"
+            ? `<a href='/catalogue.xls'>附件下载</a>`
+            : catalogue;
+    return {
+      text: html,
+      contentType: path.endsWith(".xls")
+        ? "application/vnd.ms-excel"
+        : "text/html",
+    };
+  };
+  try {
+    await prefetchSchools(
+      { school: [school.name], maxPagesPerSchool: 4 },
+      { registry: registryFor(), library, reader, ...clock },
+    );
+    assert.deepEqual(reads, ["/", "/masters", "/article", "/catalogue.xls"]);
+    assert.ok(
+      library
+        .queryFacts({ targetYear: "2027" })
+        .some((f) => f.field === "catalog"),
+    );
+  } finally {
+    store.close();
+  }
+});
 function fakeClock() {
   let clock = Date.parse("2026-10-11T00:00:00Z");
   return {
@@ -122,7 +169,7 @@ test("prefetch records robots prohibit/5xx/timeout, allows 404, serializes each 
   }
 });
 
-test("only actual same-school relevant links and depth two are read; fresh pages skip unless refreshed; no search/model calls", async () => {
+test("only actual same-school relevant links and depth three are read; fresh pages skip unless refreshed; no search/model calls", async () => {
   const store = new Store(),
     clock = fakeClock(),
     library = createResearchEvidenceLibrary(store, clock);
@@ -132,7 +179,14 @@ test("only actual same-school relevant links and depth two are read; fresh pages
     if (url.endsWith("robots.txt"))
       return { text: "User-agent: *\nAllow: /", contentType: "text/plain" };
     const path = new URL(url).pathname;
-    const next = path === "/" ? "/one" : path === "/one" ? "/two" : "/three";
+    const next =
+      path === "/"
+        ? "/one"
+        : path === "/one"
+          ? "/two"
+          : path === "/two"
+            ? "/three"
+            : "/four";
     return {
       text: `${catalogue}<a href='${next}'>研究生招生简章</a><a href='https://zju.edu.cn/foreign'>硕士招生简章</a><a href='http://127.0.0.1/internal'>研究生招生</a><a href='/news'>学校新闻</a>`,
       contentType: "text/html",
@@ -150,11 +204,9 @@ test("only actual same-school relevant links and depth two are read; fresh pages
     assert.equal(
       (await prefetchSchools({ school: [school.name] }, dependencies))
         .successfulPages,
-      3,
+      4,
     );
-    assert.ok(
-      !reads.some((url) => /three|foreign|127\.0\.0\.1|news/.test(url)),
-    );
+    assert.ok(!reads.some((url) => /four|foreign|127\.0\.0\.1|news/.test(url)));
     assert.equal(
       (await prefetchSchools({ school: [school.name] }, dependencies))
         .skippedFreshPages,
@@ -167,7 +219,7 @@ test("only actual same-school relevant links and depth two are read; fresh pages
           dependencies,
         )
       ).successfulPages,
-      3,
+      4,
     );
     const links = discoverLinks(
       `<a href='/file.pdf'>附件下载</a><a href='/file.xlsx'>收费标准附件</a>`,

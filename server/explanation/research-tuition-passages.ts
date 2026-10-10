@@ -8,6 +8,16 @@ export const tuitionMoney =
 export function tuitionPassages(body: string) {
   const parts = [...body.matchAll(/[^。；;\n]+/g)];
   return parts.flatMap((part, index) => {
+    const previous = parts[index - 1];
+    const heading =
+      previous &&
+      /[:：]\s*$/.test(previous[0]) &&
+      /(?:学术|专业)学位/.test(previous[0]) &&
+      /^\s*\n\s*$/.test(
+        body.slice(previous.index! + previous[0].length, part.index),
+      )
+        ? previous
+        : undefined;
     const text = normalizedEvidence(part[0]);
     if (!text.includes("学费")) return [];
     if (
@@ -28,7 +38,7 @@ export function tuitionPassages(body: string) {
         return [];
       end = next.index! + next[0].length;
     }
-    const raw = body.slice(part.index!, end).trim();
+    const raw = body.slice(heading?.index ?? part.index!, end).trim();
     // A mode change starts its own literal tariff; do not join the two amounts.
     return raw
       .split(/[，,](?=(?:我校|本校|全校|所有)?非?全日制(?:硕士)?研究生)/)

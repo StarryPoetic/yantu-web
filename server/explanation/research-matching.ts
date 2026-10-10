@@ -134,7 +134,10 @@ export function createDemandPlan(run: GuidanceRun): ResearchPlan {
   };
 }
 
-import { programRowScope } from "./research-program-scope.ts";
+import {
+  programRowScope,
+  programNamePattern,
+} from "./research-program-scope.ts";
 export { programRowScope } from "./research-program-scope.ts";
 
 /** Shared deterministic catalogue row discovery, independent of any user or model. */
@@ -145,25 +148,65 @@ export function programEntries(
   const body = withoutSchoolLinks(source.excerpt);
   const rows = [
     ...body.matchAll(
-      /\b((?:0[1-9]|1[0-4])\d{4})\b[\s|:：()（）\[\]【】-]*([\p{Script=Han}]{2,30})/gu,
+      /\b((?:0[1-9]|1[0-4])\d{4})\b[ \t|:：()（）\[\]【】-]*([\p{Script=Han}]{2,30})/gu,
     ),
   ];
-  return rows.flatMap((row, index) => {
+  const entries = rows.flatMap((row, index) => {
     const discipline = disciplines.find((d) => row[1].startsWith(d.code));
     const programName = row[2].replace(
       /(?:专业学位|学术学位|全日制|非全日制|硕士|(?:正常|继续|恢复)?招生|初试|考试科目|学费).*$/,
       "",
     );
     if (!discipline || !isConcreteProgramName(programName)) return [];
+    const start =
+      Math.max(
+        body.lastIndexOf("\n", row.index!),
+        body.lastIndexOf("。", row.index!),
+        body.lastIndexOf("；", row.index!),
+      ) + 1;
+    const boundaries = [
+      body.indexOf("\n", row.index!),
+      body.indexOf("。", row.index!),
+    ].filter((position) => position >= 0);
+    const end = boundaries.length ? Math.min(...boundaries) : body.length;
+    const prefix = body.slice(start, row.index!);
+    if (
+      prefix.trim() &&
+      !/招生(?:专业)?目录\s*[:：]\s*$/.test(prefix) &&
+      !/(?:学院|研究院|研究所|学部|中心)\s*[|:：]?\s*$/.test(prefix) &&
+      !/^[\s|\d①②③④]+$/.test(prefix)
+    )
+      return [];
+    if (/报考|考生|录取|提及/.test(prefix)) return [];
+    const officialName =
+      row[1] === `${discipline.code}00` &&
+      [discipline.name, ...discipline.aliases].includes(programName)
+        ? discipline.name
+        : programName;
     return [
       {
         discipline,
-        programName,
+        programName: officialName,
         majorCode: row[1],
+        catalogQuote: body
+          .slice(start, end < 0 ? body.length : end)
+          .trim()
+          .slice(0, 300),
         ...programRowScope(body, row.index!, rows[index + 1]?.index),
       },
     ];
   });
+  return /招生(?:专业)?目录/.test(`${source.title}\n${body}`) ||
+    entries.length >= 2
+    ? entries
+    : [];
+}
+
+/** Referrals do not establish any examination subject. */
+export function hasConcreteExamSubjects(text: string) {
+  return /思想\s*政治\s*理论|英语\s*[（(]?[一二][）)]?|数学\s*[（(]?[一二三][）)]?|管理类综合(?:能力)?|经济类综合(?:能力)?|(?:^|[^\d])[1-9]\d{2}\s*[\p{Script=Han}]{2,30}/u.test(
+    text,
+  );
 }
 
 export function extractProgramExams(input: {
@@ -241,10 +284,7 @@ export function extractProgramExams(input: {
           /^[\s|:：()（）\[\]【】-]*(?:[（(](?:专业学位|学术学位|学术型)[）)]\s*)?/,
           "",
         );
-      const escapedName = input.programName.replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&",
-      );
+      const escapedName = programNamePattern(input.programName, rows[i][0]);
       if (
         !new RegExp(
           `^${escapedName}(?=$|[\\s|（(]|学术学位|专业学位|非?全日制|\\d|①|②|③|④)`,

@@ -1,4 +1,14 @@
 import type { ResearchStudyMode } from "../../shared/research-recommendation.ts";
+import catalog from "../../knowledge/disciplines/catalog.json" with { type: "json" };
+
+/** Only exact national-category codes can share a documented name/alias. */
+export function programNamePattern(name: string, majorCode?: string) {
+  const category = catalog.items.find(
+    (d) => majorCode === `${d.code}00` && [d.name, ...d.aliases].includes(name),
+  );
+  const names = category ? [category.name, ...category.aliases] : [name];
+  return `(?:${names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`;
+}
 
 /** Keep faculty and mode attached to their local coded row, not a neighbouring entry. */
 export function programRowScope(body: string, start: number, end?: number) {

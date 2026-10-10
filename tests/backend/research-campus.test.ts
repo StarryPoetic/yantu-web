@@ -79,12 +79,8 @@ test("bound program faculty, exhaustive other-faculty policy and both campus add
   );
 });
 
-test("missing geography, unknown faculty, wrong program code and a cross-year campus policy do not fill a city gap", () => {
+test("unknown faculty, wrong program code and a cross-year campus policy do not fill a city gap", () => {
   const cases = [
-    {
-      ...fixture(),
-      sources: fixture().sources.filter((source) => source.id !== "geography"),
-    },
     { ...fixture(), collegeName: "不存在学院" },
     { ...fixture(), majorCode: "080201" },
     { ...fixture(), programName: "机械" },
@@ -292,7 +288,11 @@ test("historical population restrictions still apply and an ambiguous geography 
   }
   const mixed = fixture();
   mixed.sources[2].excerpt = `${school}2026年硕士研究生培养方案\n${school}2027年硕士研究生培养方案\n${mixed.sources[2].excerpt}`;
-  assert.equal(deriveCampusLocation(mixed), undefined);
+  assert.equal(
+    deriveCampusLocation(mixed)?.city,
+    "杭州",
+    "registry mapping does not borrow an ambiguous-year address",
+  );
 });
 
 test("a dated current campus address in another city cannot be bypassed using an older same-campus map", () => {
@@ -333,10 +333,18 @@ test("other-faculty policy requires explicit exclusions and cannot be lifted fro
   assert.equal(deriveCampusLocation(missingExclusions), undefined);
   const foreign = fixture();
   foreign.sources[2].url = "https://peer.edu.cn/main.htm";
-  assert.equal(deriveCampusLocation(foreign), undefined);
+  assert.equal(
+    deriveCampusLocation(foreign)?.city,
+    "杭州",
+    "registry maps campus without borrowing the foreign page",
+  );
   const peer = fixture();
   peer.sources[2].excerpt = `${school}官网\n友情链接\n乙大学文一校区\n地址：杭州市示例路1号\n联系我们\n版权所有©杭州电子科技大学`;
-  assert.equal(deriveCampusLocation(peer), undefined);
+  assert.equal(
+    deriveCampusLocation(peer)?.city,
+    "杭州",
+    "registry maps campus without borrowing peer navigation",
+  );
 });
 
 test("contradictory campus mapping and several campus names in one address window remain unresolved", () => {
@@ -350,7 +358,11 @@ test("contradictory campus mapping and several campus names in one address windo
   assert.equal(deriveCampusLocation(conflicting), undefined);
   const ambiguous = fixture();
   ambiguous.sources[2].excerpt = `${school}下沙校区、文一校区\n地址：杭州市示例路1号\n版权所有©杭州电子科技大学`;
-  assert.equal(deriveCampusLocation(ambiguous), undefined);
+  assert.equal(
+    deriveCampusLocation(ambiguous)?.city,
+    "杭州",
+    "registry independently maps both named campuses",
+  );
 });
 
 test("campus proof survives revalidation only when the complete deterministic chain is reproduced", () => {

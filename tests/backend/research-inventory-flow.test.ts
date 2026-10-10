@@ -165,12 +165,12 @@ function fixture(
     if (url === charterUrl && campusChain !== "none")
       return {
         contentType: "text/html",
-        text: `<h1>${school}2027年硕士研究生招生章程</h1><p>录取在电子信息学院、集成电路学院的新生所在校区为下沙校区或绍兴校区；录取在其他学院的新生所在校区为下沙校区或文一校区。</p><p>招生办公室（下沙校区行政楼207） 地址：杭州市钱塘区。</p><footer>${school}</footer>`,
+        text: `<h1>${school}2027年硕士研究生招生章程</h1><p>录取在电子信息学院、集成电路学院的新生所在校区为下沙校区或绍兴校区；录取在其他学院的新生所在校区为下沙校区或示例未登记校区。</p><p>招生办公室（下沙校区行政楼207） 地址：杭州市钱塘区。</p><footer>${school}</footer>`,
       };
     if (url === campusUrl && campusChain === "complete")
       return {
         contentType: "text/html",
-        text: `<header>${school}</header><footer>地址：杭州市西湖区文一路115号 ${school}（文一校区）实验楼</footer>`,
+        text: `<header>${school}</header><footer>地址：杭州市西湖区文一路115号 ${school}（示例未登记校区）实验楼</footer>`,
       };
     throw new ModelError("WEB_UNAVAILABLE");
   };

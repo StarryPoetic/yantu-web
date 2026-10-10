@@ -32,7 +32,7 @@ export interface TuitionEvidence {
   /** Missing only for an explicitly scoped school tariff with no policy year. */
   year?: number;
   studyMode: ResearchStudyMode;
-  scope?: "school_wide" | "school_wide_mode";
+  scope?: "school_wide" | "school_wide_mode" | "school_degree_type";
   quote: string;
   sourceId: string;
 }

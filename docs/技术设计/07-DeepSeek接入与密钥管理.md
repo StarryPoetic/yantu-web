@@ -215,6 +215,8 @@ scripts/verify-school-registry.mjs 仅免费读取，--write 更新核验摘要�
 
 ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐不写 `research_program_facts`。`research-library.ts` 先按规划学科、意向城市种子和 searchSchools 召回，再经 `research-library-first.ts` 与已有补查模块查缺口；原来源ID、quote及retrievedAt保留。复用不消耗搜索额度，仍重新检查当前画像，预算数字保持现行上限。
 
-`prefetch-schools.mjs` 不调用付费搜索或模型，使用同一安全reader及PDF/表格解析器。D-14要求 robots.txt、每主机串行、间隔≥1秒、全局≤4主机并发、深度≤2，跳转逐跳检查。`--dns-mode system|public-doh` 默认沿用服务端 YANTU_DNS_MODE 解析，不输出环境变量值；本机免费冒烟显式 public-doh。
+`prefetch-schools.mjs` 不调用付费搜索或模型，使用同一安全reader及PDF/表格解析器。D-14要求 robots.txt、每主机串行、间隔≥1秒、全局≤4主机并发、深度≤3，跳转逐跳检查。`--dns-mode system|public-doh` 默认沿用服务端 YANTU_DNS_MODE 解析，不输出环境变量值；本机免费冒烟显式 public-doh。
 
 研招网 robots 404允许，但 `/zsml/` 专业目录仅有脚本模板和数据加载中，无静态专业代码；`/sch/`只有院校名单，不证明专业或科目。本阶段保持允许主机和学校域名隔离，读不到时安全降级，不提交查询表单、不登录、不绕过验证码。部署方可手工收集学校公开文档，由现有确定性规则处理或人工审核正式发布，不能直接导入模型事实。探测结论见实施说明13.5。
+
+阶段4质量审查将预抓取默认改为每校20页、深度≤3的得分优先队列；目录、目标年度、高分父页PDF/XLS附件优先，博士、港澳台、国际学生、往年及重复导航降权。公共事实与推荐使用同一真实目录身份规则和具体科目校验，学费新增school_degree_type；学院备选校区全部同城仅核验城市，跨城保留待确认原文。DNS解析及robots失败安全降级不变；本轮public-doh免费重跑详情见实施说明13.6。

@@ -109,6 +109,6 @@ node scripts/prefetch-schools.mjs --city 杭州 --school 杭州电子科技大�
 node scripts/prefetch-schools.mjs --province 浙江 --dry-run
 ```
 
-`--school` 可以重复，`--discipline` 限定事实汇总范围，公共目录原文仍按学校保存；默认每校12页、深度≤2，支持 `--refresh` 强制复核。未指定 `--db` 时沿用服务端数据库路径策略；`--dns-mode system|public-doh` 未指定时沿用服务端 YANTU_DNS_MODE 解析，不输出环境变量值。`--dry-run` 只列汇总，不建库、不联网。
+`--school` 可以重复，`--discipline` 限定事实汇总范围，公共目录原文仍按学校保存；默认每校20页、深度≤3，支持 `--refresh` 强制复核。未指定 `--db` 时沿用服务端数据库路径策略；`--dns-mode system|public-doh` 未指定时沿用服务端 YANTU_DNS_MODE 解析，不输出环境变量值。`--dry-run` 只列汇总，不建库、不联网。
 
 脚本不调用付费搜索或模型；遵守 robots.txt、每主机串行、间隔≥1秒、全局主机并发≤4。404视为允许，5xx、超时或无法判定时跳过主机，跳转每一跳也受 robots 限制。HTTP `.edu.cn` 原文保留明文传输标注，HTTP/HTTPS 同页按最终地址去重。杭州两校免费冒烟及研招网安全降级结论见 [实施说明第13节](docs/实施说明.md)。

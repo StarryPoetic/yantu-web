@@ -1,11 +1,20 @@
 import { normalizeCollegeName } from "../schools/index.ts";
+import { programNamePattern } from "./research-program-scope.ts";
 import { hasStreetAddress } from "./research-address.ts";
+import {
+  collegeCampusPolicyApplies,
+  hasCampusLocationDetails,
+} from "./research-campus.ts";
 import type { Discipline, GuidanceRun } from "../disciplines/types.ts";
 import type { ResearchReport } from "./research.ts";
 import type { PendingResearchEvidence } from "../../shared/research-recommendation.ts";
 import type { WebSource } from "./web.ts";
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
-import { extractProgramExams, programRowScope } from "./research-matching.ts";
+import {
+  extractProgramExams,
+  programEntries,
+  hasConcreteExamSubjects,
+} from "./research-matching.ts";
 import { isSchoolPage } from "./research-evidence.ts";
 import { validatedSourceProvenance } from "./research-provenance.ts";
 import { researchContext } from "./research-planning.ts";
@@ -23,7 +32,7 @@ import {
 
 type Recommendation = ResearchReport["recommendations"][number];
 const trainingLocation =
-  /(?:培养|办学|教学)(?:地点|地址|校区)|校区(?:地址|位于|坐落|所在地)|(?:地址|地点)[^。；;]{0,60}校区|在[^。；;]{0,30}校区(?:培养|学习|就读)/;
+  /(?:新生)?(?:所在校区|学习地点)|(?:培养|办学|教学)(?:地点|地址|校区)|校区(?:地址|位于|坐落|所在地)|(?:地址|地点)[^。；;]{0,60}校区|在[^。；;]{0,30}校区(?:培养|学习|就读)/;
 
 /** A cited identity anchors the domain; unrelated schools and unvalidated attachments are excluded. */
 export function sameSchoolReadSources(
@@ -65,28 +74,16 @@ export function bindRecommendationEvidence(
   const own = sameSchoolReadSources(item, sources);
   const profile = researchContext(run).profile;
   const scopes = own
-    .flatMap((source) => {
-      const body = withoutSchoolLinks(source.excerpt);
-      const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
-      return rows.flatMap((row, index) => {
-        if (
-          !(item.majorCode
-            ? row[0] === item.majorCode
-            : row[0].startsWith(item.disciplineCode))
-        )
-          return [];
-        const passage = body
-          .slice(row.index! + row[0].length, rows[index + 1]?.index)
-          .trim();
-        if (!passage.startsWith(item.programName!)) return [];
-        return [
-          {
-            ...programRowScope(body, row.index!, rows[index + 1]?.index),
-            majorCode: row[0],
-          },
-        ];
-      });
-    })
+    .flatMap((source) =>
+      programEntries(source, [discipline]).filter(
+        (row) =>
+          new RegExp(
+            `^${programNamePattern(item.programName!, row.majorCode)}$`,
+            "u",
+          ).test(row.programName) &&
+          (!item.majorCode || row.majorCode === item.majorCode),
+      ),
+    )
     .filter(
       (scope) =>
         (!item.collegeName ||
@@ -106,6 +103,9 @@ export function bindRecommendationEvidence(
   // A unique coded row may supply missing identity even when the model omitted it.
   // Multiple faculties/modes stay unresolved instead of picking the first page.
   if (!ambiguousIdentity) {
+    const canonicalNames = [...new Set(scopes.map((s) => s.programName))];
+    if (canonicalNames.length === 1)
+      item = { ...item, programName: canonicalNames[0] };
     for (const field of ["majorCode", "collegeName", "studyMode"] as const) {
       const values = [
         ...new Set(
@@ -198,10 +198,26 @@ export function bindRecommendationEvidence(
             : trainingLocation,
         }[field].exec(passage);
         if (!marker) continue;
-        if (!related && field === "exams") continue;
+        if (
+          field === "location" &&
+          !hasStreetAddress(passage) &&
+          !hasCampusLocationDetails(passage, item.institutionName)
+        )
+          continue;
+        if (
+          field === "location" &&
+          collegeCampusPolicyApplies(passage, body, item.collegeName) === false
+        )
+          continue;
+        if (
+          field === "exams" &&
+          (!related || !hasConcreteExamSubjects(passage))
+        )
+          continue;
         const start = Math.max(0, marker.index - 140);
         const quote = passage.slice(start, start + 300);
         if (!quote || quote.includes(" … ")) continue;
+        if (field === "exams" && !hasConcreteExamSubjects(quote)) continue;
         if (
           field === "tuition" &&
           (!normalizedEvidence(quote).includes("学费") ||
@@ -231,7 +247,7 @@ export function bindRecommendationEvidence(
   const unique = [
     ...new Map(
       pendingEvidence.map((e) => [
-        `${e.field}:${e.sourceId}:${normalizedEvidence(e.quote)}`,
+        `${e.field}:${e.year ?? "undated"}:${e.field === "exams" ? "" : e.sourceId}:${normalizedEvidence(e.quote)}`,
         e,
       ]),
     ).values(),

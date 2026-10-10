@@ -295,6 +295,11 @@ export function sourceHasSchoolIdentity(
 }
 
 export function isConcreteProgramName(name: string) {
+  if (
+    (name.match(/[\p{Script=Han}]/gu)?.length ?? 0) < 2 ||
+    /^(?:等|待定|其他|方向|详见|另行通知)(?:$|[（(])/.test(name)
+  )
+    return false;
   return !/^(?:学科简介|学院简介|学校简介|专业简介|专业介绍|招生简章|招生章程|招生目录|招生专业目录|培养方案|学科介绍|研究生教育|学科|专业|硕士|研究生|研究方向|硕士研究生|招收|招生|培养|初试|考试科目|专业代码|专业名称|招生单位|报考条件|学习方式|适用专项计划|适用培养层次|适用学位类型|适用年级|学制)$/.test(
     name,
   );

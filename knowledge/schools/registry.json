@@ -3486,7 +3486,12 @@
         {
           "name": "绍兴校区",
           "city": "绍兴",
-          "provenanceUrl": "https://www.hdu.edu.cn/2026/0922/c720a300589/page.htm"
+          "provenanceUrl": "https://grs.hdu.edu.cn/2026/0928/c13497a300811/page.htm"
+        },
+        {
+          "name": "文一校区",
+          "city": "杭州",
+          "provenanceUrl": "https://grs.hdu.edu.cn/2026/0928/c13497a300811/page.htm"
         }
       ],
       "tags": [],

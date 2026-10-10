@@ -560,13 +560,42 @@ function schoolTuitionCandidates(
 ): TuitionEvidence[] {
   return input.sources.flatMap((source) => {
     if (source.kind !== "official_page") return [];
+    if (
+      /中外合作|联合学院|国际学院|圣光机/.test(input.collegeName ?? "") &&
+      /不含中外合作|中外合作[^。\n]{0,30}单独/.test(
+        normalizedEvidence(source.excerpt),
+      )
+    )
+      return [];
     return tuitionPassages(substantive(source.excerpt)).flatMap((quote) => {
       const text = normalizedEvidence(quote).replaceAll(
         input.institutionName,
         "",
       );
       const mode = statedModes(text);
+      const degreeScope =
+        /^(?:[（(][\d一二三四五]+[）)]|\d+[.、])?(?:我校|本校|全校)?(?:非?全日制)?(?:学术(?:型|学位)|专业学位)硕士/.test(
+          text,
+        );
+      const precedingHeading =
+        source.excerpt
+          .slice(0, source.excerpt.indexOf(quote))
+          .trimEnd()
+          .split("\n")
+          .at(-1) ?? "";
+      if (
+        degreeScope &&
+        (/学院|研究院|研究所|中心/.test(
+          source.title.replaceAll(input.institutionName, ""),
+        ) ||
+          (/学院|专业(?!学位)|\b(?:0[1-9]|1[0-4])\d{4}\b/.test(
+            precedingHeading,
+          ) &&
+            /学费|收费/.test(precedingHeading)))
+      )
+        return [];
       const schoolScope =
+        degreeScope ||
         /(?:我校|本校|全校|所有)(?:的)?(?:非?全日制)?(?:硕士)?研究生(?:缴纳)?(?:的)?学费/.test(
           text,
         ) ||
@@ -578,12 +607,13 @@ function schoolTuitionCandidates(
       if (
         !schoolScope ||
         mode.length > 1 ||
-        /学院|专业|\b(?:0[1-9]|1[0-4])\d{4}\b|[（(][\p{Script=Han}]{2,}[）)]|博士|本科|同等学力|留学生|来华留学|港澳台|专项|定向|中外合作/u.test(
+        /学院|专业(?!学位)|\b(?:0[1-9]|1[0-4])\d{4}\b|[（(][\p{Script=Han}]{2,}[）)]|博士|本科|同等学力|留学生|来华留学|港澳台|专项|定向|中外合作/u.test(
           text,
         )
       )
         return [];
-      if (degreeConflict(text, input)) return [];
+      if (degreeConflict(text, input) || (degreeScope && !input.degreeType))
+        return [];
       if (mode.length && input.studyMode !== mode[0]) return [];
       const cited = citedQuote(
         { sourceId: source.id, quote },
@@ -630,9 +660,11 @@ function schoolTuitionCandidates(
           period,
           ...(year !== undefined ? { year } : {}),
           studyMode: mode[0] ?? "unspecified",
-          scope: mode.length
-            ? ("school_wide_mode" as const)
-            : ("school_wide" as const),
+          scope: degreeScope
+            ? ("school_degree_type" as const)
+            : mode.length
+              ? ("school_wide_mode" as const)
+              : ("school_wide" as const),
           quote,
           sourceId: source.id,
         },
@@ -756,6 +788,35 @@ function registrySchoolCity(
 ): LocationEvidence | undefined {
   const seed = schoolRegistry.byName(input.institutionName);
   if (!seed || seed.campusHints.some((hint) => hint.city !== seed.city))
+    return undefined;
+  // Hints need not enumerate every branch campus: read official text can veto the fallback.
+  if (
+    input.sources.some(
+      (source) =>
+        source.kind === "official_page" &&
+        schoolRegistrableDomain(source.url) === seed.registrableDomain &&
+        CITY_OPTIONS.some(
+          ({ name }) =>
+            name !== seed.city &&
+            new RegExp(`${name}[\\p{Script=Han}]{0,8}校区`, "u").test(
+              withoutSchoolLinks(source.excerpt),
+            ),
+        ),
+    )
+  )
+    return undefined;
+  // Haining is a county-level city absent from the prefecture-level city picker.
+  if (
+    seed.city !== "嘉兴" &&
+    input.sources.some(
+      (source) =>
+        source.kind === "official_page" &&
+        schoolRegistrableDomain(source.url) === seed.registrableDomain &&
+        /海宁[\p{Script=Han}]{0,8}校区/u.test(
+          withoutSchoolLinks(source.excerpt),
+        ),
+    )
+  )
     return undefined;
   const addresses: { sourceId: string; quote: string; city: string }[] = [];
   for (const source of input.sources) {
@@ -1167,9 +1228,11 @@ function budgetCheck(
   const tariffLabel =
     tuition.scope === "school_wide"
       ? "全校统一标准下的"
-      : tuition.studyMode === "full_time"
-        ? "全日制"
-        : "非全日制";
+      : tuition.scope === "school_degree_type"
+        ? "全校按学位类型与学习方式标准下的"
+        : tuition.studyMode === "full_time"
+          ? "全日制"
+          : "非全日制";
   if (tuition.amount <= maximum)
     return {
       ...check,

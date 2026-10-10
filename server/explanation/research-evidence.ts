@@ -9,6 +9,7 @@ import { validatedSourceProvenance } from "./research-provenance.ts";
 import { explicitAdmissionsYears } from "../../shared/research-years.ts";
 import type { ResearchStudyMode } from "../../shared/research-recommendation.ts";
 import { safeSourceYear } from "./research-years.ts";
+import { programNamePattern } from "./research-program-scope.ts";
 
 export interface AdmissionEvidence {
   excluded?: string;
@@ -131,7 +132,7 @@ export function scopedProgramPassages(
     return [];
   const body = withoutSchoolLinks(source.excerpt);
   const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
-  const escaped = scope.programName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = programNamePattern(scope.programName, scope.majorCode);
   const headings = degreeHeadings(body);
   if (rows.length)
     return rows.flatMap((row, index) => {
@@ -313,7 +314,7 @@ export function supportsProgram(
     !sourceHasSchoolIdentity(source, institutionName, sources)
   )
     return false;
-  const escaped = programName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = programNamePattern(programName, `${discipline.code}00`);
   const windows = [...evidence.matchAll(new RegExp(escaped, "g"))]
     .slice(0, 12)
     .map((match) => ({

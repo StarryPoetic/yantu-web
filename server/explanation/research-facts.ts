@@ -6,11 +6,7 @@ import { blankProfile } from "../profile.ts";
 import { normalizeCollegeName, schoolRegistry } from "../schools/index.ts";
 import { bindRecommendationEvidence } from "./research-binding.ts";
 import { programEntries } from "./research-matching.ts";
-import {
-  isSchoolPage,
-  scopedAdmissionEvidence,
-  scopedProgramPassages,
-} from "./research-evidence.ts";
+import { isSchoolPage, scopedAdmissionEvidence } from "./research-evidence.ts";
 import {
   resolveInstitutionFromPages,
   sourceHasSchoolIdentity,
@@ -110,7 +106,7 @@ export function extractProgramFacts(
       if (!entries.has(key)) entries.set(key, { anchor, entry });
     }
   for (const { anchor, entry } of entries.values()) {
-    const { discipline, ...identity } = entry;
+    const { discipline, catalogQuote, ...identity } = entry;
     identity.collegeName = normalizeCollegeName(
       schoolName,
       identity.collegeName,
@@ -179,13 +175,13 @@ export function extractProgramFacts(
         sourceId: source.id,
         retrievedAt: source.retrievedAt,
         extractedAt,
-        extractor: "phase2-program-binding@1",
+        extractor: "phase2-program-binding@2",
         status,
         verified: false,
       });
     };
     if (anchor === source) {
-      const quote = scopedProgramPassages(source, scope, own)[0];
+      const quote = catalogQuote;
       add(
         "catalog",
         { exists: true },

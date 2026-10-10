@@ -50,6 +50,20 @@ test("school-wide tuition labels retain historical scope and undated school mode
     /年度未明确.*全校按学习方式标准.*全日制/,
   );
   assert.ok(!tuitionDescription(item, run).includes("undefined"));
+  item.tuition = {
+    ...item.tuition,
+    year: 2027,
+    scope: "school_degree_type",
+    amount: 8000,
+  };
+  assert.match(
+    tuitionDescription(item, run),
+    /2027 年学费.*8,000.*全校按学位类型与学习方式标准.*全日制/,
+  );
+  assert.match(
+    researchReportMarkdown(value, run, false),
+    /全校按学位类型与学习方式标准/,
+  );
 });
 
 const cityReason = "PREFERRED_CITY_COVERAGE_INCOMPLETE";

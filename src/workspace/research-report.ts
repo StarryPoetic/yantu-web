@@ -226,7 +226,9 @@ export function tuitionDescription(
       ? "全校统一标准"
       : tuition.scope === "school_wide_mode"
         ? "全校按学习方式标准"
-        : "";
+        : tuition.scope === "school_degree_type"
+          ? "全校按学位类型与学习方式标准"
+          : "";
   return `${tuition.year !== undefined ? `${tuition.year} 年` : "年度未明确的"}${reference}：${tuition.amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 })} 元/${periods[tuition.period]}（${[scope, mode[tuition.studyMode]].filter(Boolean).join("；")}）`;
 }
 

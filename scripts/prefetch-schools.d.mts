@@ -27,6 +27,11 @@ export interface PrefetchSummary {
   dryRun: boolean;
 }
 export function parseArguments(args: string[]): PrefetchOptions;
+export function discoveryScore(
+  link: { url: string; title?: string; attachment?: boolean },
+  targetYear: string | number,
+  parentScore?: number,
+): number;
 export function discoverLinks(
   html: string,
   base: string,

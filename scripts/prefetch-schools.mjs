@@ -20,7 +20,7 @@ import {
 } from "../server/explanation/web.ts";
 
 export function parseArguments(args) {
-  const options = { school: [], maxPagesPerSchool: 12 };
+  const options = { school: [], maxPagesPerSchool: 20 };
   const keys = {
     "--city": "city",
     "--province": "province",
@@ -58,6 +58,24 @@ export function parseArguments(args) {
 
 const relevant =
   /招生|专业目录|简章|章程|学费|收费|校区|培养(?:地点|地址)|复试|调剂|研究生院|研究生招生/;
+/** Rank actual discovered URLs; attachments inherit their article's relevance. */
+export function discoveryScore(link, targetYear, parentScore = 0) {
+  const title = link.title ?? "";
+  let score = 0;
+  if (/专业目录|招生目录/.test(title)) score += 100;
+  if (/章程|简章/.test(title)) score += 50;
+  if (/学费|收费/.test(title)) score += 35;
+  if (/硕士/.test(title)) score += 30;
+  if (/研究生/.test(title)) score += 10;
+  if (title.includes(String(targetYear))) score += 90;
+  if (title.includes(String(Number(targetYear) - 1))) score += 20;
+  if (/博士|港澳台|留学生|国际学生|本科|同等学力加试/.test(title)) score -= 160;
+  for (const match of title.matchAll(/20\d{2}/g))
+    if (Number(match[0]) < Number(targetYear) - 3) score -= 100;
+  if (/\/list(?:\d+)?\.htm(?:$|\?)/.test(link.url)) score -= 20;
+  if (link.attachment) score += Math.max(60, parentScore);
+  return score;
+}
 /** Actual links only, same school, inert GET documents; no forms, invented URLs or off-site links. */
 export function discoverLinks(html, base, school, parentTitle = "") {
   const links = [];
@@ -156,10 +174,11 @@ export async function prefetchSchools(options = {}, dependencies = {}) {
     for (let school; (school = queue.shift()); ) {
       const pages = registry
         .discoveryUrls(school)
-        .map((url) => ({ url, depth: 0 }));
+        .map((url) => ({ url, depth: 0, score: 0 }));
       const seen = new Set();
       let attempted = 0;
-      while (pages.length && attempted < (options.maxPagesPerSchool ?? 12)) {
+      while (pages.length && attempted < (options.maxPagesPerSchool ?? 20)) {
+        pages.sort((a, b) => b.score - a.score || a.depth - b.depth);
         const task = pages.shift(),
           key = publicPageKey(task.url);
         if (seen.has(key)) continue;
@@ -212,11 +231,12 @@ export async function prefetchSchools(options = {}, dependencies = {}) {
               );
           const title = attachment
             ? task.title
-            : webPageText(
+            : (task.title ??
+              webPageText(
                 result.text.match(/<title\b[^>]*>([^]*?)<\/title>/i)?.[1] ??
                   task.title ??
                   school.name,
-              );
+              ));
           const retrievedAt = new Date(now()).toISOString();
           let source = {
             id: `prefetch-${createHash("sha256").update(key).digest("hex").slice(0, 24)}`,
@@ -242,9 +262,22 @@ export async function prefetchSchools(options = {}, dependencies = {}) {
             attemptedAt: retrievedAt,
           });
           summary.successfulPages++;
-          if (task.depth < 2)
+          if (task.depth < 3)
             for (const link of links.slice(0, 100))
-              pages.push({ ...link, depth: task.depth + 1, parent: source });
+              if (!seen.has(publicPageKey(link.url))) {
+                const score = discoveryScore(link, year, task.score);
+                const existing = pages.find(
+                  (p) => publicPageKey(p.url) === publicPageKey(link.url),
+                );
+                if (existing && existing.score >= score) continue;
+                if (existing) pages.splice(pages.indexOf(existing), 1);
+                pages.push({
+                  ...link,
+                  score,
+                  depth: task.depth + 1,
+                  parent: source,
+                });
+              }
         } catch (error) {
           const reason = error.code ?? "WEB_UNAVAILABLE";
           summary.failuresByCode[reason] =

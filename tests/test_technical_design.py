@@ -428,11 +428,26 @@ class TechnicalDesignTests(unittest.TestCase):
             self.assertIn(phrase, readme)
         self.assertNotIn("结构化专业事实与预抓取规划中", readme)
         data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
-        for phrase in ("research_program_facts", "bound/pending", "fresh/stale", "targetYearApplicable", "sourceUrl", "retrievedAt", "phase2-program-binding@1", "失败不删除", "school_wide"):
+        for phrase in ("research_program_facts", "bound/pending", "fresh/stale", "targetYearApplicable", "sourceUrl", "retrievedAt", "phase2-program-binding@2", "失败不删除", "school_wide"):
             self.assertIn(phrase, data)
         implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
         for phrase in ("13.5. 阶段4", "ROBOTS_DISALLOWED", "数据加载中", "安全降级", "未调用付费搜索或模型", "public-doh", "3页", "2条"):
             self.assertIn(phrase, implementation)
+
+    def test_phase_four_quality_rules_and_smoke_are_documented(self):
+        for path in (ROOT / "server" / "explanation" / "README.md", DESIGN_DIR / "02-数据模型与可信数据.md"):
+            content = path.read_text(encoding="utf-8")
+            for phrase in ("phase2-program-binding@2", "programEntries", "school_degree_type", "registrySchoolCity", "300", "具体科目"):
+                self.assertIn(phrase, content)
+        for path in (README, ROOT / "server" / "explanation" / "README.md", DESIGN_DIR / "07-DeepSeek接入与密钥管理.md"):
+            content = path.read_text(encoding="utf-8")
+            self.assertIn("每校20页", content)
+            self.assertIn("深度≤3", content)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        self.assertIn("13.6. 阶段4质量审查修正", implementation)
+        smoke = (ROOT / "docs" / "阶段4事实质量冒烟.md").read_text(encoding="utf-8")
+        for phrase in ("杭州电子科技大学", "杭州师范大学", "ROBOTS_UNAVAILABLE", "bound/pending", "50", "原文前80字", "public-doh"):
+            self.assertIn(phrase, smoke)
 
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
