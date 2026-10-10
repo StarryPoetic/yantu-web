@@ -596,3 +596,62 @@ test("identical page refresh updates freshness without rebuilding own or school 
     store.close();
   }
 });
+
+test("metadata-only refresh rebinds the changed page but retains dependent policy facts", () => {
+  const store = new Store();
+  let clock = time;
+  const library = createResearchEvidenceLibrary(store, { now: () => clock });
+  try {
+    library.save(source());
+    library.save(
+      source({
+        url: "https://grs.hdu.edu.cn/fee-policy.htm",
+        title: "2026年硕士研究生学费",
+        excerpt: `${school}\n2026年硕士研究生学费标准：所有全日制硕士研究生学费8000元/年。`,
+      }),
+    );
+    const before = library
+      .queryFacts({ targetYear: "2027" })
+      .filter((fact) => fact.sourceUrl.endsWith("fee-policy.htm"));
+    assert.ok(before.length > 0);
+    clock += 5000;
+    library.save(
+      source({
+        retrievedAt: new Date(clock).toISOString(),
+        documentLinks: [
+          {
+            url: "https://grs.hdu.edu.cn/catalog.pdf",
+            title: "2026年硕士专业目录",
+          },
+        ],
+      }),
+    );
+    assert.deepEqual(
+      library
+        .queryFacts({ targetYear: "2027" })
+        .filter((fact) => fact.sourceUrl.endsWith("fee-policy.htm")),
+      before,
+    );
+    assert.ok(
+      library
+        .queryFacts({ targetYear: "2027" })
+        .filter((fact) => fact.sourceUrl === source().url)
+        .every((fact) => fact.extractedAt === new Date(clock).toISOString()),
+    );
+    clock += 5000;
+    library.save(
+      source({
+        retrievedAt: new Date(clock).toISOString(),
+        excerpt: source().excerpt.replace("812", "814"),
+      }),
+    );
+    assert.ok(
+      library
+        .queryFacts({ targetYear: "2027" })
+        .filter((fact) => fact.sourceUrl.endsWith("fee-policy.htm"))
+        .every((fact) => fact.extractedAt === new Date(clock).toISOString()),
+    );
+  } finally {
+    store.close();
+  }
+});

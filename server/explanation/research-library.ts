@@ -375,7 +375,11 @@ export function createResearchEvidenceLibrary(
     );
 
   // Backfill existing stage-1/3 originals with the same deterministic extraction, never stored recommendations.
-  function rebuildFacts(domain?: string, changedKey?: string) {
+  function rebuildFacts(
+    domain?: string,
+    changedKey?: string,
+    rebuildDependents = true,
+  ) {
     const originals = (
       db.prepare("SELECT url, payload FROM research_public_sources").all() as {
         url: string;
@@ -397,7 +401,7 @@ export function createResearchEvidenceLibrary(
       ? originals.filter(
           (row) =>
             row.key === changedKey ||
-            !programEntries(row.source, catalog).length,
+            (rebuildDependents && !programEntries(row.source, catalog).length),
         )
       : originals;
     for (const row of affected)
@@ -667,9 +671,24 @@ export function createResearchEvidenceLibrary(
             "UPDATE research_program_facts SET payload=json_set(payload, '$.retrievedAt', ?) WHERE source_key=?",
           ).run(normalized.retrievedAt, storageUrl);
         } else {
+          // Links and graph IDs can change between prefetch and report reads even
+          // when the admissions text and its school/year scope stay identical.
+          // Rebind this page's references, retaining other pages' derived facts.
+          const bindingContent = (value: WebSource) =>
+            JSON.stringify({
+              excerpt: value.excerpt,
+              title: value.title,
+              year: safeSourceYear(value),
+              school: value.provenance?.institutionName,
+              admissionYear: value.provenance?.admissionYear,
+              mastersScope: value.provenance?.mastersScope,
+            });
           rebuildFacts(
             registrableDomain(new URL(normalized.url).hostname),
             storageUrl,
+            !previous ||
+              bindingContent(JSON.parse(previous.payload) as WebSource) !==
+                bindingContent(normalized),
           );
         }
       });
