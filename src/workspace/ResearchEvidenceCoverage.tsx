@@ -9,7 +9,9 @@ import {
   evidenceFieldLabels,
   evidenceStatusLabels,
   evidencePriorityLabels,
+  libraryCoverageDescription,
 } from "./research-report";
+import { researchReason } from "../../shared/research-status.ts";
 import { ResearchSourceLinks } from "./ResearchSourceLinks";
 import { safeUrl } from "./ui";
 
@@ -58,6 +60,10 @@ export function ResearchGapList({
         {gaps.map((gap) => (
           <li key={gap.id}>
             <div className="research-gap-heading">
+              <span>
+                {gap.institutionName}
+                {gap.programName ? " · " + gap.programName : ""}
+              </span>
               <strong>{evidenceFieldLabels[gap.field]}</strong>
               <span>{evidencePriorityLabels[gap.priority]}</span>
             </div>
@@ -83,11 +89,16 @@ export function ResearchGapList({
                     .filter((attempt) => attempt.status === "failed")
                     .map((attempt, index) => (
                       <li key={attempt.url + ":" + index}>
-                        <p>读取未成功：{attempt.reason || "未记录具体原因"}</p>
+                        <p>
+                          读取未成功：
+                          {attempt.reason
+                            ? researchReason(attempt.reason)
+                            : "未记录具体原因"}
+                        </p>
                         <a
                           href={safeUrl(attempt.url)}
                           target="_blank"
-                          rel="noreferrer"
+                          rel="noopener noreferrer"
                         >
                           查看已尝试的网址
                         </a>
@@ -215,39 +226,66 @@ export function ResearchEvidenceCoverage({
   report: ResearchReport;
 }) {
   const coverage = report.evidenceCoverage;
-  if (!coverage) return null;
   const coveredGapIds = new Set(
     report.candidateAudit?.flatMap(
       (candidate) => candidate.coverage?.missing.map((gap) => gap.id) ?? [],
     ) ?? [],
   );
-  const remaining = coverage.gaps.filter((gap) => !coveredGapIds.has(gap.id));
+  const remaining =
+    coverage?.gaps.filter((gap) => !coveredGapIds.has(gap.id)) ?? [];
   return (
     <section
       className="research-evidence-coverage"
       aria-label="专业资料覆盖与缺项"
     >
       <h3>专业资料覆盖与缺项</h3>
-      <p>{coverage.summary}</p>
-      <p>
-        本次调查 {coverage.schoolCount} 所学校、{coverage.programCount} 个专业；
-        {coverage.supportedProgramCount} 个专业已有项目原文，
-        {coverage.pendingProgramCount} 个专业仍有实质缺项。
+      <p className="research-library-statistics">
+        {libraryCoverageDescription(report)}
       </p>
-      <p className="ws-muted">
-        仅统计本次实际调查的学校与专业；未出现的学校不据此排除。目录已有原文时，学费、校区或考试缺项会分别记录。
+      <p className="research-field-help">
+        全库收录是资料库累计数量；下方调查数量仅属于这份报告。
       </p>
-      {(coverage.reusedSourceCount !== undefined ||
-        coverage.supplementedSourceCount !== undefined) && (
-        <p>
-          复用已有资料 {coverage.reusedSourceCount ?? 0} 条，本轮新增资料{" "}
-          {coverage.supplementedSourceCount ?? 0} 条。
-        </p>
+      {report.readStatistics ? (
+        <>
+          <p>
+            本次失败读取 {report.readStatistics.failed} 次（失败不计入新读）。
+          </p>
+          {report.readStatistics.failed > 0 && (
+            <details>
+              <summary>查看读取失败原因分布</summary>
+              <ul>
+                {Object.entries(report.readStatistics.failuresByCode).map(
+                  ([code, count]) => (
+                    <li key={code}>
+                      {researchReason(code)} · {count} 次
+                    </li>
+                  ),
+                )}
+              </ul>
+            </details>
+          )}
+        </>
+      ) : (
+        <p className="research-field-help">该报告生成时未记录失败读取次数。</p>
       )}
-      {!!report.candidateAudit?.some((candidate) => candidate.coverage) && (
-        <p>展开下方每校专业，查看已取得原文和下一步补查动作。</p>
+      {coverage && (
+        <>
+          <p>{coverage.summary}</p>
+          <p>
+            本次调查 {coverage.schoolCount} 所学校、{coverage.programCount}{" "}
+            个专业；
+            {coverage.supportedProgramCount} 个专业已有项目原文，
+            {coverage.pendingProgramCount} 个专业仍有实质缺项。
+          </p>
+          <p className="ws-muted">
+            仅统计本次实际调查的学校与专业；未出现的学校不据此排除。目录已有原文时，学费、校区或考试缺项会分别记录。
+          </p>
+          {!!report.candidateAudit?.some((candidate) => candidate.coverage) && (
+            <p>展开下方每校专业，查看已取得原文和下一步补查动作。</p>
+          )}
+          <ResearchGapList gaps={remaining} sources={report.sources} />
+        </>
       )}
-      <ResearchGapList gaps={remaining} sources={report.sources} />
     </section>
   );
 }

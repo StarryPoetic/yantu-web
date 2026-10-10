@@ -92,7 +92,7 @@ const messages: Record<string, string> = {
 export function researchReason(reason: string) {
   return (
     messages[reason] ??
-    (/^[A-Z][A-Z_]+$/.test(reason)
+    (/^[A-Z][A-Z_\d]+$/.test(reason)
       ? "本次分析未通过完整性或来源核对，已保留可查看的资料。"
       : reason)
   );

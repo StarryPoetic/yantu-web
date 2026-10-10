@@ -3,7 +3,11 @@ import type { GuidanceRun } from "../../server/disciplines/types";
 import { researchReason } from "../../shared/research-status";
 import { safeUrl } from "./ui";
 import { ResearchSchoolCard } from "./ResearchSchoolCard";
-import { ResearchSourceLinks } from "./ResearchSourceLinks";
+import {
+  ResearchSourceLinks,
+  ResearchSourceMetadata,
+} from "./ResearchSourceLinks";
+import { ResearchUnstructuredSources } from "./ResearchUnstructuredSources";
 import { ResearchDecisionBasisView } from "./ResearchDecisionBasisView";
 import { ResearchCandidateAudit } from "./ResearchCandidateAudit";
 import { ResearchEvidenceCoverage } from "./ResearchEvidenceCoverage";
@@ -38,6 +42,7 @@ export function ResearchReportView({
           {legacyResearchNotice}
         </p>
       )}
+      <ResearchEvidenceCoverage report={report} />
       {report.referencePolicy && (
         <section
           className="research-exam-policy"
@@ -86,6 +91,18 @@ export function ResearchReportView({
                     item={item}
                     run={run}
                     sources={report.sources}
+                    gaps={(report.evidenceCoverage?.gaps ?? []).filter(
+                      (gap) =>
+                        gap.institutionName === item.institutionName &&
+                        (!gap.programIdentity ||
+                          ((gap.majorCode
+                            ? gap.majorCode === item.majorCode
+                            : gap.programName === item.programName) &&
+                            (!gap.collegeName ||
+                              gap.collegeName === item.collegeName) &&
+                            (!gap.studyMode ||
+                              gap.studyMode === item.studyMode))),
+                    )}
                     key={
                       item.institutionName +
                       ":" +
@@ -137,7 +154,7 @@ export function ResearchReportView({
           )}
         </section>
       ) : null}
-      <ResearchEvidenceCoverage report={report} />
+      <ResearchUnstructuredSources report={report} />
       <ResearchCandidateAudit report={report} />
       <div className="research-supporting-details">
         <details>
@@ -187,17 +204,34 @@ export function ResearchReportView({
           <summary>全部来源与获取时间 · {report.sources.length} 条</summary>
           {report.sources.map((source) => (
             <article key={source.id}>
-              <a href={safeUrl(source.url)} target="_blank" rel="noreferrer">
+              <a
+                href={safeUrl(source.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 {source.title}
               </a>
               <small>
                 {source.kind === "official_page" ? "官网原文" : "搜索摘要"} ·{" "}
                 {new Date(source.retrievedAt).toLocaleString("zh-CN")}
               </small>
-              {source.retrievalNote ? <p>{source.retrievalNote}</p> : null}
+              <ResearchSourceMetadata source={source} full />
               <p>{source.excerpt}</p>
             </article>
           ))}
+        </details>
+        <details className="research-technical-info">
+          <summary>技术信息</summary>
+          <p>校验问题：{report.validationIssues?.length ?? 0} 项</p>
+          <ul>
+            {Object.entries(report.readStatistics?.failuresByCode ?? {}).map(
+              ([code, count]) => (
+                <li key={code}>
+                  {code}：{count} 次
+                </li>
+              ),
+            )}
+          </ul>
         </details>
       </div>
     </div>

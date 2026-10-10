@@ -5,25 +5,26 @@ import {
   profileLabel,
   programName,
   tierLabels,
-  tuitionDescription,
-  tuitionCaution,
   type SchoolRecommendation,
 } from "./research-report";
 import { ResearchSourceLinks } from "./ResearchSourceLinks";
 import {
-  ResearchExamEvidence,
   ResearchMatchEvidence,
   ResearchProgramAlternatives,
 } from "./ResearchProgramEvidence";
+import type { ResearchEvidenceGap } from "../../shared/research-coverage.ts";
+import { ResearchRecommendationFields } from "./ResearchRecommendationFields";
 
 export function ResearchSchoolCard({
   item,
   run,
   sources,
+  gaps,
 }: {
   item: SchoolRecommendation;
   run: GuidanceRun;
   sources: ResearchReport["sources"];
+  gaps: ResearchEvidenceGap[];
 }) {
   return (
     <article
@@ -102,28 +103,14 @@ export function ResearchSchoolCard({
           </dl>
         )}
       </section>
+      <ResearchRecommendationFields
+        item={item}
+        run={run}
+        sources={sources}
+        gaps={gaps}
+      />
       <section className="research-constraints" aria-label="费用与城市核对">
         <h5>费用与城市，与你的偏好相比</h5>
-        <p className="research-tuition">{tuitionDescription(item, run)}</p>
-        {item.tuition && (
-          <>
-            <p className="research-cost-note">{tuitionCaution(item, run)}</p>
-            <ResearchSourceLinks
-              ids={[item.tuition.sourceId]}
-              sources={sources}
-              label="学费依据来源"
-            />
-          </>
-        )}
-        {item.location && (
-          <p>
-            项目所在城市：{item.location.city}
-            {item.location.year &&
-            item.location.year !== Number(run.inputSnapshot.profile.year)
-              ? `（${item.location.year}年培养安排参考）`
-              : ""}
-          </p>
-        )}
         {!!item.constraintChecks?.length && (
           <dl className="research-constraint-list">
             {item.constraintChecks.map((check) => (
@@ -153,34 +140,6 @@ export function ResearchSchoolCard({
           </dl>
         )}
       </section>
-      <ResearchExamEvidence exams={item.exams} sources={sources} />
-      {!!item.pendingEvidence?.length && (
-        <section aria-label="待确认原文">
-          <h5>待确认原文</h5>
-          <p className="ws-muted">
-            以下原文尚未确定适用项目，不用于预算或城市匹配。
-          </p>
-          {item.pendingEvidence.map((evidence, index) => (
-            <div key={evidence.field + ":" + evidence.sourceId + ":" + index}>
-              <strong>
-                {
-                  { exams: "初试科目", tuition: "学费", location: "校区地址" }[
-                    evidence.field
-                  ]
-                }
-                {evidence.year ? `（${evidence.year}年）` : ""}
-              </strong>
-              <blockquote>{evidence.quote}</blockquote>
-              <p>{evidence.reason}</p>
-              <ResearchSourceLinks
-                ids={[evidence.sourceId]}
-                sources={sources}
-                label="待确认原文来源"
-              />
-            </div>
-          ))}
-        </section>
-      )}
       <div className="research-preparation" aria-label="准备建议">
         {!!item.preparation.length && (
           <section>

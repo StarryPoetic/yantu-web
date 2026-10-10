@@ -9,6 +9,7 @@ import type {
 } from "../server/explanation/research";
 import { registerAccount } from "./helpers/account";
 import { decisionDisplayFixture } from "./helpers/research-decision-fixture";
+import { withPhase6Display } from "./helpers/research-phase6-fixture";
 import {
   withEvidenceCoverage,
   withSupplementedTuition,
@@ -853,15 +854,17 @@ test("待确认原文在手机卡片和下载中保留，不参与城市预算�
     ],
     readStatistics: { success: 1, failed: 1, failuresByCode: { HTTP_404: 1 } },
   }));
-  const evidence = panel.getByRole("region", {
-    name: "待确认原文",
-    exact: true,
-  });
+  const evidence = panel
+    .getByRole("region", { name: "学费资料状态", exact: true })
+    .getByRole("region", {
+      name: "待确认原文",
+      exact: true,
+    });
   await expect(
     evidence.getByText("法学全程学费待核对。", { exact: true }),
   ).toBeVisible();
   await expect(
-    evidence.getByText("同名专业有不同学习方式。", { exact: true }),
+    evidence.getByText("归属待确认：同名专业有不同学习方式。", { exact: true }),
   ).toBeVisible();
   await expect(evidence.getByRole("link")).toHaveAttribute("href", sourceUrl);
   await expect(panel.getByText("尚未核实", { exact: true })).toHaveCount(2);
@@ -1265,7 +1268,7 @@ test("五所学校按综合适合度分三层，昂贵仍可优先且同价可�
   });
   await expect(
     historical.getByText(
-      `${Number(run.inputSnapshot.profile.year) - 2} 年参考学费：40,000 元/全程（非全日制）`,
+      `${Number(run.inputSnapshot.profile.year) - 2} 年参考学费：40,000 元/全程（该专业标准；非全日制）`,
       { exact: true },
     ),
   ).toBeVisible();
@@ -2708,3 +2711,228 @@ test("补查请求错误及后台失败均保留已有报告与逐专业缺项�
   expect(service.supplementCount()).toBe(2);
   expect(service.postCount()).toBe(1);
 });
+
+for (const width of [1280, 375]) {
+  test(`阶段6：${width}px 覆盖统计、四字段三态、来源标记及原文折叠均可核对`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    await expect(
+      panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+    ).toBeVisible();
+    service.finish("partial", withPhase6Display);
+    const coverage = panel.getByRole("region", {
+      name: "专业资料覆盖与缺项",
+      exact: true,
+    });
+    await expect(
+      coverage.getByText(
+        "资料库已收录 12 校 34 专业、本次复用 2 条、新读 3 条",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      coverage.getByText("本次失败读取 2 次（失败不计入新读）。", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      coverage.getByText(/本次调查 2 所学校、2 个专业/),
+    ).toBeVisible();
+    await expect(coverage).not.toContainText("全国覆盖");
+    await coverage.getByText("查看读取失败原因分布", { exact: true }).click();
+    await expect(
+      coverage.getByText("网页不存在（404）。 · 1 次", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      coverage.getByText("网页 TLS 证书校验失败，已拒绝读取。 · 1 次", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(coverage).not.toContainText("HTTP_404");
+    const bound = panel.getByRole("article", {
+      name: "已绑定测试大学 · 法学（民商法方向）",
+      exact: true,
+    });
+    const pending = panel.getByRole("article", {
+      name: "待确认测试大学 · 法学（民商法方向）",
+      exact: true,
+    });
+    const missing = panel.getByRole("article", {
+      name: "未找到测试大学 · 法学（民商法方向）",
+      exact: true,
+    });
+    for (const label of ["初试科目", "学费", "培养校区/城市", "资料年度"]) {
+      await expect(
+        bound
+          .getByRole("region", { name: label + "资料状态", exact: true })
+          .getByRole("heading")
+          .first(),
+      ).toContainText("已绑定");
+      await expect(
+        pending
+          .getByRole("region", { name: label + "资料状态", exact: true })
+          .getByRole("heading")
+          .first(),
+      ).toContainText("待确认");
+      await expect(
+        missing
+          .getByRole("region", { name: label + "资料状态", exact: true })
+          .getByRole("heading")
+          .first(),
+      ).toContainText("未找到");
+    }
+    await expect(
+      bound.getByText(/按学位类型的全校标准（学术学位）/),
+    ).toBeVisible();
+    await expect(
+      bound.getByText("城市已核验，具体校区待确认", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      bound.getByText(/历史参考，目标年度待核验/).first(),
+    ).toBeVisible();
+    const boundFee = bound.getByRole("region", {
+      name: "学费资料状态",
+      exact: true,
+    });
+    await expect(boundFee.getByText(/2027 年学费连续原文/)).toBeHidden();
+    const fee = pending.getByRole("region", {
+      name: "学费资料状态",
+      exact: true,
+    });
+    await expect(fee.locator(".research-pending-passage:visible")).toHaveCount(
+      2,
+    );
+    await expect(
+      fee.locator(".research-pending-passage:visible").first(),
+    ).toContainText("2027 年学费连续原文");
+    await expect(
+      fee.locator(".research-pending-passage:visible").nth(1),
+    ).toContainText("2028 年学费连续原文");
+    await expect(
+      fee
+        .getByText("归属待确认：同名项目有不同学院或学习方式。", {
+          exact: true,
+        })
+        .first(),
+    ).toBeVisible();
+    const more = fee.getByText("查看更多待确认原文（2 条）", { exact: true });
+    await more.focus();
+    await page.keyboard.press("Enter");
+    await expect(fee.locator(".research-pending-passage:visible")).toHaveCount(
+      4,
+    );
+    await page.keyboard.press("Space");
+    await expect(fee.locator(".research-pending-passage:visible")).toHaveCount(
+      2,
+    );
+    const links = boundFee.getByRole("list", { name: "学费依据来源" });
+    await expect(links.getByRole("link")).toHaveAttribute("target", "_blank");
+    await expect(links.getByRole("link")).toHaveAttribute(
+      "rel",
+      "noopener noreferrer",
+    );
+    await expect(links.getByText("明文传输", { exact: true })).toHaveAttribute(
+      "title",
+      /内容可能被网络中间环节篡改/,
+    );
+    await expect(links.getByText(/资料库复用 · 原获取时间/)).toBeVisible();
+    await expect(links.locator("time")).toHaveAttribute(
+      "datetime",
+      "2026-09-01T01:02:03.000Z",
+    );
+    await expect(
+      pending.getByText("研招网平台", { exact: true }),
+    ).toBeVisible();
+    const raw = panel.getByRole("region", {
+      name: "待确认测试大学已读未结构化原文",
+      exact: true,
+    });
+    const rawSummary = raw.getByText("已读但未结构化的原文 · 1 条", {
+      exact: true,
+    });
+    await expect(raw.getByText(/未结构化页面首段/)).toBeHidden();
+    await rawSummary.focus();
+    await page.keyboard.press("Enter");
+    await expect(raw.getByText(/未结构化页面首段/)).toBeVisible();
+    expect(
+      (await raw.locator("blockquote").first().textContent())!.length,
+    ).toBe(600);
+    await expect(raw.getByText(/获取时间：/)).toBeVisible();
+    await raw
+      .getByText("展开更多原文（最多 6000 字）", { exact: true })
+      .click();
+    expect(
+      (await raw.locator("blockquote").allTextContents()).join("").length,
+    ).toBe(6000);
+    await expect(raw.getByText(/已达到展示上限/)).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      )
+      .toBe(true);
+    await expect(boundFee.locator(".research-field-status")).toHaveCSS(
+      "font-size",
+      "14px",
+    );
+    await expect(raw.locator("blockquote").first()).toHaveCSS(
+      "font-size",
+      "16px",
+    );
+    await rawSummary.click();
+    await expect(raw.getByText(/未结构化页面首段/)).toBeHidden();
+    await expect(
+      panel.getByRole("button", { name: "继续补查缺少的资料", exact: true }),
+    ).toBeEnabled();
+    await panel.getByText("技术信息", { exact: true }).click();
+    await expect(
+      panel.getByText("HTTP_404：1 次", { exact: true }),
+    ).toBeVisible();
+  });
+}
+
+for (const reportVersion of [
+  "profile-research-v3",
+  "profile-research-v4",
+  "profile-research-v5",
+  "profile-research-v6",
+  "profile-research-v7",
+] as const) {
+  test(`阶段6：${reportVersion} 缺少覆盖统计时如实显示未记录`, async ({
+    page,
+  }) => {
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    await expect(
+      panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+    ).toBeVisible();
+    service.finish("completed", (report) => ({ ...report, reportVersion }));
+    const coverage = panel.getByRole("region", {
+      name: "专业资料覆盖与缺项",
+      exact: true,
+    });
+    await expect(
+      coverage.getByText("该报告生成时未记录资料覆盖统计", { exact: true }),
+    ).toBeVisible();
+    await expect(coverage).not.toContainText("资料库已收录 0");
+    await expect(
+      panel.getByRole("heading", { name: "浏览器测试大学", exact: true }),
+    ).toBeVisible();
+  });
+}

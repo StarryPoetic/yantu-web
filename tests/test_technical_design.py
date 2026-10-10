@@ -487,6 +487,17 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertIn(f"YANTU_MODEL_USER_DAILY_TOKENS={B['userDailyTokens']}", example)
         self.assertIn(f"YANTU_MODEL_DAILY_TOKENS={B['globalDailyTokens']}", example)
 
+    def test_phase_six_ui_contract_and_private_raw_sources_are_implemented(self):
+        api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
+        section = api.split("### 6.2.", 1)[1].split("## 7.", 1)[0]
+        self.assertNotIn("待实施", section)
+        for phrase in ("阶段6已实现", "该报告生成时未记录资料覆盖统计", "已绑定", "待确认", "未找到", "归属待确认", "最多2条", "查看更多待确认原文（N 条）", "默认收起", "按学位类型的全校标准", "城市已核验，具体校区待确认", "unstructuredSources", "pending-only", "600字", "6000字", "报告所有者", "原获取时间", "研招网平台", "noopener noreferrer", "details/summary", "375px", "中文说明", "失败保留历史报告"):
+            self.assertIn(phrase, section)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        for phrase in ("13.9. 阶段6", "4fb461d", "var/phase6-1280.png", "var/phase6-375.png", "截图不代表真实联网验收"):
+            self.assertIn(phrase, implementation)
+        self.assertIn("阶段6报告资料展示", README.read_text(encoding="utf-8"))
+
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
         routes = re.findall(r"^\| `(GET|POST|PUT|PATCH|DELETE) (/api/v1/[^`]+)` \|", content, re.MULTILINE)

@@ -13,6 +13,11 @@ import {
   admissionLabel,
   tuitionDescription,
   tuitionCaution,
+  libraryCoverageDescription,
+  orderedPendingEvidence,
+  recommendationFieldState,
+  recommendationYears,
+  sourceBadges,
 } from "../../src/workspace/research-report.ts";
 import type { GuidanceRun } from "../../server/disciplines/types.ts";
 import { decisionDisplayFixture } from "../helpers/research-decision-fixture.ts";
@@ -20,6 +25,104 @@ import {
   withEvidenceCoverage,
   withSupplementedTuition,
 } from "../helpers/research-coverage-fixture.ts";
+import { withPhase6Display } from "../helpers/research-phase6-fixture.ts";
+
+test("library statistics preserve recorded zeroes, distinguish library totals and never invent legacy counts", () => {
+  const value = withPhase6Display(report());
+  assert.equal(
+    libraryCoverageDescription(value),
+    "资料库已收录 12 校 34 专业、本次复用 2 条、新读 3 条",
+  );
+  value.evidenceCoverage!.librarySchoolCount = 0;
+  value.evidenceCoverage!.libraryProgramCount = 0;
+  value.evidenceCoverage!.reusedSourceCount = 0;
+  value.evidenceCoverage!.supplementedSourceCount = 0;
+  assert.equal(
+    libraryCoverageDescription(value),
+    "资料库已收录 0 校 0 专业、本次复用 0 条、新读 0 条",
+  );
+  delete value.evidenceCoverage!.libraryProgramCount;
+  assert.equal(
+    libraryCoverageDescription(value),
+    "该报告生成时未记录资料覆盖统计",
+  );
+  assert.equal(
+    libraryCoverageDescription(report()),
+    "该报告生成时未记录资料覆盖统计",
+  );
+  assert.ok(!libraryCoverageDescription(value).includes("全国覆盖"));
+});
+
+test("four recommendation fields distinguish bound, pending and missing without mutating saved pending order", () => {
+  const value = withPhase6Display(report());
+  for (const [index, status] of ["已绑定", "待确认", "未找到"].entries()) {
+    for (const field of ["exams", "tuition", "location", "year"] as const)
+      assert.equal(
+        recommendationFieldState(value.recommendations[index], field),
+        status,
+      );
+  }
+  const item = value.recommendations[1];
+  const original = structuredClone(item);
+  assert.deepEqual(
+    orderedPendingEvidence(item, "tuition", 2027).map((e) => e.year),
+    [2027, 2028, 2026, 2025],
+  );
+  assert.deepEqual(item, original);
+  assert.deepEqual(recommendationYears(value.recommendations[0]), [2027, 2026]);
+  assert.equal(
+    recommendationFieldState(
+      {
+        ...item,
+        pendingEvidence: [],
+        exams: { status: "ambiguous", subjects: [], reason: "方向不明确" },
+      },
+      "exams",
+    ),
+    "待确认",
+  );
+});
+
+test("source badges use recorded transport and actual CHSI hosts; export includes raw evidence and Chinese scope", () => {
+  const value = withPhase6Display(report());
+  assert.deepEqual(
+    sourceBadges(value.sources.find((s) => s.id === "phase6-http")!),
+    { plaintext: true, platform: false },
+  );
+  assert.deepEqual(
+    sourceBadges(value.sources.find((s) => s.id === "phase6-platform")!),
+    { plaintext: false, platform: true },
+  );
+  assert.equal(
+    sourceBadges({
+      ...value.sources[0],
+      url: "https://yz.chsi.com.cn.evil.example/",
+    }).platform,
+    false,
+  );
+  assert.ok(!researchReason("HTTP_599").includes("HTTP_599"));
+  const run = {
+    inputSnapshot: { profile: { year: 2027 } },
+    directions: [],
+  } as unknown as GuidanceRun;
+  const markdown = researchReportMarkdown(value, run, false);
+  assert.match(markdown, /已读但未结构化的原文/);
+  assert.match(markdown, /未结构化页面首段/);
+  assert.match(markdown, /资料库已收录 12 校 34 专业/);
+  const item = value.recommendations[0];
+  item.degreeType = "academic";
+  assert.match(
+    tuitionDescription(item, run),
+    /按学位类型的全校标准（学术学位）/,
+  );
+  item.degreeType = "professional";
+  assert.match(
+    tuitionDescription(item, run),
+    /按学位类型的全校标准（专业学位）/,
+  );
+  item.tuition!.scope = undefined;
+  assert.match(tuitionDescription(item, run), /该专业标准/);
+});
 
 test("school-wide tuition labels retain historical scope and undated school mode tariffs never invent a year", () => {
   const value = report();
@@ -58,11 +161,11 @@ test("school-wide tuition labels retain historical scope and undated school mode
   };
   assert.match(
     tuitionDescription(item, run),
-    /2027 年学费.*8,000.*全校按学位类型与学习方式标准.*全日制/,
+    /2027 年学费.*8,000.*按学位类型的全校标准（学术\/专业学位）.*全日制/,
   );
   assert.match(
     researchReportMarkdown(value, run, false),
-    /全校按学位类型与学习方式标准/,
+    /按学位类型的全校标准/,
   );
 });
 

@@ -1,6 +1,10 @@
 import { createResearchReader, sharedResearchRead } from "./research-reader.ts";
 import { extractProgramFacts, type ProgramFact } from "./research-facts.ts";
 import { selectModelFacts } from "./research-model-facts.ts";
+import {
+  unstructuredResearchSources,
+  type ResearchUnstructuredSource,
+} from "./research-unstructured.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { libraryMissingGaps } from "./research-library-first.ts";
 import { normalizeCollegeName } from "../schools/index.ts";
@@ -186,6 +190,7 @@ export interface ResearchReport {
   validationIssues?: { path: string; code: string }[];
   rejectedRecommendations?: RejectedResearchRecommendation[];
   readStatistics?: ResearchReadStatistics;
+  unstructuredSources?: ResearchUnstructuredSource[];
   generatedAt: string;
   guidanceRunId: string;
   versions: GuidanceRun["versions"];
@@ -1494,10 +1499,20 @@ export function createResearchReportModule(
       let lookupKeys = input.previousReport?.evidenceCoverage?.lookupKeys ?? [];
       const reusedSourceCount = seeds.length;
       usage.searches.libraryHits = seeds.length;
-      let supplementedSourceCount = 0;
+      const newlyReadUrls = new Set<string>();
+      const currentAttempts: ResearchReadAttempt[] = [];
       let coveredDisciplines = disciplines;
       const recordAttempt = (attempt: ResearchReadAttempt) => {
         live();
+        if (
+          !currentAttempts.some(
+            (old) =>
+              old.url === attempt.url &&
+              old.status === attempt.status &&
+              old.attemptedAt === attempt.attemptedAt,
+          )
+        )
+          currentAttempts.push(attempt);
         if (
           attempts.some(
             (old) =>
@@ -1585,6 +1600,7 @@ export function createResearchReportModule(
               status: "success",
               attemptedAt: readAt,
             });
+            newlyReadUrls.add(safe.href);
             if (pageCache.size >= 120)
               pageCache.delete(pageCache.keys().next().value!);
             const resultWithTime = {
@@ -1617,11 +1633,14 @@ export function createResearchReportModule(
             (a, b) => (order.get(a.url) ?? -1) - (order.get(b.url) ?? -1),
           );
           report.readStatistics = {
-            success: attempts.filter((a) => a.status === "success").length,
-            failed: attempts.filter((a) => a.status === "failed").length,
+            success: currentAttempts.filter((a) => a.status === "success")
+              .length,
+            failed: currentAttempts.filter((a) => a.status === "failed").length,
             failuresByCode: {},
           };
-          for (const attempt of attempts.filter((a) => a.status === "failed")) {
+          for (const attempt of currentAttempts.filter(
+            (a) => a.status === "failed",
+          )) {
             const code = attempt.reason ?? "WEB_UNAVAILABLE";
             report.readStatistics.failuresByCode[code] =
               (report.readStatistics.failuresByCode[code] ?? 0) + 1;
@@ -1644,10 +1663,23 @@ export function createResearchReportModule(
             gaps: value.gaps,
             ...library?.coverageStats(),
             reusedSourceCount,
-            supplementedSourceCount,
+            supplementedSourceCount: new Set(
+              report.sources
+                .filter(
+                  (source) =>
+                    source.kind === "official_page" &&
+                    newlyReadUrls.has(source.url),
+                )
+                .map((source) => source.url),
+            ).size,
             lookupKeys,
             attempts: attempts.slice(-240),
           };
+          report.unstructuredSources = unstructuredResearchSources(
+            report.sources,
+            newlyReadUrls,
+            report.generatedAt,
+          );
         };
         const priorInventory = buildEvidenceCandidates({
           run,
@@ -1739,14 +1771,6 @@ export function createResearchReportModule(
             : undefined;
         if (repaired) {
           lookupKeys = repaired.lookupKeys;
-          supplementedSourceCount = repaired.sources.filter(
-            (source) =>
-              source.kind === "official_page" &&
-              !seeds.some(
-                (seed) =>
-                  seed.url === source.url && seed.excerpt === source.excerpt,
-              ),
-          ).length;
         }
         const found = repaired
           ? {
@@ -2291,14 +2315,6 @@ export function createResearchReportModule(
             now: config.now,
             needsEvidence,
           });
-          supplementedSourceCount += extra.sources.filter(
-            (source) =>
-              source.kind === "official_page" &&
-              !report.sources.some(
-                (old) =>
-                  old.url === source.url && old.excerpt === source.excerpt,
-              ),
-          ).length;
           report.sources = extra.sources;
           lookupKeys = extra.lookupKeys;
           pageReads += extra.readCount;

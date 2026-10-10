@@ -193,6 +193,11 @@ test("the report module saves real page reads and reuses public evidence after r
       run: firstRun,
     });
     assert.ok(first.requests.includes(url));
+    assert.equal(
+      old.evidenceCoverage!.supplementedSourceCount,
+      1,
+      "normal generation counts its successful new source",
+    );
     assert.ok(
       first.library
         .load({ disciplineCodes: ["0802"], targetYear: "2027" })
@@ -234,6 +239,11 @@ test("the report module saves real page reads and reuses public evidence after r
       current.recommendations.some((item) => item.institutionName === school),
     );
     assert.equal(current.evidenceCoverage!.reusedSourceCount, 1);
+    assert.equal(
+      current.evidenceCoverage!.supplementedSourceCount,
+      0,
+      "library reuse is not a new read",
+    );
     assert.equal(second.requests.filter((value) => value === url).length, 0);
     const reused = current.sources.find((source) => source.url === url)!;
     assert.equal(
@@ -449,6 +459,12 @@ test("failed supplement reads keep existing facts and expose precise retry diagn
       (item) => item.institutionName === school,
     )!.coverage!.programs[0];
     assert.equal(program.fields.tuition.status, "missing");
+    assert.equal(report.evidenceCoverage!.supplementedSourceCount, 0);
+    assert.equal(
+      report.readStatistics!.failed,
+      report.usage!.reads.failed,
+      "historical failures do not count as failures dispatched in this supplement",
+    );
     assert.ok(
       report.evidenceCoverage!.attempts.some(
         (attempt) => attempt.url === feeUrl && attempt.status === "failed",

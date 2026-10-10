@@ -142,12 +142,20 @@ test("rejected recommendations, validation issues and read statistics persist in
           failed: 3,
           failuresByCode: { HTTP_404: 2, WEB_TLS_CERT: 1 },
         },
+        unstructuredSources: [
+          {
+            institutionName: "模拟大学",
+            sourceId: "raw",
+            excerpt: "账号私有模拟已读原文。",
+            truncated: false,
+          },
+        ],
       };
       finished.resolve();
       return expected;
     },
   };
-  const { request, app, runId } = await fixture(
+  const { request, app, runId, client } = await fixture(
     t,
     engine,
     join(directory, "research.sqlite"),
@@ -167,6 +175,21 @@ test("rejected recommendations, validation issues and read statistics persist in
     expected.validationIssues,
   );
   assert.deepEqual(fetched.body.report.readStatistics, expected.readStatistics);
+  assert.deepEqual(
+    fetched.body.report.unstructuredSources,
+    expected.unstructuredSources,
+  );
+  const other = await client();
+  const latest = await request(`/guidance/${runId}/research/latest`);
+  assert.deepEqual(
+    latest.body.job.report.unstructuredSources,
+    expected.unstructuredSources,
+  );
+  assert.equal((await other(`/guidance/${runId}/research/latest`)).status, 404);
+  assert.equal(
+    (await other(`/research-jobs/${started.body.jobId}`)).status,
+    404,
+  );
   const row = app.store.db
     .prepare(
       "SELECT value FROM resources WHERE kind = 'research-job' AND id = ?",
@@ -176,6 +199,10 @@ test("rejected recommendations, validation issues and read statistics persist in
   assert.deepEqual(
     JSON.parse(row.value).report.readStatistics,
     expected.readStatistics,
+  );
+  assert.deepEqual(
+    JSON.parse(row.value).report.unstructuredSources,
+    expected.unstructuredSources,
   );
 });
 

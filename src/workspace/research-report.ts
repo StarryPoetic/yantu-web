@@ -54,6 +54,129 @@ export function researchOutcome(job: ResearchJob | null) {
 }
 
 export type SchoolRecommendation = ResearchReport["recommendations"][number];
+export const missingLibraryCoverageNotice = "该报告生成时未记录资料覆盖统计";
+export function libraryCoverageDescription(report: ResearchReport) {
+  const coverage = report.evidenceCoverage;
+  const counts = [
+    coverage?.librarySchoolCount,
+    coverage?.libraryProgramCount,
+    coverage?.reusedSourceCount,
+    coverage?.supplementedSourceCount,
+  ];
+  if (!counts.every((count) => Number.isInteger(count) && count! >= 0))
+    return missingLibraryCoverageNotice;
+  return `资料库已收录 ${counts[0]} 校 ${counts[1]} 专业、本次复用 ${counts[2]} 条、新读 ${counts[3]} 条`;
+}
+
+export function sourceBadges(source: ResearchReport["sources"][number]) {
+  let host = "";
+  try {
+    host = new URL(source.url).hostname;
+  } catch {
+    /* Invalid historical links are not rendered. */
+  }
+  return {
+    plaintext: source.transport === "http",
+    platform: host === "chsi.com.cn" || host.endsWith(".chsi.com.cn"),
+  };
+}
+
+export function orderedPendingEvidence(
+  item: SchoolRecommendation,
+  field: "exams" | "tuition" | "location" | "year",
+  targetYear: number,
+) {
+  const seen = new Set<string>();
+  const ambiguous =
+    item.exams?.status === "ambiguous" &&
+    item.exams.quote &&
+    item.exams.sourceId
+      ? [
+          {
+            field: "exams" as const,
+            quote: item.exams.quote,
+            sourceId: item.exams.sourceId,
+            year: item.exams.year,
+            reason: item.exams.reason,
+          },
+        ]
+      : [];
+  return [...(item.pendingEvidence ?? []), ...ambiguous]
+    .filter((evidence) =>
+      field === "year" ? evidence.year !== undefined : evidence.field === field,
+    )
+    .filter((evidence) => {
+      const key = JSON.stringify([
+        evidence.sourceId,
+        evidence.year,
+        evidence.quote,
+        evidence.reason,
+      ]);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        Number(b.year === targetYear) - Number(a.year === targetYear) ||
+        (b.year ?? 0) - (a.year ?? 0),
+    );
+}
+
+export function recommendationFieldState(
+  item: SchoolRecommendation,
+  field: "exams" | "tuition" | "location" | "year",
+) {
+  const bound =
+    field === "exams"
+      ? !!(
+          item.exams?.sourceId &&
+          item.exams.subjects.length &&
+          ["verified_current", "historical"].includes(item.exams.status)
+        )
+      : field === "tuition"
+        ? !!item.tuition
+        : field === "location"
+          ? !!item.location
+          : !!(
+              item.referenceBasis ||
+              item.tuition?.year ||
+              item.location?.year ||
+              (item.exams?.year &&
+                item.exams.subjects.length &&
+                ["verified_current", "historical"].includes(item.exams.status))
+            );
+  if (bound) return "已绑定";
+  if (
+    (item.pendingEvidence ?? []).some((e) =>
+      field === "year" ? e.year !== undefined : e.field === field,
+    ) ||
+    (field === "exams" && item.exams?.status === "ambiguous") ||
+    (field === "year" &&
+      item.exams?.status === "ambiguous" &&
+      item.exams.year !== undefined &&
+      !!item.exams.quote &&
+      !!item.exams.sourceId)
+  )
+    return "待确认";
+  return "未找到";
+}
+
+export function recommendationYears(item: SchoolRecommendation) {
+  return [
+    ...new Set(
+      [
+        item.referenceBasis?.year,
+        item.tuition?.year,
+        item.location?.year,
+        ...(item.exams &&
+        ["verified_current", "historical"].includes(item.exams.status)
+          ? [item.exams.year]
+          : []),
+      ].filter((year): year is number => year !== undefined),
+    ),
+  ].sort((a, b) => b - a);
+}
 export const tierLabels = {
   preferred: "第一级·优先推荐",
   alternative: "第二级·适合备选",
@@ -227,8 +350,8 @@ export function tuitionDescription(
       : tuition.scope === "school_wide_mode"
         ? "全校按学习方式标准"
         : tuition.scope === "school_degree_type"
-          ? "全校按学位类型与学习方式标准"
-          : "";
+          ? `按学位类型的全校标准（${item.degreeType === "academic" ? "学术学位" : item.degreeType === "professional" ? "专业学位" : "学术/专业学位"}）`
+          : "该专业标准";
   return `${tuition.year !== undefined ? `${tuition.year} 年` : "年度未明确的"}${reference}：${tuition.amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 })} 元/${periods[tuition.period]}（${[scope, mode[tuition.studyMode]].filter(Boolean).join("；")}）`;
 }
 
@@ -509,6 +632,7 @@ export function researchReportMarkdown(
     ...coverage.reasons.map((text) => "- 覆盖说明：" + text),
     "",
     ...decisionBasisMarkdown(report.decisionBasis),
+    libraryCoverageDescription(report),
     ...(report.evidenceCoverage
       ? [
           "## 专业资料覆盖与缺项",
@@ -571,7 +695,7 @@ export function researchReportMarkdown(
               "以下原文尚未确定适用项目，不用于预算或城市匹配。",
               ...item.pendingEvidence.map(
                 (e) =>
-                  `- ${e.field}${e.year ? `（${e.year}年）` : ""}：${e.quote} [${e.sourceId}]\n  ${e.reason}`,
+                  `- ${evidenceFieldLabels[e.field]}${e.year ? `（${e.year}年）` : ""}：${e.quote} [${e.sourceId}]\n  归属待确认：${e.reason}`,
               ),
             ]
           : []),
@@ -687,6 +811,18 @@ export function researchReportMarkdown(
             "",
           ]
         : []),
+    ...(report.unstructuredSources?.length
+      ? [
+          "## 已读但未结构化的原文",
+          ...report.unstructuredSources.flatMap((entry) => [
+            `### ${entry.institutionName} · 待确认`,
+            `[${entry.sourceId}] ${entry.excerpt.slice(0, 6000)}`,
+            ...(entry.truncated
+              ? ["已达到展示上限，请打开来源查看完整页面。"]
+              : []),
+          ]),
+        ]
+      : []),
     "## 综合分析",
     report.summary,
     "",
