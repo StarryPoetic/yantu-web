@@ -110,13 +110,16 @@ test("robots respects wildcard, project UA precedence, merged groups, longest-ma
     true,
   );
   assert.equal(robotsAllows("User-agent: *\nDisallow:", root), true);
-  assert.throws(() => robotsAllows("<html>Access denied</html>", root));
-  assert.throws(() => robotsAllows("User-agent: *\nDisallow: invalid", root));
+  assert.equal(robotsAllows("<html>Access denied</html>", root), true);
+  assert.equal(robotsAllows("User-agent: *\nDisallow: invalid", root), true);
 });
 
 test("prefetch records robots prohibit/5xx/timeout, allows 404, serializes each host with one-second fake-clock gaps", async () => {
   for (const status of [
     "404",
+    "403",
+    "410",
+    "429",
     "500",
     "timeout",
     "disallow",
@@ -129,7 +132,7 @@ test("prefetch records robots prohibit/5xx/timeout, allows 404, serializes each 
     const reader: WebReader = async (url) => {
       requests.push({ url, at: clock.now() });
       if (url.endsWith("robots.txt")) {
-        if (["404", "500", "timeout"].includes(status))
+        if (["403", "404", "410", "429", "500", "timeout"].includes(status))
           throw Object.assign(new Error(), {
             code: status === "timeout" ? "WEB_TIMEOUT" : `HTTP_${status}`,
           });
@@ -148,8 +151,10 @@ test("prefetch records robots prohibit/5xx/timeout, allows 404, serializes each 
         { school: [school.name], maxPagesPerSchool: 2 },
         { registry: registryFor(), library, reader, ...clock },
       );
-      if (["404", "allow"].includes(status)) {
+      if (["403", "404", "410", "allow"].includes(status)) {
         assert.equal(summary.successfulPages, 2);
+        assert.equal(summary.robotsDisallowed, 0);
+        assert.equal(summary.robotsUnavailable, 0);
         assert.ok(
           requests.every((r, i) => !i || r.at - requests[i - 1].at >= 1000),
         );
@@ -157,6 +162,15 @@ test("prefetch records robots prohibit/5xx/timeout, allows 404, serializes each 
       } else {
         assert.equal(summary.successfulPages, 0);
         assert.equal(summary.robotsSkipped, 1);
+        assert.equal(summary.robotsDisallowed, Number(status === "disallow"));
+        assert.equal(summary.robotsUnavailable, Number(status !== "disallow"));
+        if (status !== "disallow")
+          assert.equal(
+            summary.robotsUnavailableByCode[
+              status === "timeout" ? "WEB_TIMEOUT" : `HTTP_${status}`
+            ],
+            1,
+          );
         assert.equal(requests.length, 1);
         assert.equal(
           library.attempts()[0].reason,

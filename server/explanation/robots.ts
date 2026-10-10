@@ -1,27 +1,28 @@
 import { ModelError } from "./index.ts";
-import type { WebReader } from "./web.ts";
+import { registrableDomain, type WebReader } from "./web.ts";
 
 export const EVIDENCE_UA = "Mozilla/5.0 (compatible; YantuEvidence/1.1)";
+export const ROBOTS_MAX_BYTES = 100000;
 
 /** RFC-style groups, most specific UA, longest rule, Allow wins equal specificity. */
 export function robotsAllows(text: string, value: string): boolean {
-  if (/<(?:html|!doctype)|\u0000/i.test(text))
-    throw new ModelError("ROBOTS_UNDETERMINED");
+  // RFC 9309: use parseable lines, including in a soft-404 HTML response.
+  text = Buffer.from(text).subarray(0, ROBOTS_MAX_BYTES).toString("utf8");
   const groups: {
     agents: string[];
     rules: { allow: boolean; path: string }[];
   }[] = [];
   let group: (typeof groups)[number] | undefined;
   let sawRule = false;
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of text.split(/\r\n|\r|\n/)) {
     const line = raw.replace(/#.*$/, "").trim();
     if (!line) continue;
     const match = /^([a-z-]+)\s*:\s*(.*)$/i.exec(line);
-    if (!match) throw new ModelError("ROBOTS_UNDETERMINED");
+    if (!match) continue;
     const key = match[1].toLowerCase(),
       path = match[2].trim();
     if (key === "user-agent") {
-      if (!path) throw new ModelError("ROBOTS_UNDETERMINED");
+      if (!/^(?:\*|[a-z_-]+)$/i.test(path)) continue;
       if (!group || sawRule) {
         group = { agents: [], rules: [] };
         groups.push(group);
@@ -29,8 +30,11 @@ export function robotsAllows(text: string, value: string): boolean {
       }
       group.agents.push(path.toLowerCase());
     } else if (key === "allow" || key === "disallow") {
-      if (!group || (path && !path.startsWith("/")))
-        throw new ModelError("ROBOTS_UNDETERMINED");
+      if (
+        !group ||
+        (path && (!path.startsWith("/") || /[\x00-\x20\x7f]/.test(path)))
+      )
+        continue;
       sawRule = true;
       if (path) group.rules.push({ allow: key === "allow", path });
     }
@@ -97,16 +101,29 @@ export function createPoliteReader(
             const result = await reader(`${url.origin}/robots.txt`, {
               allowedHosts: [url.hostname],
               allowHttp: true,
-              maxRedirects: 0,
+              maxRedirects: 3,
               timeoutMs: 10000,
-              maxBytes: 100000,
+              maxBytes: ROBOTS_MAX_BYTES,
+              textPrefix: true,
               headers: { "User-Agent": EVIDENCE_UA },
+              beforeRequest: async (hop) => {
+                const target = new URL(hop);
+                if (
+                  registrableDomain(target.hostname) !==
+                  registrableDomain(url.hostname)
+                )
+                  throw new ModelError("WEB_REDIRECT_CROSS_SITE");
+                if (hop !== `${url.origin}/robots.txt`) await tick(target.host);
+              },
             });
-            robotsAllows(result.text, url.href);
             return result.text;
           } catch (error) {
-            if ((error as { code?: string }).code === "HTTP_404") return "";
-            throw new ModelError("ROBOTS_UNAVAILABLE");
+            const code = (error as { code?: string }).code ?? "WEB_UNAVAILABLE";
+            if (/^HTTP_(?:4\d\d|4XX)$/.test(code) && code !== "HTTP_429")
+              return "";
+            throw Object.assign(new ModelError("ROBOTS_UNAVAILABLE"), {
+              robotsCause: code,
+            });
           }
         })(),
       );

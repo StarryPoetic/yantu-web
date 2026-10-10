@@ -449,6 +449,30 @@ class TechnicalDesignTests(unittest.TestCase):
         for phrase in ("杭州电子科技大学", "杭州师范大学", "ROBOTS_UNAVAILABLE", "bound/pending", "50", "原文前80字", "public-doh"):
             self.assertIn(phrase, smoke)
 
+    def test_phase_four_robots_policy_matches_rfc_9309_and_smoke(self):
+        for path in (README, ROOT / "server" / "explanation" / "README.md",
+                     DESIGN_DIR / "08-变更与扩展约定.md", ROOT / "docs" / "实施说明.md",
+                     ROOT / "docs" / "产品设计文档.md"):
+            content = path.read_text(encoding="utf-8")
+            for phrase in ("robots.txt 不允许时不抓取", "4xx 视为无限制（429 除外）",
+                           "429/5xx/网络失败时跳过该主机"):
+                self.assertIn(phrase, content, path.name)
+            self.assertNotIn("404允许，5xx/超时/无法判定", content)
+            self.assertNotIn("404视为允许，5xx、超时或无法判定", content)
+        for path in (ROOT / "server" / "explanation" / "README.md", DESIGN_DIR / "08-变更与扩展约定.md"):
+            content = path.read_text(encoding="utf-8")
+            for phrase in ("最多3次", "100000字节", "无效行", "robotsDisallowed",
+                           "robotsUnavailable", "robotsUnavailableByCode"):
+                self.assertIn(phrase, content)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        self.assertIn("13.7. 阶段4 robots RFC 9309修正", implementation)
+        smoke = (ROOT / "docs" / "阶段4robots冒烟.md").read_text(encoding="utf-8")
+        for phrase in ("public-doh", "成功15页", "HTTP_404 3次", "robotsUnavailable 0",
+                       "目录专业代码数：0", "Content-Type", "研究生教育数据赋能管理系统",
+                       "9770", "已遮蔽", "完整性 ok", "ZsssTksList?zsnf=2027"):
+            self.assertIn(phrase, smoke)
+        self.assertEqual(smoke.count("| [原文](https://"), 15)
+
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
         routes = re.findall(r"^\| `(GET|POST|PUT|PATCH|DELETE) (/api/v1/[^`]+)` \|", content, re.MULTILINE)

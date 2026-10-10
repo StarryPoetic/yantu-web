@@ -151,6 +151,9 @@ export async function prefetchSchools(options = {}, dependencies = {}) {
     failuresByCode: {},
     factsByField: {},
     robotsSkipped: 0,
+    robotsDisallowed: 0,
+    robotsUnavailable: 0,
+    robotsUnavailableByCode: {},
     dryRun: !!options.dryRun,
   };
   if (options.dryRun) return summary;
@@ -283,6 +286,13 @@ export async function prefetchSchools(options = {}, dependencies = {}) {
           summary.failuresByCode[reason] =
             (summary.failuresByCode[reason] ?? 0) + 1;
           if (reason.startsWith("ROBOTS_")) summary.robotsSkipped++;
+          if (reason === "ROBOTS_DISALLOWED") summary.robotsDisallowed++;
+          if (reason === "ROBOTS_UNAVAILABLE") {
+            summary.robotsUnavailable++;
+            const cause = error.robotsCause ?? "WEB_UNAVAILABLE";
+            summary.robotsUnavailableByCode[cause] =
+              (summary.robotsUnavailableByCode[cause] ?? 0) + 1;
+          }
           library.recordAttempt({
             url: task.url,
             status: "failed",

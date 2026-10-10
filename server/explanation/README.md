@@ -219,7 +219,7 @@ npx playwright test tests/tutor-chat.spec.ts
 
 原文表允许 `.edu.cn` HTTP并保存 `transport/finalUrl/redirectChain`；复用保留明文传输标注。以最终地址为同页键，HTTP/HTTPS 去重，别名映射用于跳过未过期页面。种子登记的非edu学校HTTPS原文可入库，非edu明文不接收；报告reader权限不扩大，公网DNS、固定IP、同校最多3跳的限制保持不变。
 
-`robots.ts` 与 `scripts/prefetch-schools.mjs` 实现 D-14：默认每校20页、深度≤3、每主机串行、间隔≥1秒、全局主机并发≤4；404允许，5xx/超时/无法判定跳过，逐跳检查 robots.txt。PDF/XLS/XLSX继续复用现有附件解析器。支持 `--dns-mode system|public-doh`，默认沿用服务端 YANTU_DNS_MODE；不打印配置，不调用付费搜索或模型。`--dry-run` 不建库、不联网，`--refresh` 强制复核；汇总打印字段 bound/pending、失败码与 robots 跳过数。
+`robots.ts` 与 `scripts/prefetch-schools.mjs` 实现 D-14：默认每校20页、深度≤3、每主机串行、间隔≥1秒、全局主机并发≤4；robots.txt 不允许时不抓取；4xx 视为无限制（429 除外）；429/5xx/网络失败时跳过该主机。robots 获取复用阶段1安全 reader，同校注册域名内最多3次跳转、每跳公网 DNS 校验、固定连接 IP、跨站拒绝；2xx（含空响应）逐行解析，无效行忽略，HTML 无有效规则即无限制。保留最具体 UA 组、最长匹配、同长 Allow 优先与 `*`/`$`；前100000字节流式解压后截断解析，普通网页仍拒绝超限。robots 结果按主机缓存，页面逐跳检查。PDF/XLS/XLSX继续复用现有附件解析器。支持 `--dns-mode system|public-doh`，默认沿用服务端 YANTU_DNS_MODE；不打印配置，不调用付费搜索或模型。`--dry-run` 不建库、不联网，`--refresh` 强制复核；汇总打印字段 bound/pending、失败码与 robotsSkipped，并分别记录 robotsDisallowed（规则明确禁止）、robotsUnavailable（获取失败）及 robotsUnavailableByCode（429/5xx/超时/DNS/连接等安全原因码）。杭师大本次免费重跑与页面列表见实施说明13.7。
 
 研招网实际专业目录是脚本模板，阶段4采用安全降级：`chsi-probe.ts` 仅以公开GET探测 robots 与 `/zsml/`、`/sch/`，不提交表单、不登录、不绕过验证。平台页仍不当学校官网域名，不能授权跨站跳转或产生专业事实；部署方可收集学校公开原文，再由资料库确定性入库，人工审核另走正式目录流程。免费实测结论见实施说明13.5。
 

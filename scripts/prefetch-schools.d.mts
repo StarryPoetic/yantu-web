@@ -24,6 +24,9 @@ export interface PrefetchSummary {
   failuresByCode: Record<string, number>;
   factsByField: Record<string, { bound: number; pending: number }>;
   robotsSkipped: number;
+  robotsDisallowed: number;
+  robotsUnavailable: number;
+  robotsUnavailableByCode: Record<string, number>;
   dryRun: boolean;
 }
 export function parseArguments(args: string[]): PrefetchOptions;

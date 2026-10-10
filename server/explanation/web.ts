@@ -1,7 +1,14 @@
 import { lookup } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
 import { request as httpRequest } from "node:http";
-import { gunzipSync, inflateSync, brotliDecompressSync } from "node:zlib";
+import {
+  gunzipSync,
+  inflateSync,
+  brotliDecompressSync,
+  createGunzip,
+  createInflate,
+  createBrotliDecompress,
+} from "node:zlib";
 import { isIP } from "node:net";
 import { AssessmentError } from "../assessment/index.ts";
 import { createModelRuntime, ModelError } from "./index.ts";
@@ -91,6 +98,8 @@ export type WebReader = (
     allowedHosts: string[];
     headers?: Record<string, string>;
     maxBytes?: number;
+    /** Robots-only raw text: accept any 2xx/MIME, stream-decode and truncate to maxBytes. */
+    textPrefix?: boolean;
     timeoutMs?: number;
     method?: "GET" | "POST";
     body?: string;
@@ -427,7 +436,11 @@ export function createHttpsReader(
               else finish(undefined, { location });
               return;
             }
-            if (status !== 200) {
+            if (
+              options.textPrefix
+                ? status < 200 || status >= 300
+                : status !== 200
+            ) {
               response.destroy();
               finish(new ModelError(httpError(status)));
               return;
@@ -448,9 +461,10 @@ export function createHttpsReader(
               .trim()
               .toLowerCase();
             if (
-              (!/^(text\/(html|plain)|application\/json)(;|$)/i.test(
-                contentType,
-              ) &&
+              (!options.textPrefix &&
+                !/^(text\/(html|plain)|application\/json)(;|$)/i.test(
+                  contentType,
+                ) &&
                 !pdf &&
                 !spreadsheet) ||
               !["identity", "gzip", "x-gzip", "deflate", "br"].includes(
@@ -466,6 +480,47 @@ export function createHttpsReader(
               : spreadsheet
                 ? maxSpreadsheetBytes
                 : maxBytes;
+            if (options.textPrefix) {
+              // Bound decompressed bytes too; stop the response once the prefix is complete.
+              const decoder = ["gzip", "x-gzip"].includes(encoding)
+                ? createGunzip()
+                : encoding === "deflate"
+                  ? createInflate()
+                  : encoding === "br"
+                    ? createBrotliDecompress()
+                    : undefined;
+              const stream = decoder ?? response;
+              const chunks: Buffer[] = [];
+              let length = 0;
+              const complete = () =>
+                finish(undefined, {
+                  bytes: Buffer.concat(chunks),
+                  contentType,
+                  limit: maxBytes,
+                  encoding: "identity",
+                });
+              stream.on("data", (chunk: Buffer) => {
+                if (settled) return;
+                const prefix = chunk.subarray(0, maxBytes - length);
+                chunks.push(prefix);
+                length += prefix.length;
+                if (length >= maxBytes) {
+                  complete();
+                  response.destroy();
+                  decoder?.destroy();
+                }
+              });
+              stream.on("end", complete);
+              stream.on("error", () =>
+                finish(new ModelError("WEB_DECODE_FAILED")),
+              );
+              response.on("error", (error) => finish(networkError(error)));
+              response.on("aborted", () =>
+                finish(new ModelError("WEB_CONNECTION_RESET")),
+              );
+              if (decoder) response.pipe(decoder);
+              return;
+            }
             if (Number(response.headers["content-length"]) > limit) {
               response.destroy();
               finish(new ModelError("WEB_TOO_LARGE"));
@@ -565,6 +620,14 @@ export function createHttpsReader(
       }
       if (remaining() <= 0) throw new ModelError("WEB_TIMEOUT");
       const contentType = downloaded.contentType!;
+      if (options.textPrefix)
+        return {
+          finalUrl: url.href,
+          redirects,
+          transport: usedHttp ? "http" : "https",
+          contentType,
+          ...decodeWebText(bytes, contentType),
+        };
       const pdf = /^application\/pdf(;|$)/i.test(contentType);
       const spreadsheet =
         options.allowSpreadsheet &&
