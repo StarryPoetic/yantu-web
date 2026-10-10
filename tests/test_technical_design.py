@@ -250,14 +250,14 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertIn("达到5校的比例", acceptance)
         self.assertIn("各类失败码", acceptance)
 
-    def test_comprehensive_tiers_and_academic_https_upgrade_preserve_boundaries(self):
+    def test_comprehensive_tiers_and_academic_http_research_preserve_boundaries(self):
         product = PRODUCT.read_text(encoding="utf-8")
         for phrase in ("第一级·优先推荐", "第二级·适合备选", "第三级·探索选择", "同费用学校可以不同层", "无可靠综合分层理由", "费用只是其中一个因素"):
             self.assertIn(phrase, product)
         for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("suitabilityTier", "suitabilityReason", "tier/tierReasons", "同费用学校可以不同层", "options.upgradeAcademicHttp:true", "sourcesOnly:true", "WebSource.retrievalNote", "显式端口", "不会发送HTTP请求", "普通聊天与用户直接提供的URL不启用"):
+                for phrase in ("suitabilityTier", "suitabilityReason", "tier/tierReasons", "同费用学校可以不同层", "options.upgradeAcademicHttp:true", "sourcesOnly:true", "WebSource.retrievalNote", "显式端口", "研究会按原始HTTP地址读取", "普通聊天与用户直接提供的URL不启用"):
                     self.assertIn(phrase, content)
                 if path == ROOT / "server" / "explanation" / "README.md":
                     for phrase in ("demand-match-v1", "方向关联、培养路线及已核验城市", "服务端生成 `tier/tierReasons`", "模型的 `suitabilityTier/suitabilityReason` 不能改变服务端层级", "有城市偏好时，城市未知不满足优先比较条件", "费用只是一个因素", "5–10所不同学校", "不按同校多专业凑数量"):
@@ -371,7 +371,7 @@ class TechnicalDesignTests(unittest.TestCase):
             "WebSource.transport:'http'", "明文传输", "GBK/GB18030", "gzip/deflate/br",
             "大小上限", "时间和取消限制", "细分读取失败码", "includeDomains",
             "先查公共院校资料库", "yz.chsi.com.cn", "verified:false", "只删除该句",
-            "现行实现仍只读HTTPS并拒绝跳转", "本阶段不改变18次搜索、16次读取",
+            "阶段1已实现研究HTTP及同校有限跳转", "本阶段不改变18次搜索、16次读取",
         ):
             self.assertIn(phrase, policy)
         current = model.split("当前v7以", 1)[1].split("历史v6以", 1)[0]
@@ -427,6 +427,16 @@ class TechnicalDesignTests(unittest.TestCase):
             self.assertEqual(path.count("{"), path.count("}"))
         route_rows = [line for line in content.splitlines() if line.startswith("| `") and "/api/v1/" in line]
         self.assertEqual(len(route_rows), len(routes), "Each API row needs one explicit method and path")
+
+    def test_phase_one_transport_implementation_and_free_probe_are_documented(self):
+        for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
+            content = path.read_text(encoding="utf-8")
+            for phrase in ("阶段1读取层已实现", "maxRedirects:3", "allowHttp:true", "BOM", "前4096字节meta", "WEB_REDIRECT_CROSS_SITE", "WEB_REDIRECT_LIMIT", "WEB_DECODE_FAILED", "WEB_TLS_CERT", "tlsCode", "finalUrl", "gzip/deflate/br", "probe-school-sites.mjs", "同主机串行", "不调用模型或搜索"):
+                self.assertIn(phrase, content)
+            self.assertNotIn("不会发送HTTP请求", content)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        for phrase in ("阶段1已完成", "23/29", "79.31%", "WEB_ADDRESS_BLOCKED 29", "WEB_CONNECTION_RESET 2", "3.45%", "未实现AIA", "WebVPN", "不等于取得招生事实"):
+            self.assertIn(phrase, implementation)
 
     def test_domestic_search_setup_matches_server_environment_contract(self):
         guide = (ROOT / "docs" / "本地模型与联网测试.md").read_text(encoding="utf-8")

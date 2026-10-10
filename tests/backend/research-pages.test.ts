@@ -13,8 +13,8 @@ test("campus geography discovery follows real same-school links for any school w
   const parent = source("parent", "yz.qingyuan.edu.cn");
   const html = `<a href="https://www.qingyuan.edu.cn/campuses.htm">校区介绍</a><a href="/contact.htm">联系我们</a><a href="https://else.edu.cn/campus.htm">校区介绍</a><a href="http://yz.qingyuan.edu.cn/map.htm">校区地图</a><a href="https://x:y@yz.qingyuan.edu.cn/map.htm">校区地图</a><script><a href="/fake.htm">校区地址</a></script><a href="/partner.htm">合作院校校区介绍</a><a href="/admin.htm">招生办联系方式</a>`;
   assert.deepEqual(researchLocationLinks(parent, html), [
+    { url: "http://yz.qingyuan.edu.cn/map.htm", title: "校区地图" },
     { url: "https://www.qingyuan.edu.cn/campuses.htm", title: "校区介绍" },
-    { url: "https://yz.qingyuan.edu.cn/contact.htm", title: "联系我们" },
   ]);
 });
 function source(
@@ -60,7 +60,7 @@ test("PDF attachments must be linked on the same school and relevant; scripts an
     <a href="/files/catalog.pdf#page=1">2027年硕士招生专业目录</a>
     <a href="https://cw.a.edu.cn/fees.pdf?x=1&amp;y=2">研究生学费收费标准</a>
     <a href="https://other.edu.cn/fake.pdf">硕士目录</a>
-    <a href="http://yz.a.edu.cn/plain.pdf">硕士目录</a>
+    <a href="http://other.edu.cn/plain.pdf">硕士目录</a>
     <a href="https://yz.a.edu.cn:4433/port.pdf">硕士目录</a>
     <a href="https://name:password@yz.a.edu.cn/auth.pdf">硕士目录</a>
     <a href="javascript:alert(1)">硕士目录</a>

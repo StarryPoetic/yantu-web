@@ -11,7 +11,7 @@ import {
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
 import { academicDomain, researchAttachments } from "./research-pages.ts";
 import { normalizeAttachedEvidence } from "./research-provenance.ts";
-import { webPageText } from "./web.ts";
+import { webPageText, readSourceMetadata } from "./web.ts";
 import type { createWebAnswerModule, WebReadResult, WebSource } from "./web.ts";
 
 export interface ResearchFeeRecommendation {
@@ -126,7 +126,9 @@ export async function enrichResearchFees(input: {
     try {
       const parsed = new URL(url);
       return (
-        parsed.protocol === "https:" &&
+        (parsed.protocol === "https:" ||
+          (parsed.protocol === "http:" &&
+            parsed.hostname.endsWith(".edu.cn"))) &&
         !parsed.username &&
         !parsed.password &&
         !parsed.port &&
@@ -289,6 +291,7 @@ export async function enrichResearchFees(input: {
           id: `fee-${feeId}`,
           title: next.title,
           url: next.url,
+          ...readSourceMetadata(result, next.url),
           retrievedAt: result.retrievedAt ?? new Date(now()).toISOString(),
           kind: "official_page",
           verified: false,

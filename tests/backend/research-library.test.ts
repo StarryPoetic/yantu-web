@@ -35,6 +35,85 @@ function memory() {
   };
 }
 
+test("labelled academic HTTP evidence keeps final URL, warning and TLS diagnostics across SQLite restart", () => {
+  const directory = mkdtempSync(join(tmpdir(), "yantu-http-library-"));
+  const path = join(directory, "public.sqlite");
+  let store = new Store(path);
+  try {
+    const library = createResearchEvidenceLibrary(store, { now: () => time });
+    library.save(
+      source({
+        url: "http://grs.hdu.edu.cn/catalog.htm",
+        finalUrl: "https://yjs.hdu.edu.cn/2026/catalog.htm",
+        transport: "http",
+      }),
+    );
+    library.recordAttempt({
+      url: "https://grs.hdu.edu.cn/",
+      status: "failed",
+      reason: "WEB_TLS_CERT",
+      tlsCode: "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+      attemptedAt: new Date(time).toISOString(),
+    });
+    store.close();
+    store = new Store(path);
+    const reopened = createResearchEvidenceLibrary(store, { now: () => time });
+    const loaded = reopened.load(request)[0];
+    assert.equal(loaded.url, "http://grs.hdu.edu.cn/catalog.htm");
+    assert.equal(loaded.finalUrl, "https://yjs.hdu.edu.cn/2026/catalog.htm");
+    assert.equal(loaded.transport, "http");
+    assert.equal(loaded.verified, false);
+    assert.match(loaded.retrievalNote!, /明文传输.*待核验.*复用/);
+    assert.equal(
+      reopened.attempts()[0].tlsCode,
+      "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+    );
+  } finally {
+    store.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("new read failure codes survive persistence and certificate details are sanitized", () => {
+  const { store, library } = memory();
+  try {
+    const codes = [
+      "WEB_REDIRECT_CROSS_SITE",
+      "WEB_REDIRECT_LIMIT",
+      "WEB_DECODE_FAILED",
+      "WEB_CONNECTION_RESET",
+      "WEB_CONNECTION_REFUSED",
+      "WEB_TLS_CERT",
+      "HTTP_410",
+      "HTTP_4XX",
+      "HTTP_5XX",
+      "WEB_DNS_INVALID_RESPONSE",
+    ];
+    for (const [i, reason] of codes.entries())
+      library.recordAttempt({
+        url: `https://grs.hdu.edu.cn/${i}`,
+        status: "failed",
+        reason,
+        tlsCode: "PRIVATE detail",
+        attemptedAt: new Date(time).toISOString(),
+      });
+    assert.deepEqual(
+      library
+        .attempts()
+        .map((a) => a.reason)
+        .sort(),
+      [...codes].sort(),
+    );
+    assert.ok(library.attempts().every((a) => a.tlsCode === undefined));
+    library.save(
+      source({ finalUrl: "https://yzb.pku.edu.cn/other", transport: "https" }),
+    );
+    assert.equal(library.load(request)[0].finalUrl, undefined);
+  } finally {
+    store.close();
+  }
+});
+
 test("public evidence survives SQLite restart and is reusable without any user or guidance context", () => {
   const directory = mkdtempSync(join(tmpdir(), "yantu-public-library-"));
   const path = join(directory, "public.sqlite");
@@ -91,6 +170,7 @@ test("only explicit public transport fields persist; private and model extension
         "excerpt",
         "kind",
         "verified",
+        "transport",
       ].sort(),
     );
     library.recordAttempt({
@@ -119,7 +199,7 @@ test("search snippets, promoted verification, unsafe hosts, secrets and empty er
       source({ excerpt: "403 Forbidden" }),
       source({ excerpt: "验证码：请完成验证后再访问" }),
       ...[
-        "http://grs.hdu.edu.cn/page",
+        "http://www.chsi.com.cn/page",
         "https://localhost/page",
         "https://127.0.0.1/page",
         "https://grs.hdu.edu.cn.evil.com/page",

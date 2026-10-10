@@ -18,6 +18,7 @@ import { normalizeAttachedEvidence } from "./research-provenance.ts";
 import { isSchoolPage } from "./research-evidence.ts";
 import {
   webPageText,
+  readSourceMetadata,
   type WebSource,
   type WebReadResult,
   type createWebAnswerModule,
@@ -198,6 +199,7 @@ export async function repairResearchEvidence(input: {
       let source: WebSource = {
         id: existing?.id ?? publicEvidenceId(candidate.url),
         url: candidate.url,
+        ...readSourceMetadata(result, candidate.url),
         title: candidate.title,
         kind: "official_page",
         verified: false,
@@ -233,6 +235,7 @@ export async function repairResearchEvidence(input: {
         url: candidate.url,
         status: "failed",
         reason: String((error as { code?: string })?.code ?? "WEB_UNAVAILABLE"),
+        tlsCode: (error as { tlsCode?: string })?.tlsCode,
         attemptedAt: at(),
       };
       attempts.push(attempt);

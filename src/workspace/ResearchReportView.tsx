@@ -194,6 +194,7 @@ export function ResearchReportView({
                 {source.kind === "official_page" ? "官网原文" : "搜索摘要"} ·{" "}
                 {new Date(source.retrievedAt).toLocaleString("zh-CN")}
               </small>
+              {source.retrievalNote ? <p>{source.retrievalNote}</p> : null}
               <p>{source.excerpt}</p>
             </article>
           ))}

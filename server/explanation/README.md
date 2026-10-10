@@ -14,7 +14,7 @@
 
 全流程最多24次搜索、24次官网读取。初期18次搜索、16次普通读取；意向城市恢复最多借用4次读取，实际专业和校区政策缺少地理证据时最多另补读2次、每校1次。地理链接可从任何学校已读官网发现，网址表不限制学校范围。其后费用阶段使用剩余额度、最多6次搜索和8次读取。初期每校4次读取，地理及费用阶段累计最多6次；40条搜索候选与最多12个同校HTML目录、PDF、工作簿新链接、最多3层发现。成功公开资料复用15分钟，失败不缓存，实际正文进入模型最多24项及24000输入字符。
 
-XLS/XLSX显式启用`allowSpreadsheet`，同样经过HTTPS、公网DNS、固定IP、TLS与拒绝跳转。输入最多5MB，ZIP实际展开20MB、单项5MB、2000项、40表、4000行、64列、单元格8000字符及总文本200000字符；隐藏子进程5秒和128MB旧生代限制，仅必要环境，不执行公式、宏或外部链接。使用官方发行SheetJS 0.20.3。只有文件声明的单列纵向学院合并单元格可保留真实anchor范围值并标注来源，普通空格不自动继承。附件保留真实父页与链接，正文分别引用；子文年度与学校身份矛盾时不继承。培养城市须专业学院、同一招生年度校区政策和每个可能校区地址的证据链；历史链保留 `location.year` 作参考，不跨年拼接目录与政策，不能套用招生办地址或特殊人群政策，目标年实际安排仍须核对。
+XLS/XLSX显式启用`allowSpreadsheet`，同样遵守研究HTTP/同校有限跳转、公网DNS、固定IP与HTTPS的TLS校验。输入最多5MB，ZIP实际展开20MB、单项5MB、2000项、40表、4000行、64列、单元格8000字符及总文本200000字符；隐藏子进程5秒和128MB旧生代限制，仅必要环境，不执行公式、宏或外部链接。使用官方发行SheetJS 0.20.3。只有文件声明的单列纵向学院合并单元格可保留真实anchor范围值并标注来源，普通空格不自动继承。附件保留真实父页与链接，正文分别引用；子文年度与学校身份矛盾时不继承。培养城市须专业学院、同一招生年度校区政策和每个可能校区地址的证据链；历史链保留 `location.year` 作参考，不跨年拼接目录与政策，不能套用招生办地址或特殊人群政策，目标年实际安排仍须核对。
 
 ## 模块与接口边界
 
@@ -68,7 +68,7 @@ XLS/XLSX显式启用`allowSpreadsheet`，同样经过HTTPS、公网DNS、固定I
 
 自由对话在用户允许联网且服务端配置可用时，先用受限 JSON 请求判断是否需要实时搜索；一般知识和闲聊可以不搜索。需要时使用具体检索词调用一次已配置的搜索服务，再把实际资料交给自然语言回答步骤。也可提供最多两个官方资料 URL；提供 URL 本身表示请求读取该页面，不依赖搜索开关。逐题教学按固定题目依据回答，不自动调用网页搜索。
 
-官网读取复用 `web.ts`：允许主机名由服务端 `allowedHosts` 或 `YANTU_OFFICIAL_HOSTS` 精确配置，用户不能扩展。只允许 HTTPS，所有 DNS 地址必须为公网，并固定实际连接 IP、保留 TLS 主机名校验；拒绝重定向、私网、IP 直连、超大文件和不支持的格式。
+官网读取复用 `web.ts`：允许主机名由服务端 `allowedHosts` 或 `YANTU_OFFICIAL_HOSTS` 精确配置，用户不能扩展。普通咨询与用户自填网址仍只用 HTTPS、不跟随跳转；研究流程显式设置 `maxRedirects:3`、`allowHttp:true`，只对 `.edu.cn` 放行明文HTTP。同校跳转限同一学校注册域名最多3次，每跳重新做全部DNS公网校验并固定连接IP，HTTPS保留TLS主机校验；跨校跳转拒绝，私网、IP直连、凭据、显式端口、大小与时间上限继续拦截。
 
 应用默认 `YANTU_SEARCH_PROVIDER=bocha`，启用需 `YANTU_SEARCH_ENABLED=true` 与 `BOCHA_API_KEY`。`search.ts` 将博查与Brave协议归一到同一结果类型；博查只请求固定 `POST https://api.bocha.cn/v1/web-search`，Bearer认证，返回摘要仍标为 `search_snippet`，不因供应商字段名为summary就视为官网原文。显式设置 `brave` 时仅使用 `BRAVE_SEARCH_API_KEY` 请求固定Brave主机；不自动回退、混用密钥或跨域发送凭据。直接模块旧调用未指定provider时保留Brave兼容，应用入口总会明确选择供应商。接口依据见[博查官方文档](https://bocha-ai.feishu.cn/wiki/RXEOw02rFiwzGSkd9mUcqoeAnNK)。
 
@@ -92,7 +92,7 @@ XLS/XLSX显式启用`allowSpreadsheet`，同样经过HTTPS、公网DNS、固定I
 
 研究分两个模型阶段：规划使用所选模型非思考模式（默认Pro，4096输出token/30秒），最终以Pro/high分析（默认16384输出token/120秒，含思考）。规划保留184目录、当前profileEvidence及结构化偏好，长notes/courses按需裁剪使输入不超过15000字符。模型阶段、修复与临时HTTP重试均使用同一runtime；搜索以sourcesOnly取证据，不额外调用摘录模型。官网读取权限与SSRF限制不变，普通HTML/文本仍限8秒、512000字节，PDF另有受控限制。
 
-研究内部可显式传 `options.upgradeAcademicHttp:true`，仅在 `sourcesOnly:true` 时将实际搜索结果中 `http://*.edu.cn` 链接转换为同一主机、路径和查询参数的HTTPS候选；`WebSource.retrievalNote` 记录转换说明。普通聊天与用户直接提供的URL不启用，客户端不能传此内部选项；凭据、显式端口（包括80）、IP、非教育网域名和歧义URL拒绝转换。不会发送HTTP请求，也不把转换后的摘要当成官网正文；后续实际读取仍执行全DNS公网、固定IP、TLS和禁止重定向检查，HTTPS不可读时保留真实失败原因。
+研究内部可显式传 `options.upgradeAcademicHttp:true`，仅在 `sourcesOnly:true` 时保留实际搜索结果中的 `http://*.edu.cn` 原始地址作为读取候选；该历史选项名现在表示允许保留教育网HTTP链接。`WebSource.retrievalNote` 记录待核验线索说明。普通聊天与用户直接提供的URL不启用，客户端不能传此内部选项；凭据、显式端口（包括80）、IP、非教育网域名和歧义URL拒绝。研究会按原始HTTP地址读取，允许同校升级到HTTPS；搜索摘要仍不是官网正文。明文成功读取保存 `transport:"http"`，并展示“明文传输（HTTP）读取，内容可能被网络中间环节篡改，仅作待核验线索”。原始url继续保留，有跳转另存finalUrl；资料库复用与报告导出保留传输方式及提示。
 
 研究先以固定需求规则建立最多6个方向，再合并模型规划的最多3个方向；模型可为每方向提供4–6个不同学校的 `searchSchools`，仅为检索线索。`research-search.ts` 跨方向与城市轮流发现学校，优先调查前三个历史年度，目标年度另查变化，模型校名线索不能锁定候选范围；从已观察主机提取最多两个具体学校根域，以 `includeDomains` 补查，不能编域名。整个报告最多24次搜索及24次正文读取：先用最多18次搜索与16次读取建立项目证据，保留40条搜索候选及最多12条同校PDF附件候选（新版本同预算也支持HTML目录及XLS/XLSX）；生成核验后，按实际推荐学校补查最多6次搜索、8次读取，新增最多8项官网费用正文。初期每学校根域最多4次读取，费用阶段累计不超过6次；所有读取共享总预算。若有明确意向城市且前16次读取未取得其硕士项目与所在地线索，可从费用保留槽位借用最多4次读取，初期最多20次；仅补查已观察的优先学校，单校4次上限不变，费用阶段只使用剩余额度，总计仍最多24次正文读取。相同查询/域名组合不重复；成功搜索结果和公开学校正文在15分钟内复用，失败不缓存，不做无界重试。公开缓存不含个人画像、模型规划或个性化报告；来源保留原检索时间，不把缓存命中伪装为新抓取。只有实际学校官网原文进入最终模型，最多24项，压缩后整个输入不超过24000字符；摘要可用于发现与展示缺口，不能升级为正文。三年调查机会不保证每校三年资料齐全，缺失年度保持可见。
 
@@ -102,7 +102,7 @@ XLS/XLSX显式启用`allowSpreadsheet`，同样经过HTTPS、公网DNS、固定I
 
 `research-evidence.ts` 将停招与本科限制绑定到具体专业的代码/句段，不能因目录中相邻专业停招或限招而排除当前专业；归属不清时保持待核验，明确学校整体停招仍拒绝。压缩长正文时保留实际学校标识、具体专业代码和邻近原文，不能用搜索标题补造校名。专业关联仍须通过官网正文核对，历史条件与目标年度条件分别处理。
 
-研究显式启用 `WebReader.allowPdf:true` 与 `maxPdfBytes:5000000`，普通问答默认false。PDF下载仍须通过原HTTPS、全DNS公网、IP固定、TLS及禁止重定向检查，仅PDF下载及解析输入最多5000000字节；HTML/JSON/text仍为研究512000字节、reader全局1000000字节。研究下载限8秒、reader全局10秒，并同时校验 `application/pdf` 与 `%PDF` 文件头。`pdf-text.ts` / `pdf-text-worker.ts` 使用 `pdf-parse@2.4.5` 在独立隐藏Node子进程提取纯文本，解析另限5秒、80页、120000字符，超限整项拒绝，不做OCR。子进程固定参数与128MB旧生代/16MB新生代，仅保留必要SystemRoot，不传密钥、`.env` 或 `NODE_OPTIONS`；禁PDF内JS求值、外联fetch、XFA和渲染，字体/CMap仅用本地依赖，超时终止。它提供解析隔离与资源限制，不是完整操作系统沙箱。无效、超时、超页/字符、无文本分别为 `WEB_PDF_INVALID/TIMEOUT/TOO_MANY_PAGES/TEXT_TOO_LARGE/EMPTY`，保留搜索摘要和失败原因，证据不足为partial；不能把PDF解析失败归因于招生年份缺失。
+研究显式启用 `WebReader.allowPdf:true` 与 `maxPdfBytes:5000000`，普通问答默认false。PDF下载仍须通过上述研究HTTP及同校有限跳转、全DNS公网、IP固定和HTTPS的TLS检查，仅PDF下载及解析输入最多5000000字节；HTML/JSON/text仍为研究512000字节、reader全局1000000字节。研究下载限8秒、reader全局10秒，并同时校验 `application/pdf` 与 `%PDF` 文件头。`pdf-text.ts` / `pdf-text-worker.ts` 使用 `pdf-parse@2.4.5` 在独立隐藏Node子进程提取纯文本，解析另限5秒、80页、120000字符，超限整项拒绝，不做OCR。子进程固定参数与128MB旧生代/16MB新生代，仅保留必要SystemRoot，不传密钥、`.env` 或 `NODE_OPTIONS`；禁PDF内JS求值、外联fetch、XFA和渲染，字体/CMap仅用本地依赖，超时终止。它提供解析隔离与资源限制，不是完整操作系统沙箱。无效、超时、超页/字符、无文本分别为 `WEB_PDF_INVALID/TIMEOUT/TOO_MANY_PAGES/TEXT_TOO_LARGE/EMPTY`，保留搜索摘要和失败原因，证据不足为partial；不能把PDF解析失败归因于招生年份缺失。
 
 意向城市单独验收：单个城市按方向循环使用，不因方向序号丢失；学校域名须来自实际学校主体标识，不能把其他学校页面中提及的导师母校当域名归属。同校不同专业保留检索机会，读页优先补齐本地项目。模型省略location时，仅从引用官网的唯一同校地址或明确同校同项目培养地址恢复，不用摘要、合作单位地址、多校区冲突或学校名称猜测城市。正向城市声明必须与核验结果一致，不能把上海说成符合杭州偏好，也不能擅自认定用户接受长三角通勤。同一综合推荐层级内，已核验符合意向城市的学校优先；不降低资格、专业关联或证据门槛凑本地学校。
 
@@ -176,3 +176,13 @@ npx playwright test tests/tutor-chat.spec.ts
 2026-10-04 v6修订记录：目标5–10所不同学校与综合画像三层比较，新增项目/年度/单位/形式一致的学费证据和城市检查，24次搜索、40候选来源、24官网读取及15分钟公开资料复用。最新旧v5任务仅记录PROVIDER_UNAVAILABLE，不能据此确定实际HTTP状态或网络原因；新版本已区分安全错误码并对确认临时HTTP故障限制一次计额重试。此前传输分类及重试专项26项模拟回归通过，该项测试不发付费调用；v6学校覆盖、费用质量及真实端到端结果尚待独立验收，不能用上面的历史结果代替。
 
 最新public-doh与SSE真实调用及保留证据离线复核结果，见[实施说明最新验收记录](../../docs/实施说明.md)；链路连通不代表已满足5–10校覆盖、学费证据或推荐整体质量门槛。
+
+阶段1读取层已实现：
+
+- `registrableDomain(host)` 对edu.cn/com.cn/org.cn/gov.cn/ac.cn/net.cn取后三段，其余取后两段。跳转目标须同注册域名，且是精确allowedHosts主机或教育网主机；超过3跳或循环报WEB_REDIRECT_LIMIT，跨校报WEB_REDIRECT_CROSS_SITE。默认maxRedirects为0、allowHttp为false；请求凭据不转发到跳转目标或HTTP。
+- 相对HTML链接以finalUrl为基准；url仍是原始来源。HTTP→HTTPS或允许的HTTPS→HTTP链只要出现明文，transport记为http；成功来源展示明文传输提示，始终verified:false，不自动发布到正式目录。
+- 编码按BOM、Content-Type charset、前4096字节meta、UTF-8的顺序识别。GBK/GB18030别名统一按gb18030，支持big5；未知声明回退UTF-8。无声明且UTF-8替换字符超过1%时，仅在gb18030替换字符更少时采用回退。
+- 请求Accept-Encoding为gzip/deflate/br；压缩下载与解压输出分别受同类型上限约束，HTML研究512000字节，PDF及工作簿5000000字节。解压超限报WEB_TOO_LARGE，损坏报WEB_DECODE_FAILED，未知压缩格式拒绝。下载整条跳转链共享8秒，解析仍受独立进程限制。
+- 细分读取失败码包含HTTP_403/404/410/429/4XX/500/502/503/504/5XX、WEB_TLS_CERT、WEB_CONNECTION_RESET、WEB_CONNECTION_REFUSED；证书错误只保留安全tlsCode，继续验证证书，不放宽rejectUnauthorized。DNS专用失败码同样保留。补查冷却按全部失败记录执行，失败不覆盖成功证据。
+- 请求User-Agent为Mozilla/5.0 (compatible; YantuEvidence/1.1)，Accept-Language为zh-CN,zh;q=0.9。不伪装具体浏览器版本。
+- 免费脚本 `scripts/probe-school-sites.mjs` 接受每行一个URL的文件或 `--urls URL ...`，最多4并发、同主机串行，遵守YANTU_DNS_MODE；不加载.env、不调用模型或搜索，输出成功/失败码/tlsCode/finalUrl/transport/encoding与汇总。

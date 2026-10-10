@@ -729,7 +729,16 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
   expect(service.latestCount()).toBeGreaterThanOrEqual(2);
   service.stage("writing");
   await expect(panel.getByRole("progressbar")).toHaveAttribute("value", "90");
-  service.finish("completed");
+  const plaintextNote =
+    "明文传输（HTTP）读取，内容可能被网络中间环节篡改，仅作待核验线索。";
+  service.finish("completed", (report) => ({
+    ...report,
+    sources: report.sources.map((source) => ({
+      ...source,
+      transport: "http",
+      retrievalNote: plaintextNote,
+    })),
+  }));
   await expect(panel.getByText("研究报告", { exact: true })).toBeVisible();
   await expect(panel.locator("progress")).toHaveAttribute("value", "100");
   await expect(panel.getByRole("progressbar")).toHaveCount(0);
@@ -763,6 +772,7 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
   ).toBeVisible();
   await panel.getByText("全部来源与获取时间 · 1 条", { exact: true }).click();
   await expect(panel.getByText(/官网原文 ·/)).toBeVisible();
+  await expect(panel.getByText(plaintextNote, { exact: true })).toBeVisible();
   const downloading = page.waitForEvent("download");
   await panel
     .getByRole("button", { name: "下载研究报告", exact: true })
@@ -773,6 +783,7 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
   expect(path).not.toBeNull();
   const content = await readFile(path!, "utf8");
   expect(content).toContain(sourceText);
+  expect(content).toContain(plaintextNote);
   expect(content).toContain("[research-1]");
   expect(content).toContain(sourceUrl);
   expect(content).toContain(retrievedAt);

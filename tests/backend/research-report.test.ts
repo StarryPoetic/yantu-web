@@ -210,6 +210,51 @@ function setup(
   };
 }
 
+test("research reads original HTTP search candidates with redirect opt-in and reuses labelled transport metadata", async () => {
+  const events: WebEvent[] = [];
+  const httpUrl = "http://yz.example.edu.cn/law";
+  const finalUrl = "https://yz.example.edu.cn/2027/catalog.html";
+  const base = mockReader();
+  const reader: WebReader = async (url, options) => {
+    events.push({ url, options });
+    if (new URL(url).hostname === "api.search.brave.com") {
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({
+          web: {
+            results: [
+              {
+                url: httpUrl,
+                title: "示例研究大学2027年法学硕士招生目录",
+                description: quote,
+              },
+            ],
+          },
+        }),
+      };
+    }
+    const page = await base(url, options);
+    return { ...page, finalUrl, transport: "http", redirects: [finalUrl] };
+  };
+  const { module } = setup({ reader });
+  for (let i = 0; i < 2; i++) {
+    const report = await module.generate({
+      subjectId: "student",
+      run: fixture(),
+    });
+    const source = report.sources.find((s) => s.url === httpUrl)!;
+    assert.equal(source.kind, "official_page");
+    assert.equal(source.transport, "http");
+    assert.equal(source.finalUrl, finalUrl);
+    assert.equal(source.verified, false);
+    assert.match(source.retrievalNote!, /明文传输.*待核验/);
+  }
+  const pageEvents = events.filter((e) => e.url === httpUrl);
+  assert.equal(pageEvents.length, 1);
+  assert.equal(pageEvents[0].options.allowHttp, true);
+  assert.equal(pageEvents[0].options.maxRedirects, 3);
+});
+
 test("eight schools receive rule tiers independently of model wording while profile edits recompute budget checks", async () => {
   const schools = [
     "甲研究大学",

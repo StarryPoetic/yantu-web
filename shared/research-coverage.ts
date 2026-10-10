@@ -25,6 +25,7 @@ export interface ResearchEvidenceReference {
 }
 
 export interface ResearchReadAttempt {
+  tlsCode?: string;
   url: string;
   status: "success" | "failed";
   reason?: string;

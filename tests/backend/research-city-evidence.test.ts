@@ -247,11 +247,11 @@ test("another programme's address, another institution's address, friend links a
     );
 });
 
-test("search snippets and non-HTTPS addresses cannot be promoted by omitted-location recovery", () => {
+test("search snippets and nonacademic HTTP addresses cannot be promoted by omitted-location recovery", () => {
   const text = "甲大学教育学硕士培养地点：杭州市西湖区。";
   for (const changes of [
     { kind: "search_snippet" as const },
-    { url: "http://grad.example.edu.cn/address" },
+    { url: "http://grad.example.com/address" },
   ])
     assert.equal(
       deriveRecommendationConstraints(

@@ -699,7 +699,8 @@ export function researchReportMarkdown(
         "\n  " +
         source.url +
         "\n  获取时间：" +
-        source.retrievedAt,
+        source.retrievedAt +
+        (source.retrievalNote ? "\n  " + source.retrievalNote : ""),
     ),
   ].join("\n");
 }

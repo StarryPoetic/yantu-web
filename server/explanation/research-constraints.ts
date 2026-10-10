@@ -105,7 +105,8 @@ function citedQuote(
   }
   if (
     source.kind !== "official_page" ||
-    url.protocol !== "https:" ||
+    (url.protocol !== "https:" &&
+      !(url.protocol === "http:" && url.hostname.endsWith(".edu.cn"))) ||
     /(^|\.)chsi\.com\.cn$/.test(url.hostname) ||
     !sourceHasSchoolIdentity(source, input.institutionName) ||
     !substantive(source.excerpt).includes(raw.quote.trim())

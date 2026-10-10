@@ -62,6 +62,7 @@ import {
   DEFAULT_OFFICIAL_HOSTS,
   readOfficialHttps,
   validateOutboundUrl,
+  readSourceMetadata,
   webPageText,
 } from "./web.ts";
 import type { WebAnswerConfig, WebSource } from "./web.ts";
@@ -952,7 +953,14 @@ export function createResearchReportModule(
   // Public school pages only; profile changes reuse successful reads for 15 minutes.
   const pageCache = new Map<
     string,
-    { text: string; contentType: string; retrievedAt: string; expires: number }
+    {
+      text: string;
+      contentType: string;
+      finalUrl?: string;
+      transport?: "https" | "http";
+      retrievedAt: string;
+      expires: number;
+    }
   >();
   const getReadiness = () => {
     const reasons: string[] = [];
@@ -1205,13 +1213,17 @@ export function createResearchReportModule(
         const allowedHosts = hosts.includes(url.hostname)
           ? hosts
           : [...hosts, url.hostname];
-        const safe = validateOutboundUrl(value, allowedHosts);
+        const safe = validateOutboundUrl(value, allowedHosts, {
+          allowHttp: true,
+        });
         const cached = pageCache.get(safe.href);
         if (cached && cached.expires > (config.now?.() ?? Date.now()))
           return cached;
         try {
           const result = await reader(safe.href, {
             allowedHosts,
+            maxRedirects: 3,
+            allowHttp: true,
             timeoutMs: 8000,
             maxBytes: 512000,
             allowPdf: true,
@@ -1252,6 +1264,7 @@ export function createResearchReportModule(
             status: "failed",
             reason:
               error instanceof ModelError ? error.code : "WEB_UNAVAILABLE",
+            tlsCode: (error as { tlsCode?: string })?.tlsCode,
             attemptedAt: new Date(config.now?.() ?? Date.now()).toISOString(),
           });
           throw error;
@@ -1524,7 +1537,9 @@ export function createResearchReportModule(
           const allowedHosts = hosts.includes(url.hostname)
             ? hosts
             : [...hosts, url.hostname];
-          const safe = validateOutboundUrl(source.url, allowedHosts);
+          const safe = validateOutboundUrl(source.url, allowedHosts, {
+            allowHttp: true,
+          });
           const cachedPage = pageCache.get(safe.href);
           const cached =
             cachedPage && cachedPage.expires > (config.now?.() ?? Date.now())
@@ -1555,15 +1570,13 @@ export function createResearchReportModule(
               readBody,
             ),
           );
-          if (
-            source.retrievalNote &&
-            /搜索返回 HTTP|搜索结果原为HTTP/.test(source.retrievalNote)
-          )
+          delete source.retrievalNote;
+          delete source.finalUrl;
+          delete source.transport;
+          Object.assign(source, readSourceMetadata(result, source.url));
+          if (attachedIds.has(source.id) && result.transport !== "http")
             source.retrievalNote =
-              "搜索结果原为HTTP地址，本次按同一主机与路径的HTTPS地址成功读取；连接仍经过TLS与公网校验。";
-          else if (attachedIds.has(source.id))
-            source.retrievalNote =
-              "已从学校官网发现并成功读取本PDF附件正文，使用独立附件网址引用。";
+              "已从学校官网发现并成功读取本附件正文，使用独立附件网址引用。";
           source.retrievedAt =
             cached?.retrievedAt ??
             new Date(config.now?.() ?? Date.now()).toISOString();
@@ -1571,8 +1584,7 @@ export function createResearchReportModule(
             if (pageCache.size >= 120)
               pageCache.delete(pageCache.keys().next().value!);
             pageCache.set(safe.href, {
-              text: result.text,
-              contentType: result.contentType,
+              ...result,
               retrievedAt: source.retrievedAt,
               expires: (config.now?.() ?? Date.now()) + 15 * 60000,
             });
@@ -1753,7 +1765,9 @@ export function createResearchReportModule(
           const allowedHosts = hosts.includes(url.hostname)
             ? hosts
             : [...hosts, url.hostname];
-          const safe = validateOutboundUrl(geographyUrl, allowedHosts);
+          const safe = validateOutboundUrl(geographyUrl, allowedHosts, {
+            allowHttp: true,
+          });
           const saved = pageCache.get(safe.href);
           const cached =
             saved && saved.expires > (config.now?.() ?? Date.now())
@@ -1774,6 +1788,7 @@ export function createResearchReportModule(
             id: `research-campus-${geographyReads}`,
             title: `${lead.school}校区所在地资料`,
             url: safe.href,
+            ...readSourceMetadata(page, safe.href),
             excerpt,
             retrievedAt,
             kind: "official_page",
@@ -2167,7 +2182,9 @@ export function createResearchReportModule(
             const allowedHosts = hosts.includes(url.hostname)
               ? hosts
               : [...hosts, url.hostname];
-            const safe = validateOutboundUrl(value, allowedHosts);
+            const safe = validateOutboundUrl(value, allowedHosts, {
+              allowHttp: true,
+            });
             const saved = pageCache.get(safe.href);
             if (saved && saved.expires > (config.now?.() ?? Date.now()))
               return saved;

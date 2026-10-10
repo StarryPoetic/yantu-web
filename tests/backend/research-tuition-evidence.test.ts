@@ -230,7 +230,7 @@ test("omitted tuition does not bypass source, project, degree, row, currency-uni
   }
   for (const changes of [
     { kind: "search_snippet" },
-    { url: "http://yz.example.edu.cn/fee" },
+    { url: "http://yz.example.com/fee" },
   ] as Partial<WebSource>[]) {
     const excerpt = "甲大学2027年教育学硕士全日制学费8000元/年。";
     assert.equal(

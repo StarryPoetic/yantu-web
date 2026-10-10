@@ -183,6 +183,26 @@ test("unknown budget, absent evidence and open-ended budget do not invent numeri
   assert.match(budget(open).reason, /未给出上限/);
 });
 
+test("labelled academic HTTP pages support cited tuition and location while keeping verification independent", () => {
+  const value = deriveRecommendationConstraints(
+    input({
+      sources: [
+        source("fee", feeQuote, {
+          url: "http://yz.example.edu.cn/fee",
+          transport: "http",
+        }),
+        source("address", addressQuote, {
+          url: "http://yz.example.edu.cn/address",
+          transport: "http",
+        }),
+      ],
+    }),
+  );
+  assert.equal(value.tuition?.amount, 8000);
+  assert.equal(value.location?.city, "上海");
+  assert.equal(budget(value).status, "match");
+});
+
 test("tuition must be a continuous quote in an actually read cited school source", () => {
   const base = input();
   const original = base.tuition as Record<string, unknown>;
@@ -190,9 +210,7 @@ test("tuition must be a continuous quote in an actually read cited school source
     input({ citations: ["address"] }),
     input({ sources: [source("fee", feeQuote, { kind: "search_snippet" })] }),
     input({
-      sources: [
-        source("fee", feeQuote, { url: "http://yz.example.edu.cn/fee" }),
-      ],
+      sources: [source("fee", feeQuote, { url: "http://yz.example.com/fee" })],
     }),
     input({
       tuition: {

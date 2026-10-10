@@ -15,11 +15,13 @@ import {
 } from "./research-school.ts";
 import { safeSourceYear } from "./research-years.ts";
 import type { WebSource } from "./web.ts";
+import { registrableDomain, HTTP_RETRIEVAL_NOTE } from "./web.ts";
 
 export interface ResearchReadAttempt {
   url: string;
   status: "success" | "failed";
   reason?: string;
+  tlsCode?: string;
   attemptedAt: string;
 }
 
@@ -50,6 +52,19 @@ const disciplineCodes = new Set(catalog.map((item) => item.code));
 const forbiddenQuery =
   /^(?:q|query|search(?:[_-]?(?:text|word|keyword))?|keyword|searchword|wd|question|profile|user(?:name|id)?|subject(?:id)?|account(?:id)?|password|email|phone|token|j?session(?:id)?|sid|uid|openid|ticket|auth|secret|api[_-]?key|key|csrf|sign(?:ature)?|access[_-]?token|refresh[_-]?token)$/i;
 const diagnosticCodes = new Set([
+  "WEB_REDIRECT_CROSS_SITE",
+  "WEB_REDIRECT_LIMIT",
+  "WEB_DECODE_FAILED",
+  "WEB_TLS_CERT",
+  "WEB_CONNECTION_RESET",
+  "WEB_CONNECTION_REFUSED",
+  "WEB_DNS_INVALID_RESPONSE",
+  "WEB_DNS_TIMEOUT",
+  "WEB_DNS_UNAVAILABLE",
+  "HTTP_410",
+  "HTTP_4XX",
+  "HTTP_5XX",
+
   "TIMEOUT",
   "DNS_FAILED",
   "READ_FAILED",
@@ -158,7 +173,8 @@ export function createResearchEvidenceLibrary(
       const url = new URL(value);
       const host = url.hostname.toLowerCase();
       if (
-        url.protocol !== "https:" ||
+        (url.protocol !== "https:" &&
+          !(url.protocol === "http:" && host.endsWith(".edu.cn"))) ||
         url.username ||
         url.password ||
         url.port ||
@@ -214,6 +230,20 @@ export function createResearchEvidenceLibrary(
       kind: "official_page",
       verified: false,
     };
+    const finalUrl = source.finalUrl && publicUrl(source.finalUrl);
+    if (
+      finalUrl &&
+      registrableDomain(new URL(finalUrl).hostname) ===
+        registrableDomain(new URL(url).hostname)
+    )
+      result.finalUrl = finalUrl;
+    result.transport =
+      source.transport === "http" ||
+      url.startsWith("http:") ||
+      finalUrl?.startsWith("http:")
+        ? "http"
+        : "https";
+    if (result.transport === "http") result.retrievalNote = HTTP_RETRIEVAL_NOTE;
     const links = (source.documentLinks ?? []).slice(0, 60).flatMap((link) => {
       const linkUrl = publicUrl(link.url);
       return linkUrl
@@ -272,6 +302,17 @@ export function createResearchEvidenceLibrary(
     CREATE INDEX IF NOT EXISTS research_public_attempt_idx ON research_public_read_attempts(url, attempted_at);
   `);
 
+  if (
+    !(
+      db.prepare("PRAGMA table_info(research_public_read_attempts)").all() as {
+        name: string;
+      }[]
+    ).some((column) => column.name === "tls_code")
+  )
+    db.exec(
+      "ALTER TABLE research_public_read_attempts ADD COLUMN tls_code TEXT",
+    );
+
   return {
     save(source) {
       const normalized = publicSource(source);
@@ -285,6 +326,8 @@ export function createResearchEvidenceLibrary(
           excerpt: normalized.excerpt,
           title: normalized.title,
           documentLinks: normalized.documentLinks,
+          finalUrl: normalized.finalUrl,
+          transport: normalized.transport,
           provenance: normalized.provenance,
         }),
       );
@@ -430,7 +473,9 @@ export function createResearchEvidenceLibrary(
           expiresAt,
           version: row.version,
         };
-        normalized.retrievalNote = `复用公开官网证据；原始抓取时间为${normalized.retrievedAt}。${status === "stale" ? "已超过复核期限，需重新读取官网确认；本次复用不代表新抓取。" : "仍在复核期限内；本次复用不代表新抓取。"}`;
+        normalized.retrievalNote =
+          (normalized.transport === "http" ? HTTP_RETRIEVAL_NOTE : "") +
+          `复用公开官网证据；原始抓取时间为${normalized.retrievedAt}。${status === "stale" ? "已超过复核期限，需重新读取官网确认；本次复用不代表新抓取。" : "仍在复核期限内；本次复用不代表新抓取。"}`;
         return [
           {
             source: normalized,
@@ -473,8 +518,17 @@ export function createResearchEvidenceLibrary(
           : null;
       store.transaction(() => {
         db.prepare(
-          "INSERT INTO research_public_read_attempts(url, status, reason, attempted_at) VALUES (?, ?, ?, ?)",
-        ).run(url, attempt.status, reason, attemptedAt);
+          "INSERT INTO research_public_read_attempts(url, status, reason, attempted_at, tls_code) VALUES (?, ?, ?, ?, ?)",
+        ).run(
+          url,
+          attempt.status,
+          reason,
+          attemptedAt,
+          reason === "WEB_TLS_CERT" &&
+            /^[A-Z0-9_]{1,80}$/.test(attempt.tlsCode ?? "")
+            ? attempt.tlsCode!
+            : null,
+        );
         db.prepare(
           "DELETE FROM research_public_read_attempts WHERE url = ? AND id NOT IN (SELECT id FROM research_public_read_attempts WHERE url = ? ORDER BY attempted_at DESC, id DESC LIMIT 20)",
         ).run(url, url);
@@ -498,12 +552,13 @@ export function createResearchEvidenceLibrary(
       if (selected && !selected.length) return [];
       const rows = db
         .prepare(
-          `SELECT url, status, reason, attempted_at FROM research_public_read_attempts${selected ? ` WHERE url IN (${selected.map(() => "?").join(",")})` : ""} ORDER BY attempted_at DESC, id DESC LIMIT 200`,
+          `SELECT url, status, reason, attempted_at, tls_code FROM research_public_read_attempts${selected ? ` WHERE url IN (${selected.map(() => "?").join(",")})` : ""} ORDER BY attempted_at DESC, id DESC LIMIT 200`,
         )
         .all(...(selected ?? [])) as unknown as {
         url: string;
         status: "success" | "failed";
         reason: string | null;
+        tls_code: string | null;
         attempted_at: string;
       }[];
       return rows
@@ -513,6 +568,7 @@ export function createResearchEvidenceLibrary(
           status: row.status,
           ...(row.reason ? { reason: row.reason } : {}),
           attemptedAt: row.attempted_at,
+          ...(row.tls_code ? { tlsCode: row.tls_code } : {}),
         }));
     },
   };

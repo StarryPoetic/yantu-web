@@ -47,9 +47,13 @@ export function researchLocationLinks(parent: WebSource, html: string) {
         /兄弟|合作|外校|招生办|招办|登录/.test(title)
       )
         continue;
-      const url = new URL(match[2].replace(/&amp;/gi, "&"), parent.url);
+      const url = new URL(
+        match[2].replace(/&amp;/gi, "&"),
+        parent.finalUrl ?? parent.url,
+      );
       if (
-        url.protocol !== "https:" ||
+        (url.protocol !== "https:" &&
+          !(url.protocol === "http:" && url.hostname.endsWith(".edu.cn"))) ||
         url.username ||
         url.password ||
         url.port ||
@@ -212,7 +216,7 @@ export function researchAttachments(
   html: string,
   options: { maxLinks?: number; targetYear?: string } = {},
 ) {
-  const parentUrl = new URL(parent.url);
+  const parentUrl = new URL(parent.finalUrl ?? parent.url);
   if (!parentUrl.hostname.endsWith(".edu.cn")) return [];
   const clean = html
     .replace(/<!--[^]*?-->/g, " ")
@@ -231,7 +235,8 @@ export function researchAttachments(
       const value = match[2].replace(/&amp;/gi, "&");
       const url = new URL(value, parentUrl);
       if (
-        url.protocol !== "https:" ||
+        (url.protocol !== "https:" &&
+          !(url.protocol === "http:" && url.hostname.endsWith(".edu.cn"))) ||
         url.username ||
         url.password ||
         url.port ||

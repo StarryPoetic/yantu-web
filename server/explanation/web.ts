@@ -1,5 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
+import { request as httpRequest } from "node:http";
+import { gunzipSync, inflateSync, brotliDecompressSync } from "node:zlib";
 import { isIP } from "node:net";
 import { AssessmentError } from "../assessment/index.ts";
 import { createModelRuntime, ModelError } from "./index.ts";
@@ -26,6 +28,8 @@ export interface WebSource {
   excerpt: string;
   kind: "official_page" | "search_snippet";
   verified: false;
+  finalUrl?: string;
+  transport?: "https" | "http";
   /** Public evidence reuse metadata; keeps the original retrieval time. */
   library?: {
     status: "fresh" | "stale";
@@ -33,7 +37,7 @@ export interface WebSource {
     expiresAt: string;
     version: number;
   };
-  /** A transport-normalization note, never evidence that the page was read. */
+  /** A transport or reuse warning; only kind:official_page denotes a completed read. */
   retrievalNote?: string;
   /** Provenance for a safely read, linked same-school document; never a guessed school identity. */
   parentSourceId?: string;
@@ -69,12 +73,16 @@ export interface WebAnswerResult {
 export interface WebAnswerOptions {
   sourcesOnly?: boolean;
   search?: SearchOptions;
-  /** Research-only: upgrade academic HTTP search results, never user URLs. */
+  /** Research-only: retain academic HTTP search results, never user URLs. */
   upgradeAcademicHttp?: boolean;
 }
 export interface WebReadResult {
   text: string;
   contentType: string;
+  finalUrl?: string;
+  redirects?: string[];
+  transport?: "https" | "http";
+  encoding?: string;
 }
 export type WebReader = (
   url: string,
@@ -92,6 +100,8 @@ export type WebReader = (
     /** Research-only opt-in for inert official XLS/XLSX documents. */
     allowSpreadsheet?: boolean;
     maxSpreadsheetBytes?: number;
+    maxRedirects?: number;
+    allowHttp?: boolean;
   },
 ) => Promise<WebReadResult>;
 export interface WebAnswerConfig extends ExplanationConfig, SearchConfig {
@@ -132,12 +142,16 @@ function searchSourceUrl(
         .every((label) => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(label))
     )
       return undefined;
-    url.protocol = "https:";
     retrievalNote =
-      "搜索返回 HTTP 学校链接，已转换为同一主机、路径和查询参数的 HTTPS 候选地址；尚未证明该地址可读取，正文仍须通过安全读取核验。";
+      "搜索返回 HTTP 学校链接，保留原始明文地址作为研究读取候选；尚未证明可读取，正文仍须通过安全读取核验。";
   }
   if (
-    url.protocol !== "https:" ||
+    (url.protocol !== "https:" &&
+      !(
+        upgradeAcademicHttp &&
+        url.protocol === "http:" &&
+        url.hostname.endsWith(".edu.cn")
+      )) ||
     url.username ||
     url.password ||
     url.port ||
@@ -151,9 +165,18 @@ function searchSourceUrl(
   return { url, ...(retrievalNote ? { retrievalNote } : {}) };
 }
 
+export function registrableDomain(host: string): string {
+  const parts = host.toLowerCase().split(".");
+  const suffix = parts.slice(-2).join(".");
+  return parts
+    .slice(/^(edu|com|org|gov|ac|net)\.cn$/.test(suffix) ? -3 : -2)
+    .join(".");
+}
+
 export function validateOutboundUrl(
   value: string,
   allowedHosts: string[],
+  options: { allowHttp?: boolean } = {},
 ): URL {
   let url: URL;
   try {
@@ -161,28 +184,139 @@ export function validateOutboundUrl(
   } catch {
     throw new ModelError("WEB_URL_INVALID");
   }
+  const authority = /^https?:\/\/([a-z\d.-]+)(?=[/?#]|$)/i.exec(value)?.[1];
   if (
     value.length > 2048 ||
-    url.protocol !== "https:" ||
+    /[\s\\]/.test(value) ||
+    !authority ||
+    authority.toLowerCase() !== url.hostname ||
+    (url.protocol !== "https:" &&
+      !(
+        options.allowHttp &&
+        url.protocol === "http:" &&
+        url.hostname.endsWith(".edu.cn")
+      )) ||
     url.port ||
     url.username ||
     url.password ||
     isIP(url.hostname) ||
     !allowedHosts.includes(url.hostname.toLowerCase()) ||
-    url.hostname.endsWith(".")
+    url.hostname.endsWith(".") ||
+    !url.hostname
+      .split(".")
+      .every((label) => /^[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?$/i.test(label))
   )
     throw new ModelError("WEB_HOST_NOT_ALLOWED");
   url.hash = "";
   return url;
 }
 
-/** DNS is checked once and the exact validated address is pinned at connection time. TLS still verifies the hostname. */
+const tlsCodes = new Set([
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "UNABLE_TO_GET_ISSUER_CERT",
+  "CERT_HAS_EXPIRED",
+  "CERT_NOT_YET_VALID",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+  "CERT_SIGNATURE_FAILURE",
+  "INVALID_CA",
+  "CERT_REVOKED",
+]);
+function networkError(error: unknown): ModelError {
+  const code = String((error as { code?: string })?.code ?? "");
+  if (tlsCodes.has(code))
+    return Object.assign(new ModelError("WEB_TLS_CERT"), { tlsCode: code });
+  return new ModelError(
+    code === "ECONNRESET"
+      ? "WEB_CONNECTION_RESET"
+      : code === "ECONNREFUSED"
+        ? "WEB_CONNECTION_REFUSED"
+        : "WEB_UNAVAILABLE",
+  );
+}
+function httpError(status: number): string {
+  if ([403, 404, 410, 429, 500, 502, 503, 504].includes(status))
+    return `HTTP_${status}`;
+  return status >= 400 && status < 500
+    ? "HTTP_4XX"
+    : status >= 500 && status < 600
+      ? "HTTP_5XX"
+      : "WEB_UNAVAILABLE";
+}
+
+export const HTTP_RETRIEVAL_NOTE =
+  "明文传输（HTTP）读取，内容可能被网络中间环节篡改，仅作待核验线索。";
+export function readSourceMetadata(
+  result: WebReadResult,
+  originalUrl: string,
+): Partial<WebSource> {
+  return {
+    ...(result.finalUrl && result.finalUrl !== originalUrl
+      ? { finalUrl: result.finalUrl }
+      : {}),
+    ...(result.transport ? { transport: result.transport } : {}),
+    ...(result.transport === "http"
+      ? { retrievalNote: HTTP_RETRIEVAL_NOTE }
+      : {}),
+  };
+}
+
+export function decodeWebText(
+  bytes: Buffer,
+  contentType: string,
+): { text: string; encoding: string } {
+  let declared: string | undefined;
+  if (bytes.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])))
+    declared = "utf-8";
+  else if (bytes.subarray(0, 2).equals(Buffer.from([0xff, 0xfe])))
+    declared = "utf-16le";
+  else if (bytes.subarray(0, 2).equals(Buffer.from([0xfe, 0xff])))
+    declared = "utf-16be";
+  if (!declared)
+    declared = /charset\s*=\s*["']?([^\s;"']+)/i.exec(contentType)?.[1];
+  if (!declared) {
+    const head = bytes.subarray(0, 4096).toString("latin1");
+    for (const tag of head.matchAll(/<meta\b[^>]*>/gi)) {
+      declared = /charset\s*=\s*["']?([^\s;"'>]+)/i.exec(tag[0])?.[1];
+      if (declared) break;
+    }
+  }
+  let encoding = declared?.toLowerCase() ?? "utf-8";
+  if (/^(gbk|gb2312|gb_2312-80|x-gbk|gb18030)$/.test(encoding))
+    encoding = "gb18030";
+  let decoder: TextDecoder;
+  try {
+    decoder = new TextDecoder(encoding);
+  } catch {
+    decoder = new TextDecoder("utf-8");
+  }
+  encoding = decoder.encoding;
+  let text = decoder.decode(bytes);
+  const replacements = (value: string) => (value.match(/\ufffd/g) ?? []).length;
+  if (
+    !declared &&
+    encoding === "utf-8" &&
+    replacements(text) > text.length * 0.01
+  ) {
+    const candidate = new TextDecoder("gb18030").decode(bytes);
+    if (replacements(candidate) < replacements(text)) {
+      text = candidate;
+      encoding = "gb18030";
+    }
+  }
+  return { text, encoding };
+}
+
+/** Every hop validates all DNS answers and pins one public address; TLS verifies the host. */
 export function createHttpsReader(
   dependencies: {
     resolver?: AddressResolver;
     dnsMode?: DnsMode;
     fetch?: typeof fetch;
     request?: typeof httpsRequest;
+    httpRequest?: typeof httpRequest;
   } = {},
 ): WebReader {
   const resolver =
@@ -191,7 +325,11 @@ export function createHttpsReader(
       ? createPublicDohResolver({ fetch: dependencies.fetch })
       : lookup);
   return async (value, options) => {
-    const url = validateOutboundUrl(value, options.allowedHosts);
+    let url = validateOutboundUrl(value, options.allowedHosts, options);
+    const originalDomain = registrableDomain(url.hostname);
+    const redirects: string[] = [];
+    const visited = new Set([url.href]);
+    const maxRedirects = Math.min(3, Math.max(0, options.maxRedirects ?? 0));
     const timeoutMs = Math.min(options.timeoutMs ?? 8000, 10000);
     const maxBytes = Math.min(options.maxBytes ?? 512000, 1000000);
     const maxPdfBytes = options.maxPdfBytes ?? maxBytes;
@@ -209,155 +347,250 @@ export function createHttpsReader(
     )
       throw new ModelError("WEB_SPREADSHEET_LIMIT_INVALID");
     const startedAt = Date.now();
-    let dnsTimer: ReturnType<typeof setTimeout> | undefined;
-    const address = await Promise.race([
-      resolvePublicAddress(url.hostname, resolver),
-      new Promise<never>((_, reject) => {
-        dnsTimer = setTimeout(
-          () => reject(new ModelError("WEB_TIMEOUT")),
-          timeoutMs,
-        );
-      }),
-    ]).finally(() => clearTimeout(dnsTimer));
-    const downloaded = await new Promise<{
-      bytes: Buffer;
-      contentType: string;
-    }>((resolve, reject) => {
-      let settled = false;
-      const finish = (
-        error?: Error,
-        result?: { bytes: Buffer; contentType: string },
-      ) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        if (error) reject(error);
-        else resolve(result!);
-      };
-      const request = (dependencies.request ?? httpsRequest)(
-        url,
-        {
-          agent: false,
-          method: options.method ?? "GET",
-          servername: url.hostname,
-          headers: {
-            Accept: `text/html,text/plain,application/json${options.allowPdf ? ",application/pdf" : ""}${options.allowSpreadsheet ? ",application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : ""}`,
-            "Accept-Encoding": "identity",
-            "User-Agent": "YantuEvidence/1.0",
-            ...options.headers,
+    let usedHttp = url.protocol === "http:";
+    for (;;) {
+      const remaining = () => timeoutMs - (Date.now() - startedAt);
+      if (remaining() <= 0) throw new ModelError("WEB_TIMEOUT");
+      let dnsTimer: ReturnType<typeof setTimeout> | undefined;
+      const address = await Promise.race([
+        resolvePublicAddress(url.hostname, resolver),
+        new Promise<never>((_, reject) => {
+          dnsTimer = setTimeout(
+            () => reject(new ModelError("WEB_TIMEOUT")),
+            remaining(),
+          );
+        }),
+      ]).finally(() => clearTimeout(dnsTimer));
+      const downloaded = await new Promise<{
+        bytes?: Buffer;
+        contentType?: string;
+        location?: string;
+        limit?: number;
+        encoding?: string;
+      }>((resolve, reject) => {
+        let settled = false;
+        let timer: ReturnType<typeof setTimeout>;
+        const finish = (
+          error?: Error,
+          result?: {
+            bytes?: Buffer;
+            contentType?: string;
+            location?: string;
+            limit?: number;
+            encoding?: string;
           },
-          lookup: (_hostname, opts, callback) => {
-            if (opts.all) callback(null, [address]);
-            else callback(null, address.address, address.family);
+        ) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          if (error) reject(error);
+          else resolve(result!);
+        };
+        const requestFn =
+          url.protocol === "http:"
+            ? (dependencies.httpRequest ?? httpRequest)
+            : (dependencies.request ?? httpsRequest);
+        const req = requestFn(
+          url,
+          {
+            agent: false,
+            method: options.method ?? "GET",
+            servername: url.hostname,
+            rejectUnauthorized: true,
+            headers: {
+              Accept: `text/html,text/plain,application/json${options.allowPdf ? ",application/pdf" : ""}${options.allowSpreadsheet ? ",application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : ""}`,
+              "Accept-Encoding": "gzip, deflate, br",
+              "Accept-Language": "zh-CN,zh;q=0.9",
+              "User-Agent": "Mozilla/5.0 (compatible; YantuEvidence/1.1)",
+              ...(url.protocol === "https:" && redirects.length === 0
+                ? options.headers
+                : {}),
+            },
+            lookup: (_hostname, opts, callback) => {
+              if (opts.all) callback(null, [address]);
+              else callback(null, address.address, address.family);
+            },
           },
-        },
-        (response) => {
-          if (response.statusCode !== 200) {
-            response.destroy();
-            finish(
-              new ModelError(
-                response.statusCode &&
-                response.statusCode >= 300 &&
-                response.statusCode < 400
-                  ? "WEB_REDIRECT_BLOCKED"
-                  : "WEB_UNAVAILABLE",
-              ),
-            );
-            return;
-          }
-          const contentType = response.headers["content-type"] ?? "";
-          const isSpreadsheet =
-            options.allowSpreadsheet &&
-            (/^application\/(?:vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)(;|$)/i.test(
-              contentType,
-            ) ||
-              (/^application\/octet-stream(;|$)/i.test(contentType) &&
-                /\.xlsx?$/i.test(url.pathname)));
-          if (
-            (!/^(text\/(html|plain)|application\/json)(;|$)/i.test(
-              contentType,
-            ) &&
-              !(
-                options.allowPdf && /^application\/pdf(;|$)/i.test(contentType)
+          (response) => {
+            const status = response.statusCode ?? 0;
+            if (status >= 300 && status < 400) {
+              const location = response.headers.location;
+              response.destroy();
+              if (!maxRedirects) finish(new ModelError("WEB_REDIRECT_BLOCKED"));
+              else if (!location)
+                finish(new ModelError("WEB_REDIRECT_CROSS_SITE"));
+              else finish(undefined, { location });
+              return;
+            }
+            if (status !== 200) {
+              response.destroy();
+              finish(new ModelError(httpError(status)));
+              return;
+            }
+            const contentType = response.headers["content-type"] ?? "";
+            const spreadsheet =
+              options.allowSpreadsheet &&
+              (/^application\/(?:vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)(;|$)/i.test(
+                contentType,
+              ) ||
+                (/^application\/octet-stream(;|$)/i.test(contentType) &&
+                  /\.xlsx?$/i.test(url.pathname)));
+            const pdf =
+              options.allowPdf && /^application\/pdf(;|$)/i.test(contentType);
+            const encoding = String(
+              response.headers["content-encoding"] ?? "identity",
+            )
+              .trim()
+              .toLowerCase();
+            if (
+              (!/^(text\/(html|plain)|application\/json)(;|$)/i.test(
+                contentType,
               ) &&
-              !isSpreadsheet) ||
-            (response.headers["content-encoding"] &&
-              response.headers["content-encoding"] !== "identity")
-          ) {
-            response.destroy();
-            finish(new ModelError("WEB_FORMAT_UNSUPPORTED"));
-            return;
-          }
-          const responseMaxBytes =
-            options.allowPdf && /^application\/pdf(;|$)/i.test(contentType)
+                !pdf &&
+                !spreadsheet) ||
+              !["identity", "gzip", "x-gzip", "deflate", "br"].includes(
+                encoding,
+              )
+            ) {
+              response.destroy();
+              finish(new ModelError("WEB_FORMAT_UNSUPPORTED"));
+              return;
+            }
+            const limit = pdf
               ? maxPdfBytes
-              : isSpreadsheet
+              : spreadsheet
                 ? maxSpreadsheetBytes
                 : maxBytes;
-          if (Number(response.headers["content-length"]) > responseMaxBytes) {
-            response.destroy();
-            finish(new ModelError("WEB_TOO_LARGE"));
-            return;
-          }
-          const chunks: Buffer[] = [];
-          let length = 0;
-          response.on("data", (chunk: Buffer) => {
-            if (settled) return;
-            length += chunk.length;
-            if (length > responseMaxBytes) {
+            if (Number(response.headers["content-length"]) > limit) {
               response.destroy();
               finish(new ModelError("WEB_TOO_LARGE"));
-            } else chunks.push(chunk);
-          });
-          response.on("end", () =>
-            finish(undefined, {
-              bytes: Buffer.concat(chunks),
-              contentType,
-            }),
-          );
-          response.on("error", () => finish(new ModelError("WEB_UNAVAILABLE")));
-        },
-      );
-      const timer = setTimeout(
-        () => {
-          request.destroy();
-          finish(new ModelError("WEB_TIMEOUT"));
-        },
-        Math.max(1, timeoutMs - (Date.now() - startedAt)),
-      );
-      request.on("error", () => finish(new ModelError("WEB_UNAVAILABLE")));
-      request.end(options.body);
-    });
-    const isPdf = /^application\/pdf(;|$)/i.test(downloaded.contentType);
-    const isSpreadsheet =
-      options.allowSpreadsheet &&
-      (/^application\/(?:vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)(;|$)/i.test(
-        downloaded.contentType,
-      ) ||
-        (/^application\/octet-stream(;|$)/i.test(downloaded.contentType) &&
-          /\.xlsx?$/i.test(url.pathname)));
-    if (!isPdf && downloaded.bytes.subarray(0, 5).toString("ascii") === "%PDF-")
-      throw new ModelError("WEB_FORMAT_UNSUPPORTED");
-    if (
-      !isSpreadsheet &&
-      ["504b0304", "d0cf11e0"].includes(
-        downloaded.bytes.subarray(0, 4).toString("hex"),
+              return;
+            }
+            const chunks: Buffer[] = [];
+            let length = 0;
+            response.on("data", (chunk: Buffer) => {
+              if (settled) return;
+              length += chunk.length;
+              if (length > limit) {
+                response.destroy();
+                finish(new ModelError("WEB_TOO_LARGE"));
+              } else chunks.push(chunk);
+            });
+            response.on("end", () =>
+              finish(undefined, {
+                bytes: Buffer.concat(chunks),
+                contentType,
+                limit,
+                encoding,
+              }),
+            );
+            response.on("error", (error) => finish(networkError(error)));
+            response.on("aborted", () =>
+              finish(new ModelError("WEB_CONNECTION_RESET")),
+            );
+          },
+        );
+        timer = setTimeout(
+          () => {
+            finish(new ModelError("WEB_TIMEOUT"));
+            req.destroy();
+          },
+          Math.max(1, remaining()),
+        );
+        req.on("error", (error) => finish(networkError(error)));
+        req.end(
+          url.protocol === "https:" && redirects.length === 0
+            ? options.body
+            : undefined,
+        );
+      });
+      if (downloaded.location !== undefined) {
+        if (redirects.length >= maxRedirects)
+          throw new ModelError("WEB_REDIRECT_LIMIT");
+        let target: URL;
+        const location = downloaded.location;
+        if (/[\s\\]/.test(location))
+          throw new ModelError("WEB_HOST_NOT_ALLOWED");
+        // URL parsing erases default ports and empty credentials; inspect raw authorities first.
+        try {
+          target = new URL(downloaded.location, url);
+        } catch {
+          throw new ModelError("WEB_REDIRECT_CROSS_SITE");
+        }
+        if (
+          registrableDomain(target.hostname) !== originalDomain ||
+          !(
+            options.allowedHosts.includes(target.hostname) ||
+            target.hostname.endsWith(".edu.cn")
+          )
+        )
+          throw new ModelError("WEB_REDIRECT_CROSS_SITE");
+        target = validateOutboundUrl(
+          /^(?:https?:)?\/\//i.test(location)
+            ? location.startsWith("//")
+              ? `${url.protocol}${location}`
+              : location
+            : target.href,
+          [...options.allowedHosts, target.hostname],
+          options,
+        );
+        if (visited.has(target.href))
+          throw new ModelError("WEB_REDIRECT_LIMIT");
+        visited.add(target.href);
+        redirects.push(target.href);
+        url = target;
+        usedHttp ||= url.protocol === "http:";
+        continue;
+      }
+      let bytes = downloaded.bytes!;
+      try {
+        const settings = { maxOutputLength: downloaded.limit! };
+        if (["gzip", "x-gzip"].includes(downloaded.encoding!))
+          bytes = gunzipSync(bytes, settings);
+        else if (downloaded.encoding === "deflate")
+          bytes = inflateSync(bytes, settings);
+        else if (downloaded.encoding === "br")
+          bytes = brotliDecompressSync(bytes, settings);
+      } catch (error) {
+        throw new ModelError(
+          (error as { code?: string }).code === "ERR_BUFFER_TOO_LARGE"
+            ? "WEB_TOO_LARGE"
+            : "WEB_DECODE_FAILED",
+        );
+      }
+      if (remaining() <= 0) throw new ModelError("WEB_TIMEOUT");
+      const contentType = downloaded.contentType!;
+      const pdf = /^application\/pdf(;|$)/i.test(contentType);
+      const spreadsheet =
+        options.allowSpreadsheet &&
+        (/^application\/(?:vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet)(;|$)/i.test(
+          contentType,
+        ) ||
+          (/^application\/octet-stream(;|$)/i.test(contentType) &&
+            /\.xlsx?$/i.test(url.pathname)));
+      if (!pdf && bytes.subarray(0, 5).toString("ascii") === "%PDF-")
+        throw new ModelError("WEB_FORMAT_UNSUPPORTED");
+      if (
+        !spreadsheet &&
+        ["504b0304", "d0cf11e0"].includes(bytes.subarray(0, 4).toString("hex"))
       )
-    )
-      throw new ModelError("WEB_FORMAT_UNSUPPORTED");
-    return {
-      // Canonical type preserves table rows when a school serves XLS as octet-stream.
-      contentType: isSpreadsheet
-        ? downloaded.bytes.subarray(0, 4).toString("hex") === "504b0304"
-          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          : "application/vnd.ms-excel"
-        : downloaded.contentType,
-      text: isPdf
-        ? await pdfText(downloaded.bytes)
-        : isSpreadsheet
-          ? await spreadsheetText(downloaded.bytes)
-          : downloaded.bytes.toString("utf8"),
-    };
+        throw new ModelError("WEB_FORMAT_UNSUPPORTED");
+      return {
+        finalUrl: url.href,
+        redirects,
+        transport: usedHttp ? "http" : "https",
+        contentType: spreadsheet
+          ? bytes.subarray(0, 4).toString("hex") === "504b0304"
+            ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            : "application/vnd.ms-excel"
+          : contentType,
+        ...(pdf
+          ? { text: await pdfText(bytes), encoding: "binary" }
+          : spreadsheet
+            ? { text: await spreadsheetText(bytes), encoding: "binary" }
+            : decodeWebText(bytes, contentType)),
+      };
+    }
   };
 }
 

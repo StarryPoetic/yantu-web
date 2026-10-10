@@ -44,7 +44,7 @@ const researchOptions: WebAnswerOptions = {
   search: { count: 10 },
 };
 
-test("only research opt-in upgrades actual academic search URLs without fetching HTTP", async () => {
+test("only research opt-in retains original academic HTTP search URLs as unread candidates", async () => {
   const { module, requests } = searchFixture([
     "http://YJS.example.edu.cn/path/program.pdf?year=2027&form=full#major",
     "https://other.example.edu.cn/program",
@@ -53,9 +53,9 @@ test("only research opt-in upgrades actual academic search URLs without fetching
   assert.equal(result.sources.length, 2);
   assert.equal(
     result.sources[0].url,
-    "https://yjs.example.edu.cn/path/program.pdf?year=2027&form=full#major",
+    "http://yjs.example.edu.cn/path/program.pdf?year=2027&form=full#major",
   );
-  assert.match(result.sources[0].retrievalNote ?? "", /HTTP.*HTTPS.*尚未/);
+  assert.match(result.sources[0].retrievalNote ?? "", /HTTP.*明文.*尚未/);
   assert.equal(result.sources[0].kind, "search_snippet");
   assert.equal(result.sources[0].verified, false);
   assert.equal(result.sources[1].retrievalNote, undefined);
@@ -126,7 +126,7 @@ test("invalid internal upgrade options fail before reserving or requesting searc
   assert.equal(requests.length, 0);
 });
 
-test("upgraded search URLs still require approved host and every DNS answer to be public", async () => {
+test("retained HTTP search URLs still require research opt-in, approved host and every DNS answer to be public", async () => {
   const { module } = searchFixture(["http://example.edu.cn/program"]);
   const source = (await module.answer(input, researchOptions)).sources[0];
   let connections = 0;
@@ -146,7 +146,7 @@ test("upgraded search URLs still require approved host and every DNS answer to b
       error instanceof ModelError && error.code === "WEB_HOST_NOT_ALLOWED",
   );
   await assert.rejects(
-    reader(source.url, { allowedHosts: ["example.edu.cn"] }),
+    reader(source.url, { allowedHosts: ["example.edu.cn"], allowHttp: true }),
     (error: unknown) =>
       error instanceof ModelError && error.code === "WEB_ADDRESS_BLOCKED",
   );
