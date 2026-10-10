@@ -254,6 +254,7 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `feeSearches` | 6 |
 | `repairSearches` | 4 |
 | `candidates` | 80 |
+| `librarySourcesPerSchool` | 8 |
 | `modelSources` | 40 |
 | `attachments` | 24 |
 | `attachmentLinks` | 12 |

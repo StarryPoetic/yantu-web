@@ -50,6 +50,16 @@ export function rehearsalSearchResults(sources, request = {}) {
       snippet: source.excerpt.slice(0, 600),
     }));
 }
+export function publicSchoolContext(host) {
+  const school = schoolRegistry.byHost(host);
+  return {
+    school: school?.name ?? null,
+    city: school?.city ?? "未知",
+    campusCities: [
+      ...new Set(school?.campusHints.map((hint) => hint.city) ?? []),
+    ],
+  };
+}
 export function safeFailureCode(error) {
   if (error instanceof ModelError) return error.code;
   if (error.code === "ERR_SQLITE_ERROR" && error.errcode === 5)
@@ -243,16 +253,19 @@ export async function main(args = process.argv.slice(2)) {
     ).hostname;
     let activeReads = 0;
     let rehearsalSources = [];
+    const firstReads = [];
     const reader = async (url, options) => {
       controller.signal.throwIfAborted();
       const host = new URL(url).hostname;
       const isSearch = host === searchHost;
+      const geography = isSearch ? {} : publicSchoolContext(host);
       const n = isSearch ? ++totals.searches : ++totals.reads;
       if (isSearch && n > B.searches) {
         controller.abort(new Error("LIVE_BUDGET_EXCEEDED"));
         throw controller.signal.reason;
       }
       if (!isSearch) {
+        if (firstReads.length < 20) firstReads.push({ n, host, ...geography });
         activeReads++;
         totals.peakConcurrentReads = Math.max(
           totals.peakConcurrentReads,
@@ -264,6 +277,7 @@ export async function main(args = process.argv.slice(2)) {
         event: isSearch ? "search-request" : "read-request",
         n,
         host,
+        ...geography,
         simulated: isSearch && rehearsal,
       });
       try {
@@ -331,6 +345,24 @@ export async function main(args = process.argv.slice(2)) {
       load(input) {
         const sources = publicLibrary.load(input);
         rehearsalSources = sources;
+        const recalledSchools = [
+          ...new Map(
+            sources.map((source) => {
+              const context = publicSchoolContext(new URL(source.url).hostname);
+              return [context.school ?? new URL(source.url).hostname, context];
+            }),
+          ).values(),
+        ];
+        log({
+          event: "library-city-distribution",
+          hangzhou: recalledSchools.filter((school) => school.city === "杭州")
+            .length,
+          otherCities: recalledSchools.filter(
+            (school) => school.city !== "杭州" && school.city !== "未知",
+          ).length,
+          unknown: recalledSchools.filter((school) => school.city === "未知")
+            .length,
+        });
         writeFileSync(
           resolve(directory, "library-recall.json"),
           JSON.stringify(sources, null, 2),
@@ -396,6 +428,12 @@ export async function main(args = process.argv.slice(2)) {
       resolve(directory, "report.json"),
       JSON.stringify(report, null, 2),
     );
+    log({
+      event: "first-20-reads",
+      reads: firstReads,
+      hangzhou: firstReads.filter((read) => read.city === "杭州").length,
+      denominator: firstReads.length,
+    });
     const summary = {
       event: "result",
       rehearsal,

@@ -89,3 +89,16 @@ test("rehearsal search supplies bounded real library URLs and respects Bocha dom
   );
   assert.deepEqual(rehearsalSearchResults([], {}), []);
 });
+
+test("read log geography comes from the registry; unknown hosts remain unknown", async () => {
+  const { publicSchoolContext } = await import(
+    "../../scripts/live-verify-research.mjs"
+  );
+  assert.equal(publicSchoolContext("grs.hdu.edu.cn").city, "杭州");
+  assert.equal(publicSchoolContext("www.nwu.edu.cn").city, "西安");
+  assert.deepEqual(publicSchoolContext("hangzhou.unknown.edu.cn"), {
+    school: null,
+    city: "未知",
+    campusCities: [],
+  });
+});

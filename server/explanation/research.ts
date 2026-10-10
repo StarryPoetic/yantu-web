@@ -1477,8 +1477,16 @@ export function createResearchReportModule(
           ? preferredCityCandidateLeads(regions, disciplines)
           : [];
       const library = dependencies.library;
+      const schoolPreferences = {
+        cities: regions,
+        selectedSchool,
+        schoolHints: plan.directions.flatMap(
+          (item) => item.searchSchools ?? [],
+        ),
+      };
       const loaded =
         library?.load({
+          ...schoolPreferences,
           disciplineCodes: disciplines.map((item) => item.code),
           targetYear: year,
           schoolNames: [
@@ -1743,6 +1751,7 @@ export function createResearchReportModule(
           priorCoverage.gaps,
           recalledFacts,
           seeds,
+          schoolPreferences,
         );
 
         const repaired =
@@ -1752,6 +1761,7 @@ export function createResearchReportModule(
                 gaps: recallGaps,
                 sources: seeds,
                 targetYear: year,
+                preferences: schoolPreferences,
                 web,
                 maxRequests: B.initialSearches,
                 maxReads: B.initialReads,
@@ -1881,6 +1891,7 @@ export function createResearchReportModule(
           disciplines,
           {
             cities: regions,
+            selectedSchool,
             targetYear: year,
             schoolHints: [
               ...candidateLeads.map((item) => item.school),
@@ -2293,9 +2304,11 @@ export function createResearchReportModule(
                 targetYear: year,
               }) ?? [],
               report.sources,
+              schoolPreferences,
             ),
             sources: report.sources,
             targetYear: year,
+            preferences: schoolPreferences,
             web,
             maxRequests: Math.min(
               B.repairSearches,

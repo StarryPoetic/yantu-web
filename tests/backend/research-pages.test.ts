@@ -91,8 +91,13 @@ test("preferred city or owned school hints prioritize observed domains without s
   const sources = [
     source("outside", "law.outside.edu.cn", "甲大学2027年法学硕士招生专业目录"),
     {
-      ...source("city", "yz.city.edu.cn", "乙大学2027年法学硕士招生专业目录"),
-      excerpt: "乙大学2027年030101法学理论硕士招生，学校地址：杭州市。",
+      ...source(
+        "city",
+        "grs.hdu.edu.cn",
+        "杭州电子科技大学2027年法学硕士招生专业目录",
+      ),
+      excerpt:
+        "杭州电子科技大学2027年030101法学理论硕士招生，学校地址：杭州市。",
     },
     source("hint", "yz.hint.edu.cn", "丙大学2027年法学硕士招生专业目录"),
     source("hint2", "law.hint.edu.cn", "丙大学2026年法学硕士招生专业目录"),
@@ -103,7 +108,7 @@ test("preferred city or owned school hints prioritize observed domains without s
     [law],
     { cities: ["杭州"], schoolHints: ["丙大学"] },
   );
-  assert.deepEqual(result.priorityDomains, ["city.edu.cn", "hint.edu.cn"]);
+  assert.deepEqual(result.priorityDomains, ["hdu.edu.cn", "hint.edu.cn"]);
   assert.equal(result.firstRoundCount, 3);
   assert.deepEqual(
     result.pages.map((s) => s.id),
@@ -264,4 +269,26 @@ test("bounded attachments keep one primary policy per historical year, target au
     ["2026", "2025", "2024"],
   );
   assert.equal(links.length, 4);
+});
+
+test("city text on an unknown or outside school does not establish preferred geography", () => {
+  const pages = [
+    {
+      ...source("unknown", "unknown.edu.cn"),
+      excerpt: "甲大学硕士招生，合作学校杭州电子科技大学。",
+    },
+    {
+      ...source("outside", "nwu.edu.cn"),
+      excerpt: "西北大学硕士招生，杭州就业合作。",
+    },
+    source("preferred", "hdu.edu.cn", "杭州电子科技大学硕士法学招生专业目录"),
+  ];
+  const order = researchReadingOrder(
+    pages,
+    new Map(pages.map((page) => [page.id, "0301"])),
+    [law],
+    { cities: ["杭州"] },
+  );
+  assert.deepEqual(order.priorityDomains, ["hdu.edu.cn"]);
+  assert.equal(order.pages[0].id, "preferred");
 });

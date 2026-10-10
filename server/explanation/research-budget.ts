@@ -12,6 +12,7 @@ export const RESEARCH_BUDGET = {
   feeSearches: 6,
   repairSearches: 4,
   candidates: 80,
+  librarySourcesPerSchool: 8,
   modelSources: 40,
   attachments: 24,
   attachmentLinks: 12,

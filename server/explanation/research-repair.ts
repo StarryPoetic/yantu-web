@@ -1,5 +1,9 @@
 import { createResearchReader } from "./research-reader.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
+import {
+  researchSchoolPriorities,
+  type ResearchSchoolPreferences,
+} from "./research-school-priority.ts";
 import { createHash } from "node:crypto";
 import type {
   ResearchEvidenceGap,
@@ -105,6 +109,7 @@ export async function repairResearchEvidence(input: {
   gaps: readonly ResearchEvidenceGap[];
   sources: readonly WebSource[];
   targetYear: string;
+  preferences?: ResearchSchoolPreferences;
   web: ReturnType<typeof createWebAnswerModule>;
   maxRequests: number;
   maxReads: number;
@@ -129,9 +134,12 @@ export async function repairResearchEvidence(input: {
     const attempts: ResearchReadAttempt[] = [];
     const keys = new Set(input.lookupKeys ?? []);
     const touched = new Set<string>();
+    const schoolPriority = researchSchoolPriorities(input.preferences);
     const schools = new Map<string, ResearchEvidenceGap[]>();
     for (const gap of [...input.gaps].sort(
       (a, b) =>
+        schoolPriority.priority(a.institutionName) -
+          schoolPriority.priority(b.institutionName) ||
         priority[a.priority] - priority[b.priority] ||
         a.institutionName.localeCompare(b.institutionName, "zh-CN") ||
         a.id.localeCompare(b.id),
@@ -141,9 +149,13 @@ export async function repairResearchEvidence(input: {
       schools.set(gap.institutionName, list);
     }
     const gaps: ResearchEvidenceGap[] = [];
-    while ([...schools.values()].some((list) => list.length))
-      for (const list of schools.values())
-        if (list.length) gaps.push(list.shift()!);
+    for (const level of schoolPriority.active ? [0, 1, 2, 3] : [3]) {
+      const lists = [...schools]
+        .filter(([name]) => schoolPriority.priority(name) === level)
+        .map(([, list]) => list);
+      while (lists.some((list) => list.length))
+        for (const list of lists) if (list.length) gaps.push(list.shift()!);
+    }
     const maxRequests = Math.min(
       B.searches,
       Math.max(0, Math.floor(input.maxRequests)),
@@ -316,6 +328,12 @@ export async function repairResearchEvidence(input: {
         );
         return parent && link ? [{ candidate: { ...link, parent }, gap }] : [];
       })
+      .filter(
+        ({ gap }) =>
+          !schoolPriority.active ||
+          schoolPriority.priority(gap.institutionName) ===
+            schoolPriority.priority(gaps[0]?.institutionName),
+      )
       .slice(0, Math.min(B.concurrency, maxReads));
     if (opening.length > 1) {
       const results = await Promise.allSettled(

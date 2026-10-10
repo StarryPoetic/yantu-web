@@ -1,4 +1,6 @@
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
+import { schoolRegistry } from "../schools/index.ts";
+import { researchSchoolPriorities } from "./research-school-priority.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import type { WebSource } from "./web.ts";
 import { sourcePriority } from "./research-evidence.ts";
@@ -87,6 +89,7 @@ export function researchReadingOrder(
   disciplines: Discipline[],
   preferences: {
     cities?: readonly string[];
+    selectedSchool?: string;
     schoolHints?: readonly string[];
     targetYear?: string;
   } = {},
@@ -189,19 +192,33 @@ export function researchReadingOrder(
     );
     if (fee > 1) group.splice(1, 0, ...group.splice(fee, 1));
   }
+  const schoolPriority = researchSchoolPriorities(preferences);
+  const groupPriority = (group: WebSource[]) =>
+    Math.min(
+      ...group.map((source) => {
+        const seed = schoolRegistry.byHost(new URL(source.url).hostname);
+        const owned = [
+          preferences.selectedSchool,
+          ...(preferences.schoolHints ?? []),
+        ].find((name) => name && sourceHasSchoolIdentity(source, name));
+        return schoolPriority.priority(owned ?? seed?.name);
+      }),
+    );
   const priorityDomains = [...groups.entries()]
     .filter(([, group]) =>
-      group.some(
-        (source) =>
-          (preferences.cities ?? []).some(
-            (city) =>
-              city.length >= 2 &&
-              `${source.title} ${source.excerpt}`.includes(city),
-          ) ||
-          (preferences.schoolHints ?? []).some((school) =>
-            sourceHasSchoolIdentity(source, school),
+      schoolPriority.active
+        ? groupPriority(group) < 3
+        : group.some(
+            (source) =>
+              (preferences.cities ?? []).some(
+                (city) =>
+                  city.length >= 2 &&
+                  `${source.title} ${source.excerpt}`.includes(city),
+              ) ||
+              (preferences.schoolHints ?? []).some((school) =>
+                sourceHasSchoolIdentity(source, school),
+              ),
           ),
-      ),
     )
     .map(([domain]) => domain);
   const priority = new Set(priorityDomains);
@@ -212,6 +229,9 @@ export function researchReadingOrder(
           source.retrievalNote?.startsWith("公开学校发现目录"),
         );
       return (
+        (schoolPriority.active
+          ? groupPriority(a[1]) - groupPriority(b[1])
+          : 0) ||
         Number(navigationOnly(a[1])) - Number(navigationOnly(b[1])) ||
         Number(priority.has(b[0])) - Number(priority.has(a[0]))
       );

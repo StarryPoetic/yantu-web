@@ -1,4 +1,5 @@
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
+import { researchSchoolPriorities } from "./research-school-priority.ts";
 import { programEntries } from "./research-matching.ts";
 import { schoolRegistry } from "../schools/index.ts";
 import { extractProgramFacts, type ProgramFact } from "./research-facts.ts";
@@ -35,6 +36,9 @@ export interface ResearchEvidenceLibrary {
     disciplineCodes: string[];
     targetYear: string;
     schoolNames?: string[];
+    cities?: string[];
+    selectedSchool?: string;
+    schoolHints?: string[];
     maxSources?: number;
   }): WebSource[];
   queryFacts(input: {
@@ -671,6 +675,16 @@ export function createResearchEvidenceLibrary(
       });
     },
     load(input) {
+      const priority = researchSchoolPriorities(input);
+      const prioritySchools = [
+        ...new Set(
+          [
+            input.selectedSchool,
+            ...priority.citySchools,
+            ...(input.schoolHints ?? []),
+          ].filter((name): name is string => !!name),
+        ),
+      ].slice(0, B.candidates);
       const codes = [...new Set(input.disciplineCodes)]
         .filter((code) => disciplineCodes.has(code))
         .slice(0, 30);
@@ -737,9 +751,44 @@ export function createResearchEvidenceLibrary(
         ORDER BY CASE WHEN (${changes}) THEN 0 ELSE 1 END, s.retrieved_at DESC, s.url LIMIT ${B.candidates}`,
         )
         .all(...params, Number(input.targetYear)) as unknown as SourceRow[];
+      // Separate indexed windows protect older preferred schools from the global
+      // LIMIT, and from another preferred school's much larger inventory.
+      const preferred = priority.active
+        ? prioritySchools.flatMap((name) => {
+            const historical = db
+              .prepare(
+                `SELECT s.* FROM research_public_sources s
+          JOIN research_public_schools n ON n.url=s.url AND n.name=? WHERE ${predicate}
+          ORDER BY CASE WHEN (${changes}) AND instr(json_extract(s.payload,'$.excerpt'), ?) > 0 THEN 0 ELSE 1 END,
+          CASE s.evidence_year WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3 ELSE 4 END,
+          s.retrieved_at DESC,s.url LIMIT ${B.librarySourcesPerSchool * 2}`,
+              )
+              .all(
+                name,
+                ...params,
+                ...acceptableYears,
+                input.targetYear,
+                ...years,
+                Number(input.targetYear),
+              ) as unknown as SourceRow[];
+            const target = db
+              .prepare(
+                `SELECT s.* FROM research_public_sources s
+          JOIN research_public_schools n ON n.url=s.url AND n.name=?
+          WHERE (${clauses.join(" OR ")}) AND s.evidence_year=?
+          ORDER BY CASE WHEN (${changes}) THEN 0 ELSE 1 END,s.retrieved_at DESC,s.url LIMIT ${B.librarySourcesPerSchool}`,
+              )
+              .all(
+                name,
+                ...params,
+                Number(input.targetYear),
+              ) as unknown as SourceRow[];
+            return [...historical, ...target];
+          })
+        : [];
       const rows = [
         ...new Map(
-          [...baseline, ...current].map((row) => [row.url, row]),
+          [...baseline, ...current, ...preferred].map((row) => [row.url, row]),
         ).values(),
       ];
       const sources = rows.flatMap((row) => {
@@ -785,8 +834,14 @@ export function createResearchEvidenceLibrary(
           },
         ];
       });
+      const schoolName = (source: WebSource) =>
+        schoolRegistry.byHost(new URL(source.url).hostname)?.name ??
+        bodySchools(source)[0] ??
+        registrableDomain(new URL(source.url).hostname);
       sources.sort(
         (a, b) =>
+          priority.priority(schoolName(a.source)) -
+            priority.priority(schoolName(b.source)) ||
           Number(b.change) - Number(a.change) ||
           researchYearPriority(b.year, input.targetYear) -
             researchYearPriority(a.year, input.targetYear) ||
@@ -803,12 +858,48 @@ export function createResearchEvidenceLibrary(
             ]),
         ).values(),
       ].reverse();
-      const selected = unique.slice(0, limit);
+      const selected: typeof unique = [];
+      if (priority.active) {
+        for (const level of [0, 1, 2, 3]) {
+          const groups = new Map<string, typeof unique>();
+          for (const item of unique) {
+            const name = schoolName(item.source);
+            if (priority.priority(name) !== level) continue;
+            const group = groups.get(name) ?? [];
+            group.push(item);
+            groups.set(name, group);
+          }
+          for (const group of groups.values()) {
+            const target = group.find(
+              (item) => item.year === Number(input.targetYear),
+            );
+            if (target && group.indexOf(target) >= B.librarySourcesPerSchool)
+              group.splice(
+                B.librarySourcesPerSchool - 1,
+                0,
+                group.splice(group.indexOf(target), 1)[0],
+              );
+          }
+          for (
+            let round = 0;
+            round < B.librarySourcesPerSchool && selected.length < limit;
+            round++
+          )
+            for (const group of groups.values())
+              if (group[round] && selected.length < limit)
+                selected.push(group[round]);
+        }
+      } else selected.push(...unique.slice(0, limit));
       // Keep known current requirements visible beside the historical comparison baseline.
       const currentEvidence = sources.find(
         (item) => item.year === Number(input.targetYear),
       );
-      if (limit > 1 && currentEvidence && !selected.includes(currentEvidence))
+      if (
+        !priority.active &&
+        limit > 1 &&
+        currentEvidence &&
+        !selected.includes(currentEvidence)
+      )
         selected[selected.length - 1] = currentEvidence;
       return selected.map((item) => item.source);
     },

@@ -358,3 +358,28 @@ test("library gap opening reads different schools concurrently and records every
   assert.equal(result.attempts.length, 2);
   assert.ok(result.attempts.every((attempt) => attempt.status === "success"));
 });
+
+test("library-first opening and subsequent gap rounds prefer the requested city", async () => {
+  const preferred = page("杭州电子科技大学", "hdu.edu.cn");
+  const outside = page("西北大学", "nwu.edu.cn");
+  for (const parent of [outside, preferred])
+    parent.documentLinks = [0, 1].map((i) => ({
+      url: parent.url + `-${i}.pdf`,
+      title: "2026年硕士招生专业目录初试科目",
+    }));
+  const seen: string[] = [];
+  const result = await repairResearchEvidence({
+    ...base(),
+    sources: [outside, preferred],
+    gaps: [gap("西北大学"), gap("杭州电子科技大学")],
+    preferences: { cities: ["杭州"] },
+    maxReads: 2,
+    maxRequests: 0,
+    readPage: async (url) => {
+      seen.push(url);
+      return { text: "030101 法学理论", contentType: "application/pdf" };
+    },
+  });
+  assert.equal(result.readCount, 2);
+  assert.ok(seen[0].includes("hdu.edu.cn"));
+});
