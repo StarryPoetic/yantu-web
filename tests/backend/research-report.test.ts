@@ -64,6 +64,25 @@ function fixture() {
     ],
   });
 }
+test("report limitations describe the current shared search/read ceilings even when providers are disabled", async () => {
+  const run = fixture();
+  const report = await createResearchReportModule().generate({
+    subjectId: run.subjectId,
+    run,
+  });
+  assert.equal(report.status, "blocked");
+  assert.ok(
+    report.limitations.some((line) =>
+      line.includes(`执行${B.searches}次检索并读取${B.reads}项学校网页`),
+    ),
+  );
+  assert.ok(
+    report.limitations.some((line) => line.includes("最多规划六个方向")),
+  );
+  assert.ok(
+    report.limitations.every((line) => !line.includes("读取24项学校网页")),
+  );
+});
 function fitReasons() {
   return [
     {
