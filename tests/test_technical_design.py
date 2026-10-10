@@ -1,4 +1,4 @@
-"""Check that the technical design package is navigable and traceable to V0.9."""
+"""Check that the technical design package is navigable and traceable to V1.0."""
 
 from pathlib import Path
 import re
@@ -45,7 +45,7 @@ class TechnicalDesignTests(unittest.TestCase):
             with self.subTest(module=module):
                 self.assertIn(module, product)
         rows = re.findall(r"^\| (R-\d{2}) \| ([^|]+) \|", index, re.MULTILINE)
-        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 32)])
+        self.assertEqual([number for number, _ in rows], [f"R-{n:02d}" for n in range(1, 39)])
         self.assertEqual(len(set(number for number, _ in rows)), len(rows))
         for number, title in rows:
             self.assertTrue(title.strip(), number)
@@ -101,7 +101,7 @@ class TechnicalDesignTests(unittest.TestCase):
 
     def test_readme_points_to_current_baseline(self):
         readme = README.read_text(encoding="utf-8")
-        self.assertIn("产品设计文档 V0.9", readme)
+        self.assertIn("产品设计文档 V1.0", readme)
         self.assertIn("技术设计文档清单", readme)
         self.assertNotIn("产品设计文档 V0.4", readme)
 
@@ -125,7 +125,7 @@ class TechnicalDesignTests(unittest.TestCase):
                 self.assertIn(cells[1], {"拟议", "待定", "部分确定", "已确定", "已替代"})
                 self.assertNotIn(cells[0], definitions)
                 definitions[cells[0]] = cells
-        self.assertEqual(set(definitions), {f"D-{n:02d}" for n in range(1, 13)})
+        self.assertEqual(set(definitions), {f"D-{n:02d}" for n in range(1, 16)})
         for document in DESIGN_DIR.glob("*.md"):
             references = set(re.findall(r"\bD-\d{2}\b", document.read_text(encoding="utf-8")))
             self.assertLessEqual(references, set(definitions), document.name)
@@ -133,7 +133,7 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_acceptance_references_resolve_and_cover_every_requirement(self):
         owner = DESIGN_DIR / "05-安全运维与验证.md"
         definitions = re.findall(r"^\| (T-\d{2}) \|", owner.read_text(encoding="utf-8"), re.MULTILINE)
-        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 26)])
+        self.assertEqual(definitions, [f"T-{n:02d}" for n in range(1, 33)])
         covered = set()
         for document in DESIGN_DIR.glob("*.md"):
             content = document.read_text(encoding="utf-8")
@@ -159,7 +159,7 @@ class TechnicalDesignTests(unittest.TestCase):
 
     def test_current_version_and_new_contract_boundaries(self):
         for document in [INDEX, *(DESIGN_DIR / name for name in DESIGN_FILES)]:
-            self.assertIn("V0.6", document.read_text(encoding="utf-8"), document.name)
+            self.assertIn("V0.7", document.read_text(encoding="utf-8"), document.name)
         api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
         for route in (
             "PUT /api/v1/me/target", "GET /api/v1/research/status",
@@ -174,7 +174,7 @@ class TechnicalDesignTests(unittest.TestCase):
         for field in ("ResearchJob", "ResearchReport", "research-latest", "needsRefresh/refreshReasons", "valid=false"):
             self.assertIn(field, data)
 
-    def test_profile_research_v6_contract_and_budget_are_consistent(self):
+    def test_current_research_contract_preserves_v6_and_existing_budget(self):
         data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
         for field in (
             "profile-research-v6", "failureStage", "researchDirections", "followUpQuestions",
@@ -264,8 +264,7 @@ class TechnicalDesignTests(unittest.TestCase):
                         self.assertIn(phrase, content)
                     self.assertNotIn("无可靠分层理由暂列探索", content)
                 else:
-                    # The versioned design retains its v6 boundary; current v7
-                    # behaviour is documented and checked in the module README.
+                    # Preserve historical v6 wording while enforcing current v7 rules.
                     for phrase in ("无可靠分层理由暂列探索", "与综合分层独立"):
                         self.assertIn(phrase, content)
                 self.assertNotIn("已取得证据确认预算或城市不符时归入", content)
@@ -344,6 +343,77 @@ class TechnicalDesignTests(unittest.TestCase):
                     *modules,
                 ):
                     self.assertIn(value, content)
+
+    def test_three_tier_school_models_and_research_transport_boundaries(self):
+        architecture = (DESIGN_DIR / "01-总体架构与演进.md").read_text(encoding="utf-8")
+        for phrase in (
+            "三层资料", "正式目录", "公共院校资料库", "实时检索", "research_public_sources",
+            "院校种子库", "预抓取脚本", "research-library.ts", "demand-match-v1",
+            "模型只提供解释，不能改变层级", "阶段0不实现业务代码",
+        ):
+            self.assertIn(phrase, architecture)
+        data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
+        for phrase in (
+            "SchoolRegistryEntry", "name、aliases、province、city、registrableDomain",
+            "graduateAdmissionsUrl、campusHints、verifiedAt、verification", "ProgramFact",
+            "schoolName、registrableDomain、year、collegeName、majorCode、programName",
+            "degreeType、studyMode、exams、tuition、campus、sourceId、quote、extractedAt、extractor",
+            "WebSource.transport", "`https`/`http`", "WebSource.redirectChain",
+            "librarySchoolCount/libraryProgramCount", "validationIssues", "被拒原因", "读取尝试",
+            "verified:false", "最多3跳", "每跳重新公网 DNS 校验并固定连接 IP",
+        ):
+            self.assertIn(phrase, data)
+        model = (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md").read_text(encoding="utf-8")
+        policy = model.split("### 3.1. 研究读取策略（V0.7）", 1)[1].split("## 4.", 1)[0]
+        for phrase in (
+            "同校跳转", "最多3次", "每跳重新", "固定连接IP", "跨校跳转", "私网", "IP直连",
+            "`.edu.cn` 明文 HTTP仅限研究流程", "普通咨询与用户自填网址仍只用 HTTPS、不跟随跳转",
+            "WebSource.transport:'http'", "明文传输", "GBK/GB18030", "gzip/deflate/br",
+            "大小上限", "时间和取消限制", "细分读取失败码", "includeDomains",
+            "先查公共院校资料库", "yz.chsi.com.cn", "verified:false", "只删除该句",
+            "现行实现仍只读HTTPS并拒绝跳转", "本阶段不改变18次搜索、16次读取",
+        ):
+            self.assertIn(phrase, policy)
+        current = model.split("当前v7以", 1)[1].split("历史v6以", 1)[0]
+        for phrase in ("demand-match-v1", "模型只提供解释，不能改变层级", "不参与排序"):
+            self.assertIn(phrase, current)
+        for path in (
+            DESIGN_DIR / "04-接口与前端交互.md", DESIGN_DIR / "07-DeepSeek接入与密钥管理.md",
+            DESIGN_DIR / "08-变更与扩展约定.md", README,
+            ROOT / "docs" / "实施说明.md", ROOT / "docs" / "本地模型与联网测试.md",
+            ROOT / "docs" / "recommendation-method.md", ROOT / "server" / "explanation" / "README.md",
+        ):
+            with self.subTest(document=path.name):
+                content = path.read_text(encoding="utf-8")
+                self.assertIn("profile-research-v7", content)
+                self.assertIn("兼容旧版", content)
+                self.assertIn("profile-research-v6", content)
+
+    def test_phase_zero_traceability_covers_collection_and_baseline(self):
+        index = INDEX.read_text(encoding="utf-8")
+        for requirement, acceptance in zip(range(32, 39), range(26, 33)):
+            row = next(line for line in index.splitlines() if line.startswith(f"| R-{requirement} |"))
+            self.assertIn(f"T-{acceptance}", row)
+        acceptance = (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8")
+        for phrase in (
+            "≥300所", "31个省级行政区", "robots.txt", "间隔≥1秒", "研招网",
+            "并发读取共享总预算", "结构化事实", "共享额度", "已读但未结构化",
+            "当前v7按 `demand-match-v1` 固定规则分层，模型理由不改变层级",
+            "真实联网验证与模拟测试分开记录", "57.5%", "59%", "0/1/0", "39%",
+        ):
+            self.assertIn(phrase, acceptance)
+        api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
+        for phrase in ("资料库已收录 X 校 Y 专业、本次复用 Z 条、新读 W 条", "逐字段状态", "已读但未结构化", "待确认", "明文传输", "继续补查", "demand-match-v1", "模型只提供解释，不能改变层级"):
+            self.assertIn(phrase, api)
+        decisions = (DESIGN_DIR / "08-变更与扩展约定.md").read_text(encoding="utf-8")
+        for decision, status in ((13, "拟议"), (14, "拟议"), (15, "已确定")):
+            self.assertIn(f"| D-{decision} | {status} |", decisions)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        self.assertIn("## 13. 院校资料收集修复（2026-10-11，进行中）", implementation)
+        self.assertIn("后续阶段完成后更新本节", implementation)
+        self.assertNotIn("固定六次总预算", implementation)
+        for phase in range(1, 8):
+            self.assertIn(f"阶段{phase}", implementation)
 
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")

@@ -34,7 +34,7 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertFalse(re.search(r"\b(?:TODO|FIXME|TBD)\b", self.content))
 
     def test_current_requirement_version_is_declared(self):
-        self.assertRegex(self.content, r"版本：V0\.9 · 日期：\d{4}-\d{2}-\d{2}")
+        self.assertRegex(self.content, r"版本：V1\.0 · 日期：\d{4}-\d{2}-\d{2}")
 
     def test_full_profile_school_guidance_is_separate_from_year_eligibility(self):
         requirements = self.content.split("### 3.3. 全国专业与推荐结论", 1)[1].split("### 3.4.", 1)[0]
@@ -48,6 +48,37 @@ class ProductDocumentTests(unittest.TestCase):
             "当前已保存画像", "具体值由服务端绑定", "已清空的补充说明", "单条理由无效",
         ):
             self.assertIn(phrase, requirements)
+
+    def test_school_library_coverage_and_supplement_requirements(self):
+        requirements = self.content.split("### 3.5. 院校资料来源、覆盖与补查", 1)[1].split("## 4.", 1)[0]
+        for phrase in (
+            "正式目录", "公共院校资料库", "全国院校种子库", "实时检索",
+            "预抓取", "不调用付费搜索", "robots.txt", "间隔≥1秒",
+            "不少于300所", "31个省级行政区", "不证明招生专业、学费、校区或科目",
+            "先查资料库再检索", "来源、年度、获取时间", "verified:false",
+            "待确认", "只删除该句", "招生单位", "已读但未结构化",
+            "资料库已收录 X 校 Y 专业、本次复用 Z 条、新读 W 条",
+            "逐字段状态", "明文传输", "继续补查", "每跳重新", "固定连接 IP",
+            "跨校跳转拒绝", "普通咨询与用户自填网址仍只读 HTTPS", "不跟随跳转",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, requirements)
+        self.assertIn("院校资料库与覆盖", self.table_rows)
+        self.assertIn("公共院校资料库", self.table_rows)
+        scope = self.content.split("## 6. 首版 MVP 范围", 1)[1].split("## 7.", 1)[0]
+        for phrase in ("种子库", "公共院校资料库", "预抓取", "覆盖展示"):
+            self.assertIn(phrase, scope)
+
+    def test_collection_acceptance_compares_real_baseline_separately(self):
+        acceptance = self.content.split("## 7. 首版验收方向", 1)[1].split("## 参考资料", 1)[0]
+        for phrase in (
+            "读取成功率", "至少读成功一页的学校比例", "学费/校区/科目绑定数",
+            "意向城市学校数", "被校验删除比例", "57.5%", "59%", "0/1/0", "39%",
+            "真实联网验证与模拟测试分开记录", "样本分母", "修复后", "差值",
+        ):
+            self.assertIn(phrase, acceptance)
+        self.assertIn("服务端 `demand-match-v1` 固定规则", self.content)
+        self.assertIn("模型只提供解释，不能改变层级", self.content)
 
     def test_picker_review_target_and_research_requirements_are_explicit(self):
         for phrase in (

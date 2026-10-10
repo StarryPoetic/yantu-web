@@ -4,7 +4,7 @@
 
 ## 当前联网报告 v7（history-first-v1）
 
-`profile-research-v7`先按保存的需求建立最多6个调查方向，再合并模型补充线索。所有意向城市均检索招生单位清单，官网编码项目独立于模型进入候选；`demand-match-v1`固定排序，`programAlternatives`保留同校学位路线，`decisionBasis`记录测评快照与培养目标，`candidateAudit`说明逐校核验缺口。学位类型不推定数学／英语科目，示例小测不作为经标定的能力判断。当前分层、候选与年度资料流程以本节及[推荐方法与证据链](../../docs/recommendation-method.md)为准；旧报告需重新生成。
+现行新报告为 `profile-research-v7`，兼容旧版 `profile-research-v6` 及v3–v5；旧报告保持原快照。v7先按保存的需求建立最多6个调查方向，再合并模型补充线索。所有意向城市均检索招生单位清单，官网编码项目独立于模型进入候选；`demand-match-v1`固定排序，`programAlternatives`保留同校学位路线，`decisionBasis`记录测评快照与培养目标，`candidateAudit`说明逐校核验缺口。学位类型不推定数学／英语科目，示例小测不作为经标定的能力判断。当前分层、候选与年度资料流程以本节及[推荐方法与证据链](../../docs/recommendation-method.md)为准；旧报告需重新生成。
 
 `referencePolicy.strategy='history-first-v1'` 保存目标年度、前三年参考年度及说明。目标2027时，2026／2025／2024各有独立检索机会，学校与年度轮询防止同校大量相似页面占满来源；2027单独检查停招、调整等变化，已知变更保留优先读取。每个项目的 `referenceBasis` 以最近可核验历史条目为比较基准；只有目标年资料时明确缺少历史基准，没有目标年资料时保留有据的历史参考建议，仍标目标年资格待核验。
 
