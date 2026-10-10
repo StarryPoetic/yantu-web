@@ -1,3 +1,5 @@
+import { schoolRegistry } from "../schools/index.ts";
+import { normalizeCityName } from "../../shared/cities.ts";
 import type { Discipline } from "../disciplines/types.ts";
 
 /** Public discovery metadata. None of these fields establishes programme facts. */
@@ -6,6 +8,8 @@ export interface CityCandidateLead {
   school: string;
   officialDomain: string;
   discoveryUrl?: string;
+  discoveryUrls?: readonly string[];
+  cityMatch?: "main" | "campus_hint";
   /** Optional public geography leads; addresses still need actual safe reads. */
   locationDiscoveryUrls?: readonly string[];
   provenanceUrl: string;
@@ -14,54 +18,11 @@ export interface CityCandidateLead {
   discoveryOnly: true;
 }
 
-// This intentionally small registry supplements live city inventory searches;
-// it is not an exhaustive city list, a programme catalog or a recommendation.
-// To update a lead, check the official site and record its provenance/date.
-const registry = [
-  {
-    city: "杭州",
-    school: "杭州电子科技大学",
-    officialDomain: "hdu.edu.cn",
-    discoveryUrl: "https://grs.hdu.edu.cn/13497/list.htm",
-    locationDiscoveryUrls: ["https://xxhzk.hdu.edu.cn/main.htm"],
-    provenanceUrl: "https://grs.hdu.edu.cn/2026/0928/c13497a300811/page.htm",
-    checkedAt: "2026-10-04",
-  },
-  {
-    city: "杭州",
-    school: "浙江工业大学",
-    officialDomain: "zjut.edu.cn",
-    provenanceUrl: "https://zs.zjut.edu.cn/jsp/",
-    checkedAt: "2026-10-04",
-  },
-  {
-    city: "杭州",
-    school: "浙江理工大学",
-    officialDomain: "zstu.edu.cn",
-    discoveryUrl: "https://gradadmission.zstu.edu.cn/index.htm",
-    provenanceUrl: "https://gradadmission.zstu.edu.cn/index.htm",
-    checkedAt: "2026-10-04",
-  },
-  {
-    city: "杭州",
-    school: "浙江大学",
-    officialDomain: "zju.edu.cn",
-    discoveryUrl: "https://www.grs.zju.edu.cn/yjszs/main.htm",
-    provenanceUrl: "https://www.zju.edu.cn/xxgk/17953/list.htm",
-    checkedAt: "2026-10-04",
-  },
-  {
-    city: "杭州",
-    school: "杭州师范大学",
-    officialDomain: "hznu.edu.cn",
-    discoveryUrl: "https://yjs.hznu.edu.cn/yjszs/",
-    provenanceUrl: "https://yjs.hznu.edu.cn/yjszs/",
-    checkedAt: "2026-10-04",
-  },
-] as const;
+export const MAX_CITY_CANDIDATE_LEADS = 12;
+export const MAX_REGISTRY_NAVIGATION_READS = 6;
 
 export function normalizeDiscoveryCity(city: string) {
-  return city.trim().replace(/市$/, "");
+  return normalizeCityName(city);
 }
 
 /** Stable investigation leads independent of whatever schools an LLM names. */
@@ -71,10 +32,27 @@ export function preferredCityCandidateLeads(
 ): CityCandidateLead[] {
   const codes = [...new Set(disciplines.map((item) => item.code))].sort();
   return [...new Set(cities.map(normalizeDiscoveryCity))].flatMap((city) =>
-    registry
-      .filter((lead) => lead.city === city)
-      .map((lead) => ({
-        ...lead,
+    schoolRegistry
+      .byCity(city)
+      .sort(
+        (a, b) =>
+          Number(b.school.tags.includes("双一流")) -
+            Number(a.school.tags.includes("双一流")) ||
+          a.school.name.localeCompare(b.school.name, "zh-CN"),
+      )
+      .slice(0, MAX_CITY_CANDIDATE_LEADS)
+      .map(({ school, cityMatch }) => ({
+        city,
+        cityMatch,
+        school: school.name,
+        officialDomain: school.registrableDomain,
+        discoveryUrl: schoolRegistry.discoveryUrls(school)[0],
+        discoveryUrls: schoolRegistry.discoveryUrls(school),
+        locationDiscoveryUrls: school.locationDiscoveryUrls?.filter(
+          (url) => school.verification.urls?.[url] !== false,
+        ),
+        provenanceUrl: school.provenanceUrl ?? school.homepage,
+        checkedAt: school.verification.checkedAt,
         disciplineCodes: codes,
         discoveryOnly: true,
       })),

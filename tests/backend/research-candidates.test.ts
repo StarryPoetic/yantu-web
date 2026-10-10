@@ -4,6 +4,7 @@ import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
 import {
   preferredCityCandidateLeads,
   preferredCityInventoryQueries,
+  MAX_CITY_CANDIDATE_LEADS,
 } from "../../server/explanation/research-candidates.ts";
 
 const mechanical = getDisciplineCatalog().items.find(
@@ -27,7 +28,19 @@ test("preferred city discovery retains official school leads independent of mode
   assert.equal("programName" in leads[0], false);
   assert.equal("examSubjects" in leads[0], false);
   assert.equal("campus" in leads[0], false);
-  assert.deepEqual(preferredCityCandidateLeads(["西安"], [mechanical]), []);
+  for (const city of ["合肥", "南京", "成都", "西安"]) {
+    const national = preferredCityCandidateLeads([city], [mechanical]);
+    assert.ok(
+      national.length > 0 && national.length <= MAX_CITY_CANDIDATE_LEADS,
+    );
+    assert.ok(
+      national.every((lead) => lead.discoveryOnly && lead.city === city),
+    );
+    assert.deepEqual(
+      national,
+      preferredCityCandidateLeads([city, city + "市"], [mechanical]),
+    );
+  }
 });
 test("all preferred cities receive deterministic live inventory queries when the seed registry has no entry", () => {
   assert.deepEqual(preferredCityInventoryQueries(["西安市", "杭州", "西安"]), [

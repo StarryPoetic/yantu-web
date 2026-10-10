@@ -1,3 +1,5 @@
+import { schoolRegistry } from "../schools/index.ts";
+import { registrableDomain } from "./web.ts";
 import type { WebSource } from "./web.ts";
 import { validatedSourceProvenance } from "./research-provenance.ts";
 
@@ -39,7 +41,16 @@ function directSchoolIdentity(source: WebSource, school: string) {
     identityCache.set(source, cache);
   }
   if (cache.values.has(school)) return cache.values.get(school)!;
-  const found = uncachedSchoolIdentity(source, school);
+  const entry = schoolRegistry.byName(school);
+  const sameDomain =
+    schoolRegistrableDomain(source.url) === entry?.registrableDomain;
+  const found =
+    uncachedSchoolIdentity(source, school) ||
+    (!!entry &&
+      sameDomain &&
+      [entry.name, ...entry.aliases]
+        .filter((name) => name !== school)
+        .some((name) => uncachedSchoolIdentity(source, name)));
   cache.values.set(school, found);
   return found;
 }
@@ -101,7 +112,7 @@ function uncachedSchoolIdentity(source: WebSource, school: string) {
   );
 }
 
-/** Replace this resolver with the national registry when that evidence is available. */
+/** Registry names take priority; callers still require actual read identity. */
 export type InstitutionResolver = (
   registrableDomain: string,
   sources: readonly WebSource[],
@@ -110,9 +121,7 @@ export type InstitutionResolver = (
 export function schoolRegistrableDomain(value: string) {
   try {
     const host = new URL(value).hostname;
-    if (host.endsWith(".edu.cn")) return host.split(".").slice(-3).join(".");
-    if (host.endsWith(".ac.cn")) return host.split(".").slice(-3).join(".");
-    return host;
+    return registrableDomain(host);
   } catch {
     return undefined;
   }
@@ -136,6 +145,8 @@ export const resolveInstitutionFromPages: InstitutionResolver = (
   domain,
   sources,
 ) => {
+  const seed = schoolRegistry.byHost(domain);
+  if (seed) return seed.name;
   let cache = ownerCache.get(sources);
   if (
     !cache ||
@@ -240,6 +251,7 @@ export function normalizeInstitutionName(
     return {
       institutionName: owners[0],
       ...(owners[0] !== name &&
+      schoolRegistry.byName(name)?.name !== owners[0] &&
       !cited.some((s) =>
         new RegExp(`${name}[\\p{Script=Han}]{1,24}学院`, "u").test(
           withoutSchoolLinks(s.excerpt),
@@ -267,6 +279,13 @@ export function sourceHasSchoolIdentity(
     return false;
   // A department-owned body can inherit its university, never a conflicting university owner.
   const body = withoutSchoolLinks(source.excerpt);
+  const pageOwner = resolveUncachedInstitution(domain, [source]);
+  if (
+    pageOwner &&
+    pageOwner !== school &&
+    schoolRegistry.byName(pageOwner)?.name !== school
+  )
+    return false;
   const departments = [
     ...body.matchAll(
       /(?:^|[\s:：©。；|｜])([\p{Script=Han}]{2,24}学院)(?=$|\s|20\d{2}|硕士|研究生|招生|版权所有)/gu,

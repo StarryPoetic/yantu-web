@@ -77,6 +77,127 @@ const bind = (sources: WebSource[], changes = {}) =>
     "2027",
   );
 
+test("registered same-city campuses verify city from detailed school footer addresses; cross-city hints and unknown schools retain uncertainty", () => {
+  const schoolSource = (name: string, domain: string, address: string) => ({
+    ...source(
+      "registered",
+      `${name}2026年硕士研究生招生，080200 机械工程。\n${address}\n版权所有：${name}`,
+      `https://${domain}/graduate`,
+    ),
+    title: `${name}硕士招生资料`,
+  });
+  const sameCity = schoolSource(
+    "宁波工程学院",
+    "nbut.edu.cn",
+    "校区地址：宁波杭州湾新区滨海二路769号 电话0574-12345678 邮编315000。\n校区地址：宁波市江北区风华路201号",
+  );
+  const verify = (s: WebSource, name: string) =>
+    bindRecommendationEvidence(
+      card({
+        institutionName: name,
+        collegeName: undefined,
+        citations: [s.id],
+      }),
+      run,
+      discipline,
+      [s],
+      "2027",
+    );
+  const result = verify(sameCity, "宁波工程学院");
+  assert.equal(result.location?.city, "宁波");
+  assert.equal(
+    result.constraintChecks?.find((c) => c.field === "cities")?.status,
+    "mismatch",
+  );
+  assert.equal(result.location?.supportingEvidence?.length, 2);
+  assert.ok(
+    result.location?.supportingEvidence?.every((e) =>
+      sameCity.excerpt.includes(e.quote),
+    ),
+  );
+  const cross = verify(
+    schoolSource(
+      "浙江大学",
+      "zju.edu.cn",
+      "校区地址：杭州市学院路1号 电话12345 邮编310000",
+    ),
+    "浙江大学",
+  );
+  assert.equal(cross.location, undefined);
+  assert.ok(
+    cross.pendingEvidence?.some(
+      (e) => e.field === "location" && e.quote.includes("学院路1号"),
+    ),
+  );
+  const unknown = verify(
+    schoolSource(
+      "未知大学",
+      "unknown.edu.cn",
+      "校区地址：杭州市学院路1号。\n校区地址：杭州市学院路2号",
+    ),
+    "未知大学",
+  );
+  assert.equal(unknown.location, undefined);
+  const conflicting = verify(
+    { ...sameCity, excerpt: sameCity.excerpt + "\n校区地址：杭州市学院路1号" },
+    "宁波工程学院",
+  );
+  assert.equal(conflicting.location, undefined);
+  const coarseConflict = verify(
+    { ...sameCity, excerpt: sameCity.excerpt + "\n校区地址：杭州市钱塘区" },
+    "宁波工程学院",
+  );
+  assert.equal(coarseConflict.location, undefined);
+  const preferredRun = structuredClone(run);
+  preferredRun.inputSnapshot.profile.cities = ["宁波"];
+  const preferred = bindRecommendationEvidence(
+    card({
+      institutionName: "宁波工程学院",
+      collegeName: undefined,
+      citations: [sameCity.id],
+    }),
+    preferredRun,
+    discipline,
+    [sameCity],
+    "2027",
+  );
+  assert.equal(
+    preferred.constraintChecks?.find((c) => c.field === "cities")?.status,
+    "match",
+  );
+});
+
+test("detailed office/footer addresses survive as pending evidence, pure contact details do not; old school aliases cannot reappear as colleges", () => {
+  const result = bind([
+    source(
+      "addresses",
+      "甲大学硕士研究生招生。\n地址：宁波杭州湾新区滨海二路769号 电话0574-12345678 邮编315000。\n联系地址：电话0574-12345678 邮编315000 邮箱a@example.edu.cn",
+    ),
+  ]);
+  assert.equal(result.location, undefined);
+  const locations =
+    result.pendingEvidence?.filter((e) => e.field === "location") ?? [];
+  assert.equal(locations.length, 1);
+  assert.match(locations[0].quote, /滨海二路769号.*电话.*邮编/);
+  const oldName = source(
+    "yulin",
+    "榆林学院2026年硕士研究生招生专业目录。榆林学院\n080200 机械工程 全日制硕士招生。",
+    "https://yjsc.yulinu.edu.cn/catalog",
+  );
+  const normalized = bindRecommendationEvidence(
+    card({
+      institutionName: "榆林大学",
+      collegeName: "榆林学院",
+      citations: [oldName.id],
+    }),
+    run,
+    discipline,
+    [oldName],
+    "2027",
+  );
+  assert.equal(normalized.collegeName, undefined);
+});
+
 test("all same-domain read pages bind uncited tuition, campus and exams with source citations", () => {
   const fees = source(
     "fees",

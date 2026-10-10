@@ -1,4 +1,7 @@
 import type { Profile } from "../../shared/profile.ts";
+import { schoolRegistry } from "../schools/index.ts";
+import { schoolRegistrableDomain } from "./research-school.ts";
+import { hasStreetAddress } from "./research-address.ts";
 import type {
   LocationEvidence,
   RecommendationConstraintCheck,
@@ -739,12 +742,83 @@ function addressCities(text: string) {
   return [
     ...new Set(
       CITY_OPTIONS.filter(({ name }) =>
-        /[州盟区县]$/.test(name)
+        /自治州$|[盟区县]$/.test(name)
           ? text.includes(name)
           : text.includes(`${name}市`),
       ).map(({ name }) => name),
     ),
   ];
+}
+
+/** Same-city school addresses can identify a city, never a particular campus. */
+function registrySchoolCity(
+  input: RecommendationConstraintInput,
+): LocationEvidence | undefined {
+  const seed = schoolRegistry.byName(input.institutionName);
+  if (!seed || seed.campusHints.some((hint) => hint.city !== seed.city))
+    return undefined;
+  const addresses: { sourceId: string; quote: string; city: string }[] = [];
+  for (const source of input.sources) {
+    if (
+      source.kind !== "official_page" ||
+      source.parentSourceId ||
+      source.provenance ||
+      schoolRegistrableDomain(source.url) !== seed.registrableDomain ||
+      !sourceHasSchoolIdentity(source, seed.name, input.sources)
+    )
+      continue;
+    for (const quote of clauses(withoutSchoolLinks(source.excerpt))) {
+      if (!/地址|校址/.test(quote) && !hasStreetAddress(quote)) continue;
+      const marker = /地址|校址|校区/.exec(quote)!;
+      const prefix = quote.slice(0, marker.index);
+      if (
+        /合作|伙伴|邮寄|办公(?:室)?|招生办|咨询|通讯|通信|联系地址/.test(
+          prefix.slice(-60),
+        ) ||
+        otherProjectOwner(prefix, seed.name) ||
+        isRestrictedCampusQuote(source, quote)
+      )
+        continue;
+      const text = quote.slice(marker.index);
+      const addressStart = text.replace(
+        /^(?:校区)?(?:地址|校址)\s*[:：]\s*(?:[\p{Script=Han}]{2,8}省)?/u,
+        "",
+      );
+      const cities = [
+        ...new Set([
+          ...addressCities(text),
+          ...CITY_OPTIONS.filter(
+            ({ name }) =>
+              addressStart.startsWith(name) &&
+              /^[^，,。；;\s]{0,10}区/u.test(addressStart.slice(name.length)),
+          ).map(({ name }) => name),
+        ]),
+      ];
+      if (
+        !cities.length &&
+        !hasStreetAddress(quote) &&
+        !/[\p{Script=Han}]{2,}(?:省|市|区|县|州|盟|路|街|号)/u.test(
+          addressStart,
+        )
+      )
+        continue;
+      // Every observed school address must resolve, otherwise no city inference.
+      if (cities.length !== 1) return undefined;
+      addresses.push({ sourceId: source.id, quote, city: cities[0] });
+    }
+  }
+  if (!addresses.length || new Set(addresses.map((a) => a.city)).size !== 1)
+    return undefined;
+  return {
+    city: addresses[0].city,
+    quote: addresses[0].quote,
+    sourceId: addresses[0].sourceId,
+    supportingEvidence: addresses.map((a) => ({
+      sourceId: a.sourceId,
+      quote: a.quote,
+      role: "campus_city" as const,
+    })),
+  };
 }
 
 function schoolCopyright(text: string, institutionName: string) {
@@ -814,7 +888,7 @@ function checkedLocation(
   )
     return undefined;
   if (Array.isArray(raw.supportingEvidence)) {
-    const derived = deriveCampusLocation(input);
+    const derived = deriveCampusLocation(input) ?? registrySchoolCity(input);
     const claim = raw.supportingEvidence
       .map((passage) => {
         const value = record(passage);
@@ -878,6 +952,21 @@ function checkedLocation(
   const programLocal = addresses.some((clause) =>
     programAddress(clause, input),
   );
+  if (!programLocal) {
+    const seed = schoolRegistry.byName(input.institutionName);
+    if (seed?.campusHints.some((hint) => hint.city !== seed.city))
+      return undefined;
+    const schoolCity = registrySchoolCity(input);
+    if (
+      schoolCity &&
+      schoolCity.city === city &&
+      schoolCity.supportingEvidence?.some(
+        (e) => e.sourceId === raw.sourceId && e.quote.includes(cited.quote),
+      )
+    )
+      return schoolCity;
+    if (seed) return undefined;
+  }
   if (year !== undefined && year !== Number(input.targetYear)) {
     if (year > Number(input.targetYear)) return undefined;
     const currentPages = input.sources.filter(
@@ -1185,7 +1274,9 @@ export function deriveRecommendationConstraints(
   }
   const location =
     input.location === undefined
-      ? (deriveCampusLocation(input) ?? extractedLocation(input))
+      ? (deriveCampusLocation(input) ??
+        registrySchoolCity(input) ??
+        extractedLocation(input))
       : checkedLocation(input);
   const constraintChecks = [
     budgetCheck(input, tuition),

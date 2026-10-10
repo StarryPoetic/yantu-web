@@ -142,7 +142,13 @@ export function researchReadingOrder(
         (list ? 50 : 0)
       );
     };
-    group.sort((a, b) => score(b) - score(a));
+    group.sort((a, b) => {
+      const first = !!a.retrievalNote?.startsWith("公开学校发现目录");
+      const second = !!b.retrievalNote?.startsWith("公开学校发现目录");
+      return first && second
+        ? 0
+        : Number(first) - Number(second) || score(b) - score(a);
+    });
     if (historicalReferenceYears(preferences.targetYear ?? "").length) {
       const important = group.filter((source) =>
         isTargetYearChange(
@@ -199,7 +205,16 @@ export function researchReadingOrder(
     .map(([domain]) => domain);
   const priority = new Set(priorityDomains);
   const orderedGroups = [...groups.entries()]
-    .sort((a, b) => Number(priority.has(b[0])) - Number(priority.has(a[0])))
+    .sort((a, b) => {
+      const navigationOnly = (group: WebSource[]) =>
+        group.every((source) =>
+          source.retrievalNote?.startsWith("公开学校发现目录"),
+        );
+      return (
+        Number(navigationOnly(a[1])) - Number(navigationOnly(b[1])) ||
+        Number(priority.has(b[0])) - Number(priority.has(a[0]))
+      );
+    })
     .map(([, group]) => group);
   const pages: WebSource[] = [];
   for (let round = 0; round < sources.length; round++) {

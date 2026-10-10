@@ -63,7 +63,7 @@ function source(excerpt: string, changes: Partial<WebSource> = {}): WebSource {
 
 const twoRoutes = () =>
   source(
-    `${school}2027年硕士研究生招生专业目录。初试考试科目：\n080200 机械工程 学术学位 ①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理。\n085500 机械 专业学位 ①101思想政治理论 ②204英语二 ③302数学二 ④811机械原理。\n${school}地址：浙江省杭州市钱塘区大学路1号。`,
+    `${school}2027年硕士研究生招生专业目录。初试考试科目：\n080200 机械工程 学术学位 ①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理。机械工程培养地点：杭州市钱塘区大学路1号。\n085500 机械 专业学位 ①101思想政治理论 ②204英语二 ③302数学二 ④811机械原理。机械专业硕士培养地点：杭州市钱塘区大学路1号。\n${school}地址：浙江省杭州市钱塘区大学路1号。`,
   );
 
 test("opt-in scoped exam extraction preserves an active college's same-code programme beside a stopped college", () => {

@@ -1,3 +1,5 @@
+import { normalizeCollegeName } from "../schools/index.ts";
+import { hasStreetAddress } from "./research-address.ts";
 import type { Discipline, GuidanceRun } from "../disciplines/types.ts";
 import type { ResearchReport } from "./research.ts";
 import type { PendingResearchEvidence } from "../../shared/research-recommendation.ts";
@@ -56,6 +58,10 @@ export function bindRecommendationEvidence(
   sources: WebSource[],
   targetYear: string,
 ): Recommendation {
+  item = {
+    ...item,
+    collegeName: normalizeCollegeName(item.institutionName, item.collegeName),
+  };
   const own = sameSchoolReadSources(item, sources);
   const profile = researchContext(run).profile;
   const scopes = own
@@ -101,7 +107,17 @@ export function bindRecommendationEvidence(
   // Multiple faculties/modes stay unresolved instead of picking the first page.
   if (!ambiguousIdentity) {
     for (const field of ["majorCode", "collegeName", "studyMode"] as const) {
-      const values = [...new Set(scopes.map((s) => s[field]).filter(Boolean))];
+      const values = [
+        ...new Set(
+          scopes
+            .map((s) =>
+              field === "collegeName"
+                ? normalizeCollegeName(item.institutionName, s.collegeName)
+                : s[field],
+            )
+            .filter(Boolean),
+        ),
+      ];
       if (
         (!item[field] || item[field] === "unspecified") &&
         values.length === 1
@@ -177,7 +193,9 @@ export function bindRecommendationEvidence(
         const marker = {
           exams: /初试|考试科目|①|②|③|④/,
           tuition: /学\s*费/,
-          location: trainingLocation,
+          location: hasStreetAddress(passage)
+            ? /地址|校址|校区/
+            : trainingLocation,
         }[field].exec(passage);
         if (!marker) continue;
         if (!related && field === "exams") continue;

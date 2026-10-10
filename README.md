@@ -45,7 +45,7 @@ npm run check
 | ---------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | 全国学科目录与专业探索             | [knowledge/disciplines](knowledge/disciplines/README.md)、server/disciplines                        | 官方目录快照与来源、独立探索规则；年度项目缺失不能隐藏专业。                   |
 | 招生目录、来源、政策/就业/评价依据 | [knowledge/catalog](knowledge/catalog/README.md)                                                    | 完整年度项目 JSON → 草稿 → 独立审核 → 版本发布；不复制推荐代码。               |
-| 全国院校种子库 | `knowledge/schools`（规划中，详见产品3.5） | 全国官网/研究生招生网址线索，首批≥300所、31省；不证明招生事实。 |
+| 全国院校种子库 | [knowledge/schools](knowledge/schools/README.md)、`server/schools/index.ts` | 458所、31个省级行政区，含147所第二轮双一流；官网与研招网址只作发现线索，不证明招生事实。 |
 | 公共院校资料库 | `server/explanation/research-library.ts`、SQLite的 `research_public_sources` 等原文表，结构化专业事实与预抓取规划中 | 长期复用官网原文及ProgramFact，保持 `verified:false`，不自动审核发布；研究先查库再补缺。 |
 | 题目、答案、范围、难度与审校       | [knowledge/questions](knowledge/questions/README.md)                                                | 服务端独立题库；扩建题目不改页面。                                             |
 | 资格、偏好和排序                   | [server/recommendation](server/recommendation/index.ts)                                             | 确定性规则，独立于模型。                                                       |

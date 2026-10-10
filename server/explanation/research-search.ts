@@ -1,9 +1,12 @@
 import type { Discipline } from "../disciplines/types.ts";
+import { schoolRegistry } from "../schools/index.ts";
+import { registrableDomain } from "./web.ts";
 import { researchReason } from "../../shared/research-status.ts";
 import type { createWebAnswerModule, WebSource } from "./web.ts";
 import { sourcePriority } from "./research-evidence.ts";
 import { sourceHasSchoolIdentity } from "./research-school.ts";
 import {
+  MAX_REGISTRY_NAVIGATION_READS,
   preferredCityInventoryQueries,
   type CityCandidateLead,
 } from "./research-candidates.ts";
@@ -31,9 +34,10 @@ const caches = new WeakMap<
 
 function schoolDomain(source: WebSource): string | undefined {
   const host = new URL(source.url).hostname;
-  return /^[a-z0-9.-]+\.edu\.cn$/.test(host)
-    ? host.split(".").slice(-3).join(".")
-    : undefined;
+  return (
+    schoolRegistry.byHost(host)?.registrableDomain ??
+    (/^[a-z0-9.-]+\.edu\.cn$/.test(host) ? registrableDomain(host) : undefined)
+  );
 }
 
 function mentionedSchoolDomains(sources: WebSource[], school?: string) {
@@ -62,6 +66,8 @@ function hasGraduateLead(sources: WebSource[], discipline: Discipline) {
 }
 
 function hintedSchoolDomains(sources: WebSource[], school: string) {
+  const seed = schoolRegistry.byName(school);
+  if (seed) return [seed.registrableDomain];
   // A result for one school can mention other institutions. Prefer the school
   // identified in the title, then use its own description or an explicit URL clue.
   const related = sources.filter((source) =>
@@ -193,7 +199,7 @@ export async function searchResearchSources(input: {
         ...(index === 0 && input.selectedSchool ? [input.selectedSchool] : []),
         ...(input.schoolHints?.get(discipline.code) ?? []),
       ]),
-    ],
+    ].map((name) => schoolRegistry.byName(name)?.name ?? name),
     hintIndex: 0,
     usedDomains: new Set<string>(),
     broadIndex: 0,
@@ -270,25 +276,51 @@ export async function searchResearchSources(input: {
       domains: [lead.officialDomain],
       lead,
     })),
-  ];
+    // Leave room for observed-school followups and fee lookups after city discovery.
+  ].slice(0, maxRequests > 6 ? Math.max(1, maxRequests - 8) : maxRequests);
   // Official navigation URLs are public investigation leads, not read evidence.
   // They survive a search provider indexing miss and still require a safe read.
-  for (const lead of input.candidateLeads ?? []) {
-    if (!lead.discoveryUrl || !states[0]) continue;
+  const navigationSources: { source: WebSource; direction: string }[] = [];
+  const seedLeads = [...(input.candidateLeads ?? [])];
+  for (const state of states)
+    for (const name of state.hints) {
+      const seed = schoolRegistry.byName(name);
+      if (!seed || seedLeads.some((lead) => lead.school === seed.name))
+        continue;
+      seedLeads.push({
+        city: seed.city,
+        school: seed.name,
+        officialDomain: seed.registrableDomain,
+        discoveryUrls: schoolRegistry.discoveryUrls(seed),
+        provenanceUrl: seed.provenanceUrl ?? seed.homepage,
+        checkedAt: seed.verification.checkedAt,
+        disciplineCodes: [state.discipline.code],
+        discoveryOnly: true,
+      });
+    }
+  for (const lead of seedLeads) {
+    if (!states[0]) continue;
     const state =
       states.find((item) =>
         lead.disciplineCodes.includes(item.discipline.code),
       ) ?? states[0];
-    state.pool.push({
-      id: "candidate-navigation",
-      title: `${lead.school} 硕士研究生招生专业目录查询入口`,
-      url: lead.discoveryUrl,
-      excerpt: `${lead.school}官方公开招生入口，仅作为待调查线索；学校具体专业、校区、考试科目及资格仍须读取正文核验。`,
-      retrievedAt: new Date().toISOString(),
-      kind: "search_snippet",
-      verified: false,
-      retrievalNote: `公开学校发现目录；登记依据 ${lead.provenanceUrl}，检查日期 ${lead.checkedAt}。不代表已取得专业证据。`,
-    });
+    for (const url of lead.discoveryUrls ??
+      (lead.discoveryUrl ? [lead.discoveryUrl] : [])) {
+      if (navigationSources.some((item) => item.source.url === url)) continue;
+      navigationSources.push({
+        direction: state.discipline.code,
+        source: {
+          id: "candidate-navigation",
+          title: `${lead.school} 硕士研究生招生专业目录查询入口`,
+          url,
+          excerpt: `${lead.school}官方公开招生入口，仅作为待调查线索；学校具体专业、校区、考试科目及资格仍须读取正文核验。`,
+          retrievedAt: new Date().toISOString(),
+          kind: "search_snippet",
+          verified: false,
+          retrievalNote: `公开学校发现目录；登记依据 ${lead.provenanceUrl}，检查日期 ${lead.checkedAt}。不代表已取得专业证据。`,
+        },
+      });
+    }
   }
   let candidateQueryIndex = 0;
   let searched = false;
@@ -472,7 +504,7 @@ export async function searchResearchSources(input: {
             .filter(Boolean)
             .join(" ");
           resultPool = hint.state.pool;
-          domains = [];
+          domains = hintedSchoolDomains(hint.state.pool, hint.school);
         } else if (broadDiscovery < broadDiscoveryCount) {
           const discovered = states[broadDiscovery++];
           const region =
@@ -540,9 +572,11 @@ export async function searchResearchSources(input: {
         }
       } else if (recoverFirstSchool) {
         question = `${state.hints[0]} ${discipline.name} 硕士 培养方案`;
+        domains = hintedSchoolDomains(pool, state.hints[0]);
       } else if (broadenSchool) {
         state.hintIndex++;
         question = `${nextHint} ${discipline.name} 硕士${maxRequests > 6 ? " 招生专业目录" : ""}`;
+        domains = hintedSchoolDomains(pool, nextHint);
       } else if (domains.length) {
         domains.forEach((domain) => state.usedDomains.add(domain));
         question = `${discipline.name} 硕士 培养 招生`;
@@ -640,6 +674,38 @@ export async function searchResearchSources(input: {
       const id = `research-${sources.length + 1}`;
       sources.push({ ...source, id, excerpt: source.excerpt.slice(0, 1800) });
       sourceDirections.set(id, queue.code);
+    }
+  }
+  // Direct registry navigation follows observed results; it cannot reorder their
+  // citation IDs or masquerade as a provider hit when a search yields nothing.
+  const bySchool = new Map<string, typeof navigationSources>();
+  for (const item of navigationSources) {
+    const key = registrableDomain(new URL(item.source.url).hostname);
+    const group = bySchool.get(key) ?? [];
+    group.push(item);
+    bySchool.set(key, group);
+  }
+  let navigationCount = 0;
+  for (
+    let round = 0;
+    round < navigationSources.length &&
+    sources.length < maxSources &&
+    navigationCount < MAX_REGISTRY_NAVIGATION_READS;
+    round++
+  ) {
+    for (const group of bySchool.values()) {
+      const item = group[round];
+      if (
+        !item ||
+        sources.length >= maxSources ||
+        navigationCount >= MAX_REGISTRY_NAVIGATION_READS ||
+        sources.some((s) => s.url === item.source.url)
+      )
+        continue;
+      const id = `research-${sources.length + 1}`;
+      sources.push({ ...item.source, id });
+      navigationCount++;
+      sourceDirections.set(id, item.direction);
     }
   }
   return {

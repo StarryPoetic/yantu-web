@@ -54,6 +54,7 @@ class TechnicalDesignTests(unittest.TestCase):
         files = [INDEX, *(DESIGN_DIR / name for name in DESIGN_FILES), README,
                  ROOT / "docs" / "实施说明.md", ROOT / "docs" / "本地模型与联网测试.md", ROOT / "knowledge" / "README.md",
                  ROOT / "knowledge" / "catalog" / "README.md",
+                 ROOT / "knowledge" / "schools" / "README.md",
                  ROOT / "knowledge" / "questions" / "README.md",
                  ROOT / "server" / "explanation" / "README.md"]
         for document in files:
@@ -355,7 +356,7 @@ class TechnicalDesignTests(unittest.TestCase):
         data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
         for phrase in (
             "SchoolRegistryEntry", "name、aliases、province、city、registrableDomain",
-            "graduateAdmissionsUrl、campusHints、verifiedAt、verification", "ProgramFact",
+            "graduateAdmissionsUrl、campusHints、tags、discoveryUrls、locationDiscoveryUrls、provenanceUrl、verification", "ProgramFact",
             "schoolName、registrableDomain、year、collegeName、majorCode、programName",
             "degreeType、studyMode、exams、tuition、campus、sourceId、quote、extractedAt、extractor",
             "WebSource.transport", "`https`/`http`", "WebSource.redirectChain",
@@ -406,7 +407,7 @@ class TechnicalDesignTests(unittest.TestCase):
         for phrase in ("资料库已收录 X 校 Y 专业、本次复用 Z 条、新读 W 条", "逐字段状态", "已读但未结构化", "待确认", "明文传输", "继续补查", "demand-match-v1", "模型只提供解释，不能改变层级"):
             self.assertIn(phrase, api)
         decisions = (DESIGN_DIR / "08-变更与扩展约定.md").read_text(encoding="utf-8")
-        for decision, status in ((13, "拟议"), (14, "拟议"), (15, "已确定")):
+        for decision, status in ((13, "已确定"), (14, "拟议"), (15, "已确定")):
             self.assertIn(f"| D-{decision} | {status} |", decisions)
         implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
         self.assertIn("## 13. 院校资料收集修复（2026-10-11，进行中）", implementation)
@@ -490,6 +491,39 @@ class TechnicalDesignTests(unittest.TestCase):
             self.assertIn(row, implementation)
         for phrase in ("7000元/年", "2024", "学习方式", "纯联系方式", "城市级校区核验", "不改写首次阶段2提交"):
             self.assertIn(phrase, implementation)
+
+    def test_phase_three_registry_city_guards_and_replay_are_documented(self):
+        for path in (
+            ROOT / "knowledge" / "schools" / "README.md",
+            ROOT / "docs" / "recommendation-method.md",
+            ROOT / "server" / "explanation" / "README.md",
+            DESIGN_DIR / "01-总体架构与演进.md",
+            DESIGN_DIR / "02-数据模型与可信数据.md",
+            DESIGN_DIR / "07-DeepSeek接入与密钥管理.md",
+        ):
+            content = path.read_text(encoding="utf-8")
+            for phrase in ("阶段3", "458", "31个省级行政区", "147所第二轮双一流", "discoveryOnly: true", "12", "6", "includeDomains"):
+                with self.subTest(document=path.name, phrase=phrase):
+                    self.assertIn(phrase, content)
+        registry = (ROOT / "knowledge" / "schools" / "README.md").read_text(encoding="utf-8")
+        for phrase in ("--province", "--city", "--limit", "--write", "每月及发布前", "D-13", "22/25", "20/21", "48/54", "榆林学院", "西湖大学", "间隔至少1秒"):
+            self.assertIn(phrase, registry)
+        for path in (ROOT / "docs" / "recommendation-method.md", DESIGN_DIR / "02-数据模型与可信数据.md", DESIGN_DIR / "07-DeepSeek接入与密钥管理.md"):
+            content = path.read_text(encoding="utf-8")
+            for phrase in ("城市级校区核验", "跨城", "待确认原文", "门牌", "具体校区"):
+                self.assertIn(phrase, content)
+            self.assertNotIn("城市级校区核验留待阶段3", content)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        for phrase in ("13.4. 阶段3", "455", "410/455", "293/293", "458", "412/458", "296/297", "22/25", "20/21", "保存证据的离线重放，不是新的联网结果", "榆林大学", "宁波杭州湾新区"):
+            self.assertIn(phrase, implementation)
+        for row in (
+            "| 最终推荐数 | 6 | 6 |",
+            "| 校区城市已核验数 | 0 | 5 |",
+            "| 待确认原文总条数 | 3 | 4 |",
+            "| 意向城市杭州已核验学校数 | 0 | 1 |",
+            "| cities：match / mismatch / unknown | 0 / 0 / 6 | 1 / 4 / 1 |",
+        ):
+            self.assertIn(row, implementation)
 
     def test_domestic_search_setup_matches_server_environment_contract(self):
         guide = (ROOT / "docs" / "本地模型与联网测试.md").read_text(encoding="utf-8")

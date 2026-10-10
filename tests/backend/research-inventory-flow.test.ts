@@ -9,6 +9,9 @@ import type { WebReader } from "../../server/explanation/web.ts";
 import { generateGuidance } from "../../server/disciplines/index.ts";
 import { blankProfile } from "../../server/profile.ts";
 import { webPageText } from "../../server/explanation/web.ts";
+import { schoolRegistry } from "../../server/schools/index.ts";
+import { preferredCityCandidateLeads } from "../../server/explanation/research-candidates.ts";
+import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
 
 const school = "杭州电子科技大学";
 const listUrl = "https://grs.hdu.edu.cn/13497/list.htm";
@@ -16,6 +19,97 @@ const directoryUrl = "https://grs.hdu.edu.cn/2026/0929/c13497a301001/page.htm";
 const xlsUrl = "https://grs.hdu.edu.cn/_upload/catalog.xls";
 const charterUrl = "https://grs.hdu.edu.cn/2026/0928/c13497a300811/page.htm";
 const campusUrl = "https://xxhzk.hdu.edu.cn/main.htm";
+for (const city of ["合肥", "成都"]) {
+  test(`national registry reads a ${city} seed without an indexed search hit and shares every read ceiling`, async () => {
+    const discipline = getDisciplineCatalog().items.find(
+      (d) => d.code === "0855",
+    )!;
+    const leads = preferredCityCandidateLeads([city], [discipline]);
+    const lead = leads.find((l) => l.discoveryUrls?.length)!;
+    const url = lead.discoveryUrls![0];
+    const reads: string[] = [];
+    let queries = 0;
+    const engine = createResearchReportModule({
+      enabled: true,
+      apiKey: "test-only",
+      searchEnabled: true,
+      searchKey: "test-only",
+      userDailyTokens: 100000,
+      globalDailyTokens: 500000,
+      searchDailyRequestsPerUser: 100,
+      searchDailyRequestsGlobal: 500,
+      adapter: {
+        async complete(messages) {
+          return {
+            content: JSON.stringify(
+              messages[0].content.includes("research-direction-plan")
+                ? { directions: [], followUpQuestions: [] }
+                : {
+                    summary: "模型未提出学校。",
+                    facts: [],
+                    recommendations: [],
+                    limitations: [],
+                  },
+            ),
+            inputTokens: 100,
+            outputTokens: 100,
+            model: "deepseek-v4-pro",
+          };
+        },
+      },
+      reader: async (target) => {
+        if (new URL(target).hostname === "api.search.brave.com") {
+          queries++;
+          return {
+            contentType: "application/json",
+            text: JSON.stringify({ web: { results: [] } }),
+          };
+        }
+        reads.push(target);
+        if (target !== url) throw new ModelError("WEB_UNAVAILABLE");
+        // A structural mock of programme evidence, not the real school's facts.
+        return {
+          contentType: "text/html",
+          text: `<header>${lead.school}</header><p>2026年硕士研究生招生专业目录。085500 机械 全日制 专业学位 初试①101思想政治理论②204英语二③302数学二④811机械原理。</p><p>${lead.school}机械专业硕士培养地点：${city}市大学路1号。</p>`,
+        };
+      },
+    });
+    const run = generateGuidance({
+      subjectId: `seed-${city}`,
+      guidanceRunId: `seed-${city}`,
+      generatedAt: "2026-10-11T00:00:00Z",
+      profile: {
+        ...blankProfile(),
+        major: "机械工程",
+        targetMajor: "机械",
+        cities: [city],
+        hours: "4–6小时",
+      },
+      profileVersion: 1,
+      selectionVersion: 0,
+      confirmedMajorId: null,
+      excludedMajorIds: [],
+      assessments: [],
+    });
+    const report = await engine.generate({ subjectId: run.subjectId, run });
+    assert.ok(reads.includes(url));
+    assert.ok(queries <= 24 && reads.length <= 24);
+    assert.ok(
+      reads.filter(
+        (u) => schoolRegistry.byHost(new URL(u).hostname)?.name === lead.school,
+      ).length <= 6,
+    );
+    assert.ok(
+      report.sources.find((s) => s.url === url)?.kind === "official_page",
+    );
+    assert.ok(
+      report.recommendations.some(
+        (r) => r.institutionName === lead.school && r.location?.city === city,
+      ),
+    );
+    assert.ok(report.sources.every((s) => s.verified === false));
+  });
+}
 // Structural fixtures, not an alternative to the actual school's admission catalogue.
 const table =
   "工作表：目录\n第1行：2027年硕士研究生招生专业目录\n第2行：学院 | 专业 | 学位 | 考试科目\n第3行：010机械工程学院 | 080200机械工程 | 学术学位 | 初试①101思想政治理论②201英语（一）③301数学（一）\n第4行：010机械工程学院 | 085500机械 | 专业学位 | 初试①101思想政治理论②201英语（一）③301数学（一）";
@@ -178,7 +272,10 @@ for (const failure of ["none", "plan", "report"] as const) {
     const { engine, run, reads, calls } = fixture(failure);
     const report = await engine.generate({ subjectId: run.subjectId, run });
     assert.equal(report.reportVersion, "profile-research-v7");
-    assert.ok(reads.indexOf(directoryUrl) > reads.indexOf(listUrl));
+    assert.ok(
+      reads.indexOf(directoryUrl) > reads.indexOf(listUrl),
+      JSON.stringify(reads),
+    );
     assert.ok(reads.indexOf(xlsUrl) > reads.indexOf(directoryUrl));
     assert.equal(report.recommendations.length, 1);
     const main = report.recommendations[0];
@@ -323,7 +420,11 @@ test("an unregistered city and school recover both degree routes and campus city
       (query) => query.includes("南京") && query.includes("招生单位"),
     ),
   );
-  assert.deepEqual(reads, [directory, charter, campus]);
+  assert.deepEqual(
+    reads.filter((url) => new URL(url).hostname.endsWith("qingyuan.edu.cn")),
+    [directory, charter, campus],
+  );
+  assert.ok(reads.length <= 24);
   assert.equal(report.recommendations.length, 1);
   const main = report.recommendations[0];
   assert.equal(main.institutionName, university);

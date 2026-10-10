@@ -193,8 +193,18 @@ npx playwright test tests/tutor-chat.spec.ts
 
 `research-binding.ts` 在模型分析后，从同校注册域名全部已读正文绑定 exams/tuition/location，追加 citations，并重新计算 constraintChecks；最终层级仍由 demand-match-v1 决定。`research-program-scope.ts` 统一代码行的学院及学习方式边界。附件仍验证真实父页链接与同校归属，历史字段保留年度，目标年度冲突优先，全程／学期／学分不年化，特殊人群与合作单位地址不套用。不能唯一归属的相关连续原文进入 `pendingEvidence:[{field,quote,sourceId,year?,reason}]`，quote≤300字，页面显示“待确认原文”，不用于预算或城市匹配。
 
-`research-school.ts` 的可替换 `InstitutionResolver` 目前用已读正文校名主体、标题与版权所有者解析域名招生单位；学院归一后保留 collegeName，无法归一和非专业栏目名作废。身份缓存随实际正文、标题和来源状态变化失效，不缓存个人画像。
+`research-school.ts` 的可替换 `InstitutionResolver` 在阶段3优先使用种子库注册域名和正式校名；未知学校用已读正文校名主体、标题与版权所有者回退。学院归一后保留 collegeName，学校本身的名称、旧名和别名不会成为学院。无法归一和非专业栏目名作废。身份缓存随实际正文、标题和来源状态变化失效，不缓存个人画像；域名识别仍不能替代正文学校身份及硕士语境核验。
 
 报告通过 `server/routes/research.ts` 保存 `rejectedRecommendations:[{institutionName,programName,code,removedSentences}]`、`validationIssues:[{path,code}]`、`readStatistics:{success,failed,failuresByCode}`，本人可从 `GET /api/v1/research-jobs/:id` 读回；补查失败保留旧报告时同步本次诊断。removedSentences=0表示整条拒绝，正数为删除句数；不保存模型全文或被删句子全文。读取失败只按实际尝试计数，内外层捕获同一次失败不重复计入；Markdown“技术信息”列出计数，诊断暂不在页面展示。
 
-阶段2审查修正：明确全校口径的单一费率可绑定，tuition.scope 为 school_wide（全校统一标准）或 school_wide_mode（按已确认学习方式）。历史年度保留；学校费率无适用年度时 year 可缺失，预算保持unknown。专业分项、特殊人群及目标年度冲突仍核验，全程／学期／学分不年化。`research-tuition-passages.ts` 提供连续学费金额条目及规范化去重键；待确认原文不收辅助费用、标题和纯联系方式，reason 说明具体方式、金额、校区、年度或范围问题。城市级校区核验留待阶段3。
+阶段2审查修正：明确全校口径的单一费率可绑定，tuition.scope 为 school_wide（全校统一标准）或 school_wide_mode（按已确认学习方式）。历史年度保留；学校费率无适用年度时 year 可缺失，预算保持unknown。专业分项、特殊人群及目标年度冲突仍核验，全程／学期／学分不年化。`research-tuition-passages.ts` 提供连续学费金额条目及规范化去重键；待确认原文不收辅助费用、标题和纯联系方式，reason 说明具体方式、金额、校区、年度或范围问题。
+
+## 阶段3全国院校种子库
+
+[registry.json](../../knowledge/schools/registry.json) 收录458校、31个省级行政区，含全部147所第二轮双一流。server/schools 启动时校验名称、别名、注册域名、省市、URL及核验摘要。按城市、主机及别名查询均返回 discoveryOnly: true；城市匹配区分 main 与 campus_hint，不能把种子或网页可读性当成招生事实。原杭州5校具体招生与地理导航全部保留。
+
+每个意向城市最多12条稳定线索，双一流优先、随后按校名排序；学校级 includeDomains 优先使用种子根域，库外学校沿用真实网页观察。已观察专业来源优先，直接种子导航最多6次，不占用意向城市恢复槽位。初期18次、总24次搜索与24次总读取、初期每校4次及后续每校6次上限不变。
+
+城市级校区核验要求该校在种子库中且没有跨城 campusHints，本次读到的学校实际地址全部同城且可识别；仅确认城市，具体校区仍待专业安排。跨城提示、多城市地址和库外学校继续使用专业级证据。带街道门牌的办学地址即使含电话、邮编也保留；不能绑定时展示待确认原文，纯电话／邮编／邮箱继续排除。
+
+免费核验脚本 scripts/verify-school-registry.mjs 支持 --province/--city/--limit/--write，复用公网DNS、固定IP、TLS、编码识别和最多3跳的同校安全 reader。全局并发≤6、同域串行、间隔至少1秒、单次10秒；不加载 .env，不调用模型或付费搜索。资料负责人维护、部署方每月及发布前复核（D-13），操作见 [种子库说明](../../knowledge/schools/README.md)。

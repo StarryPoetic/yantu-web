@@ -1,3 +1,4 @@
+import { normalizeCollegeName } from "../schools/index.ts";
 import { createHash } from "node:crypto";
 import type { ResearchDecisionBasis } from "../../shared/research-decision.ts";
 import type {
@@ -17,7 +18,10 @@ import type { GuidanceRun, Discipline } from "../disciplines/types.ts";
 import type { ProgramRevision } from "../catalog/types.ts";
 import { researchReason } from "../../shared/research-status.ts";
 import { searchResearchSources } from "./research-search.ts";
-import { preferredCityCandidateLeads } from "./research-candidates.ts";
+import {
+  preferredCityCandidateLeads,
+  MAX_REGISTRY_NAVIGATION_READS,
+} from "./research-candidates.ts";
 import { normalizeAttachedEvidence } from "./research-provenance.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
 import { safeSourceYear as researchSourceYear } from "./research-years.ts";
@@ -706,11 +710,13 @@ function validateReport(
           (!normalized.collegeName || r.collegeName === normalized.collegeName),
       );
       const identity = identities.length === 1 ? identities[0] : undefined;
-      const collegeName =
+      const collegeName = normalizeCollegeName(
+        institutionName,
         normalized.collegeName ??
-        (typeof entry.collegeName === "string"
-          ? text(entry.collegeName, 120)
-          : identity?.collegeName);
+          (typeof entry.collegeName === "string"
+            ? text(entry.collegeName, 120)
+            : identity?.collegeName),
+      );
       const majorCode =
         typeof entry.majorCode === "string"
           ? text(entry.majorCode, 6)
@@ -1679,6 +1685,7 @@ export function createResearchReportModule(
       const attachedIds = new Set<string>();
       const attachmentDepth = new Map<string, number>();
       const schoolReads = new Map<string, number>();
+      let registryNavigationReads = 0;
       const locationLinks = new Map<
         string,
         { url: string; title: string; parentSourceId: string }[]
@@ -1705,6 +1712,10 @@ export function createResearchReportModule(
           (config.allowAcademicHosts ?? true) &&
           /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
         if (!hosts.includes(url.hostname) && !academic) continue;
+        const registryNavigation =
+          source.retrievalNote?.startsWith("公开学校发现目录");
+        // City recovery is reserved for observed programme evidence, not seeds.
+        if (registryNavigation && pageReads >= 16) continue;
         if (pageReads >= 16) {
           if (
             !regions.length ||
@@ -1726,6 +1737,12 @@ export function createResearchReportModule(
         // Failed pages from one school cannot consume most of the 24-read budget.
         const schoolReadCount = schoolReads.get(domain) ?? 0;
         if (schoolReadCount >= 4) continue;
+        if (
+          registryNavigation &&
+          registryNavigationReads >= MAX_REGISTRY_NAVIGATION_READS
+        )
+          continue;
+        if (registryNavigation) registryNavigationReads++;
         schoolReads.set(domain, schoolReadCount + 1);
         if (pageReads >= 16) cityRecoveryReads++;
         pageReads++;
@@ -2066,18 +2083,27 @@ export function createResearchReportModule(
         refreshCoverage();
       }
       if (
+        (!report.sources.some(isSchoolPage) &&
+          report.sources.every(
+            (source) =>
+              source.retrievalNote?.startsWith("公开学校发现目录") ||
+              !source.excerpt.trim(),
+          )) ||
         (!report.searched && !report.sources.some(isSchoolPage)) ||
         !report.sources.length
       )
         return {
           ...report,
+          status: "blocked",
           reason: "NO_WEB_EVIDENCE",
           summary:
             "已结合画像规划方向，但尚未取得可引用的学校专业资料，不能虚构具体推荐。",
         };
       if (
+        report.sources.some(isSchoolPage) &&
         !report.sources.some(
-          (source) => !admissionEvidence(source, year).excluded,
+          (source) =>
+            isSchoolPage(source) && !admissionEvidence(source, year).excluded,
         )
       )
         return {

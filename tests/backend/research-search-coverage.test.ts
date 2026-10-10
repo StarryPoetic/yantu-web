@@ -36,6 +36,33 @@ function searchWeb(response: (query: string, include?: string) => Hit[]) {
   return { web, requests };
 }
 
+test("registry aliases scope every school-level search and seed URLs survive an indexing miss without changing search ceilings", async () => {
+  const { web, requests } = searchWeb(() => []);
+  const result = await searchResearchSources({
+    web,
+    subjectId: "alias-seeds",
+    disciplines: [discipline],
+    regions: ["西安"],
+    schoolHints: new Map([[discipline.code, ["浙大"]]]),
+    maxRequests: 18,
+    maxSources: 40,
+    includeFeeSearch: false,
+    onProgress: async () => {},
+  });
+  const focused = requests.filter((r) => r.query.startsWith("浙江大学 "));
+  assert.ok(focused.length >= 2);
+  assert.ok(focused.every((r) => r.include === "zju.edu.cn"));
+  assert.ok(requests.length <= 18);
+  assert.ok(
+    result.sources.some(
+      (s) =>
+        s.url.includes("grs.zju.edu.cn") &&
+        s.kind === "search_snippet" &&
+        !s.verified,
+    ),
+  );
+});
+
 test("expanded discovery first investigates three historical policies and target changes, then narrows school fees to observed domains", async () => {
   const schools = ["甲大学", "乙大学", "丙大学", "丁大学", "戊大学"];
   const { web, requests } = searchWeb((query) => {
@@ -283,7 +310,7 @@ test("a partner school's university tutors cannot redirect a named university's 
   assert.ok(
     requests
       .filter(({ query }) => query.startsWith("浙江大学 "))
-      .every(({ include }) => include === undefined),
+      .every(({ include }) => include === "zju.edu.cn"),
   );
   const sources = await web.answer(
     { subjectId: "school-ownership", question: "检验学校标题", search: true },
@@ -368,12 +395,12 @@ test("city inventory and registry investigate Hangzhou schools before unrelated 
   );
   assert.equal(
     requests[5].query,
-    "杭州电子科技大学 2026 硕士 招生专业目录 招生章程",
+    `${leads[0].school} 2026 硕士 招生专业目录 招生章程`,
   );
-  assert.equal(requests[5].include, "hdu.edu.cn");
+  assert.equal(requests[5].include, leads[0].officialDomain);
   assert.deepEqual(
     result.candidateAttempts,
-    leads.map((lead) => lead.school),
+    leads.slice(0, 5).map((lead) => lead.school),
   );
   assert.deepEqual(result.inventoryAttempts, ["杭州"]);
   assert.ok(

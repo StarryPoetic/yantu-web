@@ -145,6 +145,8 @@ function mockReader(
           },
         }),
       };
+    if (new URL(url).hostname !== (options.domain ?? "yz.example.edu.cn"))
+      throw new ModelError("WEB_UNAVAILABLE");
     if (options.failPage) throw new ModelError("WEB_ADDRESS_BLOCKED");
     return {
       contentType: "text/html",
@@ -1150,7 +1152,10 @@ test("explicit demonstration and suspended admission content cannot support scho
     assert.equal(result.status, "partial");
     assert.equal(result.reason, "RESEARCH_EVIDENCE_EXCLUDED");
     assert.deepEqual(result.recommendations, []);
-    assert.equal(result.sources.length, 1);
+    assert.equal(
+      result.sources.filter((source) => source.kind === "official_page").length,
+      1,
+    );
   }
   const { module } = setup({
     reader: mockReader({ content: `${quote}不招收同等学力考生。` }),
@@ -1492,7 +1497,7 @@ test("delivered recommendations bind all uncited same-school fields and recalcul
   assert.ok(item.constraintChecks?.every((c) => c.status === "match"));
   assert.equal(item.match?.ruleVersion, "demand-match-v1");
   assert.equal(report.readStatistics?.success, 4);
-  assert.equal(report.readStatistics?.failed, 0);
+  assert.equal(report.readStatistics?.failed, 6);
 });
 
 test("a single actual failed read is counted once with its fixed failure code", async () => {
@@ -1503,8 +1508,8 @@ test("a single actual failed read is counted once with its fixed failure code", 
   });
   assert.deepEqual(report.readStatistics, {
     success: 0,
-    failed: 1,
-    failuresByCode: { WEB_ADDRESS_BLOCKED: 1 },
+    failed: 7,
+    failuresByCode: { WEB_ADDRESS_BLOCKED: 1, WEB_UNAVAILABLE: 6 },
   });
 });
 
@@ -2071,6 +2076,8 @@ test("linked school PDFs supply independently cited programme and fee evidence, 
           }),
         };
       reads.push(url);
+      if (new URL(url).hostname !== "yz.example.edu.cn")
+        throw new ModelError("WEB_UNAVAILABLE");
       if (url.endsWith("catalog.pdf"))
         return {
           contentType: "application/pdf",
@@ -2106,11 +2113,14 @@ test("linked school PDFs supply independently cited programme and fee evidence, 
     first.sources.find((s) => s.id === "research-attachment-1")?.kind,
     "official_page",
   );
-  assert.deepEqual(reads, [
-    "https://yz.example.edu.cn/notice",
-    "https://yz.example.edu.cn/catalog.pdf",
-    "https://yz.example.edu.cn/fees.pdf",
-  ]);
+  assert.deepEqual(
+    reads.filter((url) => new URL(url).hostname === "yz.example.edu.cn"),
+    [
+      "https://yz.example.edu.cn/notice",
+      "https://yz.example.edu.cn/catalog.pdf",
+      "https://yz.example.edu.cn/fees.pdf",
+    ],
+  );
   const updated = structuredClone(input.run);
   updated.guidanceRunId = "changed-attachment-run";
   updated.versions.profileVersion++;
@@ -2119,7 +2129,7 @@ test("linked school PDFs supply independently cited programme and fee evidence, 
   assert.equal(second.recommendations.length, 1);
   assert.equal(second.recommendations[0].tuition?.amount, 8000);
   assert.equal(
-    reads.length,
+    reads.filter((url) => new URL(url).hostname === "yz.example.edu.cn").length,
     3,
     "successful notice and PDF bodies are reused without another network read",
   );
@@ -2264,6 +2274,7 @@ test("an empty late fee response cannot poison the public body cache on the next
 for (const firstPage of ["timeout", "other-programme"] as const) {
   test(`a ${firstPage} preferred-city page gets an observed alternative before outside fee reads consume the reserve`, async () => {
     let readsBeforeAnalysis = 0;
+    let searchPass = 0;
     let analyzing = false;
     let readGoodAlternative = false;
     const { module } = setup({
@@ -2276,9 +2287,7 @@ for (const firstPage of ["timeout", "other-programme"] as const) {
       reader: async (url) => {
         const parsed = new URL(url);
         if (parsed.hostname === "api.search.brave.com") {
-          const pass = (parsed.searchParams.get("q") ?? "").includes("培养方案")
-            ? 0
-            : 1;
+          const pass = searchPass++ % 2;
           return {
             contentType: "application/json",
             text: JSON.stringify({
@@ -2294,8 +2303,8 @@ for (const firstPage of ["timeout", "other-programme"] as const) {
                     title: "杭州研究大学2027年法学硕士招生目录",
                     description: "030101法学理论硕士",
                   },
-                  ...Array.from({ length: 8 }, (_, i) => ({
-                    url: `https://school${pass * 8 + i}.edu.cn/catalog`,
+                  ...Array.from({ length: 9 }, (_, i) => ({
+                    url: `https://school${pass * 9 + i}.edu.cn/catalog`,
                     title: "外地研究大学2027年法学硕士招生目录",
                     description: "030101法学理论硕士",
                   })),
@@ -2343,7 +2352,13 @@ for (const firstPage of ["timeout", "other-programme"] as const) {
     const run = fixture();
     run.inputSnapshot.profile.cities = ["杭州"];
     const report = await module.generate({ subjectId: "student", run });
-    assert.ok(readsBeforeAnalysis > 16 && readsBeforeAnalysis <= 20);
+    assert.ok(
+      readsBeforeAnalysis > 16 && readsBeforeAnalysis <= 20,
+      JSON.stringify({
+        readsBeforeAnalysis,
+        sources: report.sources.map((s) => s.url),
+      }),
+    );
     assert.equal(readGoodAlternative, true);
     assert.equal(report.recommendations[0].institutionName, "杭州研究大学");
     assert.equal(report.recommendations[0].location?.city, "杭州");
