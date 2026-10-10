@@ -116,8 +116,16 @@ export function normalizeAttachedEvidence(
   const owners = namesIn(parent.excerpt).filter((name) =>
     sourceHasSchoolIdentity(parent, name),
   );
+  const universities = owners.filter((name) => /大学$/.test(name));
   const institutionName =
-    inherited?.institutionName ?? (owners.length === 1 ? owners[0] : undefined);
+    inherited?.institutionName ??
+    (universities.length === 1
+      ? universities[0]
+      : universities.length
+        ? undefined
+        : owners.length === 1
+          ? owners[0]
+          : undefined);
   if (!institutionName) return unbound;
   const actualBody = /<[a-z][^>]*>/i.test(body) ? webPageText(body) : body;
   const actualChild = { ...unbound, excerpt: actualBody };

@@ -794,6 +794,94 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
   expect(service.postCount()).toBe(1);
 });
 
+test("待确认原文在手机卡片和下载中保留，不参与城市预算匹配", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(
+    panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+  ).toBeVisible();
+  service.finish("partial", (report) => ({
+    ...report,
+    recommendations: report.recommendations.map((item) => ({
+      ...item,
+      tuition: undefined,
+      location: undefined,
+      pendingEvidence: [
+        {
+          field: "tuition",
+          quote: "法学全程学费待核对。",
+          year: 2026,
+          sourceId: "research-1",
+          reason: "同名专业有不同学习方式。",
+        },
+      ],
+      constraintChecks: [
+        {
+          field: "budget",
+          status: "unknown",
+          reason: "费用尚未唯一归属。",
+          sourceIds: [],
+        },
+        {
+          field: "cities",
+          status: "unknown",
+          reason: "培养校区待确认。",
+          sourceIds: [],
+        },
+      ],
+    })),
+    rejectedRecommendations: [
+      {
+        institutionName: "浏览器测试大学",
+        programName: "法学",
+        code: "UNSUPPORTED_RESEARCH_CLAIM",
+        removedSentences: 1,
+      },
+    ],
+    validationIssues: [
+      {
+        path: "recommendations[0].sentences",
+        code: "UNSUPPORTED_RESEARCH_CLAIM",
+      },
+    ],
+    readStatistics: { success: 1, failed: 1, failuresByCode: { HTTP_404: 1 } },
+  }));
+  const evidence = panel.getByRole("region", {
+    name: "待确认原文",
+    exact: true,
+  });
+  await expect(
+    evidence.getByText("法学全程学费待核对。", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    evidence.getByText("同名专业有不同学习方式。", { exact: true }),
+  ).toBeVisible();
+  await expect(evidence.getByRole("link")).toHaveAttribute("href", sourceUrl);
+  await expect(panel.getByText("尚未核实", { exact: true })).toHaveCount(2);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await downloading).path())!, "utf8");
+  expect(content).toContain("待确认原文");
+  expect(content).toContain("法学全程学费待核对。");
+  expect(content).toContain("技术信息");
+  expect(content).toContain("删除无据句子：1 句");
+  expect(content).toContain("HTTP_404：1 次");
+});
+
 test("手机上明确展示部分报告与搜索摘要，保留来源和适用范围", async ({
   page,
 }) => {

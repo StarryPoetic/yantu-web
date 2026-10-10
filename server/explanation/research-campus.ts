@@ -47,7 +47,7 @@ function schoolPages(
     (source) =>
       source.kind === "official_page" &&
       domain(source.url) === sameDomain &&
-      sourceHasSchoolIdentity(source, institutionName),
+      sourceHasSchoolIdentity(source, institutionName, sources),
   );
 }
 
@@ -141,7 +141,7 @@ function deriveCampusLocationForYear(
     (source) =>
       (!input.programSourceId || source.id === input.programSourceId) &&
       source.kind === "official_page" &&
-      sourceHasSchoolIdentity(source, input.institutionName) &&
+      sourceHasSchoolIdentity(source, input.institutionName, input.sources) &&
       safeSourceYear(source) === evidenceYear &&
       !admissionEvidence(source, String(evidenceYear), input.programName)
         .excluded &&

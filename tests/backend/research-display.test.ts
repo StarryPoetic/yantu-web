@@ -57,6 +57,65 @@ function report(): ResearchReport {
     searched: true,
   };
 }
+
+test("Markdown exports pending literal evidence and bounded technical diagnostic counts", () => {
+  const value = report();
+  value.recommendations[0].pendingEvidence = [
+    {
+      field: "tuition",
+      quote: "该专业全程学费待核对。",
+      year: 2026,
+      sourceId: "read-fee",
+      reason: "学习方式未明确。",
+    },
+  ];
+  value.rejectedRecommendations = [
+    {
+      institutionName: "甲大学",
+      programName: "教育学",
+      code: "UNSUPPORTED_RESEARCH_CLAIM",
+      removedSentences: 2,
+    },
+    {
+      institutionName: "未知学院",
+      programName: "学科简介",
+      code: "UNGROUNDED_RESEARCH_RECOMMENDATION",
+      removedSentences: 0,
+    },
+  ];
+  value.validationIssues = [
+    {
+      path: "recommendations[0].sentences",
+      code: "UNSUPPORTED_RESEARCH_CLAIM",
+    },
+  ];
+  value.readStatistics = {
+    success: 3,
+    failed: 2,
+    failuresByCode: { HTTP_404: 2 },
+  };
+  const markdown = researchReportMarkdown(
+    value,
+    { inputSnapshot: { profile: { year: "2027" } } } as unknown as GuidanceRun,
+    false,
+  );
+  for (const phrase of [
+    "待确认原文",
+    "不用于预算或城市匹配",
+    "该专业全程学费待核对。",
+    "2026年",
+    "[read-fee]",
+    "学习方式未明确",
+    "技术信息",
+    "整条拒绝：1 次",
+    "删除无据句子：2 句",
+    "校验问题：1 项",
+    "读取成功：3 次",
+    "失败：2 次",
+    "HTTP_404：2 次",
+  ])
+    assert.ok(markdown.includes(phrase), phrase);
+});
 function job(value: ResearchReport): ResearchJob {
   return {
     jobId: "display-job",

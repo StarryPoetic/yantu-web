@@ -183,6 +183,8 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
                   reason: report.reason,
                   failureStage: report.failureStage,
                   validationIssues: report.validationIssues,
+                  rejectedRecommendations: report.rejectedRecommendations,
+                  readStatistics: report.readStatistics,
                   summary: report.summary,
                   limitations: [
                     ...new Set([

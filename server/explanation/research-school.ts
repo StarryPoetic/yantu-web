@@ -10,7 +10,40 @@ export function withoutSchoolLinks(text: string) {
 }
 
 /** Identify the page's school subject; fetched pages require actual body evidence. */
-export function sourceHasSchoolIdentity(source: WebSource, school: string) {
+const identityCache = new WeakMap<
+  WebSource,
+  {
+    title: string;
+    excerpt: string;
+    kind: string;
+    provenance: WebSource["provenance"];
+    values: Map<string, boolean>;
+  }
+>();
+function directSchoolIdentity(source: WebSource, school: string) {
+  let cache = identityCache.get(source);
+  if (
+    !cache ||
+    cache.title !== source.title ||
+    cache.excerpt !== source.excerpt ||
+    cache.kind !== source.kind ||
+    cache.provenance !== source.provenance
+  ) {
+    cache = {
+      title: source.title,
+      excerpt: source.excerpt,
+      kind: source.kind,
+      provenance: source.provenance,
+      values: new Map(),
+    };
+    identityCache.set(source, cache);
+  }
+  if (cache.values.has(school)) return cache.values.get(school)!;
+  const found = uncachedSchoolIdentity(source, school);
+  cache.values.set(school, found);
+  return found;
+}
+function uncachedSchoolIdentity(source: WebSource, school: string) {
   if (school.length < 2) return false;
   const escaped = school.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const department =
@@ -65,5 +98,185 @@ export function sourceHasSchoolIdentity(source: WebSource, school: string) {
   });
   return (
     direct || validatedSourceProvenance(source)?.institutionName === school
+  );
+}
+
+/** Replace this resolver with the national registry when that evidence is available. */
+export type InstitutionResolver = (
+  registrableDomain: string,
+  sources: readonly WebSource[],
+) => string | undefined;
+
+export function schoolRegistrableDomain(value: string) {
+  try {
+    const host = new URL(value).hostname;
+    if (host.endsWith(".edu.cn")) return host.split(".").slice(-3).join(".");
+    if (host.endsWith(".ac.cn")) return host.split(".").slice(-3).join(".");
+    return host;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Only actual read owner/subject text counts; partners and friendly links cannot name the owner. */
+const ownerCache = new WeakMap<
+  readonly WebSource[],
+  {
+    states: {
+      source: WebSource;
+      title: string;
+      excerpt: string;
+      kind: string;
+      url: string;
+    }[];
+    owners: Map<string, string | undefined>;
+  }
+>();
+export const resolveInstitutionFromPages: InstitutionResolver = (
+  domain,
+  sources,
+) => {
+  let cache = ownerCache.get(sources);
+  if (
+    !cache ||
+    cache.states.length !== sources.length ||
+    cache.states.some(
+      (state, i) =>
+        state.source !== sources[i] ||
+        state.excerpt !== sources[i].excerpt ||
+        state.kind !== sources[i].kind ||
+        state.title !== sources[i].title ||
+        state.url !== sources[i].url,
+    )
+  ) {
+    cache = {
+      states: sources.map((source) => ({
+        source,
+        excerpt: source.excerpt,
+        kind: source.kind,
+        title: source.title,
+        url: source.url,
+      })),
+      owners: new Map(),
+    };
+    ownerCache.set(sources, cache);
+  }
+  if (cache.owners.has(domain)) return cache.owners.get(domain);
+  const owner = resolveUncachedInstitution(domain, sources);
+  cache.owners.set(domain, owner);
+  return owner;
+};
+
+const resolveUncachedInstitution: InstitutionResolver = (domain, sources) => {
+  const names = new Set<string>();
+  for (const source of sources) {
+    if (
+      source.kind !== "official_page" ||
+      schoolRegistrableDomain(source.url) !== domain
+    )
+      continue;
+    const body = withoutSchoolLinks(source.excerpt);
+    for (const match of `${source.title}\n${body}`.matchAll(
+      /(?:^|[\s:：©。；|｜—-])([\p{Script=Han}A-Za-z]{1,30}?(?:大学|科学院|研究院|研究所|学院))(?=$|[\s:：。；|｜]|20\d{2}|硕士|研究生|招生|版权所有|学院|地址|[\p{Script=Han}]{1,24}学院)/gu,
+    )) {
+      const name = match[1];
+      if (directSchoolIdentity(source, name)) names.add(name);
+    }
+  }
+  const universities = [...names].filter((name) => /大学$/.test(name));
+  if (universities.length)
+    return universities.length === 1 ? universities[0] : undefined;
+  // Standalone colleges/institutes need explicit organizer/copyright ownership.
+  const independent = [...names].filter((name) =>
+    sources.some(
+      (s) =>
+        s.kind === "official_page" &&
+        schoolRegistrableDomain(s.url) === domain &&
+        new RegExp(
+          `(?:学校名称|主办单位|版权所有|Copyright)[^。；\\n]{0,35}${name}|${name}(?:[\\p{Script=Han}]{1,24}学院)?\\s*版权所有`,
+          "iu",
+        ).test(withoutSchoolLinks(s.excerpt)) &&
+        (!/学院$/.test(name) ||
+          new RegExp(
+            `(?:学校名称|招生单位)\\s*[:：]\\s*${name}|${name}[\\p{Script=Han}]{1,24}学院`,
+            "u",
+          ).test(withoutSchoolLinks(s.excerpt))),
+    ),
+  );
+  return independent.length === 1 ? independent[0] : undefined;
+};
+
+export function normalizeInstitutionName(
+  name: string,
+  cited: readonly WebSource[],
+  sources: readonly WebSource[],
+  resolver: InstitutionResolver = resolveInstitutionFromPages,
+): { institutionName: string; collegeName?: string } | undefined {
+  const domains = [
+    ...new Set(
+      cited
+        .filter((s) => {
+          if (directSchoolIdentity(s, name)) return true;
+          const domain = schoolRegistrableDomain(s.url);
+          const owner = domain && resolver(domain, sources);
+          return (
+            s.kind === "official_page" &&
+            /学院$/.test(name) &&
+            !!owner &&
+            withoutSchoolLinks(s.excerpt).includes(`${owner}${name}`)
+          );
+        })
+        .map((s) => schoolRegistrableDomain(s.url))
+        .filter((d): d is string => !!d),
+    ),
+  ];
+  const owners = [
+    ...new Set(
+      domains.map((d) => resolver(d, sources)).filter((n): n is string => !!n),
+    ),
+  ];
+  if (owners.length > 1) return undefined;
+  if (owners.length === 1)
+    return {
+      institutionName: owners[0],
+      ...(owners[0] !== name &&
+      !cited.some((s) =>
+        new RegExp(`${name}[\\p{Script=Han}]{1,24}学院`, "u").test(
+          withoutSchoolLinks(s.excerpt),
+        ),
+      )
+        ? { collegeName: name }
+        : {}),
+    };
+  if (/(?:大学|科学院|研究所|研究院|党校|学校|医院|中心)$/.test(name))
+    return { institutionName: name };
+  return undefined;
+}
+
+export function sourceHasSchoolIdentity(
+  source: WebSource,
+  school: string,
+  sources: readonly WebSource[] = [],
+) {
+  if (directSchoolIdentity(source, school)) return true;
+  // Attachments can inherit only their validated linked-page provenance.
+  if (source.parentSourceId || source.provenance) return false;
+  if (source.kind !== "official_page" || !sources.length) return false;
+  const domain = schoolRegistrableDomain(source.url);
+  if (!domain || resolveInstitutionFromPages(domain, sources) !== school)
+    return false;
+  // A department-owned body can inherit its university, never a conflicting university owner.
+  const body = withoutSchoolLinks(source.excerpt);
+  const departments = [
+    ...body.matchAll(
+      /(?:^|[\s:：©。；|｜])([\p{Script=Han}]{2,24}学院)(?=$|\s|20\d{2}|硕士|研究生|招生|版权所有)/gu,
+    ),
+  ].map((m) => m[1]);
+  return departments.some((name) => directSchoolIdentity(source, name));
+}
+
+export function isConcreteProgramName(name: string) {
+  return !/^(?:学科简介|学院简介|学校简介|专业简介|专业介绍|招生简章|招生章程|招生目录|招生专业目录|培养方案|学科介绍|研究生教育|学科|专业|硕士|研究生|研究方向|硕士研究生|招收|招生|培养|初试|考试科目|专业代码|专业名称|招生单位|报考条件|学习方式|适用专项计划|适用培养层次|适用学位类型|适用年级|学制)$/.test(
+    name,
   );
 }

@@ -438,6 +438,38 @@ class TechnicalDesignTests(unittest.TestCase):
         for phrase in ("阶段1已完成", "23/29", "79.31%", "WEB_ADDRESS_BLOCKED 29", "WEB_CONNECTION_RESET 2", "3.45%", "未实现AIA", "WebVPN", "不等于取得招生事实"):
             self.assertIn(phrase, implementation)
 
+    def test_phase_two_binding_sentence_isolation_and_diagnostics_are_documented(self):
+        for path in (
+            ROOT / "docs" / "recommendation-method.md",
+            ROOT / "server" / "explanation" / "README.md",
+            DESIGN_DIR / "02-数据模型与可信数据.md",
+            DESIGN_DIR / "07-DeepSeek接入与密钥管理.md",
+        ):
+            content = path.read_text(encoding="utf-8")
+            for phrase in (
+                "阶段2", "pendingEvidence", "field", "quote", "sourceId", "year", "reason",
+                "待确认原文", "不用于预算或城市匹配", "InstitutionResolver",
+                "rejectedRecommendations", "removedSentences", "validationIssues",
+                "readStatistics", "success", "failed", "failuresByCode",
+                "GET /api/v1/research-jobs/:id", "不保存模型全文",
+            ):
+                with self.subTest(document=path.name, phrase=phrase):
+                    self.assertIn(phrase, content)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        for phrase in ("阶段1与阶段2已完成", "13.2. 阶段2完成", "保存证据的离线重放，不是新的联网结果", "4017bef", "15000毫秒", "删除4句", "修改前", "修改后"):
+            self.assertIn(phrase, implementation)
+        for row in (
+            "| 最终推荐数（每校一个主建议） | 10 | 6 |",
+            "| 整条拒绝次数（本次模型校验尝试） | 3 | 2 |",
+            "| 学费已绑定数 | 0 | 0 |",
+            "| 校区城市已核验数 | 0 | 0 |",
+            "| 初试科目已绑定数（含历史参考） | 0 | 0 |",
+            "| 意向城市杭州已核验学校数 | 0 | 0 |",
+            "| cities：match / mismatch / unknown | 0 / 0 / 10 | 0 / 0 / 6 |",
+            "| budget：match / mismatch / unknown | 0 / 0 / 10 | 0 / 0 / 6 |",
+        ):
+            self.assertIn(row, implementation)
+
     def test_domestic_search_setup_matches_server_environment_contract(self):
         guide = (ROOT / "docs" / "本地模型与联网测试.md").read_text(encoding="utf-8")
         example = (ROOT / ".env.example").read_text(encoding="utf-8")

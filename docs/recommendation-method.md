@@ -45,3 +45,15 @@
 改变画像或测评后重新生成结论与研究报告。旧报告保留原快照，并提示重新生成新规则。来源会随招生年度与官网内容变化，固定规则保证相同画像和相同事实的排序一致，不保证不同日期的外部资料完全相同。
 
 回归验证覆盖模型遗漏／失败后的候选恢复、三年历史检索与目标变更保留、HTML 到工作簿的证据归属、停招与资格冲突、同校学位路线和历年科目对照、同年度校区证据链、历史年费参考、示例测评边界、页面显示及 Markdown 导出。院校公开资料烟测与模拟集成验证分别记录；本轮历史策略回归使用模拟响应，不宣传为真实收费服务的端到端验收。
+
+## 阶段2：逐句校验与确定性字段绑定
+
+`rationale`、`tradeoffs`、`preparation`、`uncertainties`、`suitabilityReason` 和 `fitReasons[].reason` 按 `。；;！？!?` 与换行拆句。普通无据句子只删除该句；理由清空后使用已通过的画像理由回退。城市未知时，“符合城市偏好”和无据跨城通勤说法不能保留。学校身份、允许学科、学校官网硕士专业关联、当前停招或报考冲突、至少两个不同真实画像维度、至少一项有效取舍仍是整条门槛；编造价格、录取概率和确定资格断言仍拒绝整条模型建议。独立官网候选按同一规则保留，不以模型失败否定已读项目。
+
+模型分析后，`research-binding.ts` 从同一学校注册域名下全部已读官网正文提取科目、学费与培养地址，不局限于模型引用页。唯一归属要求专业代码或专业名、学院、学习方式和年度一致；来源追加到 `citations`，重新计算 `constraintChecks`，再按 `demand-match-v1` 分层。附件仍须通过现有真实父页链接及同校归属校验。不同学院和学习方式不互借，特殊人群政策不能套用，全程／学期／学分费用不年化；历史费用只能作带年份参考，目标年度冲突优先。
+
+有相关原文而不能唯一归属时保存 `pendingEvidence:[{field,quote,sourceId,year?,reason}]`，field 为 exams/tuition/location，quote 是不超过300字的连续原文。页面及 Markdown 展示“待确认原文”，不用于预算或城市匹配。完全无原文的字段保持缺失。
+
+`InstitutionResolver` 提供可替换的“注册域名→招生单位”接口，目前依据同域已读页面的真实标题、版权所有者及校名主体归一学院；下一阶段接全国种子库。推荐使用招生单位全称并保留 `collegeName`；无法确认所属招生单位的学院和“学科简介”“招生简章”等非专业名剔除。
+
+报告保存 `rejectedRecommendations:[{institutionName,programName,code,removedSentences}]`、`validationIssues:[{path,code}]` 和 `readStatistics:{success,failed,failuresByCode}`。removedSentences 为0表示整条拒绝，正数表示被删除的句子数量；不保存模型全文。经任务路由落入 SQLite，`GET /api/v1/research-jobs/:id` 按原有本人权限返回；Markdown 的“技术信息”仅列计数。

@@ -20,6 +20,7 @@ import {
 import { admissionEvidence } from "./research-evidence.ts";
 import { safeSourceYear } from "./research-years.ts";
 import { explicitAdmissionsYears } from "../../shared/research-years.ts";
+import { programRowScope } from "./research-program-scope.ts";
 
 export interface RecommendationConstraintInput {
   profile: Pick<Profile, "budget" | "cities">;
@@ -55,6 +56,36 @@ const record = (value: unknown): Record<string, unknown> | undefined =>
     : undefined;
 const cityName = (value: string) => value.trim().replace(/市$/, "");
 const substantive = withoutSchoolLinks;
+
+function literalScopeMatches(
+  source: WebSource,
+  row: string,
+  input: RecommendationConstraintInput,
+) {
+  const rowAt = source.excerpt.indexOf(row);
+  if (rowAt < 0) return false;
+  const code = row.match(/\b(?:0[1-9]|1[0-4])\d{4}\b/);
+  if (input.majorCode && code && code[0] !== input.majorCode) return false;
+  const scope = programRowScope(
+    source.excerpt,
+    rowAt + (code?.index ?? Math.max(0, projectPosition(row, input))),
+    rowAt + row.length,
+  );
+  if (
+    input.collegeName &&
+    scope.collegeName &&
+    scope.collegeName !== input.collegeName
+  )
+    return false;
+  if (
+    input.studyMode &&
+    input.studyMode !== "unspecified" &&
+    scope.studyMode &&
+    scope.studyMode !== input.studyMode
+  )
+    return false;
+  return true;
+}
 
 function projectPosition(text: string, input: RecommendationConstraintInput) {
   let position = text.indexOf(input.programName);
@@ -108,7 +139,7 @@ function citedQuote(
     (url.protocol !== "https:" &&
       !(url.protocol === "http:" && url.hostname.endsWith(".edu.cn"))) ||
     /(^|\.)chsi\.com\.cn$/.test(url.hostname) ||
-    !sourceHasSchoolIdentity(source, input.institutionName) ||
+    !sourceHasSchoolIdentity(source, input.institutionName, input.sources) ||
     !substantive(source.excerpt).includes(raw.quote.trim())
   )
     return undefined;
@@ -354,6 +385,7 @@ function checkedTuition(
   // assigned to every project, and amounts from adjacent programme rows cannot migrate.
   for (const row of tuitionRows(quote, input)) {
     const clause = row.text;
+    if (!literalScopeMatches(source, clause, input)) continue;
     if (populationFeeConflict(source, quote, row.start)) continue;
     if (/博士|本科|同等学力|留学生|来华留学|旁听/.test(clause)) continue;
     const programAt = projectPosition(clause, input);
@@ -454,6 +486,7 @@ function extractedTuitionCandidates(input: RecommendationConstraintInput) {
   for (const source of input.sources) {
     if (source.kind !== "official_page") continue;
     for (const row of tuitionRows(source.excerpt, input)) {
+      if (!literalScopeMatches(source, row.text, input)) continue;
       const programAt = projectPosition(row.text, input);
       const section = rowHeader(source, row.text, 0);
       const header = sectionText(source, section);
@@ -570,7 +603,13 @@ function programAddress(clause: string, input: RecommendationConstraintInput) {
   const programAt = projectPosition(clause, input);
   if (programAt < 0) return false;
   // The institution owning the local programme beats the surrounding page title.
-  if (otherProjectOwner(clause.slice(0, programAt), input.institutionName))
+  const prefix = clause.slice(0, programAt);
+  const codedCollege =
+    !!input.collegeName &&
+    !!input.majorCode &&
+    prefix.includes(input.majorCode) &&
+    prefix.replace(input.majorCode, "").trim() === input.collegeName;
+  if (otherProjectOwner(prefix, input.institutionName) && !codedCollege)
     return false;
   return [
     ...clause.matchAll(/地址|校址|办学地点|教学地点|培养地点|所在城市/g),
@@ -707,6 +746,18 @@ function checkedLocation(
   if (addresses.some((clause) => isRestrictedCampusQuote(cited.source, clause)))
     return undefined;
   if (
+    addresses.some((clause) =>
+      /来华留学|留学生|外国学生|国际学生|港澳台|专项计划|中外合作/.test(clause),
+    )
+  )
+    return undefined;
+  if (
+    addresses.some(
+      (clause) => !literalScopeMatches(cited.source, clause, input),
+    )
+  )
+    return undefined;
+  if (
     addresses.some((clause) => {
       const firstAddress = /地址|校址|办学地点|教学地点|培养地点|所在城市/.exec(
         clause,
@@ -723,7 +774,7 @@ function checkedLocation(
     const currentPages = input.sources.filter(
       (source) =>
         source.kind === "official_page" &&
-        sourceHasSchoolIdentity(source, input.institutionName) &&
+        sourceHasSchoolIdentity(source, input.institutionName, input.sources) &&
         safeSourceYear(source) === Number(input.targetYear),
     );
     // Compare actual current programme addresses, never school names or generic
@@ -778,7 +829,11 @@ function checkedLocation(
       input.sources.some(
         (source) =>
           source.kind === "official_page" &&
-          sourceHasSchoolIdentity(source, input.institutionName) &&
+          sourceHasSchoolIdentity(
+            source,
+            input.institutionName,
+            input.sources,
+          ) &&
           admissionEvidence(source, String(input.targetYear))
             .admissionStatus === "current_evidence" &&
           /培养(?:所在)?校区|新生所在校区|(?:培养|教学|办学)(?:地点|地址)/.test(

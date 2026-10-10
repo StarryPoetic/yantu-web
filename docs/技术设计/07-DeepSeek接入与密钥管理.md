@@ -190,3 +190,13 @@ UI不限制固定问题或回答条数；服务端仍限制每请求文本、有
 - 细分读取失败码包含HTTP_403/404/410/429/4XX/500/502/503/504/5XX、WEB_TLS_CERT、WEB_CONNECTION_RESET、WEB_CONNECTION_REFUSED；证书错误只保留安全tlsCode，继续验证证书，不放宽rejectUnauthorized。DNS专用失败码同样保留。补查冷却按全部失败记录执行，失败不覆盖成功证据。
 - 请求User-Agent为Mozilla/5.0 (compatible; YantuEvidence/1.1)，Accept-Language为zh-CN,zh;q=0.9。不伪装具体浏览器版本。
 - 免费脚本 `scripts/probe-school-sites.mjs` 接受每行一个URL的文件或 `--urls URL ...`，最多4并发、同主机串行，遵守YANTU_DNS_MODE；不加载.env、不调用模型或搜索，输出成功/失败码/tlsCode/finalUrl/transport/encoding与汇总。
+
+## 10. 阶段2逐句隔离、字段绑定与持久诊断（已实现）
+
+阶段2将普通无据说明按句校验，只删除该句。rationale、tradeoffs、preparation、uncertainties、suitabilityReason、fitReasons[].reason 使用相同 `。；;！？!?` 与换行边界；空 rationale 由有效画像理由生成。城市状态不是match时不能声称符合城市偏好，无据跨城通勤说法同样删除。学校身份、学校官网硕士专业关联、允许学科、已知停招或明确报考冲突、至少两个不同真实画像维度、至少一项有效取舍仍拒绝整条；编造价格、录取概率及确定资格断言仍是核心拒绝规则。有效取舍全部被删时不制造回退取舍。
+
+reportMessages 提供每个候选的城市 match/mismatch/unknown、地址依据或缺失原因，要求未知不能声称符合城市偏好。候选状态仅来自服务端；模型正文不能改变 demand-match-v1 排序。模型输入仍限24000字符，来源摘录可随总预算缩短，原始已读正文不裁断。
+
+research-binding.ts 在分析后交付前读取同校注册域名全部已读正文，用确定性抽取器绑定 exams/tuition/location，新增引用并重算 constraintChecks。归属不唯一时保存 pendingEvidence:[{field,quote,sourceId,year?,reason}]，quote≤300字且为连续原文，页面和导出显示“待确认原文”，不用于预算或城市匹配。不同学院、学习方式不互借，附件仍验证同校父页真实链接，历史费用按年份参考，全程／学期／学分不年化，特殊人群政策及合作单位地址不套用，目标年度冲突优先。
+
+可替换的 InstitutionResolver 根据同域已读标题、校名主体及版权所有者将下属学院归一到招生单位；collegeName 单独保存，未知所属招生单位及“学科简介”等栏目名拒绝。rejectedRecommendations:[{institutionName,programName,code,removedSentences}] 记录整条拒绝或删句数量，validationIssues:[{path,code}] 记录固定路径及错误码，readStatistics:{success,failed,failuresByCode} 汇总实际读取尝试；不保存模型全文。三者经 server/routes/research.ts 持久化并由 GET /api/v1/research-jobs/:id 返回，Markdown“技术信息”列计数；补查失败保留旧报告时使用本次诊断。

@@ -2,6 +2,7 @@ import type { WebSource } from "./web.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import {
   sourceHasSchoolIdentity,
+  isConcreteProgramName,
   withoutSchoolLinks,
 } from "./research-school.ts";
 import { validatedSourceProvenance } from "./research-provenance.ts";
@@ -121,10 +122,11 @@ function rowScope(body: string, start: number, end?: number) {
 export function scopedProgramPassages(
   source: WebSource,
   scope: AdmissionProgramScope,
+  sources: readonly WebSource[] = [],
 ): string[] {
   if (
     scope.institutionName &&
-    !sourceHasSchoolIdentity(source, scope.institutionName)
+    !sourceHasSchoolIdentity(source, scope.institutionName, sources)
   )
     return [];
   const body = withoutSchoolLinks(source.excerpt);
@@ -205,15 +207,16 @@ export function scopedAdmissionEvidence(
   source: WebSource,
   targetYear: string,
   scope: AdmissionProgramScope,
+  sources: readonly WebSource[] = [],
 ): AdmissionEvidence & { scopeMatched: boolean } {
   if (
     scope.institutionName &&
-    !sourceHasSchoolIdentity(source, scope.institutionName)
+    !sourceHasSchoolIdentity(source, scope.institutionName, sources)
   )
     return { admissionStatus: "needs_verification", scopeMatched: false };
   const wholePage = admissionEvidence(source, targetYear);
   if (wholePage.excluded) return { ...wholePage, scopeMatched: true };
-  const passages = scopedProgramPassages(source, scope);
+  const passages = scopedProgramPassages(source, scope, sources);
   if (!passages.length)
     return {
       admissionStatus: "needs_verification",
@@ -288,6 +291,7 @@ export function supportsProgram(
   institutionName: string,
   programName: string,
   discipline: Discipline,
+  sources: readonly WebSource[] = [],
 ) {
   const evidence = withoutSchoolLinks(
     source.kind === "official_page"
@@ -305,8 +309,8 @@ export function supportsProgram(
     return false;
   if (
     programName.length < 2 ||
-    /^(?:专业|学科|硕士|研究生|研究方向|硕士研究生)$/.test(programName) ||
-    !sourceHasSchoolIdentity(source, institutionName)
+    !isConcreteProgramName(programName) ||
+    !sourceHasSchoolIdentity(source, institutionName, sources)
   )
     return false;
   const escaped = programName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

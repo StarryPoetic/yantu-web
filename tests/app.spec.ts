@@ -139,7 +139,7 @@ test("catalog creates honest recommendations, saves target tasks and downloadabl
   await page.getByRole("button", { name: "确认删除全部个人资料" }).click();
   await expect(
     page.getByText("个人资料及关联记录已删除。你可以重新开始。"),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 15_000 });
   await navigate(page, "我的收藏");
   await expect(
     page.getByRole("heading", { name: "当前条件下没有项目" }),

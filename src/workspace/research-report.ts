@@ -557,6 +557,16 @@ export function researchReportMarkdown(
         ),
         ...matchMarkdown(item.match),
         ...examMarkdown(item.exams),
+        ...(item.pendingEvidence?.length
+          ? [
+              "#### 待确认原文",
+              "以下原文尚未确定适用项目，不用于预算或城市匹配。",
+              ...item.pendingEvidence.map(
+                (e) =>
+                  `- ${e.field}${e.year ? `（${e.year}年）` : ""}：${e.quote} [${e.sourceId}]\n  ${e.reason}`,
+              ),
+            ]
+          : []),
         "#### 准备建议",
         "这些是复习任务，实际报考科目以招生目录核验结果为准。",
         ...item.preparation.map((text) => "- 准备：" + text),
@@ -688,6 +698,13 @@ export function researchReportMarkdown(
     "",
     "## 适用范围",
     ...report.limitations.map((text) => "- " + text),
+    "",
+    "## 技术信息",
+    `- 整条拒绝：${report.rejectedRecommendations?.filter((r) => r.removedSentences === 0).length ?? 0} 次；删除无据句子：${report.rejectedRecommendations?.reduce((sum, r) => sum + r.removedSentences, 0) ?? 0} 句；校验问题：${report.validationIssues?.length ?? 0} 项。`,
+    `- 读取成功：${report.readStatistics?.success ?? 0} 次；失败：${report.readStatistics?.failed ?? 0} 次。`,
+    ...Object.entries(report.readStatistics?.failuresByCode ?? {}).map(
+      ([code, count]) => `- ${code}：${count} 次。`,
+    ),
     "",
     "## 来源",
     ...report.sources.map(

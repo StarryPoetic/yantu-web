@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
+  normalizeInstitutionName,
+  resolveInstitutionFromPages,
+  schoolRegistrableDomain,
 } from "../../server/explanation/research-school.ts";
 import { sourceHasSchoolIdentity as compatibleIdentity } from "../../server/explanation/research-search.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
@@ -22,6 +25,100 @@ function source(
     ...overrides,
   };
 }
+
+test("department names normalize through same-domain read university ownership and retain the department", () => {
+  const page = source("经济学院2027年硕士招生目录。030101法学理论。", {
+    id: "department",
+    title: "经济学院硕士招生",
+    url: "https://college.example.edu.cn/law",
+  });
+  const owner = source("学校概况。版权所有：甲大学", {
+    id: "owner",
+    url: "https://www.example.edu.cn/about",
+  });
+  const sources = [page, owner];
+  assert.equal(schoolRegistrableDomain(page.url), "example.edu.cn");
+  assert.equal(
+    resolveInstitutionFromPages("example.edu.cn", sources),
+    "甲大学",
+  );
+  assert.deepEqual(normalizeInstitutionName("经济学院", [page], sources), {
+    institutionName: "甲大学",
+    collegeName: "经济学院",
+  });
+  assert.equal(sourceHasSchoolIdentity(page, "甲大学", sources), true);
+  assert.equal(sourceHasSchoolIdentity(page, "甲大学", [page]), false);
+});
+
+test("unresolved colleges and friendly university links do not establish a recruiting institution", () => {
+  const page = source(
+    "经济学院硕士招生目录。版权所有：经济学院。友情链接 甲大学",
+    { title: "经济学院" },
+  );
+  assert.equal(normalizeInstitutionName("经济学院", [page], [page]), undefined);
+  const foreign = source("版权所有：甲大学", {
+    url: "https://www.other.edu.cn/about",
+  });
+  assert.equal(
+    normalizeInstitutionName("经济学院", [page], [page, foreign]),
+    undefined,
+  );
+});
+
+test("a same-domain department attachment cannot inherit university identity without validated provenance", () => {
+  const owner = source("版权所有：甲大学", { id: "owner" });
+  const attachment = source("经济学院2027年硕士招生目录。030101法学理论。", {
+    id: "attachment",
+    title: "经济学院硕士招生目录.pdf",
+    url: "https://college.example.edu.cn/catalog.pdf",
+    parentSourceId: owner.id,
+  });
+  assert.equal(
+    sourceHasSchoolIdentity(attachment, "甲大学", [owner, attachment]),
+    false,
+  );
+});
+
+test("standalone college prefixes are preserved while their subordinate college is normalized", () => {
+  const page = source(
+    "宁波工程学院杭州湾汽车学院硕士招生目录。© 2020 宁波工程学院杭州湾汽车学院 版权所有",
+    {
+      title: "宁波工程学院杭州湾汽车学院",
+      url: "https://auto.nbut.edu.cn/admission",
+    },
+  );
+  assert.equal(
+    resolveInstitutionFromPages("nbut.edu.cn", [page]),
+    "宁波工程学院",
+  );
+  assert.deepEqual(
+    normalizeInstitutionName("宁波工程学院杭州湾汽车学院", [page], [page]),
+    {
+      institutionName: "宁波工程学院",
+      collegeName: "宁波工程学院杭州湾汽车学院",
+    },
+  );
+});
+
+test("the domain resolver is replaceable and cached page ownership changes invalidate old results", () => {
+  const page = source("经济学院硕士招生目录。");
+  const calls: string[] = [];
+  assert.deepEqual(
+    normalizeInstitutionName("经济学院", [page], [page], (domain) => {
+      calls.push(domain);
+      return "甲大学";
+    }),
+    { institutionName: "甲大学", collegeName: "经济学院" },
+  );
+  assert.deepEqual(calls, ["example.edu.cn"]);
+  const owner = source("版权所有：甲大学");
+  const pages = [owner];
+  assert.equal(resolveInstitutionFromPages("example.edu.cn", pages), "甲大学");
+  owner.excerpt = "版权所有：乙大学";
+  owner.title = "乙大学官网";
+  assert.equal(resolveInstitutionFromPages("example.edu.cn", pages), "乙大学");
+  assert.equal(sourceHasSchoolIdentity(owner, "甲大学"), false);
+});
 
 test("actual school body titles, mastheads and explicit copyright owners survive navigation and department suffixes", () => {
   for (const text of [

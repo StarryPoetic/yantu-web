@@ -154,6 +154,33 @@ export function ResearchSchoolCard({
         )}
       </section>
       <ResearchExamEvidence exams={item.exams} sources={sources} />
+      {!!item.pendingEvidence?.length && (
+        <section aria-label="待确认原文">
+          <h5>待确认原文</h5>
+          <p className="ws-muted">
+            以下原文尚未确定适用项目，不用于预算或城市匹配。
+          </p>
+          {item.pendingEvidence.map((evidence, index) => (
+            <div key={evidence.field + ":" + evidence.sourceId + ":" + index}>
+              <strong>
+                {
+                  { exams: "初试科目", tuition: "学费", location: "校区地址" }[
+                    evidence.field
+                  ]
+                }
+                {evidence.year ? `（${evidence.year}年）` : ""}
+              </strong>
+              <blockquote>{evidence.quote}</blockquote>
+              <p>{evidence.reason}</p>
+              <ResearchSourceLinks
+                ids={[evidence.sourceId]}
+                sources={sources}
+                label="待确认原文来源"
+              />
+            </div>
+          ))}
+        </section>
+      )}
       <div className="research-preparation" aria-label="准备建议">
         {!!item.preparation.length && (
           <section>

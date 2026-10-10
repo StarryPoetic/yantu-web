@@ -2,6 +2,29 @@
 export type TuitionPeriod = "academic_year" | "program" | "semester" | "credit";
 export type ResearchStudyMode = "full_time" | "part_time" | "unspecified";
 
+/** Literal read evidence whose programme/year scope could not be uniquely resolved. */
+export interface PendingResearchEvidence {
+  field: "exams" | "tuition" | "location";
+  quote: string;
+  sourceId: string;
+  year?: number;
+  reason: string;
+}
+
+export interface RejectedResearchRecommendation {
+  institutionName: string;
+  programName: string;
+  code: string;
+  /** Zero denotes a rejected card; positive counts denote deleted sentences on a retained card. */
+  removedSentences: number;
+}
+
+export interface ResearchReadStatistics {
+  success: number;
+  failed: number;
+  failuresByCode: Record<string, number>;
+}
+
 export interface TuitionEvidence {
   amount: number;
   currency: "CNY";
@@ -40,4 +63,5 @@ export interface RecommendationConstraints {
   constraintChecks: RecommendationConstraintCheck[];
   tuition?: TuitionEvidence;
   location?: LocationEvidence;
+  pendingEvidence?: PendingResearchEvidence[];
 }

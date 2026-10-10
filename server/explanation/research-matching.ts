@@ -22,6 +22,9 @@ import {
 } from "./research-planning.ts";
 import {
   sourceHasSchoolIdentity,
+  normalizeInstitutionName,
+  isConcreteProgramName,
+  schoolRegistrableDomain,
   withoutSchoolLinks,
 } from "./research-school.ts";
 import {
@@ -131,32 +134,8 @@ export function createDemandPlan(run: GuidanceRun): ResearchPlan {
   };
 }
 
-/** Binds subjects to one coded program passage, never the neighbouring program/table. */
-function programRowScope(body: string, start: number, end?: number) {
-  const lineStart = body.lastIndexOf("\n", start);
-  const prefix = body.slice(Math.max(0, lineStart + 1), start);
-  const precedingLine =
-    lineStart < 0
-      ? ""
-      : body.slice(body.lastIndexOf("\n", lineStart - 1) + 1, lineStart).trim();
-  const collegePattern =
-    /(?:^|[|\s:：])\d{0,3}([\p{Script=Han}]{1,24}(?:学院|研究院|研究所|学部|中心))\s*\|?\s*$/u;
-  const collegeName =
-    prefix.match(collegePattern)?.[1] ??
-    (prefix.trim() ? undefined : precedingLine.match(collegePattern)?.[1]);
-  const row = body
-    .slice(start, end)
-    .split(/\n|复试|参考课程|参考书目|培养内容|课程设置/)[0];
-  const partTime = /非全日制/.test(row);
-  const fullTime = /全日制/.test(row.replace(/非全日制/g, ""));
-  const studyMode =
-    partTime === fullTime
-      ? undefined
-      : partTime
-        ? ("part_time" as const)
-        : ("full_time" as const);
-  return { collegeName, studyMode };
-}
+import { programRowScope } from "./research-program-scope.ts";
+export { programRowScope } from "./research-program-scope.ts";
 
 export function extractProgramExams(input: {
   institutionName: string;
@@ -177,6 +156,10 @@ export function extractProgramExams(input: {
       "尚未取得能对应这个专业的初试科目原文；不能按学硕或专硕名称推定数一、数二、英一或英二。",
   };
   const found: ResearchExamEvidence[] = [];
+  const scopes = new Map<
+    ResearchExamEvidence,
+    ReturnType<typeof programRowScope>
+  >();
   for (const source of input.sources) {
     if (
       !isSchoolPage(source) ||
@@ -185,6 +168,7 @@ export function extractProgramExams(input: {
         input.institutionName,
         input.programName,
         input.discipline,
+        input.sources,
       ) ||
       admissionEvidence(
         source,
@@ -318,6 +302,7 @@ export function extractProgramExams(input: {
               ? "已在目标年度官网专业条目中读到这些初试科目；方向、学习方式和考试组仍需核对完整目录。"
               : `这是${sourceYear}年官网初试科目，可用于历史准备路线比较，不能作为目标年度科目安排。`,
       });
+      scopes.set(found.at(-1)!, scope);
     }
   }
   const subjectIdentity = (subjects: ResearchExamEvidence["subjects"]) =>
@@ -336,7 +321,16 @@ export function extractProgramExams(input: {
         (a.quote ?? "").localeCompare(b.quote ?? ""),
     );
     if (
-      new Set(pool.map((record) => subjectIdentity(record.subjects))).size > 1
+      new Set(pool.map((record) => subjectIdentity(record.subjects))).size >
+        1 ||
+      (!input.collegeName &&
+        new Set(
+          pool.map((record) => scopes.get(record)?.collegeName).filter(Boolean),
+        ).size > 1) ||
+      ((!input.studyMode || input.studyMode === "unspecified") &&
+        new Set(
+          pool.map((record) => scopes.get(record)?.studyMode).filter(Boolean),
+        ).size > 1)
     )
       return {
         status: "ambiguous",
@@ -660,19 +654,37 @@ export function buildEvidenceCandidates(input: {
   schoolNames?: string[];
 }): { recommendations: Recommendation[]; audit: ResearchCandidateAudit[] } {
   const profile = researchContext(input.run).profile;
-  const names = new Set(input.schoolNames ?? []);
+  const discovered = new Set(input.schoolNames ?? []);
   for (const source of input.sources) {
     for (const match of withoutSchoolLinks(source.excerpt).matchAll(
       /(?:^|[\s:：。；|｜])([\p{Script=Han}]{2,20}(?:大学|学院|研究院|研究所))(?=\s|\d|年|硕士|研究生|招生|专业|学科|版权所有|$)/gu,
     )) {
-      if (sourceHasSchoolIdentity(source, match[1])) names.add(match[1]);
+      if (sourceHasSchoolIdentity(source, match[1])) discovered.add(match[1]);
     }
   }
   const recommendations: Recommendation[] = [];
   const audit: ResearchCandidateAudit[] = [];
+  const names = new Set<string>();
+  for (const name of discovered) {
+    const normalized = normalizeInstitutionName(
+      name,
+      input.sources.filter((s) => sourceHasSchoolIdentity(s, name)),
+      input.sources,
+    );
+    if (normalized) names.add(normalized.institutionName);
+    else
+      audit.push({
+        institutionName: name,
+        status: "excluded",
+        reasons: ["无法确定该学院所属招生单位，未将下属学院作为独立学校推荐。"],
+        sourceIds: input.sources
+          .filter((s) => sourceHasSchoolIdentity(s, name))
+          .map((s) => s.id),
+      });
+  }
   for (const institutionName of [...names].sort()) {
     const schoolSources = input.sources.filter((s) =>
-      sourceHasSchoolIdentity(s, institutionName),
+      sourceHasSchoolIdentity(s, institutionName, input.sources),
     );
     let excluded = false;
     let added = false;
@@ -702,6 +714,10 @@ export function buildEvidenceCandidates(input: {
           /(?:专业学位|学术学位|全日制|非全日制|硕士|(?:正常|继续|恢复)?招生|初试|考试科目|学费).*$/,
           "",
         );
+        if (!isConcreteProgramName(programName)) {
+          excluded = true;
+          continue;
+        }
         const { collegeName, studyMode } = programRowScope(
           body,
           row.index!,
@@ -710,7 +726,13 @@ export function buildEvidenceCandidates(input: {
         const key = `${row[1]}:${programName}:${collegeName ?? ""}:${studyMode ?? ""}`;
         if (
           seen.has(key) ||
-          !supportsProgram(source, institutionName, programName, discipline)
+          !supportsProgram(
+            source,
+            institutionName,
+            programName,
+            discipline,
+            input.sources,
+          )
         )
           continue;
         const programScope = {
@@ -725,6 +747,7 @@ export function buildEvidenceCandidates(input: {
           source,
           input.targetYear,
           programScope,
+          input.sources,
         );
         if (!scope.scopeMatched) continue;
         const currentConflict = input.sources.some((other) =>
@@ -1080,7 +1103,17 @@ export function rankDemandCandidates(
       collegeName: item.collegeName,
       studyMode: item.studyMode,
       discipline,
-      sources,
+      sources: sources.filter((source) =>
+        item.citations.some((id) =>
+          sources.some(
+            (anchor) =>
+              anchor.id === id &&
+              sourceHasSchoolIdentity(anchor, item.institutionName, sources) &&
+              schoolRegistrableDomain(anchor.url) ===
+                schoolRegistrableDomain(source.url),
+          ),
+        ),
+      ),
       targetYear: year,
       admissionScope: "program_row",
     });

@@ -186,3 +186,13 @@ npx playwright test tests/tutor-chat.spec.ts
 - 细分读取失败码包含HTTP_403/404/410/429/4XX/500/502/503/504/5XX、WEB_TLS_CERT、WEB_CONNECTION_RESET、WEB_CONNECTION_REFUSED；证书错误只保留安全tlsCode，继续验证证书，不放宽rejectUnauthorized。DNS专用失败码同样保留。补查冷却按全部失败记录执行，失败不覆盖成功证据。
 - 请求User-Agent为Mozilla/5.0 (compatible; YantuEvidence/1.1)，Accept-Language为zh-CN,zh;q=0.9。不伪装具体浏览器版本。
 - 免费脚本 `scripts/probe-school-sites.mjs` 接受每行一个URL的文件或 `--urls URL ...`，最多4并发、同主机串行，遵守YANTU_DNS_MODE；不加载.env、不调用模型或搜索，输出成功/失败码/tlsCode/finalUrl/transport/encoding与汇总。
+
+## 阶段2校验、绑定与诊断（已实现）
+
+阶段2对应 R-33 / T-27。普通无据句子只删除该句，六类说明字段按 `。；;！？!?` 与换行逐句校验；空 rationale 使用通过的 fitReasons 回退。城市 unknown/mismatch 时，符合城市偏好及无据跨城通勤说法必须移除。学校身份、官网硕士项目、允许学科、明确停招／资格冲突、至少两个不同真实画像维度、至少一项有效取舍仍是硬门槛；价格、概率和确定资格等核心断言拒绝整条。`reportMessages` 为每个候选提供城市 match/mismatch/unknown 及依据，未知不能声称符合城市偏好。
+
+`research-binding.ts` 在模型分析后，从同校注册域名全部已读正文绑定 exams/tuition/location，追加 citations，并重新计算 constraintChecks；最终层级仍由 demand-match-v1 决定。`research-program-scope.ts` 统一代码行的学院及学习方式边界。附件仍验证真实父页链接与同校归属，历史字段保留年度，目标年度冲突优先，全程／学期／学分不年化，特殊人群与合作单位地址不套用。不能唯一归属的相关连续原文进入 `pendingEvidence:[{field,quote,sourceId,year?,reason}]`，quote≤300字，页面显示“待确认原文”，不用于预算或城市匹配。
+
+`research-school.ts` 的可替换 `InstitutionResolver` 目前用已读正文校名主体、标题与版权所有者解析域名招生单位；学院归一后保留 collegeName，无法归一和非专业栏目名作废。身份缓存随实际正文、标题和来源状态变化失效，不缓存个人画像。
+
+报告通过 `server/routes/research.ts` 保存 `rejectedRecommendations:[{institutionName,programName,code,removedSentences}]`、`validationIssues:[{path,code}]`、`readStatistics:{success,failed,failuresByCode}`，本人可从 `GET /api/v1/research-jobs/:id` 读回；补查失败保留旧报告时同步本次诊断。removedSentences=0表示整条拒绝，正数为删除句数；不保存模型全文或被删句子全文。读取失败只按实际尝试计数，内外层捕获同一次失败不重复计入；Markdown“技术信息”列出计数，诊断暂不在页面展示。

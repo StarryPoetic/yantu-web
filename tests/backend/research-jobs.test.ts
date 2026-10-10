@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { TestContext } from "node:test";
 import { createApplication } from "../../server/app.ts";
 import { createResearchRoutes } from "../../server/routes/research.ts";
@@ -37,9 +40,13 @@ function output(input: ResearchInput): ResearchReport {
     searched: true,
   };
 }
-async function fixture(t: TestContext, engine: ResearchReportModule) {
+async function fixture(
+  t: TestContext,
+  engine: ResearchReportModule,
+  databasePath = ":memory:",
+) {
   const app = await createApplication(
-    { databasePath: ":memory:", sampleData: true, staticDirectory: undefined },
+    { databasePath, sampleData: true, staticDirectory: undefined },
     { research: engine },
   );
   t.after(() => app.close());
@@ -99,6 +106,78 @@ async function fixture(t: TestContext, engine: ResearchReportModule) {
   assert.equal(guidance.status, 201);
   return { app, request, client, runId: guidance.body.guidanceRunId };
 }
+
+test("rejected recommendations, validation issues and read statistics persist in SQLite and return through the owned job API", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "yantu-phase2-"));
+  let expected!: ResearchReport;
+  const finished = deferred();
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    async generate(input) {
+      expected = {
+        ...output(input),
+        rejectedRecommendations: [
+          {
+            institutionName: "甲大学",
+            programName: "法学",
+            code: "UNSUPPORTED_RESEARCH_CLAIM",
+            removedSentences: 1,
+          },
+          {
+            institutionName: "未知学院",
+            programName: "学科简介",
+            code: "UNGROUNDED_RESEARCH_RECOMMENDATION",
+            removedSentences: 0,
+          },
+        ],
+        validationIssues: [
+          {
+            path: "recommendations[0].sentences",
+            code: "UNSUPPORTED_RESEARCH_CLAIM",
+          },
+        ],
+        readStatistics: {
+          success: 2,
+          failed: 3,
+          failuresByCode: { HTTP_404: 2, WEB_TLS_CERT: 1 },
+        },
+      };
+      finished.resolve();
+      return expected;
+    },
+  };
+  const { request, app, runId } = await fixture(
+    t,
+    engine,
+    join(directory, "research.sqlite"),
+  );
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const started = await request(`/guidance/${runId}/research`, "POST", {});
+  await finished.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const fetched = await request(`/research-jobs/${started.body.jobId}`);
+  assert.equal(fetched.status, 200);
+  assert.deepEqual(
+    fetched.body.report.rejectedRecommendations,
+    expected.rejectedRecommendations,
+  );
+  assert.deepEqual(
+    fetched.body.report.validationIssues,
+    expected.validationIssues,
+  );
+  assert.deepEqual(fetched.body.report.readStatistics, expected.readStatistics);
+  const row = app.store.db
+    .prepare(
+      "SELECT value FROM resources WHERE kind = 'research-job' AND id = ?",
+    )
+    .get(started.body.jobId) as { value: string } | undefined;
+  assert.ok(row);
+  assert.deepEqual(
+    JSON.parse(row.value).report.readStatistics,
+    expected.readStatistics,
+  );
+});
 
 test("supplement requires an owned base report and passes its immutable snapshot while preventing duplicate jobs", async (t) => {
   const firstDone = deferred(),

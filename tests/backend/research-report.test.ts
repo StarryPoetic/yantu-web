@@ -751,7 +751,7 @@ test("personal cross-major intent and historic pages cannot invent eligibility, 
   card.fitReasons.push({
     profileField: "crossMajor",
     profileValue: "接受跨专业",
-    reason: "用户接受跨专业，可以报考法学。",
+    reason: "用户接受跨专业，该校就业面广。",
   });
   card.preparation.push(
     "数学基础薄弱，需大量时间攻克数学一",
@@ -1340,14 +1340,14 @@ test("local advice failures preserve grounded identity, cited department, two pr
   body.recommendations[0].fitReasons.push({
     profileField: "cities",
     profileValue: "上海",
-    reason: "保证录取。",
+    reason: "该校符合城市偏好。",
   });
   body.recommendations[0].preparation.push(
     "联系示例研究大学教育学院核对该专业当年科目。",
     "系统学习311教育学专业基础综合。",
     "联系没有引用大学申请入学。",
   );
-  body.recommendations[0].tradeoffs.push("你已符合报考条件，可直接报考。");
+  body.recommendations[0].tradeoffs.push("该校就业机会较多。");
   body.recommendations[0].uncertainties.push(
     "目标年度招生专业目录未发布，仍待官网核验。",
   );
@@ -1378,20 +1378,13 @@ test("local advice failures preserve grounded identity, cited department, two pr
 });
 
 test("a card still fails when its core rationale or minimum remaining fit/tradeoff evidence fails", async () => {
-  for (const mode of [
-    "rationale",
-    "one-fit",
-    "no-tradeoff",
-    "uncited-department",
-  ]) {
+  for (const mode of ["rationale", "one-fit", "no-tradeoff"]) {
     const body = reportBody();
     if (mode === "rationale") body.recommendations[0].rationale = "保证录取。";
     if (mode === "one-fit")
       body.recommendations[0].fitReasons[1].reason = "保证录取。";
     if (mode === "no-tradeoff")
       body.recommendations[0].tradeoffs = ["你已符合报考条件，可直接报考。"];
-    if (mode === "uncited-department")
-      body.recommendations[0].rationale = "该专业属于没有来源学院。";
     const { module } = setup({ body });
     const report = await module.generate({
       subjectId: "student",
@@ -1399,6 +1392,217 @@ test("a card still fails when its core rationale or minimum remaining fit/tradeo
     });
     assert.equal(report.recommendations.length, 0, mode);
   }
+});
+
+test("unsupported city sentences are removed from every advice field without deleting the grounded card", async () => {
+  const body = reportBody();
+  const claim = "符合杭州城市偏好。";
+  const card = body.recommendations[0];
+  card.rationale = claim;
+  card.suitabilityReason += claim;
+  card.tradeoffs[0] += claim;
+  card.preparation[0] += "。" + claim;
+  card.uncertainties[0] += "。" + claim;
+  card.fitReasons[0].reason += claim;
+  const { module, calls } = setup({ body });
+  const run = fixture();
+  run.inputSnapshot.profile.cities = ["杭州"];
+  const report = await module.generate({ subjectId: "student", run });
+  assert.equal(report.recommendations.length, 1);
+  const kept = report.recommendations[0];
+  assert.equal(JSON.stringify(kept).includes(claim), false);
+  assert.equal(kept.fitReasons?.length, 2);
+  assert.equal(kept.tradeoffs?.length, 1);
+  assert.equal(
+    kept.rationale,
+    kept.fitReasons!.map((f) => f.reason).join("；"),
+  );
+  assert.ok(
+    report.rejectedRecommendations?.some(
+      (r) =>
+        r.institutionName === kept.institutionName &&
+        r.code === "UNSUPPORTED_RESEARCH_CLAIM" &&
+        r.removedSentences === 6,
+    ),
+  );
+  assert.ok(
+    report.validationIssues?.some(
+      (i) => i.path === "recommendations[0].sentences",
+    ),
+  );
+  const payload = JSON.parse(calls[0].messages[1].content);
+  assert.ok(payload.cityClaimPolicy.includes("unknown"));
+  assert.ok(Array.isArray(payload.candidateCities));
+});
+
+test("delivered recommendations bind all uncited same-school fields and recalculate demand constraints", async () => {
+  const pages = [
+    {
+      path: "law",
+      text: `${quote} 示例研究大学2027年硕士招生专业目录。教育学院\n030101 法学理论 全日制硕士招生。`,
+    },
+    {
+      path: "fees",
+      text: "示例研究大学2027年硕士研究生收费标准。教育学院 030101 法学理论 全日制学费8000元/年。",
+    },
+    {
+      path: "campus",
+      text: "示例研究大学2027年硕士研究生培养安排。教育学院 030101 法学理论 全日制培养地址：江苏省苏州市学院路1号。",
+    },
+    {
+      path: "exams",
+      text: "示例研究大学2027年硕士招生专业目录。教育学院\n030101 法学理论 全日制 初试①101思想政治理论②201英语（一）③611法学基础④811法学综合",
+    },
+  ];
+  const reader: WebReader = async (url) => {
+    if (new URL(url).hostname === "api.search.brave.com")
+      return {
+        contentType: "application/json",
+        text: JSON.stringify({
+          web: {
+            results: pages.map((p) => ({
+              url: `https://yz.example.edu.cn/${p.path}`,
+              title: `示例研究大学2027年硕士${p.path}`,
+              description: p.text,
+            })),
+          },
+        }),
+      };
+    const page = pages.find((p) => new URL(url).pathname === `/${p.path}`);
+    if (!page) throw new ModelError("HTTP_404");
+    return { contentType: "text/html", text: `<p>${page.text}</p>` };
+  };
+  const { module } = setup({ reader });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  const item = report.recommendations[0];
+  assert.equal(item.tuition?.amount, 8000);
+  assert.equal(item.location?.city, "苏州", JSON.stringify(item));
+  assert.equal(item.exams?.status, "verified_current");
+  assert.equal(item.collegeName, "教育学院");
+  assert.equal(item.majorCode, "030101");
+  assert.deepEqual(
+    item.exams?.subjects.map((s) => s.code),
+    ["101", "201", "611", "811"],
+  );
+  for (const field of [item.tuition, item.location, item.exams])
+    assert.ok(field?.sourceId && item.citations.includes(field.sourceId));
+  assert.ok(item.constraintChecks?.every((c) => c.status === "match"));
+  assert.equal(item.match?.ruleVersion, "demand-match-v1");
+  assert.equal(report.readStatistics?.success, 4);
+  assert.equal(report.readStatistics?.failed, 0);
+});
+
+test("a single actual failed read is counted once with its fixed failure code", async () => {
+  const { module } = setup({ reader: mockReader({ failPage: true }) });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.deepEqual(report.readStatistics, {
+    success: 0,
+    failed: 1,
+    failuresByCode: { WEB_ADDRESS_BLOCKED: 1 },
+  });
+});
+
+test("sentence delimiters and invented commute assertions are isolated while uncited departments fall back to valid reasons", async () => {
+  for (const separator of ["。", "；", ";", "！", "？", "!", "?", "\n"]) {
+    const body = reportBody();
+    body.recommendations[0].rationale = `该专业属于没有来源学院${separator}结合本人实践目标比较研究训练。${separator}本人接受跨城通勤。`;
+    const { module } = setup({ body });
+    const report = await module.generate({
+      subjectId: "student",
+      run: fixture(),
+    });
+    assert.equal(report.recommendations.length, 1, separator);
+    const card = report.recommendations[0];
+    assert.ok(card.rationale.includes("比较研究训练"), separator);
+    assert.ok(!card.rationale.includes("没有来源学院"), separator);
+    assert.ok(!card.rationale.includes("接受跨城通勤"), separator);
+    assert.ok(
+      report.rejectedRecommendations?.some((r) => r.removedSentences === 2),
+      separator,
+    );
+  }
+});
+
+test("core invented price, probability and eligibility claims still reject cards across advice fields", async () => {
+  for (const [field, claim] of [
+    ["preparation", "该校学费8000元。"],
+    ["tradeoffs", "录取概率90%。"],
+    ["uncertainties", "用户接受跨专业，可以报考法学。"],
+    ["suitabilityReason", "保证录取。"],
+  ] as const) {
+    const body = reportBody();
+    if (field === "suitabilityReason") body.recommendations[0][field] = claim;
+    else body.recommendations[0][field].push(claim);
+    const { module } = setup({ body });
+    const report = await module.generate({
+      subjectId: "student",
+      run: fixture(),
+    });
+    assert.equal(report.recommendations.length, 0, field);
+    assert.ok(
+      report.rejectedRecommendations?.some(
+        (r) =>
+          r.code === "UNSUPPORTED_RESEARCH_CLAIM" && r.removedSentences === 0,
+      ),
+      field,
+    );
+    assert.equal(
+      JSON.stringify(report.rejectedRecommendations).includes(claim),
+      false,
+    );
+  }
+});
+
+test("invalid school identity, uncited programme body and non-programme headings still reject a full card", async () => {
+  for (const mode of ["school", "program", "heading", "snippets"] as const) {
+    const body = reportBody();
+    if (mode === "school")
+      body.recommendations[0].institutionName = "没有来源学院";
+    if (mode === "program") body.recommendations[0].programName = "法学史";
+    if (mode === "heading") body.recommendations[0].programName = "学科简介";
+    const { module } = setup({
+      body,
+      reader: mockReader({ failPage: mode === "snippets" }),
+    });
+    const report = await module.generate({
+      subjectId: "student",
+      run: fixture(),
+    });
+    assert.equal(report.recommendations.length, 0, mode);
+    if (mode === "snippets")
+      assert.equal(report.reason, "SEARCH_SNIPPETS_ONLY");
+    else
+      assert.ok(
+        report.rejectedRecommendations?.some((r) => r.removedSentences === 0),
+        mode,
+      );
+  }
+});
+
+test("a department-named model card is normalized to its university and retains the college identity", async () => {
+  const body = reportBody();
+  body.facts = [];
+  body.recommendations[0].institutionName = "教育学院";
+  const { module } = setup({
+    body,
+    reader: mockReader({
+      content:
+        "教育学院2027年硕士招生专业目录。030101 法学理论 全日制硕士招生。版权所有：示例研究大学教育学院",
+    }),
+  });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(report.recommendations.length, 1);
+  assert.equal(report.recommendations[0].institutionName, "示例研究大学");
+  assert.equal(report.recommendations[0].collegeName, "教育学院");
 });
 
 test("explicit exam-code preparation requires cited current evidence instead of historical assumptions", async () => {
@@ -1804,7 +2008,7 @@ test("degree labels are normalized and unsupported employment generalizations ca
   );
 });
 
-test("historical exam claims become an explicit verification cost without claiming a current exam requirement", async () => {
+test("a card with no valid tradeoff is rejected while independently grounded inventory remains without a current exam claim", async () => {
   const body = reportBody();
   body.facts = [];
   body.recommendations[0].tradeoffs = ["初试数学一要求高，需要补足数学基础。"];
@@ -1825,7 +2029,11 @@ test("historical exam claims become an explicit verification cost without claimi
     report.recommendations[0].tradeoffs!.some((t) => t.includes("数学一")),
     false,
   );
-  assert.match(report.recommendations[0].tradeoffs![0], /目标年度.*核验/);
+  assert.ok(
+    report.rejectedRecommendations?.some(
+      (r) => r.code === "INSUFFICIENT_PROFILE_FIT" && r.removedSentences === 0,
+    ),
+  );
   assert.equal(report.recommendations[0].admissionStatus, "needs_verification");
 });
 
