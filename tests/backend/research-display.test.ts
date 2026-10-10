@@ -11,6 +11,8 @@ import {
   examDescription,
   assessmentScopeLabel,
   admissionLabel,
+  tuitionDescription,
+  tuitionCaution,
 } from "../../src/workspace/research-report.ts";
 import type { GuidanceRun } from "../../server/disciplines/types.ts";
 import { decisionDisplayFixture } from "../helpers/research-decision-fixture.ts";
@@ -18,6 +20,37 @@ import {
   withEvidenceCoverage,
   withSupplementedTuition,
 } from "../helpers/research-coverage-fixture.ts";
+
+test("school-wide tuition labels retain historical scope and undated school mode tariffs never invent a year", () => {
+  const value = report();
+  const item = value.recommendations[0];
+  const run = {
+    inputSnapshot: { profile: { year: "2027" } },
+  } as unknown as GuidanceRun;
+  item.tuition = {
+    amount: 7000,
+    currency: "CNY",
+    period: "academic_year",
+    year: 2024,
+    studyMode: "unspecified",
+    scope: "school_wide",
+    quote: "我校研究生学费均为7000元/年",
+    sourceId: "fee",
+  };
+  assert.match(tuitionDescription(item, run), /2024 年参考学费.*全校统一标准/);
+  assert.match(tuitionCaution(item, run), /目标年度收费尚需核对/);
+  item.tuition = {
+    ...item.tuition,
+    year: undefined,
+    studyMode: "full_time",
+    scope: "school_wide_mode",
+  };
+  assert.match(
+    tuitionDescription(item, run),
+    /年度未明确.*全校按学习方式标准.*全日制/,
+  );
+  assert.ok(!tuitionDescription(item, run).includes("undefined"));
+});
 
 const cityReason = "PREFERRED_CITY_COVERAGE_INCOMPLETE";
 function report(): ResearchReport {

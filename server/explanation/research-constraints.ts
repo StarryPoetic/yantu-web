@@ -21,6 +21,10 @@ import { admissionEvidence } from "./research-evidence.ts";
 import { safeSourceYear } from "./research-years.ts";
 import { explicitAdmissionsYears } from "../../shared/research-years.ts";
 import { programRowScope } from "./research-program-scope.ts";
+import {
+  normalizedEvidence,
+  tuitionPassages,
+} from "./research-tuition-passages.ts";
 
 export interface RecommendationConstraintInput {
   profile: Pick<Profile, "budget" | "cities">;
@@ -31,6 +35,8 @@ export interface RecommendationConstraintInput {
   majorCode?: string;
   degreeType?: "academic" | "professional";
   studyMode?: ResearchStudyMode;
+  /** Ambiguous programme identity may still use an explicit school-wide tariff. */
+  schoolWideOnly?: boolean;
   citations: string[];
   sources: WebSource[];
   tuition?: unknown;
@@ -350,6 +356,21 @@ function checkedTuition(
   input: RecommendationConstraintInput,
 ): TuitionEvidence | undefined {
   const raw = record(input.tuition);
+  if (raw) {
+    const school = schoolTuitionCandidates(input).find(
+      (candidate) =>
+        candidate.sourceId === raw.sourceId &&
+        candidate.quote === raw.quote &&
+        candidate.amount === raw.amount &&
+        raw.currency === "CNY" &&
+        candidate.period === raw.period &&
+        candidate.year === raw.year &&
+        (!raw.studyMode || raw.studyMode === candidate.studyMode) &&
+        (!raw.scope || raw.scope === candidate.scope),
+    );
+    if (school && input.citations.includes(school.sourceId)) return school;
+  }
+  if (input.schoolWideOnly) return undefined;
   if (
     !raw ||
     typeof raw.amount !== "number" ||
@@ -381,8 +402,8 @@ function checkedTuition(
     /学费|收费标准/.test(header) &&
     /硕士|研究生/.test(header) &&
     [...header.matchAll(money)].length === 0;
-  // An explicit project row is required. A university-wide amount is never silently
-  // assigned to every project, and amounts from adjacent programme rows cannot migrate.
+  // Unscoped amounts and adjacent programme rows cannot migrate; explicit school tariffs
+  // are separately checked above with their population, mode, year and billing unit.
   for (const row of tuitionRows(quote, input)) {
     const clause = row.text;
     if (!literalScopeMatches(source, clause, input)) continue;
@@ -482,7 +503,8 @@ function checkedTuition(
 
 /** Recover an omitted model field from exact school/project text, never from a search snippet. */
 function extractedTuitionCandidates(input: RecommendationConstraintInput) {
-  const found: TuitionEvidence[] = [];
+  const found: TuitionEvidence[] = schoolTuitionCandidates(input);
+  if (input.schoolWideOnly) return found;
   for (const source of input.sources) {
     if (source.kind !== "official_page") continue;
     for (const row of tuitionRows(source.excerpt, input)) {
@@ -529,6 +551,93 @@ function extractedTuitionCandidates(input: RecommendationConstraintInput) {
   return found;
 }
 
+/** An explicit school-wide tariff is applicable without inventing a project or mode. */
+function schoolTuitionCandidates(
+  input: RecommendationConstraintInput,
+): TuitionEvidence[] {
+  return input.sources.flatMap((source) => {
+    if (source.kind !== "official_page") return [];
+    return tuitionPassages(substantive(source.excerpt)).flatMap((quote) => {
+      const text = normalizedEvidence(quote).replaceAll(
+        input.institutionName,
+        "",
+      );
+      const mode = statedModes(text);
+      const schoolScope =
+        /(?:我校|本校|全校|所有)(?:的)?(?:非?全日制)?(?:硕士)?研究生(?:缴纳)?(?:的)?学费/.test(
+          text,
+        ) ||
+        /(?:^|[.:：\d])(?:硕士)?研究生学费(?:标准)?(?:均为|统一)/.test(text) ||
+        (/^非?全日制(?:硕士)?研究生(?:缴纳)?学费/.test(text) &&
+          /(?:我校|本校)非?全日制(?:硕士)?研究生/.test(
+            normalizedEvidence(source.excerpt),
+          ));
+      if (
+        !schoolScope ||
+        mode.length > 1 ||
+        /学院|专业|\b(?:0[1-9]|1[0-4])\d{4}\b|[（(][\p{Script=Han}]{2,}[）)]|博士|本科|同等学力|留学生|来华留学|港澳台|专项|定向|中外合作/u.test(
+          text,
+        )
+      )
+        return [];
+      if (degreeConflict(text, input)) return [];
+      if (mode.length && input.studyMode !== mode[0]) return [];
+      const cited = citedQuote(
+        { sourceId: source.id, quote },
+        { ...input, citations: [...new Set([...input.citations, source.id])] },
+      );
+      if (!cited || populationFeeConflict(source, quote, 0)) return [];
+      const amounts = [...quote.matchAll(money)];
+      if (amounts.length !== 1) return [];
+      const amount = amounts[0];
+      const feeLabel = [
+        ...quote.slice(0, amount.index).matchAll(/学\s*费/g),
+      ].at(-1)!;
+      const beforeAmount = normalizedEvidence(
+        quote.slice(feeLabel.index! + feeLabel[0].length, amount.index),
+      );
+      if (
+        /[\p{Script=Han}]{2,}/u.test(
+          beforeAmount.replace(
+            /标准|缴纳|均为|统一|每学年|每年|每学期|每学分|全程|学制内|每生|每人|每|为|按|的|是|总额|总计/g,
+            "",
+          ),
+        )
+      )
+        return [];
+      const amountValue =
+        Number(amount[1].replace(/,/g, "")) * (amount[2] ? 10_000 : 1);
+      if (
+        !Number.isFinite(amountValue) ||
+        amountValue <= 0 ||
+        amountValue > 10_000_000
+      )
+        return [];
+      const period = statedPeriod(
+        quote.slice(0, amount.index),
+        quote.slice(amount.index! + amount[0].length),
+      );
+      if (!period) return [];
+      const year = rowYear(source, quote, quote, 0) ?? safeSourceYear(source);
+      if (year !== undefined && year > Number(input.targetYear)) return [];
+      return [
+        {
+          amount: amountValue,
+          currency: "CNY" as const,
+          period,
+          ...(year !== undefined ? { year } : {}),
+          studyMode: mode[0] ?? "unspecified",
+          scope: mode.length
+            ? ("school_wide_mode" as const)
+            : ("school_wide" as const),
+          quote,
+          sourceId: source.id,
+        },
+      ];
+    });
+  });
+}
+
 function selectedTuition(
   found: TuitionEvidence[],
   input: RecommendationConstraintInput,
@@ -537,9 +646,9 @@ function selectedTuition(
     (item) => String(item.year) === String(input.targetYear),
   );
   const historical = found.filter(
-    (item) => item.year < Number(input.targetYear),
+    (item) => item.year !== undefined && item.year < Number(input.targetYear),
   );
-  const latestHistorical = Math.max(...historical.map((item) => item.year));
+  const latestHistorical = Math.max(...historical.map((item) => item.year!));
   const candidates = current.length
     ? current
     : historical.length
@@ -936,6 +1045,12 @@ function budgetCheck(
   if (!budget)
     return { ...check, reason: "年度预算尚未明确，未代填预算或认定费用符合。" };
   if (!tuition) return check;
+  if (tuition.year === undefined)
+    return {
+      ...check,
+      reason:
+        "已读到适用学习方式的全校学费标准，但原文未明确适用年度，目标年度预算仍待核验。",
+    };
   if (tuition.year > Number(input.targetYear))
     return {
       ...check,
@@ -952,7 +1067,7 @@ function budgetCheck(
         reference +
         "官网费用按全程、学期或学分计费，与年度预算口径不同；未推算学制、学期数或学分数。",
     };
-  if (tuition.studyMode === "unspecified")
+  if (tuition.studyMode === "unspecified" && tuition.scope !== "school_wide")
     return {
       ...check,
       reason:
@@ -960,13 +1075,19 @@ function budgetCheck(
         "学费原文未明确学习形式，须确认全日制或非全日制及其适用项目后再比较年度预算。",
     };
   const maximum = budget.upper ?? budget.lower!;
+  const tariffLabel =
+    tuition.scope === "school_wide"
+      ? "全校统一标准下的"
+      : tuition.studyMode === "full_time"
+        ? "全日制"
+        : "非全日制";
   if (tuition.amount <= maximum)
     return {
       ...check,
       status: "match",
       reason:
         reference +
-        `该${tuition.studyMode === "full_time" ? "全日制" : "非全日制"}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元未超过所选年度预算${budget.upper ? "上限" : "起点"}；仅比较学费，住宿和生活等总费用仍待核验。`,
+        `该${tariffLabel}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元未超过所选年度预算${budget.upper ? "上限" : "起点"}；仅比较学费，住宿和生活等总费用仍待核验。`,
     };
   if (!budget.upper)
     return {
@@ -980,7 +1101,7 @@ function budgetCheck(
     status: "mismatch",
     reason:
       reference +
-      `该${tuition.studyMode === "full_time" ? "全日制" : "非全日制"}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元，已高于所选年度预算上限${maximum.toLocaleString("zh-CN")}元，且尚未包括住宿和生活等费用；需放宽预算条件，是否值得选择仍须综合本人其他目标判断。`,
+      `该${tariffLabel}项目${tuition.year}年度学费${tuition.amount.toLocaleString("zh-CN")}元，已高于所选年度预算上限${maximum.toLocaleString("zh-CN")}元，且尚未包括住宿和生活等费用；需放宽预算条件，是否值得选择仍须综合本人其他目标判断。`,
   };
 }
 
@@ -1043,11 +1164,24 @@ export function deriveRecommendationConstraints(
     input.tuition === undefined
       ? extractedTuition(input)
       : checkedTuition(input);
-  if (tuition && tuition.year < Number(input.targetYear)) {
+  if (
+    tuition &&
+    tuition.year !== undefined &&
+    tuition.year < Number(input.targetYear)
+  ) {
     const current = extractedTuitionCandidates(input).filter(
       (item) => item.year === Number(input.targetYear),
     );
     if (current.length) tuition = selectedTuition(current, input);
+    else if (
+      (!input.studyMode || input.studyMode === "unspecified") &&
+      (["full_time", "part_time"] as const).some((studyMode) =>
+        schoolTuitionCandidates({ ...input, studyMode }).some(
+          (fee) => fee.year === Number(input.targetYear),
+        ),
+      )
+    )
+      tuition = undefined;
   }
   const location =
     input.location === undefined

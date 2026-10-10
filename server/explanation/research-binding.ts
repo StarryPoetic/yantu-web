@@ -9,12 +9,19 @@ import { validatedSourceProvenance } from "./research-provenance.ts";
 import { researchContext } from "./research-planning.ts";
 import { safeSourceYear } from "./research-years.ts";
 import {
+  normalizedEvidence,
+  tuitionMoney,
+  tuitionPassages,
+} from "./research-tuition-passages.ts";
+import {
   schoolRegistrableDomain,
   sourceHasSchoolIdentity,
   withoutSchoolLinks,
 } from "./research-school.ts";
 
 type Recommendation = ResearchReport["recommendations"][number];
+const trainingLocation =
+  /(?:培养|办学|教学)(?:地点|地址|校区)|校区(?:地址|位于|坐落|所在地)|(?:地址|地点)[^。；;]{0,60}校区|在[^。；;]{0,30}校区(?:培养|学习|就读)/;
 
 /** A cited identity anchors the domain; unrelated schools and unvalidated attachments are excluded. */
 export function sameSchoolReadSources(
@@ -103,7 +110,7 @@ export function bindRecommendationEvidence(
     }
   }
   const applicable = ambiguousIdentity ? [] : own;
-  const constraints = deriveRecommendationConstraints({
+  const constraintInput = {
     institutionName: item.institutionName,
     programName: item.programName!,
     majorCode: item.majorCode,
@@ -117,7 +124,12 @@ export function bindRecommendationEvidence(
     targetYear,
     sources: applicable,
     citations: own.map((s) => s.id),
-  });
+  };
+  const constraints = deriveRecommendationConstraints(
+    ambiguousIdentity
+      ? { ...constraintInput, sources: own, schoolWideOnly: true, location: {} }
+      : constraintInput,
+  );
   const exams = extractProgramExams({
     institutionName: item.institutionName,
     programName: item.programName!,
@@ -144,47 +156,66 @@ export function bindRecommendationEvidence(
   for (const source of own) {
     const body = withoutSchoolLinks(source.excerpt);
     // Keep literal continuous passages. Neither concatenated rows nor shortened ellipses are quotes.
-    for (const match of body.matchAll(/[^。；;\n]+/g)) {
-      const passage = match[0].trim();
-      const projectAt = item.majorCode
-        ? passage.indexOf(item.majorCode)
-        : passage.indexOf(item.programName!);
-      const related = projectAt >= 0 || passage.includes(item.programName!);
-      if (
-        !related &&
-        (!/硕士|研究生/.test(body) ||
-          /\b(?:0[1-9]|1[0-4])\d{4}\b/.test(passage))
-      )
-        continue;
-      for (const field of ["exams", "tuition", "location"] as const) {
-        if (bound[field]) continue;
+    const passages = [...body.matchAll(/[^。；;\n]+/g)].map((match) =>
+      match[0].trim(),
+    );
+    for (const field of ["exams", "tuition", "location"] as const) {
+      if (bound[field]) continue;
+      for (const passage of field === "tuition"
+        ? tuitionPassages(body)
+        : passages) {
+        const projectAt = item.majorCode
+          ? passage.indexOf(item.majorCode)
+          : passage.indexOf(item.programName!);
+        const related = projectAt >= 0 || passage.includes(item.programName!);
+        if (
+          !related &&
+          (!/硕士|研究生/.test(body) ||
+            /\b(?:0[1-9]|1[0-4])\d{4}\b/.test(passage))
+        )
+          continue;
         const marker = {
           exams: /初试|考试科目|①|②|③|④/,
-          tuition: /学费|收费|\d\s*元/,
-          location: /校区|地址|培养地点|办学地点|教学地点/,
+          tuition: /学\s*费/,
+          location: trainingLocation,
         }[field].exec(passage);
         if (!marker) continue;
         if (!related && field === "exams") continue;
         const start = Math.max(0, marker.index - 140);
         const quote = passage.slice(start, start + 300);
         if (!quote || quote.includes(" … ")) continue;
+        if (
+          field === "tuition" &&
+          (!normalizedEvidence(quote).includes("学费") ||
+            ![...quote.matchAll(tuitionMoney)].length)
+        )
+          continue;
         const year = safeSourceYear(source);
         pendingEvidence.push({
           field,
           quote,
           sourceId: source.id,
           ...(year ? { year } : {}),
-          reason:
-            field === "exams" && exams.status === "ambiguous"
-              ? exams.reason
-              : "原文涉及该专业，但学院、学习方式、年度、适用人群或字段值尚不能唯一对应；需核对完整条目及冲突来源。",
+          reason: pendingReason(
+            field,
+            passage,
+            body,
+            item,
+            own,
+            year,
+            targetYear,
+            exams,
+          ),
         });
       }
     }
   }
   const unique = [
     ...new Map(
-      pendingEvidence.map((e) => [`${e.field}:${e.sourceId}:${e.quote}`, e]),
+      pendingEvidence.map((e) => [
+        `${e.field}:${e.sourceId}:${normalizedEvidence(e.quote)}`,
+        e,
+      ]),
     ).values(),
   ];
   const citations = [
@@ -210,4 +241,90 @@ export function bindRecommendationEvidence(
     ...rest
   } = item;
   return { ...rest, ...constraints, exams, pendingEvidence: unique, citations };
+}
+
+function pendingReason(
+  field: PendingResearchEvidence["field"],
+  passage: string,
+  body: string,
+  item: Recommendation,
+  sources: WebSource[],
+  year: number | undefined,
+  targetYear: string,
+  exams: NonNullable<Recommendation["exams"]>,
+) {
+  const reasons: string[] = [];
+  const text = normalizedEvidence(passage);
+  if (field === "exams" && exams.status === "ambiguous")
+    reasons.push(exams.reason);
+  if (field === "tuition") {
+    if (
+      (!item.studyMode || item.studyMode === "unspecified") &&
+      /非全日制/.test(body) &&
+      /全日制/.test(body.replaceAll("非全日制", ""))
+    )
+      reasons.push(
+        "原文区分全日制与非全日制，而推荐未写明学习方式，不能选定其中一档。",
+      );
+    const tariffs = tuitionPassages(body);
+    const amounts = new Set(
+      tariffs.flatMap((row) =>
+        [...row.matchAll(tuitionMoney)].map((m) => normalizedEvidence(m[0])),
+      ),
+    );
+    if (amounts.size > 1)
+      reasons.push("同一来源出现多个金额不同的档次，需核对各档适用范围。");
+    if (/来华留学|留学生|港澳台|专项|定向|中外合作/.test(text))
+      reasons.push("该费率涉及特殊人群，不能套用普通项目。");
+    if (/全程|学期|学分/.test(text))
+      reasons.push("原文按全程、学期或学分计费，不擅自换算年度费用。");
+    if (
+      sources.some(
+        (s) =>
+          s.excerpt !== body &&
+          tuitionPassages(s.excerpt).some(
+            (row) =>
+              row.includes(item.programName!) &&
+              [...row.matchAll(tuitionMoney)].some(
+                (m) => !text.includes(normalizedEvidence(m[0])),
+              ),
+          ),
+      )
+    )
+      reasons.push("相关来源出现不同金额，尚不能选定唯一学费。");
+  }
+  if (
+    field === "location" &&
+    new Set(
+      [...body.matchAll(/[^。；;\n]+/g)]
+        .filter((m) => trainingLocation.test(m[0]))
+        .map((m) => normalizedEvidence(m[0])),
+    ).size > 1
+  )
+    reasons.push("页面列出多个校区地址，尚不能确定该专业适用校区。");
+  if (year === undefined)
+    reasons.push("原文未明确适用年度，不能把发表日期当招生或收费年度。");
+  else if (year < Number(targetYear))
+    reasons.push(
+      `原文年度${year}早于目标年度${targetYear}，目标年度适用情况仍待核验。`,
+    );
+  if (
+    field === "tuition" &&
+    (text.includes("学院") ||
+      text.includes("专业") ||
+      (!/我校|本校|全校|所有研究生|研究生学费(?:标准)?(?:均为|统一)/.test(
+        text,
+      ) &&
+        !text.includes(item.programName!)))
+  )
+    reasons.push("无法确认适用学院或专业，不能借用分项金额。");
+  if (!reasons.length)
+    reasons.push(
+      field === "location"
+        ? "无法确认该专业适用的培养或办学地点。"
+        : field === "exams"
+          ? "无法确认该专业对应的学院、学习方式或考试组。"
+          : "无法确认适用学院、专业或学习方式。",
+    );
+  return reasons.join("");
 }

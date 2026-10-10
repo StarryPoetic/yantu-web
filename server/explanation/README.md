@@ -196,3 +196,5 @@ npx playwright test tests/tutor-chat.spec.ts
 `research-school.ts` 的可替换 `InstitutionResolver` 目前用已读正文校名主体、标题与版权所有者解析域名招生单位；学院归一后保留 collegeName，无法归一和非专业栏目名作废。身份缓存随实际正文、标题和来源状态变化失效，不缓存个人画像。
 
 报告通过 `server/routes/research.ts` 保存 `rejectedRecommendations:[{institutionName,programName,code,removedSentences}]`、`validationIssues:[{path,code}]`、`readStatistics:{success,failed,failuresByCode}`，本人可从 `GET /api/v1/research-jobs/:id` 读回；补查失败保留旧报告时同步本次诊断。removedSentences=0表示整条拒绝，正数为删除句数；不保存模型全文或被删句子全文。读取失败只按实际尝试计数，内外层捕获同一次失败不重复计入；Markdown“技术信息”列出计数，诊断暂不在页面展示。
+
+阶段2审查修正：明确全校口径的单一费率可绑定，tuition.scope 为 school_wide（全校统一标准）或 school_wide_mode（按已确认学习方式）。历史年度保留；学校费率无适用年度时 year 可缺失，预算保持unknown。专业分项、特殊人群及目标年度冲突仍核验，全程／学期／学分不年化。`research-tuition-passages.ts` 提供连续学费金额条目及规范化去重键；待确认原文不收辅助费用、标题和纯联系方式，reason 说明具体方式、金额、校区、年度或范围问题。城市级校区核验留待阶段3。

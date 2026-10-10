@@ -221,7 +221,13 @@ export function tuitionDescription(
   };
   const targetYear = Number(run.inputSnapshot.profile.year);
   const reference = tuition.year === targetYear ? "学费" : "参考学费";
-  return `${tuition.year} 年${reference}：${tuition.amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 })} 元/${periods[tuition.period]}（${mode[tuition.studyMode]}）`;
+  const scope =
+    tuition.scope === "school_wide"
+      ? "全校统一标准"
+      : tuition.scope === "school_wide_mode"
+        ? "全校按学习方式标准"
+        : "";
+  return `${tuition.year !== undefined ? `${tuition.year} 年` : "年度未明确的"}${reference}：${tuition.amount.toLocaleString("zh-CN", { maximumFractionDigits: 2 })} 元/${periods[tuition.period]}（${[scope, mode[tuition.studyMode]].filter(Boolean).join("；")}）`;
 }
 
 export function tuitionCaution(item: SchoolRecommendation, run: GuidanceRun) {

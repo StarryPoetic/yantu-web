@@ -200,3 +200,5 @@ reportMessages 提供每个候选的城市 match/mismatch/unknown、地址依据
 research-binding.ts 在分析后交付前读取同校注册域名全部已读正文，用确定性抽取器绑定 exams/tuition/location，新增引用并重算 constraintChecks。归属不唯一时保存 pendingEvidence:[{field,quote,sourceId,year?,reason}]，quote≤300字且为连续原文，页面和导出显示“待确认原文”，不用于预算或城市匹配。不同学院、学习方式不互借，附件仍验证同校父页真实链接，历史费用按年份参考，全程／学期／学分不年化，特殊人群政策及合作单位地址不套用，目标年度冲突优先。
 
 可替换的 InstitutionResolver 根据同域已读标题、校名主体及版权所有者将下属学院归一到招生单位；collegeName 单独保存，未知所属招生单位及“学科简介”等栏目名拒绝。rejectedRecommendations:[{institutionName,programName,code,removedSentences}] 记录整条拒绝或删句数量，validationIssues:[{path,code}] 记录固定路径及错误码，readStatistics:{success,failed,failuresByCode} 汇总实际读取尝试；不保存模型全文。三者经 server/routes/research.ts 持久化并由 GET /api/v1/research-jobs/:id 返回，Markdown“技术信息”列计数；补查失败保留旧报告时使用本次诊断。
+
+阶段2审查修正由服务端确定性规则绑定全校统一标准（tuition.scope=school_wide）或已确认学习方式的学校标准（school_wide_mode），不由模型选择未知方式。year 保留适用年度；没有收费年度的学校标准可保存费率但预算仍unknown，不推定发表日期。待确认原文只保留相关学费金额或培养／办学地点，按field + sourceId +规范化原文去重，并说明具体reason。专业分项、特殊人群、非年度费用与目标年度冲突规则继续保留；城市级校区核验留待阶段3。

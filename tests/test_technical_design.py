@@ -470,6 +470,27 @@ class TechnicalDesignTests(unittest.TestCase):
         ):
             self.assertIn(row, implementation)
 
+    def test_phase_two_schoolwide_tuition_and_pending_noise_fix_are_documented(self):
+        for path in (
+            ROOT / "docs" / "recommendation-method.md",
+            ROOT / "server" / "explanation" / "README.md",
+            DESIGN_DIR / "02-数据模型与可信数据.md",
+            DESIGN_DIR / "07-DeepSeek接入与密钥管理.md",
+        ):
+            content = path.read_text(encoding="utf-8")
+            for phrase in ("阶段2审查修正", "school_wide", "school_wide_mode", "全校统一标准", "year", "阶段3"):
+                self.assertIn(phrase, content)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        for row in (
+            "| 学费已绑定数 | 0 | 1 |",
+            "| 待确认原文总条数 | 26 | 3 |",
+            "| 待确认学费条数 | 14 | 3 |",
+            "| 待确认校区条数 | 12 | 0 |",
+        ):
+            self.assertIn(row, implementation)
+        for phrase in ("7000元/年", "2024", "学习方式", "纯联系方式", "城市级校区核验", "不改写首次阶段2提交"):
+            self.assertIn(phrase, implementation)
+
     def test_domestic_search_setup_matches_server_environment_contract(self):
         guide = (ROOT / "docs" / "本地模型与联网测试.md").read_text(encoding="utf-8")
         example = (ROOT / ".env.example").read_text(encoding="utf-8")

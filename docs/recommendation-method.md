@@ -54,6 +54,15 @@
 
 有相关原文而不能唯一归属时保存 `pendingEvidence:[{field,quote,sourceId,year?,reason}]`，field 为 exams/tuition/location，quote 是不超过300字的连续原文。页面及 Markdown 展示“待确认原文”，不用于预算或城市匹配。完全无原文的字段保持缺失。
 
+阶段2审查修正补充全校口径，并收紧待确认原文：
+
+- 明确“我校研究生”“所有研究生”“均为／统一”等全校口径，且只有一个金额和计费单位的标准可用于该校任何专业。`tuition.scope=school_wide` 标注“全校统一标准”；保留年度，历史费率仅作带年份参考。
+- 只按全日制／非全日制分档时，须有已确认学习方式才能绑定对应档，标为 `school_wide_mode`。方式未明则分别展示两档连续原文，预算保持待核验。已确认方式的学校标准如缺少收费年度可保存金额和计费单位，但 year 缺失，不能比较目标年度预算；不把发表日期代替适用年度。
+- 学费待确认条目须同时含“学费”和金额；住宿费、教材费、体检费、杂费、纯标题和脱离学费语境的金额不收。校区只收说明培养或办学地点的原文，纯联系地址不收；同句电话和邮编可保留。
+- 按 field + sourceId + 规范化原文去重，quote 保留实际连续原文。reason 分别说明方式未明、多档金额、多个校区、历史年度或学院／专业范围未定等具体原因。
+
+不同学院／专业金额不互借，特殊人群政策不套用，全程／学期／学分费用不年化，目标年度冲突优先。城市级校区核验留待阶段3，不因多个地址位于同一城市就新增本轮核验结果。
+
 `InstitutionResolver` 提供可替换的“注册域名→招生单位”接口，目前依据同域已读页面的真实标题、版权所有者及校名主体归一学院；下一阶段接全国种子库。推荐使用招生单位全称并保留 `collegeName`；无法确认所属招生单位的学院和“学科简介”“招生简章”等非专业名剔除。
 
 报告保存 `rejectedRecommendations:[{institutionName,programName,code,removedSentences}]`、`validationIssues:[{path,code}]` 和 `readStatistics:{success,failed,failuresByCode}`。removedSentences 为0表示整条拒绝，正数表示被删除的句子数量；不保存模型全文。经任务路由落入 SQLite，`GET /api/v1/research-jobs/:id` 按原有本人权限返回；Markdown 的“技术信息”仅列计数。

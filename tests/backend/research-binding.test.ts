@@ -299,3 +299,223 @@ test("a conflicting target-year notice invalidates an older price rather than re
     "unknown",
   );
 });
+
+test("explicit school-wide uniform tariffs bind every programme without inventing a study mode", () => {
+  for (const wording of [
+    "我校研究生学费标准均为",
+    "我校研究生学 费标准均为",
+    "所有研究生学费统一为",
+    "全校硕士研究生学费为",
+    "我校研究生学费标准为",
+  ]) {
+    const fee = source(
+      "uniform",
+      `甲大学2024年硕士研究生收费标准。${wording}7000元/年。`,
+    );
+    const result = bind([fee], { studyMode: "part_time" });
+    assert.equal(result.tuition?.amount, 7000, wording);
+    assert.equal(result.tuition?.year, 2024);
+    assert.equal(result.tuition?.scope, "school_wide");
+    assert.equal(result.tuition?.studyMode, "unspecified");
+    assert.ok(result.citations.includes(fee.id));
+    assert.match(
+      result.constraintChecks!.find((c) => c.field === "budget")!.reason,
+      /2024年历史.*2027年.*待核对.*全校统一/,
+    );
+    assert.equal(
+      result.pendingEvidence?.filter((e) => e.field === "tuition").length,
+      0,
+    );
+  }
+});
+
+test("a uniform school tariff remains applicable when the programme faculty or mode is unresolved", () => {
+  const result = bind(
+    [
+      source(
+        "uniform",
+        "甲大学2024年硕士研究生收费标准。我校研究生学费统一为7000元/年。\n机械工程学院\n080200 机械工程 全日制硕士。\n智能制造学院\n080200 机械工程 非全日制硕士。",
+      ),
+    ],
+    { collegeName: undefined, studyMode: undefined },
+  );
+  assert.equal(result.tuition?.amount, 7000);
+  assert.equal(result.tuition?.scope, "school_wide");
+  assert.equal(result.location, undefined);
+  assert.equal(result.exams?.status, "ambiguous");
+});
+
+const schoolBands =
+  "我校全日制硕士研究生缴纳学费标准为10000元/人·年，非全日制硕士研究生（工程管理）缴纳学费标准75000元/生·全程。";
+test("school mode tariffs remain two literal pending clauses when programme mode is unknown", () => {
+  const plainAdmission = source(
+    "admission",
+    "甲大学2027年硕士招生目录。机械工程专业招收硕士。",
+  );
+  const fee = source("bands", `甲大学2024年硕士研究生收费标准。${schoolBands}`);
+  const result = bindRecommendationEvidence(
+    card({ studyMode: undefined }),
+    run,
+    discipline,
+    [plainAdmission, fee],
+    "2027",
+  );
+  assert.equal(result.studyMode, undefined);
+  assert.equal(result.tuition, undefined);
+  assert.equal(
+    result.constraintChecks!.find((c) => c.field === "budget")!.status,
+    "unknown",
+  );
+  const pending = result.pendingEvidence!.filter((e) => e.field === "tuition");
+  assert.equal(pending.length, 2);
+  assert.ok(pending.some((e) => e.quote.includes("10000元/人·年")));
+  assert.ok(pending.some((e) => e.quote.includes("75000元/生·全程")));
+  for (const item of pending) {
+    assert.ok(fee.excerpt.includes(item.quote));
+    assert.match(item.reason, /区分全日制与非全日制.*未写明学习方式/);
+    assert.match(item.reason, /多个金额不同的档次/);
+    assert.match(item.reason, /2024早于目标年度2027/);
+  }
+});
+
+test("an explicitly full-time programme binds only that school tariff, and undated tuition never matches budget", () => {
+  const dated = bind([
+    source("bands", `甲大学2024年硕士研究生收费标准。${schoolBands}`),
+  ]);
+  assert.equal(dated.tuition?.amount, 10000);
+  assert.equal(dated.tuition?.scope, "school_wide_mode");
+  assert.equal(dated.tuition?.studyMode, "full_time");
+  const undated = bind([
+    source("bands", `甲大学硕士研究生收费标准。${schoolBands}`),
+  ]);
+  assert.equal(undated.tuition?.amount, 10000);
+  assert.equal(undated.tuition?.year, undefined);
+  assert.equal(
+    undated.constraintChecks!.find((c) => c.field === "budget")!.status,
+    "unknown",
+  );
+  assert.match(
+    undated.constraintChecks!.find((c) => c.field === "budget")!.reason,
+    /未明确适用年度/,
+  );
+});
+
+test("current mode-specific school tariffs invalidate an older uniform tariff when programme mode is unknown", () => {
+  const plainAdmission = source(
+    "admission",
+    "甲大学2027年硕士招生目录。机械工程专业招收硕士。",
+  );
+  const result = bindRecommendationEvidence(
+    card({ studyMode: undefined }),
+    run,
+    discipline,
+    [
+      plainAdmission,
+      source(
+        "old",
+        "甲大学2024年硕士研究生收费标准。我校研究生学费统一为7000元/年。",
+      ),
+      source("current", `甲大学2027年硕士研究生收费标准。${schoolBands}`),
+    ],
+    "2027",
+  );
+  assert.equal(result.tuition, undefined);
+  assert.equal(
+    result.constraintChecks!.find((c) => c.field === "budget")!.status,
+    "unknown",
+  );
+});
+
+test("conflicting school-wide tariffs in the target year do not restore an older price", () => {
+  const result = bind([
+    source(
+      "old",
+      "甲大学2024年硕士研究生收费标准。我校研究生学费统一为7000元/年。",
+    ),
+    ...[8000, 9000].map((amount, index) =>
+      source(
+        `current${index}`,
+        `甲大学2027年硕士研究生收费标准。我校研究生学费统一为${amount}元/年。`,
+      ),
+    ),
+  ]);
+  assert.equal(result.tuition, undefined);
+  assert.match(
+    result.pendingEvidence!.find((e) => e.sourceId === "old")!.reason,
+    /早于目标年度/,
+  );
+});
+
+test("school tariffs do not borrow faculty, programme or special-population prices or annualize units", () => {
+  for (const clause of [
+    "其他学院我校研究生学费统一为7000元/年",
+    "我校研究生（电气工程）学费统一为7000元/年",
+    "我校研究生中的电气工程学费统一为7000元/年",
+    "我校研究生学费标准：电气工程7000元/年",
+    "我校来华留学生研究生学费统一为7000元/年",
+    "我校研究生学费7000元/年或9000元/年",
+  ])
+    assert.equal(
+      bind([source("invalid", `甲大学2024年硕士收费标准。${clause}。`)])
+        .tuition,
+      undefined,
+      clause,
+    );
+  for (const unit of ["全程", "学期", "学分"]) {
+    const result = bind([
+      source(
+        "uniform",
+        `甲大学2024年硕士研究生收费标准。我校研究生学费统一为7000元/${unit}。`,
+      ),
+    ]);
+    assert.ok(result.tuition);
+    assert.notEqual(result.tuition.period, "academic_year");
+    assert.equal(
+      result.constraintChecks!.find((c) => c.field === "budget")!.status,
+      "unknown",
+    );
+  }
+});
+
+test("pending tuition excludes auxiliary fees, bare amounts and headings; pure contacts are not campus evidence", () => {
+  const result = bind([
+    source(
+      "noise",
+      "甲大学2024年硕士研究生收费标准。\n（一）学费\n学费（元/学年）\n住宿费1000元/年。教材费500元。体检费93元。杂费200元。7000元/年。\n培养地址：浙江省杭州市学院路1号，电话0571-12345678，邮编310000。\n联系地址：浙江省杭州市办公室1号，电话0571-12345678。",
+    ),
+  ]);
+  assert.equal(
+    result.pendingEvidence?.filter((e) => e.field === "tuition").length,
+    0,
+  );
+  const pending =
+    result.pendingEvidence?.filter((e) => e.field === "location") ?? [];
+  assert.equal(pending.length, 1);
+  assert.match(pending[0].quote, /培养地址.*电话.*邮编/);
+  assert.ok(!pending[0].quote.includes("办公室"));
+  const multiple = bind([
+    source(
+      "campuses",
+      "甲大学2024年硕士研究生培养安排。培养地址：浙江省杭州市下沙校区；教学地址：浙江省宁波市梅山校区。",
+    ),
+  ]);
+  assert.equal(multiple.location, undefined);
+  const campusPending = multiple.pendingEvidence!.filter(
+    (e) => e.field === "location",
+  );
+  assert.equal(campusPending.length, 2);
+  assert.ok(campusPending.every((e) => /页面列出多个校区地址/.test(e.reason)));
+});
+
+test("pending quotes deduplicate normalized whitespace and punctuation per field and source, with concrete scope reasons", () => {
+  const result = bind([
+    source(
+      "duplicate",
+      "甲大学2024年硕士研究生收费标准。其他学院 080200 机械工程 全日制学费8000元/年。\n其他学院　080200　机械工程　全日制学费8000元/年。",
+    ),
+  ]);
+  const tuition = result.pendingEvidence!.filter((e) => e.field === "tuition");
+  assert.equal(tuition.length, 1);
+  assert.match(tuition[0].reason, /无法确认适用学院或专业/);
+  assert.match(tuition[0].reason, /2024早于目标年度2027/);
+});
