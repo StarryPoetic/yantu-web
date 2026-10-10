@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
+import { safeFailureCode } from "../../scripts/live-verify-research.mjs";
 
 test("live verification without explicit consent exits before credentials, database, network or artifacts", () => {
   const inventory = () =>
@@ -31,4 +32,34 @@ test("live verification without explicit consent exits before credentials, datab
   assert.equal(output.upperBound.inputCharsPerCall, 40000);
   assert.doesNotMatch(result.stdout + result.stderr, /must-not-be-printed/);
   assert.deepEqual(inventory(), before);
+});
+test("database contention remains diagnosable while unknown exception text stays private", () => {
+  assert.equal(
+    safeFailureCode(
+      Object.assign(new Error("private database path"), {
+        code: "ERR_SQLITE_ERROR",
+        errcode: 5,
+      }),
+    ),
+    "DATABASE_BUSY",
+  );
+  assert.equal(
+    safeFailureCode(
+      Object.assign(new Error("private database path"), {
+        code: "ERR_SQLITE_ERROR",
+        errcode: 6,
+      }),
+    ),
+    "DATABASE_LOCKED",
+  );
+  assert.equal(
+    safeFailureCode(new Error("PRIVATE_CREDENTIAL_VALUE")),
+    "LIVE_VERIFY_FAILED",
+  );
+  assert.equal(
+    safeFailureCode(
+      Object.assign(new Error("private marker contents"), { code: "EEXIST" }),
+    ),
+    "PAID_ALREADY_STARTED",
+  );
 });

@@ -33,6 +33,23 @@ const usageLimit = {
   totalInputChars: 6 * B.thinkingChars,
   reads: B.reads,
 };
+export function safeFailureCode(error) {
+  if (error instanceof ModelError) return error.code;
+  if (error.code === "ERR_SQLITE_ERROR" && error.errcode === 5)
+    return "DATABASE_BUSY";
+  if (error.code === "ERR_SQLITE_ERROR" && error.errcode === 6)
+    return "DATABASE_LOCKED";
+  if (error.code === "EEXIST") return "PAID_ALREADY_STARTED";
+  if (
+    [
+      "CITY_PROFILE_MISMATCH",
+      "CONFIGURATION_MISSING",
+      "LIVE_BUDGET_EXCEEDED",
+    ].includes(error.message)
+  )
+    return error.message;
+  return "LIVE_VERIFY_FAILED";
+}
 export async function main(args = process.argv.slice(2)) {
   const { values } = parseArgs({
     args,
@@ -378,14 +395,7 @@ export async function main(args = process.argv.slice(2)) {
     // Never print arbitrary error messages/objects from a provider or configuration.
     log({
       event: "stopped",
-      code:
-        error instanceof ModelError
-          ? error.code
-          : /^[A-Z_]+$/.test(error.message ?? "")
-            ? error.message
-            : error.code === "EEXIST"
-              ? "PAID_ALREADY_STARTED"
-              : "LIVE_VERIFY_FAILED",
+      code: safeFailureCode(error),
       elapsedMs: Date.now() - started,
       totals,
     });
