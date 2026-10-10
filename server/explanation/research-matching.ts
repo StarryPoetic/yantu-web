@@ -137,6 +137,35 @@ export function createDemandPlan(run: GuidanceRun): ResearchPlan {
 import { programRowScope } from "./research-program-scope.ts";
 export { programRowScope } from "./research-program-scope.ts";
 
+/** Shared deterministic catalogue row discovery, independent of any user or model. */
+export function programEntries(
+  source: WebSource,
+  disciplines: readonly Discipline[],
+) {
+  const body = withoutSchoolLinks(source.excerpt);
+  const rows = [
+    ...body.matchAll(
+      /\b((?:0[1-9]|1[0-4])\d{4})\b[\s|:：()（）\[\]【】-]*([\p{Script=Han}]{2,30})/gu,
+    ),
+  ];
+  return rows.flatMap((row, index) => {
+    const discipline = disciplines.find((d) => row[1].startsWith(d.code));
+    const programName = row[2].replace(
+      /(?:专业学位|学术学位|全日制|非全日制|硕士|(?:正常|继续|恢复)?招生|初试|考试科目|学费).*$/,
+      "",
+    );
+    if (!discipline || !isConcreteProgramName(programName)) return [];
+    return [
+      {
+        discipline,
+        programName,
+        majorCode: row[1],
+        ...programRowScope(body, row.index!, rows[index + 1]?.index),
+      },
+    ];
+  });
+}
+
 export function extractProgramExams(input: {
   institutionName: string;
   programName: string;
@@ -698,32 +727,14 @@ export function buildEvidenceCandidates(input: {
           (safeSourceYear(b) ?? 0) - (safeSourceYear(a) ?? 0) ||
           a.id.localeCompare(b.id),
       )) {
-      const body = withoutSchoolLinks(source.excerpt);
-      const rows = [
-        ...body.matchAll(
-          /\b((?:0[1-9]|1[0-4])\d{4})\b[\s|:：()（）\[\]【】-]*([\p{Script=Han}]{2,30})/gu,
-        ),
-      ];
-      for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-        const row = rows[rowIndex];
-        const discipline = input.disciplines.find((d) =>
-          row[1].startsWith(d.code),
-        );
-        if (!discipline) continue;
-        const programName = row[2].replace(
-          /(?:专业学位|学术学位|全日制|非全日制|硕士|(?:正常|继续|恢复)?招生|初试|考试科目|学费).*$/,
-          "",
-        );
-        if (!isConcreteProgramName(programName)) {
-          excluded = true;
-          continue;
-        }
-        const { collegeName, studyMode } = programRowScope(
-          body,
-          row.index!,
-          rows[rowIndex + 1]?.index,
-        );
-        const key = `${row[1]}:${programName}:${collegeName ?? ""}:${studyMode ?? ""}`;
+      for (const {
+        discipline,
+        programName,
+        majorCode,
+        collegeName,
+        studyMode,
+      } of programEntries(source, input.disciplines)) {
+        const key = `${majorCode}:${programName}:${collegeName ?? ""}:${studyMode ?? ""}`;
         if (
           seen.has(key) ||
           !supportsProgram(
@@ -738,7 +749,7 @@ export function buildEvidenceCandidates(input: {
         const programScope = {
           institutionName,
           programName,
-          majorCode: row[1],
+          majorCode,
           collegeName,
           studyMode,
           disciplineCode: discipline.code,
@@ -775,7 +786,7 @@ export function buildEvidenceCandidates(input: {
           institutionName,
           programName,
           collegeName,
-          majorCode: row[1],
+          majorCode,
           degreeType: discipline.degreeType,
           studyMode,
           targetYear: input.targetYear,
@@ -828,7 +839,7 @@ export function buildEvidenceCandidates(input: {
           institutionName,
           disciplineCode: discipline.code,
           programName,
-          majorCode: row[1],
+          majorCode,
           ...(collegeName ? { collegeName } : {}),
           ...(studyMode ? { studyMode } : {}),
           degreeType: discipline.degreeType,
@@ -879,7 +890,7 @@ export function buildEvidenceCandidates(input: {
         const exams = extractProgramExams({
           institutionName,
           programName,
-          majorCode: row[1],
+          majorCode,
           collegeName,
           studyMode,
           discipline,

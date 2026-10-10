@@ -30,6 +30,7 @@ export interface WebSource {
   verified: false;
   finalUrl?: string;
   transport?: "https" | "http";
+  redirectChain?: string[];
   /** Public evidence reuse metadata; keeps the original retrieval time. */
   library?: {
     status: "fresh" | "stale";
@@ -102,6 +103,8 @@ export type WebReader = (
     maxSpreadsheetBytes?: number;
     maxRedirects?: number;
     allowHttp?: boolean;
+    /** Caller policy gate, applied to every hop before DNS or connection. */
+    beforeRequest?: (url: string) => Promise<void>;
   },
 ) => Promise<WebReadResult>;
 export interface WebAnswerConfig extends ExplanationConfig, SearchConfig {
@@ -253,6 +256,7 @@ export function readSourceMetadata(
   originalUrl: string,
 ): Partial<WebSource> {
   return {
+    ...(result.redirects?.length ? { redirectChain: result.redirects } : {}),
     ...(result.finalUrl && result.finalUrl !== originalUrl
       ? { finalUrl: result.finalUrl }
       : {}),
@@ -349,6 +353,7 @@ export function createHttpsReader(
     const startedAt = Date.now();
     let usedHttp = url.protocol === "http:";
     for (;;) {
+      await options.beforeRequest?.(url.href);
       const remaining = () => timeoutMs - (Date.now() - startedAt);
       if (remaining() <= 0) throw new ModelError("WEB_TIMEOUT");
       let dnsTimer: ReturnType<typeof setTimeout> | undefined;

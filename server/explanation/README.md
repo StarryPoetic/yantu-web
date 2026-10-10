@@ -208,3 +208,17 @@ npx playwright test tests/tutor-chat.spec.ts
 城市级校区核验要求该校在种子库中且没有跨城 campusHints，本次读到的学校实际地址全部同城且可识别；仅确认城市，具体校区仍待专业安排。跨城提示、多城市地址和库外学校继续使用专业级证据。带街道门牌的办学地址即使含电话、邮编也保留；不能绑定时展示待确认原文，纯电话／邮编／邮箱继续排除。
 
 免费核验脚本 scripts/verify-school-registry.mjs 支持 --province/--city/--limit/--write，复用公网DNS、固定IP、TLS、编码识别和最多3跳的同校安全 reader。全局并发≤6、同域串行、间隔至少1秒、单次10秒；不加载 .env，不调用模型或付费搜索。资料负责人维护、部署方每月及发布前复核（D-13），操作见 [种子库说明](../../knowledge/schools/README.md)。
+
+## 阶段4公共事实库与资料库优先
+
+`research-library.ts` 统一拥有原文与 `research_program_facts` 的读写接口。`save(WebSource)` 内部调用 `research-facts.ts`，复用 `research-matching.ts` 的 `programEntries`、阶段2 `bindRecommendationEvidence`、招生范围与年度校验，不接收模型事实或推荐作为写入输入。已有原文在首次迁移时确定性回填。事实始终 `verified:false`，学院与招生单位分开；`school_wide`、`school_wide_mode` 和城市级校区核验的语义保留。
+
+事实按完整项目身份、字段与来源版本保存；不同来源、不同年度都保留，同一来源新读取只替换自己的旧事实。失败不删除已存证据。目标年度、历史、未标年度的复核期限分别为1、30、7天，`queryFacts()` 返回 fresh/stale 与 targetYearApplicable，过期及未标年度不能作为目标年度事实。`coverageStats()` 去重统计全库 `librarySchoolCount/libraryProgramCount`，与本次调查数量独立。
+
+报告按规划方向、意向城市映射的种子学校和 `searchSchools` 先召回原文和事实，保留来源ID与原获取时间，计入 `reusedSourceCount`。命中已绑定目录后使用既有 `research-repair.ts` 按缺口补查，`research-library-first.ts` 只为同项目仍缺的字段保留搜索；新读原文和确定性绑定结果随即入库。复用仍须经过当前画像的推荐校验，不能复用其他人的推荐结论。初期18次搜索、全程24次搜索及24次正文读取预算保持不变。
+
+原文表允许 `.edu.cn` HTTP并保存 `transport/finalUrl/redirectChain`；复用保留明文传输标注。以最终地址为同页键，HTTP/HTTPS 去重，别名映射用于跳过未过期页面。种子登记的非edu学校HTTPS原文可入库，非edu明文不接收；报告reader权限不扩大，公网DNS、固定IP、同校最多3跳的限制保持不变。
+
+`robots.ts` 与 `scripts/prefetch-schools.mjs` 实现 D-14：默认每校12页、深度≤2、每主机串行、间隔≥1秒、全局主机并发≤4；404允许，5xx/超时/无法判定跳过，逐跳检查 robots.txt。PDF/XLS/XLSX继续复用现有附件解析器。支持 `--dns-mode system|public-doh`，默认沿用服务端 YANTU_DNS_MODE；不打印配置，不调用付费搜索或模型。`--dry-run` 不建库、不联网，`--refresh` 强制复核；汇总打印字段 bound/pending、失败码与 robots 跳过数。
+
+研招网实际专业目录是脚本模板，阶段4采用安全降级：`chsi-probe.ts` 仅以公开GET探测 robots 与 `/zsml/`、`/sch/`，不提交表单、不登录、不绕过验证。平台页仍不当学校官网域名，不能授权跨站跳转或产生专业事实；部署方可收集学校公开原文，再由资料库确定性入库，人工审核另走正式目录流程。免费实测结论见实施说明13.5。

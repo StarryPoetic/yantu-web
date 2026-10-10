@@ -33,13 +33,16 @@ export function reusableResearchSources(
   now = Date.now(),
 ): WebSource[] {
   const ids = new Map(
-    sources.map((source) => [source.id, publicEvidenceId(source.url)]),
+    sources.map((source) => [
+      source.id,
+      source.library ? source.id : publicEvidenceId(source.url),
+    ]),
   );
   const byUrl = new Map<string, WebSource>();
   for (const value of sources) {
     if (value.kind !== "official_page" || !value.excerpt.trim()) continue;
     const source = structuredClone(value);
-    source.id = publicEvidenceId(source.url);
+    source.id = source.library ? source.id : publicEvidenceId(source.url);
     if (!source.library) {
       const retrieved = Date.parse(source.retrievedAt);
       source.library = {

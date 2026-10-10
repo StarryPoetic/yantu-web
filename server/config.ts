@@ -73,11 +73,7 @@ export function environmentConfig(): AppConfig {
     throw new Error("生产环境必须设置 HTTPS YANTU_ORIGIN。");
   if (production && !process.env.YANTU_ORIGIN?.startsWith("https://"))
     throw new Error("生产环境需要 HTTPS 来源。");
-  const databasePath = process.env.YANTU_DATABASE_PATH?.trim();
-  if (production && (!databasePath || !isAbsolute(databasePath)))
-    throw new Error(
-      "生产环境必须显式设置绝对路径 YANTU_DATABASE_PATH，并使用独立持久化数据库。",
-    );
+  const databasePath = databasePathFromEnvironment();
   const proxyValues = process.env.YANTU_TRUSTED_PROXY_IPS?.trim();
   const trustedProxyIps = proxyValues
     ? proxyValues.split(",").map((value) => normalizeIpAddress(value.trim()))
@@ -111,6 +107,18 @@ export function environmentConfig(): AppConfig {
     ),
     trustedProxyIps: [...new Set(trustedProxyIps as string[])],
   };
+}
+
+/** Shared server/maintenance path policy; callers never print configuration values. */
+export function databasePathFromEnvironment(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const path = env.YANTU_DATABASE_PATH?.trim();
+  if (env.NODE_ENV === "production" && (!path || !isAbsolute(path)))
+    throw new Error(
+      "生产环境必须显式设置绝对路径 YANTU_DATABASE_PATH，并使用独立持久化数据库。",
+    );
+  return path || "./var/yantu.sqlite";
 }
 
 export function authRateLimit(value: unknown): number {

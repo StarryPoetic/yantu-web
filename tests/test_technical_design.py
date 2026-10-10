@@ -407,7 +407,7 @@ class TechnicalDesignTests(unittest.TestCase):
         for phrase in ("资料库已收录 X 校 Y 专业、本次复用 Z 条、新读 W 条", "逐字段状态", "已读但未结构化", "待确认", "明文传输", "继续补查", "demand-match-v1", "模型只提供解释，不能改变层级"):
             self.assertIn(phrase, api)
         decisions = (DESIGN_DIR / "08-变更与扩展约定.md").read_text(encoding="utf-8")
-        for decision, status in ((13, "已确定"), (14, "拟议"), (15, "已确定")):
+        for decision, status in ((13, "已确定"), (14, "已确定"), (15, "已确定")):
             self.assertIn(f"| D-{decision} | {status} |", decisions)
         implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
         self.assertIn("## 13. 院校资料收集修复（2026-10-11，进行中）", implementation)
@@ -415,6 +415,24 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertNotIn("固定六次总预算", implementation)
         for phase in range(1, 8):
             self.assertIn(f"阶段{phase}", implementation)
+
+    def test_phase_four_public_facts_prefetch_and_platform_fallback_are_documented(self):
+        for path in (README, ROOT / "knowledge" / "README.md", ROOT / "server" / "explanation" / "README.md",
+                     DESIGN_DIR / "01-总体架构与演进.md", DESIGN_DIR / "02-数据模型与可信数据.md",
+                     DESIGN_DIR / "04-接口与前端交互.md", DESIGN_DIR / "07-DeepSeek接入与密钥管理.md",
+                     DESIGN_DIR / "08-变更与扩展约定.md"):
+            content = path.read_text(encoding="utf-8")
+            self.assertIn("阶段4", content)
+        readme = README.read_text(encoding="utf-8")
+        for phrase in ("prefetch-schools.mjs", "--dns-mode system|public-doh", "--dry-run", "--refresh", "robots.txt", "间隔≥1秒"):
+            self.assertIn(phrase, readme)
+        self.assertNotIn("结构化专业事实与预抓取规划中", readme)
+        data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
+        for phrase in ("research_program_facts", "bound/pending", "fresh/stale", "targetYearApplicable", "sourceUrl", "retrievedAt", "phase2-program-binding@1", "失败不删除", "school_wide"):
+            self.assertIn(phrase, data)
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        for phrase in ("13.5. 阶段4", "ROBOTS_DISALLOWED", "数据加载中", "安全降级", "未调用付费搜索或模型", "public-doh", "3页", "2条"):
+            self.assertIn(phrase, implementation)
 
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")

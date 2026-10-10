@@ -1,3 +1,7 @@
+import { programEntries } from "./research-matching.ts";
+import { schoolRegistry } from "../schools/index.ts";
+import { extractProgramFacts, type ProgramFact } from "./research-facts.ts";
+export type { ProgramFact } from "./research-facts.ts";
 import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 import type { Store } from "../store.ts";
@@ -32,6 +36,21 @@ export interface ResearchEvidenceLibrary {
     schoolNames?: string[];
     maxSources?: number;
   }): WebSource[];
+  queryFacts(input: {
+    schoolNames?: string[];
+    registrableDomains?: string[];
+    disciplineCodes?: string[];
+    cities?: string[];
+    targetYear: string;
+    collegeName?: string;
+    majorCode?: string;
+    programName?: string;
+    studyMode?: string;
+    degreeType?: string;
+    year?: number;
+  }): ProgramFact[];
+  coverageStats(): { librarySchoolCount: number; libraryProgramCount: number };
+  isFresh(url: string, targetYear: string): boolean;
   save(source: WebSource): void;
   recordAttempt(attempt: ResearchReadAttempt): void;
   attempts(urls?: string[]): ResearchReadAttempt[];
@@ -52,6 +71,9 @@ const disciplineCodes = new Set(catalog.map((item) => item.code));
 const forbiddenQuery =
   /^(?:q|query|search(?:[_-]?(?:text|word|keyword))?|keyword|searchword|wd|question|profile|user(?:name|id)?|subject(?:id)?|account(?:id)?|password|email|phone|token|j?session(?:id)?|sid|uid|openid|ticket|auth|secret|api[_-]?key|key|csrf|sign(?:ature)?|access[_-]?token|refresh[_-]?token)$/i;
 const diagnosticCodes = new Set([
+  "ROBOTS_DISALLOWED",
+  "ROBOTS_UNAVAILABLE",
+  "ROBOTS_UNDETERMINED",
   "WEB_REDIRECT_CROSS_SITE",
   "WEB_REDIRECT_LIMIT",
   "WEB_DECODE_FAILED",
@@ -103,8 +125,15 @@ function hash(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+export function publicPageKey(url: string) {
+  const parsed = new URL(url);
+  parsed.hash = "";
+  parsed.protocol = "https:";
+  return parsed.href;
+}
+
 function sourceId(url: string) {
-  return `library-${hash(url).slice(0, 24)}`;
+  return `library-${hash(publicPageKey(url)).slice(0, 24)}`;
 }
 
 function ttl(value: number | undefined, fallback: number) {
@@ -183,7 +212,11 @@ export function createResearchEvidenceLibrary(
         /(?:^|\.)(?:localhost|local|internal|test|invalid|example)$/.test(
           host,
         ) ||
-        !(host.endsWith(".edu.cn") || allowed.has(host)) ||
+        !(
+          host.endsWith(".edu.cn") ||
+          allowed.has(host) ||
+          schoolRegistry.byHost(host)
+        ) ||
         /;jsessionid=/i.test(url.pathname) ||
         [...url.searchParams.keys()].some((key) => forbiddenQuery.test(key))
       )
@@ -237,6 +270,20 @@ export function createResearchEvidenceLibrary(
         registrableDomain(new URL(url).hostname)
     )
       result.finalUrl = finalUrl;
+    if (
+      source.redirectChain?.length &&
+      source.redirectChain.length <= 3 &&
+      source.redirectChain.every((hop) => {
+        const safe = publicUrl(hop);
+        return (
+          !!safe &&
+          registrableDomain(new URL(safe).hostname) ===
+            registrableDomain(new URL(url).hostname)
+        );
+      })
+    )
+      result.redirectChain = [...source.redirectChain];
+    result.id = sourceId(result.finalUrl ?? url);
     result.transport =
       source.transport === "http" ||
       url.startsWith("http:") ||
@@ -285,6 +332,15 @@ export function createResearchEvidenceLibrary(
       retrieved_at TEXT NOT NULL, stored_at TEXT NOT NULL, version INTEGER NOT NULL,
       evidence_year INTEGER
     ) STRICT;
+    CREATE TABLE IF NOT EXISTS research_program_facts (
+      identity TEXT NOT NULL, field TEXT NOT NULL, source_key TEXT NOT NULL REFERENCES research_public_sources(url) ON DELETE CASCADE,
+      school TEXT NOT NULL, domain TEXT NOT NULL, code TEXT NOT NULL, year INTEGER, payload TEXT NOT NULL,
+      PRIMARY KEY(identity, field, source_key, payload)
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS research_fact_school_idx ON research_program_facts(school, code, year);
+    CREATE TABLE IF NOT EXISTS research_public_aliases (
+      alias TEXT PRIMARY KEY, source_key TEXT NOT NULL REFERENCES research_public_sources(url) ON DELETE CASCADE
+    ) STRICT;
     CREATE TABLE IF NOT EXISTS research_public_disciplines (
       url TEXT NOT NULL REFERENCES research_public_sources(url) ON DELETE CASCADE,
       code TEXT NOT NULL, PRIMARY KEY(url, code)
@@ -313,10 +369,203 @@ export function createResearchEvidenceLibrary(
       "ALTER TABLE research_public_read_attempts ADD COLUMN tls_code TEXT",
     );
 
+  // Backfill existing stage-1/3 originals with the same deterministic extraction, never stored recommendations.
+  function rebuildFacts(domain?: string, changedKey?: string) {
+    const originals = (
+      db.prepare("SELECT url, payload FROM research_public_sources").all() as {
+        url: string;
+        payload: string;
+      }[]
+    ).flatMap((row) => {
+      try {
+        const source = publicSource(JSON.parse(row.payload));
+        return source &&
+          (!domain ||
+            registrableDomain(new URL(source.url).hostname) === domain)
+          ? [{ key: row.url, source }]
+          : [];
+      } catch {
+        return [];
+      }
+    });
+    const affected = changedKey
+      ? originals.filter(
+          (row) =>
+            row.key === changedKey ||
+            !programEntries(row.source, catalog).length,
+        )
+      : originals;
+    for (const row of affected)
+      db.prepare("DELETE FROM research_program_facts WHERE source_key=?").run(
+        row.key,
+      );
+    const insert = db.prepare(
+      "INSERT OR IGNORE INTO research_program_facts(identity,field,source_key,school,domain,code,year,payload) VALUES (?,?,?,?,?,?,?,?)",
+    );
+    const sources = originals.map((row) => row.source);
+    if (!changedKey)
+      for (const row of originals) {
+        // Old payload IDs predate final-URL/scheme normalization. Rebase public
+        // payloads and aliases before deriving references, without refreshing time.
+        db.prepare(
+          "UPDATE research_public_sources SET payload=? WHERE url=?",
+        ).run(JSON.stringify(row.source), row.key);
+        for (const alias of [row.source.url, row.source.finalUrl].filter(
+          (url): url is string => !!url,
+        ))
+          db.prepare(
+            "INSERT INTO research_public_aliases(alias,source_key) VALUES (?,?) ON CONFLICT(alias) DO UPDATE SET source_key=excluded.source_key",
+          ).run(publicPageKey(alias), row.key);
+      }
+    for (const { key, source } of affected)
+      for (const fact of extractProgramFacts(
+        source,
+        sources,
+        new Date(now()).toISOString(),
+      )) {
+        const identity = JSON.stringify([
+          fact.schoolName,
+          fact.collegeName ?? "",
+          fact.majorCode,
+          fact.programName,
+          fact.degreeType,
+          fact.studyMode ?? "",
+          fact.year ?? null,
+        ]);
+        insert.run(
+          identity,
+          fact.field,
+          key,
+          fact.schoolName,
+          fact.registrableDomain,
+          fact.disciplineCode,
+          fact.year ?? null,
+          JSON.stringify(fact),
+        );
+      }
+  }
+  if (
+    !db.prepare("SELECT 1 FROM research_program_facts LIMIT 1").get() &&
+    db.prepare("SELECT 1 FROM research_public_sources LIMIT 1").get()
+  )
+    store.transaction(() => rebuildFacts());
+  const fresh = (
+    retrievedAt: string,
+    year: number | undefined,
+    targetYear: string,
+  ) =>
+    now() <
+    Date.parse(retrievedAt) +
+      (year === Number(targetYear)
+        ? targetTtl
+        : year === undefined
+          ? undatedTtl
+          : historicalTtl);
+
   return {
+    coverageStats() {
+      const school = db
+        .prepare(
+          "SELECT COUNT(DISTINCT school) AS count FROM research_program_facts WHERE field='catalog'",
+        )
+        .get()!;
+      const program = db
+        .prepare(
+          "SELECT COUNT(DISTINCT json_array(school, json_extract(payload,'$.collegeName'), json_extract(payload,'$.majorCode'), json_extract(payload,'$.programName'), json_extract(payload,'$.degreeType'), json_extract(payload,'$.studyMode'))) AS count FROM research_program_facts WHERE field='catalog'",
+        )
+        .get()!;
+      return {
+        librarySchoolCount: Number(school.count),
+        libraryProgramCount: Number(program.count),
+      };
+    },
+    queryFacts(input) {
+      const names = new Set(
+        (input.schoolNames ?? []).map(
+          (name) => schoolRegistry.byName(name)?.name ?? name,
+        ),
+      );
+      for (const city of input.cities ?? [])
+        for (const { school } of schoolRegistry.byCity(city))
+          names.add(school.name);
+      const domains = new Set(input.registrableDomains ?? []);
+      return (
+        db.prepare("SELECT payload FROM research_program_facts").all() as {
+          payload: string;
+        }[]
+      ).flatMap((row) => {
+        const fact = JSON.parse(row.payload) as ProgramFact;
+        if (
+          (names.size || domains.size) &&
+          !names.has(fact.schoolName) &&
+          !domains.has(fact.registrableDomain)
+        )
+          return [];
+        if (
+          input.disciplineCodes?.length &&
+          !input.disciplineCodes.includes(fact.disciplineCode)
+        )
+          return [];
+        for (const key of [
+          "collegeName",
+          "majorCode",
+          "programName",
+          "studyMode",
+          "degreeType",
+          "year",
+        ] as const)
+          if (input[key] !== undefined && input[key] !== fact[key]) return [];
+        const supportFresh =
+          !("supportingEvidence" in fact.value) ||
+          (fact.value.supportingEvidence ?? []).every((ref) => {
+            const support = db
+              .prepare(
+                "SELECT retrieved_at,evidence_year FROM research_public_sources WHERE json_extract(payload,'$.id')=?",
+              )
+              .get(ref.sourceId) as
+              | { retrieved_at: string; evidence_year: number | null }
+              | undefined;
+            return (
+              !!support &&
+              fresh(
+                support.retrieved_at,
+                support.evidence_year ?? undefined,
+                input.targetYear,
+              )
+            );
+          });
+        const current =
+          fresh(fact.retrievedAt, fact.year, input.targetYear) && supportFresh;
+        return [
+          {
+            ...fact,
+            freshness: current ? ("fresh" as const) : ("stale" as const),
+            targetYearApplicable:
+              current &&
+              fact.status === "bound" &&
+              fact.year === Number(input.targetYear),
+          },
+        ];
+      });
+    },
+    isFresh(url, targetYear) {
+      const safe = publicUrl(url);
+      if (!safe) return false;
+      const key = publicPageKey(safe);
+      const row = db
+        .prepare(
+          "SELECT * FROM research_public_sources WHERE url=? OR url=(SELECT source_key FROM research_public_aliases WHERE alias=?)",
+        )
+        .get(key, key) as unknown as SourceRow | undefined;
+      return (
+        !!row &&
+        fresh(row.retrieved_at, row.evidence_year ?? undefined, targetYear)
+      );
+    },
     save(source) {
       const normalized = publicSource(source);
       if (!normalized) return;
+      const storageUrl = publicPageKey(normalized.finalUrl ?? normalized.url);
       const body = withoutSchoolLinks(normalized.excerpt);
       const codes = bodyCodes(body);
       const schools = bodySchools(normalized);
@@ -327,14 +576,32 @@ export function createResearchEvidenceLibrary(
           title: normalized.title,
           documentLinks: normalized.documentLinks,
           finalUrl: normalized.finalUrl,
+          redirectChain: normalized.redirectChain,
           transport: normalized.transport,
           provenance: normalized.provenance,
         }),
       );
       store.transaction(() => {
+        // Collapse existing pre-phase-4 rows by final URL and scheme, preserving the freshest read.
+        const duplicates = (
+          db
+            .prepare("SELECT * FROM research_public_sources")
+            .all() as unknown as SourceRow[]
+        ).filter((row) => {
+          const old = JSON.parse(row.payload) as WebSource;
+          return publicPageKey(old.finalUrl ?? old.url) === storageUrl;
+        });
+        if (duplicates.some((row) => row.retrieved_at > normalized.retrievedAt))
+          return;
+        for (const row of duplicates)
+          if (row.url !== storageUrl)
+            db.prepare("DELETE FROM research_public_sources WHERE url=?").run(
+              row.url,
+            );
+
         const previous = db
           .prepare("SELECT * FROM research_public_sources WHERE url = ?")
-          .get(normalized.url) as unknown as SourceRow | undefined;
+          .get(storageUrl) as unknown as SourceRow | undefined;
         if (
           previous &&
           (normalized.retrievedAt < previous.retrieved_at ||
@@ -351,7 +618,7 @@ export function createResearchEvidenceLibrary(
           payload=excluded.payload, content_hash=excluded.content_hash, retrieved_at=excluded.retrieved_at,
           stored_at=excluded.stored_at, version=excluded.version, evidence_year=excluded.evidence_year`,
         ).run(
-          normalized.url,
+          storageUrl,
           JSON.stringify(normalized),
           contentHash,
           normalized.retrievedAt,
@@ -360,10 +627,10 @@ export function createResearchEvidenceLibrary(
           year,
         );
         db.prepare("DELETE FROM research_public_disciplines WHERE url = ?").run(
-          normalized.url,
+          storageUrl,
         );
         db.prepare("DELETE FROM research_public_schools WHERE url = ?").run(
-          normalized.url,
+          storageUrl,
         );
         const insertCode = db.prepare(
           "INSERT INTO research_public_disciplines(url, code) VALUES (?, ?)",
@@ -371,8 +638,20 @@ export function createResearchEvidenceLibrary(
         const insertSchool = db.prepare(
           "INSERT INTO research_public_schools(url, name) VALUES (?, ?)",
         );
-        for (const code of codes) insertCode.run(normalized.url, code);
-        for (const school of schools) insertSchool.run(normalized.url, school);
+        for (const code of codes) insertCode.run(storageUrl, code);
+        for (const school of schools) insertSchool.run(storageUrl, school);
+        for (const alias of [
+          normalized.url,
+          normalized.finalUrl,
+          ...(normalized.redirectChain ?? []),
+        ].filter((value): value is string => !!value))
+          db.prepare(
+            "INSERT INTO research_public_aliases(alias, source_key) VALUES (?,?) ON CONFLICT(alias) DO UPDATE SET source_key=excluded.source_key",
+          ).run(publicPageKey(alias), storageUrl);
+        rebuildFacts(
+          registrableDomain(new URL(normalized.url).hostname),
+          storageUrl,
+        );
       });
     },
     load(input) {
@@ -395,6 +674,12 @@ export function createResearchEvidenceLibrary(
         clauses.push(
           `EXISTS (SELECT 1 FROM research_public_disciplines d WHERE d.url = s.url AND d.code IN (${codes.map(() => "?").join(",")}))`,
         );
+        params.push(...codes);
+        // A geography/fee page may mention another subject, yet be part of an
+        // exact bound project chain. Recall its literal support with the fact.
+        clauses.push(`EXISTS (SELECT 1 FROM research_program_facts f WHERE f.code IN (${codes.map(() => "?").join(",")}) AND
+          (f.source_key=s.url OR EXISTS (SELECT 1 FROM json_each(f.payload, '$.value.supportingEvidence') ref
+            WHERE json_extract(ref.value, '$.sourceId')=json_extract(s.payload, '$.id'))))`);
         params.push(...codes);
       }
       if (schools.length) {
@@ -492,7 +777,17 @@ export function createResearchEvidenceLibrary(
           b.source.retrievedAt.localeCompare(a.source.retrievedAt) ||
           a.source.url.localeCompare(b.source.url),
       );
-      const selected = sources.slice(0, limit);
+      const unique = [
+        ...new Map(
+          [...sources]
+            .reverse()
+            .map((item) => [
+              publicPageKey(item.source.finalUrl ?? item.source.url),
+              item,
+            ]),
+        ).values(),
+      ].reverse();
+      const selected = unique.slice(0, limit);
       // Keep known current requirements visible beside the historical comparison baseline.
       const currentEvidence = sources.find(
         (item) => item.year === Number(input.targetYear),

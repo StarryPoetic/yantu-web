@@ -46,7 +46,7 @@ npm run check
 | 全国学科目录与专业探索             | [knowledge/disciplines](knowledge/disciplines/README.md)、server/disciplines                        | 官方目录快照与来源、独立探索规则；年度项目缺失不能隐藏专业。                   |
 | 招生目录、来源、政策/就业/评价依据 | [knowledge/catalog](knowledge/catalog/README.md)                                                    | 完整年度项目 JSON → 草稿 → 独立审核 → 版本发布；不复制推荐代码。               |
 | 全国院校种子库 | [knowledge/schools](knowledge/schools/README.md)、`server/schools/index.ts` | 458所、31个省级行政区，含147所第二轮双一流；官网与研招网址只作发现线索，不证明招生事实。 |
-| 公共院校资料库 | `server/explanation/research-library.ts`、SQLite的 `research_public_sources` 等原文表，结构化专业事实与预抓取规划中 | 长期复用官网原文及ProgramFact，保持 `verified:false`，不自动审核发布；研究先查库再补缺。 |
+| 公共院校资料库 | `server/explanation/research-library.ts`、SQLite的 `research_public_sources` 原文表、`research_program_facts` 事实表与免费预抓取 | 长期复用官网原文及ProgramFact，保持 `verified:false`，不自动审核发布；研究先查库再补缺。 |
 | 题目、答案、范围、难度与审校       | [knowledge/questions](knowledge/questions/README.md)                                                | 服务端独立题库；扩建题目不改页面。                                             |
 | 资格、偏好和排序                   | [server/recommendation](server/recommendation/index.ts)                                             | 确定性规则，独立于模型。                                                       |
 | 分科计划与报告                     | [server/planning](server/planning/index.ts)、[server/reports](server/reports/index.ts)              | 使用固定项目与运行快照。                                                       |
@@ -99,3 +99,16 @@ API 与构建页面由同一服务提供，默认监听 `127.0.0.1:8787`，由 H
 账号会话Cookie有效期30天，登录成功旋转会话并支持同账号跨设备保存；退出撤销当前会话。尚未提供邮件验证、忘记密码找回或账号注销界面。删除个人资料会清除画像、测评、推荐结论、报告、收藏、屏蔽、确认专业、目标、任务、纠错、聊天与个人缓存；保留登录账号、当前会话和无内容的删除状态，可重新开始。此实例不自动备份；不能删除用户已下载文件。正式留存、备份恢复、监控和容量目标须在实际上线环境验收。
 
 原 demo 缓存不自动迁入服务端，`/?demo=1` 只在开发服务器可访问。生产构建不包含旧 demo 与其题目答案。城市目录仍是[有来源说明的离线快照](docs/city-data.md)，不宣称实时或全国招生项目全覆盖。
+
+## 公共院校资料预抓取（阶段4）
+
+公共院校资料库已实现 ProgramFact，始终 `verified:false`。事实按项目身份、字段、年度和来源保存，复用时保留原获取时间，仍以当前画像核验推荐；不自动发布到正式目录。
+
+```powershell
+node scripts/prefetch-schools.mjs --city 杭州 --school 杭州电子科技大学 --school 浙江工业大学 --discipline 0802 --max-pages-per-school 3 --db var/prefetch-smoke.sqlite --dns-mode public-doh
+node scripts/prefetch-schools.mjs --province 浙江 --dry-run
+```
+
+`--school` 可以重复，`--discipline` 限定事实汇总范围，公共目录原文仍按学校保存；默认每校12页、深度≤2，支持 `--refresh` 强制复核。未指定 `--db` 时沿用服务端数据库路径策略；`--dns-mode system|public-doh` 未指定时沿用服务端 YANTU_DNS_MODE 解析，不输出环境变量值。`--dry-run` 只列汇总，不建库、不联网。
+
+脚本不调用付费搜索或模型；遵守 robots.txt、每主机串行、间隔≥1秒、全局主机并发≤4。404视为允许，5xx、超时或无法判定时跳过主机，跳转每一跳也受 robots 限制。HTTP `.edu.cn` 原文保留明文传输标注，HTTP/HTTPS 同页按最终地址去重。杭州两校免费冒烟及研招网安全降级结论见 [实施说明第13节](docs/实施说明.md)。

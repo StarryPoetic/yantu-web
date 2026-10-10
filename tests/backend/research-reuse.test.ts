@@ -210,6 +210,26 @@ test("the report module saves real page reads and reuses public evidence after r
       subjectId: newRun.subjectId,
       run: newRun,
     });
+    const paidSearches = (requests: string[]) =>
+      requests.filter(
+        (value) => new URL(value).hostname === "api.search.brave.com",
+      ).length;
+    assert.ok(
+      paidSearches(second.requests) < paidSearches(first.requests),
+      `library-first searches: first=${paidSearches(first.requests)}, second=${paidSearches(second.requests)}`,
+    );
+    assert.deepEqual(
+      current.evidenceCoverage && {
+        librarySchoolCount: current.evidenceCoverage.librarySchoolCount,
+        libraryProgramCount: current.evidenceCoverage.libraryProgramCount,
+      },
+      second.library.coverageStats(),
+    );
+    assert.equal(
+      current.sources.find((source) => source.url === url)?.id,
+      second.library.load({ disciplineCodes: ["0802"], targetYear: "2027" })[0]
+        ?.id,
+    );
     assert.ok(
       current.recommendations.some((item) => item.institutionName === school),
     );

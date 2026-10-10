@@ -1,3 +1,4 @@
+import { libraryMissingGaps } from "./research-library-first.ts";
 import { normalizeCollegeName } from "../schools/index.ts";
 import { createHash } from "node:crypto";
 import type { ResearchDecisionBasis } from "../../shared/research-decision.ts";
@@ -130,6 +131,8 @@ export interface ResearchReport {
   decisionBasis?: ResearchDecisionBasis;
   candidateAudit?: ResearchCandidateAudit[];
   evidenceCoverage?: ResearchCoverageSummary & {
+    librarySchoolCount?: number;
+    libraryProgramCount?: number;
     strategy: "program-evidence-v1";
     mode: "generate" | "supplement";
     summary: string;
@@ -1492,6 +1495,7 @@ export function createResearchReportModule(
           summary: `已记录${value.summary.schoolCount}所学校、${value.summary.programCount}个相关专业；每个专业分别保留官网依据与待补查事项。`,
           ...value.summary,
           gaps: value.gaps,
+          ...library?.coverageStats(),
           reusedSourceCount,
           supplementedSourceCount,
           lookupKeys,
@@ -1505,6 +1509,7 @@ export function createResearchReportModule(
         targetYear: year,
         schoolNames: [
           ...candidateLeads.map((item) => item.school),
+          ...plan.directions.flatMap((item) => item.searchSchools ?? []),
           ...(input.previousReport?.candidateAudit?.map(
             (item) => item.institutionName,
           ) ?? []),
@@ -1544,29 +1549,46 @@ export function createResearchReportModule(
         }
         return pendingGapIds.has(gap.id);
       };
+      const recalledFacts =
+        library?.queryFacts({
+          disciplineCodes: disciplines.map((d) => d.code),
+          targetYear: year,
+        }) ?? [];
+      const libraryFirst =
+        seeds.length > 0 &&
+        recalledFacts.some(
+          (f) => f.field === "catalog" && f.status === "bound",
+        );
       const supplement = input.mode === "supplement";
-      const repaired = supplement
-        ? await repairResearchEvidence({
-            subjectId: input.subjectId,
-            gaps: priorCoverage.gaps,
-            sources: seeds,
-            targetYear: year,
-            web,
-            maxRequests: 18,
-            maxReads: 16,
-            lookupKeys,
-            attempts,
-            readPage: fetchPage,
-            onSource: (source) => {
-              live();
-              library?.save(source);
-            },
-            onAttempt: recordAttempt,
-            onProgress: (detail) => stage("researching", detail),
-            now: config.now,
-            needsEvidence,
-          })
-        : undefined;
+      const recallGaps = libraryMissingGaps(
+        priorCoverage.gaps,
+        recalledFacts,
+        seeds,
+      );
+
+      const repaired =
+        supplement || libraryFirst
+          ? await repairResearchEvidence({
+              subjectId: input.subjectId,
+              gaps: recallGaps,
+              sources: seeds,
+              targetYear: year,
+              web,
+              maxRequests: 18,
+              maxReads: 16,
+              lookupKeys,
+              attempts,
+              readPage: fetchPage,
+              onSource: (source) => {
+                live();
+                library?.save(source);
+              },
+              onAttempt: recordAttempt,
+              onProgress: (detail) => stage("researching", detail),
+              now: config.now,
+              needsEvidence,
+            })
+          : undefined;
       if (repaired) {
         lookupKeys = repaired.lookupKeys;
         supplementedSourceCount = repaired.sources.filter(
@@ -2047,8 +2069,15 @@ export function createResearchReportModule(
       ) {
         const extra = await repairResearchEvidence({
           subjectId: input.subjectId,
-          gaps: report.evidenceCoverage!.gaps.filter(
-            (gap) => gap.priority === "high",
+          gaps: libraryMissingGaps(
+            report.evidenceCoverage!.gaps.filter(
+              (gap) => gap.priority === "high",
+            ),
+            library?.queryFacts({
+              disciplineCodes: disciplines.map((d) => d.code),
+              targetYear: year,
+            }) ?? [],
+            report.sources,
           ),
           sources: report.sources,
           targetYear: year,
