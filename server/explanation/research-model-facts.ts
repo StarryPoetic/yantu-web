@@ -49,22 +49,17 @@ export function selectModelFacts(
       (a, b) => rank(b) - rank(a) || a.sourceId.localeCompare(b.sourceId),
     );
     const bound = group.filter((fact) => fact.status === "bound");
-    const applicable = bound.filter(
-      (fact) =>
-        fact.targetYearApplicable ||
-        fact.year === Number(targetYear) ||
-        fact.year ===
-          Math.max(
-            ...bound
-              .filter(
-                (f) => f.year !== undefined && f.year <= Number(targetYear),
-              )
-              .map((f) => f.year!),
-          ),
+    const applicableYear = Math.max(
+      ...bound
+        .filter(
+          (fact) => fact.year !== undefined && fact.year <= Number(targetYear),
+        )
+        .map((fact) => fact.year!),
     );
+    const applicable = bound.filter((fact) => fact.year === applicableYear);
     const newestBound = Math.max(...applicable.map((fact) => fact.year ?? 0));
     selected.push(
-      ...bound,
+      ...applicable,
       ...group
         .filter(
           (fact) =>
@@ -77,8 +72,8 @@ export function selectModelFacts(
   return selected
     .sort(
       (a, b) =>
-        Number(a.status === "pending") - Number(b.status === "pending") ||
         rank(b) - rank(a) ||
+        Number(a.status === "pending") - Number(b.status === "pending") ||
         identity(a).localeCompare(identity(b)),
     )
     .map((fact) => ({

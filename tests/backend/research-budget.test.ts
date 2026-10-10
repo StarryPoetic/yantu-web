@@ -340,6 +340,109 @@ test("school tariff scope and city-only campus annotations remain explicit", () 
   );
 });
 
+test("model facts keep only applicable bound years and rank target pending before historical bound", () => {
+  const facts = [
+    fact(2025, "bound"),
+    fact(2026, "bound"),
+    fact(2027, "pending"),
+    fact(2028, "bound", { targetYearApplicable: true }),
+    fact(2027, "bound", { field: "exams" }),
+    fact(2026, "bound", { field: "exams" }),
+    fact(2027, "pending", { majorCode: "120200" }),
+  ];
+  const original = structuredClone(facts);
+  const selected = selectModelFacts(facts, ["1201"], "2027");
+  assert.deepEqual(
+    selected.map((f) => [f.year, f.status]),
+    [
+      [2027, "bound"],
+      [2027, "pending"],
+      [2027, "pending"],
+      [2026, "bound"],
+    ],
+  );
+  assert.deepEqual(facts, original);
+  assert.deepEqual(
+    selectModelFacts(
+      [fact(2025, "bound"), fact(2026, "bound"), fact(2027, "bound")],
+      ["1201"],
+      "2027",
+    ).map((f) => f.year),
+    [2027],
+  );
+  assert.deepEqual(
+    selectModelFacts([fact(2028, "bound")], ["1201"], "2027"),
+    [],
+  );
+});
+
+test("character trimming preserves target pending ahead of many historical applicable facts", () => {
+  const run = generateGuidance({
+    subjectId: "owner",
+    guidanceRunId: "target-pending",
+    generatedAt: "2026-10-11T00:00:00Z",
+    profile: {
+      ...blankProfile(),
+      year: "2027",
+      major: "管理科学与工程",
+      targetMajor: "管理科学与工程",
+      studyGoal: "专业实践与行业就业",
+    },
+    profileVersion: 1,
+    selectionVersion: 1,
+    confirmedMajorId: "1201",
+    excludedMajorIds: [],
+    assessments: [],
+  });
+  const facts = Array.from({ length: 200 }, (_, i) =>
+    [2025, 2026].map((year) =>
+      fact(year, "bound", {
+        majorCode: String(120200 + i),
+        sourceId: "history",
+        quote: "历史公开原文".repeat(100),
+      }),
+    ),
+  ).flat();
+  facts.push(fact(2027, "pending", { quote: "目标年度归属待确认原文" }));
+  const input = JSON.parse(
+    reportMessages(
+      run,
+      { directions: [], followUpQuestions: [] },
+      [getDisciplineCatalog().items.find((item) => item.code === "1201")!],
+      [
+        {
+          id: "history",
+          url: "https://grs.hdu.edu.cn/history",
+          title: "历史收费资料",
+          excerpt: "杭州电子科技大学历史收费公开原文。",
+          retrievedAt: run.generatedAt,
+          kind: "official_page",
+          verified: false,
+        },
+        {
+          id: "source-2027",
+          url: "https://grs.hdu.edu.cn/pending",
+          title: "2027年收费资料",
+          excerpt: "杭州电子科技大学2027年目标年度归属待确认原文。",
+          retrievedAt: run.generatedAt,
+          kind: "official_page",
+          verified: false,
+        },
+      ],
+      "2027",
+      facts,
+    )[1].content,
+  );
+  assert.equal(input.structuredFacts[0].quote, "目标年度归属待确认原文");
+  assert.ok(
+    input.structuredFacts.length < 201,
+    "exercise the character-budget trimming path",
+  );
+  assert.ok(
+    input.structuredFacts.every((f: { year: number }) => f.year !== 2025),
+  );
+});
+
 test("a worst-case report including repairs, one retry and optional coverage fits default quota; actual rejected-response usage is recorded", async () => {
   const reserve = researchReservation();
   assert.equal(
