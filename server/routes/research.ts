@@ -155,6 +155,7 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             selectedProgram,
             mode: initial.mode,
             previousReport,
+            checkLive: () => live(c, run, job),
             onProgress: async (stage, detail) => {
               live(c, run, job);
               const step = stages[stage];

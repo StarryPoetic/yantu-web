@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { createHash } from "node:crypto";
 import { AssessmentError, publicDiagnosis } from "../assessment/index.ts";
 import type { AssessmentAttempt } from "../assessment/types.ts";
@@ -115,15 +116,20 @@ export function createModelRuntime(
       const reserve =
         JSON.stringify(messages).length + selected.maxOutputTokens;
       if (
-        JSON.stringify(messages).length > (selected.thinking ? 24000 : 16000) ||
-        reserve > (selected.thinking ? 40384 : 32384)
+        JSON.stringify(messages).length >
+          (selected.thinking ? B.thinkingChars : B.normalChars) ||
+        reserve >
+          (selected.thinking ? B.thinkingChars : B.normalChars) +
+            B.finalOutputTokens
       )
         throw new ModelError("EVIDENCE_TOO_LARGE");
       if (account.active >= 1 || active >= (config.globalConcurrency ?? 4))
         throw new ModelError("CONCURRENCY_LIMIT");
       if (
-        account.tokens + reserve > (config.userDailyTokens ?? 20000) ||
-        globalTokens + reserve > (config.globalDailyTokens ?? 100000)
+        account.tokens + reserve >
+          (config.userDailyTokens ?? B.userDailyTokens) ||
+        globalTokens + reserve >
+          (config.globalDailyTokens ?? B.globalDailyTokens)
       )
         throw new ModelError("BUDGET_EXHAUSTED");
       const generation = generations.get(user) ?? 0;
@@ -134,6 +140,7 @@ export function createModelRuntime(
       ledger.set(user, account);
       let actual = reserve;
       try {
+        options.onCall?.();
         const reply = await adapter.complete(messages, options);
         if (
           ![reply.inputTokens, reply.outputTokens].every(
@@ -142,6 +149,10 @@ export function createModelRuntime(
         )
           throw new ModelError("UNKNOWN_USAGE");
         actual = reply.inputTokens + reply.outputTokens;
+        options.onUsage?.({
+          inputTokens: reply.inputTokens,
+          outputTokens: reply.outputTokens,
+        });
         const value = validate(reply.content);
         if ((generations.get(user) ?? 0) !== generation)
           throw new ModelError("DATA_DELETED");

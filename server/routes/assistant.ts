@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../explanation/research-budget.ts";
 import {
   createExplanationModule,
   createModelRuntime,
@@ -32,9 +33,11 @@ export function createAssistantRoutes(
     apiKey: process.env.DEEPSEEK_API_KEY,
     dnsMode: dnsModeFromEnvironment(process.env),
     userDailyTokens: Number(
-      process.env.YANTU_MODEL_USER_DAILY_TOKENS ?? 100000,
+      process.env.YANTU_MODEL_USER_DAILY_TOKENS ?? B.userDailyTokens,
     ),
-    globalDailyTokens: Number(process.env.YANTU_MODEL_DAILY_TOKENS ?? 300000),
+    globalDailyTokens: Number(
+      process.env.YANTU_MODEL_DAILY_TOKENS ?? B.globalDailyTokens,
+    ),
   };
   const runtime = createModelRuntime(config);
   const explanations = createExplanationModule({ ...config, runtime });

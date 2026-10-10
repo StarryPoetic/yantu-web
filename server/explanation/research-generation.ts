@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import {
   ModelError,
   type ModelMessage,
@@ -91,7 +92,7 @@ export async function generateResearchValue<T>(input: {
     role: "user",
     content: `上一份结构化结果未通过系统校验。请根据原始画像、目录与证据重新输出完整JSON，仅修正错误，不新增未经引用的学校事实。校验反馈：${issues}。引用的画像数值必须与原值相同；没有目标学校或专业是正常探索需求，请主动规划，不要要求用户先选出答案。`,
   };
-  const limit = input.options.thinking ? 24000 : 16000;
+  const limit = input.options.thinking ? B.thinkingChars : B.normalChars;
   const context = [...input.messages, instruction];
   const withReply: ModelMessage[] = [
     ...input.messages,

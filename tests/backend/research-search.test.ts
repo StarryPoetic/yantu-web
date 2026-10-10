@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
@@ -243,9 +244,18 @@ test("research discovers official school domains before narrowing, ranks graduat
     requests.slice(3).map((request) => request.include),
     disciplines.map((item) => `school${item.code}.edu.cn`),
   );
-  assert.equal(result.sources.length, 12);
-  assert.equal(new Set(result.sources.map((item) => item.url)).size, 12);
-  assert.ok(result.sources.every((source) => source.url.includes("/master/")));
+  assert.ok(
+    result.sources.length > 12 && result.sources.length <= B.candidates,
+  );
+  assert.equal(
+    new Set(result.sources.map((item) => item.url)).size,
+    result.sources.length,
+  );
+  assert.ok(
+    result.sources
+      .slice(0, 12)
+      .every((source) => source.url.includes("/master/")),
+  );
   assert.deepEqual(
     result.sources
       .slice(0, 3)
@@ -446,7 +456,9 @@ test("a useful first school leads to the second hint and preserves both schools 
     ["grad.first.edu.cn", "grad.second.edu.cn"],
   );
   assert.ok(result.sources.every((item) => item.kind === "search_snippet"));
-  assert.equal(result.sources.length, 12);
+  assert.ok(
+    result.sources.length > 12 && result.sources.length <= B.candidates,
+  );
 });
 
 test("cancellation after a search prevents all remaining discovery requests", async () => {

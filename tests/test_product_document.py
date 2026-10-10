@@ -96,6 +96,13 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertNotIn("后续再扩展全学科覆盖", scope)
         self.assertNotIn("先面向准备全日制考研的理工科", scope)
 
+    def test_phase_five_budget_is_current_in_section_three(self):
+        budgets = {key: int(value) for key, value in re.findall(r'^  (\w+): (\d+),', (ROOT / 'server/explanation/research-budget.ts').read_text(encoding='utf-8'), re.M)}
+        section = self.content.split("### 3.3.", 1)[1].split("## 4.", 1)[0]
+        for key in ('reads', 'schoolReads', 'searches', 'thinkingChars'):
+            self.assertIn(str(budgets[key]), section)
+        self.assertNotIn("新预算在后续实现阶段同步", section)
+
     def test_heading_hierarchy_and_unique_titles(self):
         headings = re.findall(r"^(#{1,6}) (.+)$", self.content, re.MULTILINE)
         self.assertTrue(headings)

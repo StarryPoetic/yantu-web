@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import { schoolRegistry } from "../schools/index.ts";
 import { registrableDomain } from "./web.ts";
@@ -181,8 +182,16 @@ export async function searchResearchSources(input: {
   includeFeeSearch?: boolean;
   onProgress: (detail?: string) => Promise<void>;
 }) {
-  const maxRequests = Math.min(24, Math.max(1, input.maxRequests ?? 6));
-  const maxSources = Math.min(40, Math.max(1, input.maxSources ?? 12));
+  const maxRequests = Math.min(
+    B.searches,
+    Math.max(1, input.maxRequests ?? B.feeSearches),
+  );
+  const maxSources = Math.min(
+    B.candidates,
+    Math.max(1, input.maxSources ?? B.candidates),
+  );
+  let cacheHits = 0,
+    paidRequests = 0;
   let cache = caches.get(input.web);
   if (!cache) {
     cache = new Map();
@@ -277,7 +286,10 @@ export async function searchResearchSources(input: {
       lead,
     })),
     // Leave room for observed-school followups and fee lookups after city discovery.
-  ].slice(0, maxRequests > 6 ? Math.max(1, maxRequests - 8) : maxRequests);
+  ].slice(
+    0,
+    maxRequests > B.feeSearches ? Math.max(1, maxRequests - 8) : maxRequests,
+  );
   // Official navigation URLs are public investigation leads, not read evidence.
   // They survive a search provider indexing miss and still require a safe read.
   const navigationSources: { source: WebSource; direction: string }[] = [];
@@ -357,7 +369,7 @@ export async function searchResearchSources(input: {
   const feeBudget =
     input.includeFeeSearch === false
       ? 0
-      : Math.min(6, Math.max(1, Math.floor(maxRequests / 4)));
+      : Math.min(B.feeSearches, Math.max(1, Math.floor(maxRequests / 4)));
   let feeHints:
     | { school?: string; state: (typeof states)[number]; domains: string[] }[]
     | undefined;
@@ -453,12 +465,17 @@ export async function searchResearchSources(input: {
       let question: string;
       let resultPool = pool;
       const candidateQuery = candidateQueries[candidateQueryIndex];
-      if (maxRequests > 6 && !discoveryHints.length && !candidateQuery)
+      if (
+        maxRequests > B.feeSearches &&
+        !discoveryHints.length &&
+        !candidateQuery
+      )
         discoverySlots++;
       const feeTime =
         requests.size >= maxRequests - feeBudget ||
         discoverySlots >= maxRequests - feeBudget;
-      if (maxRequests > 6 && feeTime && !feeHints) feeHints = resolveFeeHints();
+      if (maxRequests > B.feeSearches && feeTime && !feeHints)
+        feeHints = resolveFeeHints();
       if (candidateQuery) {
         candidateQueryIndex++;
         question = candidateQuery.question;
@@ -472,7 +489,7 @@ export async function searchResearchSources(input: {
         )
           inventoryAttempts.add(candidateQuery.city);
       } else if (
-        maxRequests > 6 &&
+        maxRequests > B.feeSearches &&
         feeTime &&
         feeHints &&
         feeIndex < feeHints.length
@@ -489,7 +506,7 @@ export async function searchResearchSources(input: {
         // These domains came from actual results for this school, never from a
         // model's memory. Fees should not be left to third-party search snippets.
         domains = hint.domains;
-      } else if (maxRequests > 6 && discoveryHints.length) {
+      } else if (maxRequests > B.feeSearches && discoveryHints.length) {
         discoverySlots++;
         if (discoveryAttempt < discoveryHints.length) {
           const hint = discoveryHints[discoveryAttempt++];
@@ -575,7 +592,7 @@ export async function searchResearchSources(input: {
         domains = hintedSchoolDomains(pool, state.hints[0]);
       } else if (broadenSchool) {
         state.hintIndex++;
-        question = `${nextHint} ${discipline.name} 硕士${maxRequests > 6 ? " 招生专业目录" : ""}`;
+        question = `${nextHint} ${discipline.name} 硕士${maxRequests > B.feeSearches ? " 招生专业目录" : ""}`;
         domains = hintedSchoolDomains(pool, nextHint);
       } else if (domains.length) {
         domains.forEach((domain) => state.usedDomains.add(domain));
@@ -610,6 +627,8 @@ export async function searchResearchSources(input: {
       const saved = cache.get(key);
       const cached =
         saved && saved.expires > Date.now() ? saved.value : undefined;
+      if (cached) cacheHits++;
+      else paidRequests++;
       const result = cached
         ? structuredClone(cached)
         : await input.web.answer(
@@ -715,6 +734,8 @@ export async function searchResearchSources(input: {
     limitations,
     stoppedReason,
     requestCount: requests.size,
+    paidRequests,
+    cacheHits,
     candidateAttempts: [...candidateAttempts],
     inventoryAttempts: [...inventoryAttempts],
   };

@@ -1,3 +1,5 @@
+import { createResearchReader } from "./research-reader.ts";
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import type {
   ResearchStudyMode,
@@ -46,6 +48,7 @@ const failureReason = (error: unknown) =>
 /** Investigate actual verified recommendations after generation under the caller's shared read budget. */
 export async function enrichResearchFees(input: {
   subjectId: string;
+  signal?: AbortSignal;
   recommendations: readonly ResearchFeeRecommendation[];
   sources: readonly WebSource[];
   disciplines: readonly Discipline[];
@@ -57,276 +60,308 @@ export async function enrichResearchFees(input: {
   onProgress: (detail: string) => Promise<void>;
   now?: () => number;
 }) {
-  const maxReads = clamp(input.remainingReads, 8);
-  const maxRequests = clamp(input.maxRequests ?? 6, 6);
-  const sources: WebSource[] = [];
-  const limitations: string[] = [];
-  let requestCount = 0;
-  let readCount = 0;
-  let searched = false;
-  if (!maxReads || !maxRequests)
-    return { sources, limitations, requestCount, readCount, searched };
-  const now = input.now ?? Date.now;
-  let cache = caches.get(input.web);
-  if (!cache) {
-    cache = new Map();
-    caches.set(input.web, cache);
-  }
-  const usedIds = new Set(input.sources.map((source) => source.id));
-  const attempted = new Set(
-    input.sources
-      .filter((source) => source.kind === "official_page")
-      .map((source) => source.url),
+  const scheduler = createResearchReader(
+    (url) => input.readPage(url),
+    input.signal,
   );
-  let feeId = 0;
-  function evidence(recommendation: ResearchFeeRecommendation) {
-    return deriveRecommendationConstraints({
-      profile: { budget: "", cities: [] },
-      targetYear: input.targetYear,
-      institutionName: recommendation.institutionName,
-      programName: recommendation.programName,
-      degreeType:
-        recommendation.degreeType ??
-        input.disciplines.find(
-          (item) => item.code === recommendation.disciplineCode,
-        )?.degreeType,
-      studyMode: recommendation.studyMode,
-      citations: [...(recommendation.citations ?? [])],
-      sources: [...input.sources, ...sources],
-      tuition: recommendation.tuition,
-    }).tuition;
-  }
-  function schoolDomains(recommendation: ResearchFeeRecommendation) {
-    return [
-      ...new Set(
-        input.sources
-          .filter((source) => {
-            try {
-              return (
-                source.kind === "official_page" &&
-                (!recommendation.citations?.length ||
-                  recommendation.citations.includes(source.id)) &&
-                /^[a-z0-9.-]+\.edu\.cn$/.test(new URL(source.url).hostname) &&
-                source.excerpt
-                  .replace(
-                    /(?:友情链接|相关链接|院校链接)[\s\S]*?(?=学院地址|学校地址|联系地址|Copyright|版权所有|$)/gi,
-                    "",
-                  )
-                  .includes(recommendation.institutionName)
-              );
-            } catch {
-              return false;
-            }
-          })
-          .map((source) => academicDomain(source.url)),
-      ),
-    ].slice(0, 2);
-  }
-  function permitted(url: string, domains: string[]) {
-    try {
-      const parsed = new URL(url);
-      return (
-        (parsed.protocol === "https:" ||
-          (parsed.protocol === "http:" &&
-            parsed.hostname.endsWith(".edu.cn"))) &&
-        !parsed.username &&
-        !parsed.password &&
-        !parsed.port &&
-        parsed.href.length <= 2048 &&
-        domains.includes(academicDomain(parsed.href))
-      );
-    } catch {
-      return false;
-    }
-  }
-  const recommendations = input.recommendations
-    .filter(
-      (item, index, all) =>
-        all.findIndex(
-          (other) =>
-            other.institutionName === item.institutionName &&
-            other.programName === item.programName,
-        ) === index,
-    )
-    .filter((item) => !evidence(item))
-    .slice(0, 6);
-  const jobs: {
-    recommendation: ResearchFeeRecommendation;
-    domains: string[];
-    queue: { url: string; title: string; parent?: WebSource }[];
-  }[] = [];
-  for (const recommendation of recommendations) {
-    if (requestCount >= maxRequests) break;
-    const domains = schoolDomains(recommendation);
-    if (!domains.length) {
-      limitations.push(
-        `${recommendation.institutionName}${recommendation.programName}尚无可确认归属的学校官网域名，本次未据名称构造费用网址。`,
-      );
-      continue;
-    }
-    const referenceYear = historicalReferenceYears(input.targetYear)[0];
-    const question = `${recommendation.institutionName} ${recommendation.programName} ${referenceYear ? referenceYear + "年 " : ""}硕士 研究生 学费 收费标准`;
-    const key = JSON.stringify([question, [...domains].sort()]);
-    requestCount++;
-    await input.onProgress(
-      `正在补查已推荐学校学费：第 ${requestCount}/${Math.min(recommendations.length, maxRequests)} 项`,
+  try {
+    const maxReads = clamp(input.remainingReads, B.reads);
+    const maxRequests = clamp(
+      input.maxRequests ?? B.feeSearches,
+      B.feeSearches,
     );
-    let result: SearchResult;
-    try {
-      const saved = cache.get(key);
-      const reused = saved && saved.expires > now();
-      result = reused
-        ? structuredClone(saved.value)
-        : await input.web.answer(
-            { subjectId: input.subjectId, question, search: true },
-            {
-              sourcesOnly: true,
-              upgradeAcademicHttp: true,
-              search: { count: 10, includeDomains: domains },
-            },
-          );
-      if (
-        !reused &&
-        result.searched &&
-        result.sources.length &&
-        !result.reason
-      ) {
-        if (cache.size >= 120) cache.delete(cache.keys().next().value!);
-        cache.set(key, {
-          expires: now() + 15 * 60_000,
-          value: structuredClone(result),
-        });
+    const sources: WebSource[] = [];
+    const limitations: string[] = [];
+    let requestCount = 0;
+    let readCount = 0;
+    let searched = false;
+    if (!maxReads || !maxRequests)
+      return { sources, limitations, requestCount, readCount, searched };
+    const now = input.now ?? Date.now;
+    let cache = caches.get(input.web);
+    if (!cache) {
+      cache = new Map();
+      caches.set(input.web, cache);
+    }
+    const usedIds = new Set(input.sources.map((source) => source.id));
+    const attempted = new Set(
+      input.sources
+        .filter((source) => source.kind === "official_page")
+        .map((source) => source.url),
+    );
+    let feeId = 0;
+    function evidence(recommendation: ResearchFeeRecommendation) {
+      return deriveRecommendationConstraints({
+        profile: { budget: "", cities: [] },
+        targetYear: input.targetYear,
+        institutionName: recommendation.institutionName,
+        programName: recommendation.programName,
+        degreeType:
+          recommendation.degreeType ??
+          input.disciplines.find(
+            (item) => item.code === recommendation.disciplineCode,
+          )?.degreeType,
+        studyMode: recommendation.studyMode,
+        citations: [...(recommendation.citations ?? [])],
+        sources: [...input.sources, ...sources],
+        tuition: recommendation.tuition,
+      }).tuition;
+    }
+    function schoolDomains(recommendation: ResearchFeeRecommendation) {
+      return [
+        ...new Set(
+          input.sources
+            .filter((source) => {
+              try {
+                return (
+                  source.kind === "official_page" &&
+                  (!recommendation.citations?.length ||
+                    recommendation.citations.includes(source.id)) &&
+                  /^[a-z0-9.-]+\.edu\.cn$/.test(new URL(source.url).hostname) &&
+                  source.excerpt
+                    .replace(
+                      /(?:友情链接|相关链接|院校链接)[\s\S]*?(?=学院地址|学校地址|联系地址|Copyright|版权所有|$)/gi,
+                      "",
+                    )
+                    .includes(recommendation.institutionName)
+                );
+              } catch {
+                return false;
+              }
+            })
+            .map((source) => academicDomain(source.url)),
+        ),
+      ].slice(0, 2);
+    }
+    function permitted(url: string, domains: string[]) {
+      try {
+        const parsed = new URL(url);
+        return (
+          (parsed.protocol === "https:" ||
+            (parsed.protocol === "http:" &&
+              parsed.hostname.endsWith(".edu.cn"))) &&
+          !parsed.username &&
+          !parsed.password &&
+          !parsed.port &&
+          parsed.href.length <= 2048 &&
+          domains.includes(academicDomain(parsed.href))
+        );
+      } catch {
+        return false;
       }
-    } catch (error) {
-      if (cancelled(error)) throw error;
-      limitations.push(
-        `${recommendation.institutionName}费用检索未完成：${failureReason(error)}`,
-      );
-      continue;
     }
-    searched ||= result.searched;
-    if (result.reason)
-      limitations.push(
-        `${recommendation.institutionName}费用检索未完成：${researchReason(result.reason)}`,
-      );
-    const queue = result.sources
+    const recommendations = input.recommendations
       .filter(
-        (source) =>
-          permitted(source.url, domains) &&
-          /学费|收费|费用/.test(`${source.title} ${source.excerpt}`) &&
-          (!/本科(?:生|专业|招生)?|博士|同等学力|留学生/.test(source.title) ||
-            /硕士|研究生/.test(source.title)),
+        (item, index, all) =>
+          all.findIndex(
+            (other) =>
+              other.institutionName === item.institutionName &&
+              other.programName === item.programName,
+          ) === index,
       )
-      .sort(
-        (a, b) =>
-          researchYearPriority(
-            Number(b.title.match(/20\d{2}/)?.[0]) || undefined,
-            input.targetYear,
-          ) -
-            researchYearPriority(
-              Number(a.title.match(/20\d{2}/)?.[0]) || undefined,
-              input.targetYear,
-            ) ||
-          Number(b.title.includes(recommendation.programName)) -
-            Number(a.title.includes(recommendation.programName)),
-      )
-      .map(({ url, title }) => ({ url, title }));
-    jobs.push({ recommendation, domains, queue });
-    await input.onProgress(
-      `已检索${recommendation.institutionName}${recommendation.programName}，正在核对官网费用原文`,
-    );
-    if (
-      [
-        "SEARCH_BUDGET_EXHAUSTED",
-        "SEARCH_DISABLED",
-        "SEARCH_NOT_CONFIGURED",
-        "SEARCH_PROVIDER_ERROR",
-      ].includes(result.reason ?? "")
-    )
-      break;
-  }
-  // Rotate schools before expanding an individual page's linked fee PDF.
-  while (
-    readCount < maxReads &&
-    jobs.some((job) => job.queue.length && !evidence(job.recommendation))
-  ) {
-    for (const job of jobs) {
-      if (readCount >= maxReads) break;
-      if (evidence(job.recommendation)) {
-        job.queue = [];
+      .filter((item) => !evidence(item))
+      .slice(0, B.feeSearches);
+    const jobs: {
+      recommendation: ResearchFeeRecommendation;
+      domains: string[];
+      queue: { url: string; title: string; parent?: WebSource }[];
+    }[] = [];
+    for (const recommendation of recommendations) {
+      if (requestCount >= maxRequests) break;
+      const domains = schoolDomains(recommendation);
+      if (!domains.length) {
+        limitations.push(
+          `${recommendation.institutionName}${recommendation.programName}尚无可确认归属的学校官网域名，本次未据名称构造费用网址。`,
+        );
         continue;
       }
-      let next = job.queue.shift();
-      while (next && attempted.has(next.url)) next = job.queue.shift();
-      if (!next) continue;
-      attempted.add(next.url);
-      readCount++;
+      const referenceYear = historicalReferenceYears(input.targetYear)[0];
+      const question = `${recommendation.institutionName} ${recommendation.programName} ${referenceYear ? referenceYear + "年 " : ""}硕士 研究生 学费 收费标准`;
+      const key = JSON.stringify([question, [...domains].sort()]);
+      requestCount++;
       await input.onProgress(
-        `正在读取已推荐学校费用原文：第 ${readCount}/${maxReads} 项`,
+        `正在补查已推荐学校学费：第 ${requestCount}/${Math.min(recommendations.length, maxRequests)} 项`,
       );
+      let result: SearchResult;
       try {
-        const result = await input.readPage(next.url);
-        const excerpt =
-          /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
-            result.contentType,
-          )
-            ? result.text.trim()
-            : webPageText(result.text);
-        if (!excerpt) {
-          limitations.push(
-            `${job.recommendation.institutionName}费用网页未返回可用正文。`,
-          );
-          continue;
-        }
-        if (excerpt.length > 200000) {
-          limitations.push(
-            `${job.recommendation.institutionName}费用网页净正文超过200000字符，本次未保存不完整证据。`,
-          );
-          continue;
-        }
-        while (usedIds.has(`fee-${++feeId}`)) {
-          /* source IDs cannot shadow existing evidence. */
-        }
-        let source: WebSource = {
-          id: `fee-${feeId}`,
-          title: next.title,
-          url: next.url,
-          ...readSourceMetadata(result, next.url),
-          retrievedAt: result.retrievedAt ?? new Date(now()).toISOString(),
-          kind: "official_page",
-          verified: false,
-          excerpt,
-          ...(next.parent ? { parentSourceId: next.parent.id } : {}),
-        };
-        if (next.parent)
-          source = normalizeAttachedEvidence(source, next.parent, excerpt);
-        if (/html/i.test(result.contentType))
-          source.documentLinks = researchAttachments(source, result.text, {
-            maxLinks: 12,
-          })
-            .filter((link) => permitted(link.url, job.domains))
-            .map(({ url, title }) => ({ url, title }));
-        usedIds.add(source.id);
-        sources.push(source);
-        if (/html/i.test(result.contentType)) {
-          const attachments = researchAttachments(source, result.text).filter(
-            (link) =>
-              permitted(link.url, job.domains) && !attempted.has(link.url),
-          );
-          job.queue.unshift(
-            ...attachments.map((link) => ({ ...link, parent: source })),
-          );
+        const saved = cache.get(key);
+        const reused = saved && saved.expires > now();
+        result = reused
+          ? structuredClone(saved.value)
+          : await input.web.answer(
+              { subjectId: input.subjectId, question, search: true },
+              {
+                sourcesOnly: true,
+                upgradeAcademicHttp: true,
+                search: { count: 10, includeDomains: domains },
+              },
+            );
+        if (
+          !reused &&
+          result.searched &&
+          result.sources.length &&
+          !result.reason
+        ) {
+          if (cache.size >= 120) cache.delete(cache.keys().next().value!);
+          cache.set(key, {
+            expires: now() + 15 * 60_000,
+            value: structuredClone(result),
+          });
         }
       } catch (error) {
         if (cancelled(error)) throw error;
         limitations.push(
-          `${job.recommendation.institutionName}费用官网读取未完成：${failureReason(error)}`,
+          `${recommendation.institutionName}费用检索未完成：${failureReason(error)}`,
+        );
+        continue;
+      }
+      searched ||= result.searched;
+      if (result.reason)
+        limitations.push(
+          `${recommendation.institutionName}费用检索未完成：${researchReason(result.reason)}`,
+        );
+      const queue = result.sources
+        .filter(
+          (source) =>
+            permitted(source.url, domains) &&
+            /学费|收费|费用/.test(`${source.title} ${source.excerpt}`) &&
+            (!/本科(?:生|专业|招生)?|博士|同等学力|留学生/.test(source.title) ||
+              /硕士|研究生/.test(source.title)),
+        )
+        .sort(
+          (a, b) =>
+            researchYearPriority(
+              Number(b.title.match(/20\d{2}/)?.[0]) || undefined,
+              input.targetYear,
+            ) -
+              researchYearPriority(
+                Number(a.title.match(/20\d{2}/)?.[0]) || undefined,
+                input.targetYear,
+              ) ||
+            Number(b.title.includes(recommendation.programName)) -
+              Number(a.title.includes(recommendation.programName)),
+        )
+        .map(({ url, title }) => ({ url, title }));
+      jobs.push({ recommendation, domains, queue });
+      await input.onProgress(
+        `已检索${recommendation.institutionName}${recommendation.programName}，正在核对官网费用原文`,
+      );
+      if (
+        [
+          "SEARCH_BUDGET_EXHAUSTED",
+          "SEARCH_DISABLED",
+          "SEARCH_NOT_CONFIGURED",
+          "SEARCH_PROVIDER_ERROR",
+        ].includes(result.reason ?? "")
+      )
+        break;
+    }
+    let rotation = 0;
+    // Rotate schools before expanding an individual page's linked fee PDF.
+    while (
+      readCount < maxReads &&
+      jobs.some((job) => job.queue.length && !evidence(job.recommendation))
+    ) {
+      const rotatedJobs = [...jobs.slice(rotation), ...jobs.slice(0, rotation)];
+      const wave = rotatedJobs
+        .filter((job) => !evidence(job.recommendation))
+        .map((job) => {
+          let next = job.queue.shift();
+          while (next && attempted.has(next.url)) next = job.queue.shift();
+          return { job, next };
+        })
+        .filter((item) => item.next);
+      const selected = wave.slice(
+        0,
+        Math.min(B.concurrency, maxReads - readCount),
+      );
+      for (const item of wave.slice(selected.length))
+        item.job.queue.unshift(item.next!);
+      for (const item of selected) attempted.add(item.next!.url);
+      readCount += selected.length;
+      if (selected.length)
+        rotation = (jobs.indexOf(selected.at(-1)!.job) + 1) % jobs.length;
+      const results = await Promise.allSettled(
+        selected.map((item) => scheduler.read(item.next!.url)),
+      );
+      for (let index = 0; index < selected.length; index++) {
+        const { job } = selected[index];
+        if (evidence(job.recommendation)) {
+          job.queue = [];
+          continue;
+        }
+        const next = selected[index].next!;
+        await input.onProgress(
+          `正在读取已推荐学校费用原文：第 ${readCount}/${maxReads} 项`,
+        );
+        try {
+          const outcome = results[index];
+          if (outcome.status === "rejected") throw outcome.reason;
+          const result = outcome.value;
+          const excerpt =
+            /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
+              result.contentType,
+            )
+              ? result.text.trim()
+              : webPageText(result.text);
+          if (!excerpt) {
+            limitations.push(
+              `${job.recommendation.institutionName}费用网页未返回可用正文。`,
+            );
+            continue;
+          }
+          if (excerpt.length > 200000) {
+            limitations.push(
+              `${job.recommendation.institutionName}费用网页净正文超过200000字符，本次未保存不完整证据。`,
+            );
+            continue;
+          }
+          while (usedIds.has(`fee-${++feeId}`)) {
+            /* source IDs cannot shadow existing evidence. */
+          }
+          let source: WebSource = {
+            id: `fee-${feeId}`,
+            title: next.title,
+            url: next.url,
+            ...readSourceMetadata(result, next.url),
+            retrievedAt: result.retrievedAt ?? new Date(now()).toISOString(),
+            kind: "official_page",
+            verified: false,
+            excerpt,
+            ...(next.parent ? { parentSourceId: next.parent.id } : {}),
+          };
+          if (next.parent)
+            source = normalizeAttachedEvidence(source, next.parent, excerpt);
+          if (/html/i.test(result.contentType))
+            source.documentLinks = researchAttachments(source, result.text, {
+              maxLinks: B.attachmentLinks,
+            })
+              .filter((link) => permitted(link.url, job.domains))
+              .map(({ url, title }) => ({ url, title }));
+          usedIds.add(source.id);
+          sources.push(source);
+          if (/html/i.test(result.contentType)) {
+            const attachments = researchAttachments(source, result.text).filter(
+              (link) =>
+                permitted(link.url, job.domains) && !attempted.has(link.url),
+            );
+            job.queue.unshift(
+              ...attachments.map((link) => ({ ...link, parent: source })),
+            );
+          }
+        } catch (error) {
+          if (cancelled(error)) throw error;
+          limitations.push(
+            `${job.recommendation.institutionName}费用官网读取未完成：${failureReason(error)}`,
+          );
+        }
+        await input.onProgress(
+          `已核对${job.recommendation.institutionName}${job.recommendation.programName}费用原文，${evidence(job.recommendation) ? "取得可保留的项目费用证据" : "金额或适用项目仍待核验"}`,
         );
       }
-      await input.onProgress(
-        `已核对${job.recommendation.institutionName}${job.recommendation.programName}费用原文，${evidence(job.recommendation) ? "取得可保留的项目费用证据" : "金额或适用项目仍待核验"}`,
-      );
     }
+    return { sources, limitations, requestCount, readCount, searched };
+  } finally {
+    scheduler.dispose();
   }
-  return { sources, limitations, requestCount, readCount, searched };
 }

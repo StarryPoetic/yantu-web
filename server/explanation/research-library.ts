@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { programEntries } from "./research-matching.ts";
 import { schoolRegistry } from "../schools/index.ts";
 import { extractProgramFacts, type ProgramFact } from "./research-facts.ts";
@@ -670,8 +671,8 @@ export function createResearchEvidenceLibrary(
       if (!years.length || (!codes.length && !schools.length)) return [];
       const limit =
         input.maxSources === undefined || !Number.isFinite(input.maxSources)
-          ? 24
-          : Math.max(0, Math.min(40, Math.floor(input.maxSources)));
+          ? B.candidates
+          : Math.max(0, Math.min(B.candidates, Math.floor(input.maxSources)));
       if (!limit) return [];
       const clauses: string[] = [];
       const params: (string | number)[] = [];
@@ -723,7 +724,7 @@ export function createResearchEvidenceLibrary(
         .prepare(
           `SELECT s.* FROM research_public_sources s
         WHERE (${clauses.join(" OR ")}) AND s.evidence_year = ?
-        ORDER BY CASE WHEN (${changes}) THEN 0 ELSE 1 END, s.retrieved_at DESC, s.url LIMIT 40`,
+        ORDER BY CASE WHEN (${changes}) THEN 0 ELSE 1 END, s.retrieved_at DESC, s.url LIMIT ${B.candidates}`,
         )
         .all(...params, Number(input.targetYear)) as unknown as SourceRow[];
       const rows = [

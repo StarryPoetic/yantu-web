@@ -80,6 +80,22 @@ const options = {
 };
 const initial = "https://grs.school.edu.cn/";
 
+test("research cancellation aborts DNS waiting before any socket is opened", async () => {
+  const controller = new AbortController();
+  let requested = 0;
+  const reader = createHttpsReader({
+    resolver: () => new Promise(() => {}),
+    request: (() => {
+      requested++;
+      throw new Error("must not open socket");
+    }) as never,
+  });
+  const reading = reader(initial, { ...options, signal: controller.signal });
+  controller.abort(new Error("cancelled report"));
+  await assert.rejects(reading, /cancelled report/);
+  assert.equal(requested, 0);
+});
+
 test("registrable domains preserve CN compound suffixes and school ownership", () => {
   for (const suffix of [
     "edu.cn",

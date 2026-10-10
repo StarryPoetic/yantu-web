@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
@@ -128,7 +129,7 @@ test("late fee discovery uses a verified school's observed root domain and only 
   assert.deepEqual(original.recommendations, recommendations);
 });
 
-test("the six-search and eight-read ceilings rotate actual schools without an additional model call", async () => {
+test("the shared search and remaining-read ceilings rotate actual schools without an additional model call", async () => {
   const { web, queries } = search((query) => {
     const index = Number(query.match(/^学校(\d)/)?.[1]);
     return [1, 2, 3].map((page) => ({
@@ -162,8 +163,8 @@ test("the six-search and eight-read ceilings rotate actual schools without an ad
   );
   assert.equal(queries.length, 6);
   assert.equal(result.requestCount, 6);
-  assert.equal(result.readCount, 8);
-  assert.equal(reads.length, 8);
+  assert.equal(result.readCount, B.feeSearches * 3);
+  assert.equal(reads.length, B.feeSearches * 3);
   assert.equal(
     new Set(reads.slice(0, 6).map((url) => new URL(url).hostname)).size,
     6,

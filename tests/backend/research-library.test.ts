@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -481,7 +482,7 @@ test("target policies expire quickly, historical policies last longer, and stale
 test("limits remain bounded and known current changes stay visible beside the historical baseline", () => {
   const { store, library } = memory();
   try {
-    for (let index = 0; index < 50; index++)
+    for (let index = 0; index < B.candidates + 10; index++)
       library.save(source({ url: `https://grs.hdu.edu.cn/history-${index}` }));
     library.save(
       source({
@@ -489,8 +490,11 @@ test("limits remain bounded and known current changes stay visible beside the hi
         excerpt: source().excerpt.replace("2026年", "2027年"),
       }),
     );
-    assert.equal(library.load({ ...request, maxSources: 1000 }).length, 40);
-    assert.equal(library.load(request).length, 24);
+    assert.equal(
+      library.load({ ...request, maxSources: 1000 }).length,
+      B.candidates,
+    );
+    assert.equal(library.load(request).length, B.candidates);
     assert.deepEqual(library.load({ ...request, maxSources: 0 }), []);
     const pair = library.load({ ...request, maxSources: 2 });
     assert.equal(safeSourceYear(pair[0]), 2026);

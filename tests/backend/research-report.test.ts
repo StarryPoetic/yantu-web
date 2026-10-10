@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateGuidance } from "../../server/disciplines/index.ts";
@@ -211,6 +212,119 @@ function setup(
     config,
   };
 }
+
+test("report usage contains only this report's paid/cache reads and actual model response tokens", async () => {
+  const events: WebEvent[] = [];
+  const { module, calls, planningCalls } = setup({
+    reader: mockReader({}, events),
+  });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.ok(report.usage);
+  assert.equal(
+    report.usage.searches.paid,
+    events.filter(
+      (event) => new URL(event.url).hostname === "api.search.brave.com",
+    ).length,
+  );
+  assert.equal(
+    report.usage.reads.reads,
+    events.filter(
+      (event) => new URL(event.url).hostname !== "api.search.brave.com",
+    ).length,
+  );
+  assert.equal(
+    report.usage.reads.reads,
+    report.usage.reads.success + report.usage.reads.failed,
+  );
+  const models = calls.length + planningCalls.length;
+  assert.equal(report.usage.model.calls, models);
+  assert.equal(report.usage.model.inputTokens, models * 150);
+  assert.equal(report.usage.model.outputTokens, models * 500);
+  assert.ok(report.usage.searches.paid <= B.searches);
+  assert.ok(report.usage.reads.reads <= B.reads);
+  const cached = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(cached.usage?.reads.success, 0);
+  assert.equal(
+    cached.usage?.reads.reads,
+    cached.usage?.reads.failed,
+    "failed seed pages are never cached",
+  );
+  assert.equal(cached.usage?.model.calls, 0);
+  assert.ok(cached.usage!.searches.cacheHits > 0);
+});
+
+test("planning and final analysis share only one transient retry for the entire report", async () => {
+  let planning = 0,
+    final = 0;
+  const { module } = setup({
+    planningModel: {
+      async complete() {
+        planning++;
+        if (planning === 1)
+          throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+        return {
+          content: JSON.stringify(planBody()),
+          model: "deepseek-v4-pro",
+          inputTokens: 7,
+          outputTokens: 11,
+        };
+      },
+    },
+    model: {
+      async complete() {
+        final++;
+        throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+      },
+    },
+  });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.equal(planning, 2);
+  assert.equal(
+    final,
+    1,
+    "final analysis cannot consume another transient retry",
+  );
+  assert.equal(report.usage?.model.calls, planning + final);
+  assert.equal(report.usage?.model.inputTokens, 7);
+  assert.equal(report.usage?.model.outputTokens, 11);
+  assert.equal(report.reason, "PROVIDER_TEMPORARY_UNAVAILABLE");
+});
+
+test("a citation cannot recover a hidden passage that was cropped out of final model input", async () => {
+  const hidden = "独立附记：只存在于原始长页末尾的特殊说明。";
+  const body = reportBody();
+  body.facts = [{ text: hidden, citations: ["research-1"] }];
+  const { module, calls } = setup({
+    body,
+    reader: mockReader({
+      content: `${quote}\n${"无关导航内容".repeat(10000)}\n${hidden}`,
+    }),
+  });
+  const report = await module.generate({
+    subjectId: "student",
+    run: fixture(),
+  });
+  assert.ok(
+    report.sources.find((s) => s.id === "research-1")!.excerpt.includes(hidden),
+  );
+  assert.ok(
+    !calls[0].messages[1].content.includes(hidden),
+    "the model never saw the passage",
+  );
+  assert.ok(
+    !report.facts.some((f) => f.text === hidden),
+    "original storage cannot authorise unseen model facts",
+  );
+});
 
 test("research reads original HTTP search candidates with redirect opt-in and reuses labelled transport metadata", async () => {
   const events: WebEvent[] = [];
@@ -522,7 +636,7 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
       "server-search-placeholder",
     ])
       assert.equal(sent.includes(secret), false);
-    assert.ok(sent.length < 24000);
+    assert.ok(sent.length < B.thinkingChars);
   }
   assert.equal(planningCalls[0].options?.thinking, false);
   assert.equal(planningCalls[0].options?.maxOutputTokens, 4096);
@@ -1735,7 +1849,7 @@ test("unsupported budget comparisons become verification risks while an unsafe g
   );
 });
 
-test("retrieval reserves fee capacity within 24 searches and 24 pages, with all model inputs bounded", async () => {
+test("retrieval reserves fee capacity within shared search/read budgets, with all model inputs bounded", async () => {
   let searches = 0,
     pages = 0;
   const reader: WebReader = async (url) => {
@@ -1775,12 +1889,15 @@ test("retrieval reserves fee capacity within 24 searches and 24 pages, with all 
   );
   assert.equal(
     pages,
-    16,
-    "catalogue discovery leaves 8 reads for actual fee evidence",
+    B.initialReads,
+    "catalogue discovery leaves the remaining reads for actual fee evidence",
   );
-  assert.ok(report.sources.length >= 16 && report.sources.length <= 40);
+  assert.ok(
+    report.sources.length >= B.initialReads &&
+      report.sources.length <= B.candidates,
+  );
   for (const call of [...calls, ...planningCalls])
-    assert.ok(JSON.stringify(call.messages).length < 24000);
+    assert.ok(JSON.stringify(call.messages).length < B.thinkingChars);
   assert.ok(
     report.sources.some(
       (source) =>
@@ -2353,7 +2470,8 @@ for (const firstPage of ["timeout", "other-programme"] as const) {
     run.inputSnapshot.profile.cities = ["杭州"];
     const report = await module.generate({ subjectId: "student", run });
     assert.ok(
-      readsBeforeAnalysis > 16 && readsBeforeAnalysis <= 20,
+      readsBeforeAnalysis > 0 &&
+        readsBeforeAnalysis <= B.initialReads + B.cityReads,
       JSON.stringify({
         readsBeforeAnalysis,
         sources: report.sources.map((s) => s.url),

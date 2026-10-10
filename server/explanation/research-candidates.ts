@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { schoolRegistry } from "../schools/index.ts";
 import { normalizeCityName } from "../../shared/cities.ts";
 import type { Discipline } from "../disciplines/types.ts";
@@ -18,8 +19,8 @@ export interface CityCandidateLead {
   discoveryOnly: true;
 }
 
-export const MAX_CITY_CANDIDATE_LEADS = 12;
-export const MAX_REGISTRY_NAVIGATION_READS = 6;
+export const MAX_CITY_CANDIDATE_LEADS = B.cityCandidates;
+export const MAX_REGISTRY_NAVIGATION_READS = B.registryReads;
 
 export function normalizeDiscoveryCity(city: string) {
   return normalizeCityName(city);

@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -145,7 +146,7 @@ test("unsafe endpoints and invalid transport controls fail before DNS or sending
     { method: "GET" },
     { redirect: "follow" },
     { signal: null },
-    { body: "a".repeat(98305) },
+    { body: "a".repeat(B.requestBytes + 1) },
   ])
     await assert.rejects(
       transport(endpoint, { ...init(), ...overrides } as RequestInit),
@@ -285,7 +286,7 @@ test("public-DoH transport preserves HTTP classification and streams final conte
   });
 });
 
-test("valid 24k-character Chinese research prompts fit the transport byte bound; larger model inputs still fail", async () => {
+test("valid 40k-character Chinese research prompts fit the transport byte bound; larger model inputs still fail", async () => {
   let sentBytes = 0;
   const transport = createDeepSeekTransport({
     resolver: async () => publicAddresses,
@@ -305,17 +306,22 @@ test("valid 24k-character Chinese research prompts fit the transport byte bound;
     apiKey: "mock",
     fetch: transport,
   });
-  const messages = [{ role: "user" as const, content: "中".repeat(23950) }];
-  assert.ok(JSON.stringify(messages).length < 24000);
+  const messages = [
+    { role: "user" as const, content: "中".repeat(B.thinkingChars - 50) },
+  ];
+  assert.ok(JSON.stringify(messages).length < B.thinkingChars);
   await adapter.complete(messages, {
     model: "deepseek-v4-pro",
     thinking: true,
   });
-  assert.ok(sentBytes > 65536 && sentBytes < 98304);
+  assert.ok(sentBytes > 65536 && sentBytes < B.requestBytes);
   await assert.rejects(
-    adapter.complete([{ role: "user", content: "中".repeat(24001) }], {
-      thinking: true,
-    }),
+    adapter.complete(
+      [{ role: "user", content: "中".repeat(B.thinkingChars + 1) }],
+      {
+        thinking: true,
+      },
+    ),
     { code: "EVIDENCE_TOO_LARGE" },
   );
 });

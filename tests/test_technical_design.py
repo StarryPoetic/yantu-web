@@ -11,6 +11,8 @@ DESIGN_DIR = ROOT / "docs" / "技术设计"
 INDEX = DESIGN_DIR / "00-文档清单与需求映射.md"
 PRODUCT = ROOT / "docs" / "产品设计文档.md"
 README = ROOT / "README.md"
+B = {key: int(value) for key, value in re.findall(r'^  (\w+): (\d+),', (ROOT / 'server/explanation/research-budget.ts').read_text(encoding='utf-8'), re.M)}
+
 
 DESIGN_FILES = [
     "01-总体架构与演进.md",
@@ -238,10 +240,10 @@ class TechnicalDesignTests(unittest.TestCase):
         for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("5–10所不同学校", "4–6个", "24次搜索", "40条搜索候选", "24次正文读取", "18次搜索", "16次读取", "最多6次搜索", "8次读取", "最多12条同校PDF附件候选", "15分钟", "失败不缓存", "24000字符", "规划与初次报告每阶段最多3次", "整份报告最多7次", "保留已有建议", "250毫秒", "beforeRetry", "PROVIDER_BALANCE_INSUFFICIENT", "PROVIDER_INVALID_REQUEST", "PROVIDER_TEMPORARY_UNAVAILABLE", "PROVIDER_NETWORK_ERROR", "60次", "300次", "每账号每日100000、全站300000", "同一额度", "不能直接与用户年度预算比较"):
+                for phrase in ("5–10所不同学校", "4–6个", "24次搜索", f"{B['candidates']}条搜索候选", f"{B['reads']}次正文读取", f"{B['initialSearches']}次搜索", f"{B['initialReads']}次读取", f"最多{B['feeSearches']}次搜索", f"{B['cityReads']}次读取", f"最多{B['attachments']}条同校PDF附件候选", "15分钟", "失败不缓存", f"{B['thinkingChars']}字符", "规划与初次报告每阶段最多3次", "整份报告最多6次", "保留已有建议", "250毫秒", "beforeRetry", "PROVIDER_BALANCE_INSUFFICIENT", "PROVIDER_INVALID_REQUEST", "PROVIDER_TEMPORARY_UNAVAILABLE", "PROVIDER_NETWORK_ERROR", "60次", "300次", f"每账号每日{B['userDailyTokens']}、全站{B['globalDailyTokens']}", "同一额度", "不能直接与用户年度预算比较"):
                     self.assertIn(phrase, content)
                 self.assertNotIn("整份报告至多四次模型调用", content)
-                self.assertNotIn("整份报告最多6次", content)
+                self.assertNotIn("整份报告最多7次", content)
                 self.assertNotIn("默认12000", content)
                 self.assertNotIn("默认每账号每天 20000", content)
                 self.assertIn("v6学校覆盖、费用质量及真实端到端结果尚待独立验收", content)
@@ -277,7 +279,7 @@ class TechnicalDesignTests(unittest.TestCase):
         for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("stream:true", "stream_options.include_usage:true", "[DONE]", "finish_reason:stop", "reasoning_content", "8388608字节", "65536字节", "131072字节", "心跳不延长", "deepseek-transport.ts", "public-address.ts", "YANTU_DNS_MODE", "rejectUnauthorized:true", "98304字节", "不是供应商账户余额或充值"):
+                for phrase in ("stream:true", "stream_options.include_usage:true", "[DONE]", "finish_reason:stop", "reasoning_content", "8388608字节", "65536字节", "131072字节", "心跳不延长", "deepseek-transport.ts", "public-address.ts", "YANTU_DNS_MODE", "rejectUnauthorized:true", f"{B['requestBytes']}字节", "不是供应商账户余额或充值"):
                     self.assertIn(phrase, content)
                 self.assertNotIn("两层比较", content)
                 self.assertNotIn("代码只允许本次探索方向", content)
@@ -303,7 +305,7 @@ class TechnicalDesignTests(unittest.TestCase):
         for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("最多4次读取", "初期最多20次", "总计仍最多24次正文读取", "同一综合推荐层级", "preferredCities", "preferredCitySchoolCount", "unknownCitySchoolCount", "PREFERRED_CITY_COVERAGE_INCOMPLETE", "城市未知不计入匹配", "最多一次覆盖分析", "合作单位地址", "历史报告保留原内容"):
+                for phrase in (f"追加{B['cityReads']}次读取", f"最多{B['initialReads']}次读取", f"最多{B['reads']}次正文读取", "同一综合推荐层级", "preferredCities", "preferredCitySchoolCount", "unknownCitySchoolCount", "PREFERRED_CITY_COVERAGE_INCOMPLETE", "城市未知不计入匹配", "最多一次覆盖分析", "合作单位地址", "历史报告保留原内容"):
                     self.assertIn(phrase, content)
         self.assertIn("| T-25 |", (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8"))
         self.assertIn("shared/cities.ts", (ROOT / "docs" / "city-data.md").read_text(encoding="utf-8"))
@@ -340,7 +342,7 @@ class TechnicalDesignTests(unittest.TestCase):
                     "sourceIds/references", "下一动作", "失败原因", "尝试时间",
                     "reusedSourceCount/supplementedSourceCount/lookupKeys/attempts",
                     "仅统计本次实际调查", "不代表全国院校资料已全部覆盖",
-                    "24 次搜索", "24 次正文读取", "不做无界重试",
+                    "24 次搜索", f"{B['reads']} 次正文读取", "不做无界重试",
                     *modules,
                 ):
                     self.assertIn(value, content)
@@ -372,7 +374,7 @@ class TechnicalDesignTests(unittest.TestCase):
             "WebSource.transport:'http'", "明文传输", "GBK/GB18030", "gzip/deflate/br",
             "大小上限", "时间和取消限制", "细分读取失败码", "includeDomains",
             "先查公共院校资料库", "yz.chsi.com.cn", "verified:false", "只删除该句",
-            "阶段1已实现研究HTTP及同校有限跳转", "本阶段不改变18次搜索、16次读取",
+            "阶段1已实现研究HTTP及同校有限跳转", "阶段5统一替换为60次读取、每校8次、24次搜索与80条候选",
         ):
             self.assertIn(phrase, policy)
         current = model.split("当前v7以", 1)[1].split("历史v6以", 1)[0]
@@ -472,6 +474,18 @@ class TechnicalDesignTests(unittest.TestCase):
                        "9770", "已遮蔽", "完整性 ok", "ZsssTksList?zsnf=2027"):
             self.assertIn(phrase, smoke)
         self.assertEqual(smoke.count("| [原文](https://"), 15)
+
+    def test_phase_five_document_budget_table_matches_code(self):
+        content = (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md").read_text(encoding="utf-8")
+        for key, value in B.items():
+            self.assertIn(f"| `{key}` | {value} |", content)
+        for name in ("README.md", "docs/长期部署.md", "server/explanation/README.md"):
+            text = (ROOT / name).read_text(encoding="utf-8")
+            self.assertIn(str(B['userDailyTokens']), text)
+            self.assertIn(str(B['globalDailyTokens']), text)
+        example = (ROOT / ".env.example").read_text(encoding="utf-8")
+        self.assertIn(f"YANTU_MODEL_USER_DAILY_TOKENS={B['userDailyTokens']}", example)
+        self.assertIn(f"YANTU_MODEL_DAILY_TOKENS={B['globalDailyTokens']}", example)
 
     def test_http_routes_are_explicit_and_unique(self):
         content = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")

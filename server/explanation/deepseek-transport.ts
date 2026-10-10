@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { request as httpsRequest } from "node:https";
 import type { IncomingMessage } from "node:http";
 import { ModelError, validateDeepSeekEndpoint } from "./deepseek.ts";
@@ -52,7 +53,7 @@ export function createDeepSeekTransport(
       init?.method !== "POST" ||
       init.redirect !== "error" ||
       typeof init.body !== "string" ||
-      Buffer.byteLength(init.body) > 98304 ||
+      Buffer.byteLength(init.body) > B.requestBytes ||
       !init.signal
     )
       throw new ModelError("PROVIDER_INVALID_REQUEST");

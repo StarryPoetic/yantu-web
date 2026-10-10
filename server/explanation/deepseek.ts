@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { createDeepSeekTransport } from "./deepseek-transport.ts";
 import type { DnsMode } from "./dns.ts";
 
@@ -18,6 +19,9 @@ export interface ModelAdapter {
   ): Promise<ModelReply>;
 }
 export interface ModelRequestOptions {
+  /** Internal accounting hooks, never sent to the provider. */
+  onCall?: () => void;
+  onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
   format?: "json" | "text";
   maxOutputTokens?: number;
   model?: "deepseek-flash" | "deepseek-v4-pro";
@@ -329,7 +333,10 @@ export function createDeepSeekAdapter(
       if (!config.enabled) throw new ModelError("MODEL_DISABLED");
       if (!config.apiKey) throw new ModelError("MODEL_NOT_CONFIGURED");
       const selected = resolveModelRequest(options);
-      if (JSON.stringify(messages).length > (selected.thinking ? 24000 : 16000))
+      if (
+        JSON.stringify(messages).length >
+        (selected.thinking ? B.thinkingChars : B.normalChars)
+      )
         throw new ModelError("EVIDENCE_TOO_LARGE");
       if (
         config.timeoutMs !== undefined &&

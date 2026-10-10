@@ -101,6 +101,7 @@ export type WebReader = (
     /** Robots-only raw text: accept any 2xx/MIME, stream-decode and truncate to maxBytes. */
     textPrefix?: boolean;
     timeoutMs?: number;
+    signal?: AbortSignal;
     method?: "GET" | "POST";
     body?: string;
     /** Server-only opt-in; normal question answering remains text-only. */
@@ -338,6 +339,7 @@ export function createHttpsReader(
       ? createPublicDohResolver({ fetch: dependencies.fetch })
       : lookup);
   return async (value, options) => {
+    options.signal?.throwIfAborted();
     let url = validateOutboundUrl(value, options.allowedHosts, options);
     const originalDomain = registrableDomain(url.hostname);
     const redirects: string[] = [];
@@ -362,11 +364,20 @@ export function createHttpsReader(
     const startedAt = Date.now();
     let usedHttp = url.protocol === "http:";
     for (;;) {
+      options.signal?.throwIfAborted();
       await options.beforeRequest?.(url.href);
       const remaining = () => timeoutMs - (Date.now() - startedAt);
       if (remaining() <= 0) throw new ModelError("WEB_TIMEOUT");
       let dnsTimer: ReturnType<typeof setTimeout> | undefined;
+      let dnsAbort: (() => void) | undefined;
       const address = await Promise.race([
+        new Promise<never>((_, reject) => {
+          if (options.signal) {
+            dnsAbort = () => reject(options.signal!.reason);
+            options.signal.addEventListener("abort", dnsAbort, { once: true });
+            if (options.signal.aborted) dnsAbort();
+          }
+        }),
         resolvePublicAddress(url.hostname, resolver),
         new Promise<never>((_, reject) => {
           dnsTimer = setTimeout(
@@ -374,7 +385,11 @@ export function createHttpsReader(
             remaining(),
           );
         }),
-      ]).finally(() => clearTimeout(dnsTimer));
+      ]).finally(() => {
+        clearTimeout(dnsTimer);
+        if (dnsAbort) options.signal?.removeEventListener("abort", dnsAbort);
+      });
+      options.signal?.throwIfAborted();
       const downloaded = await new Promise<{
         bytes?: Buffer;
         contentType?: string;
@@ -408,6 +423,7 @@ export function createHttpsReader(
           url,
           {
             agent: false,
+            signal: options.signal,
             method: options.method ?? "GET",
             servername: url.hostname,
             rejectUnauthorized: true,

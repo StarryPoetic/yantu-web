@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import type { WebSource } from "./web.ts";
 import { sourcePriority } from "./research-evidence.ts";
@@ -354,6 +355,6 @@ export function researchAttachments(
     }
   return [...primary, ...links.filter((link) => !primary.includes(link))].slice(
     0,
-    Math.min(4, Math.max(1, options.maxLinks ?? 2)),
+    Math.min(B.attachmentLinks, Math.max(1, options.maxLinks ?? 2)),
   );
 }
