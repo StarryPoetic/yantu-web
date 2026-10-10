@@ -564,3 +564,35 @@ test("attempt diagnostics are bounded, filterable and independent from source re
     store.close();
   }
 });
+
+test("identical page refresh updates freshness without rebuilding own or school facts", () => {
+  const { store, library } = memory();
+  try {
+    library.save(source());
+    const before = library.queryFacts({ targetYear: "2027" });
+    assert.ok(before.length > 0);
+    const refreshedAt = new Date(time + 1000).toISOString();
+    library.save(source({ retrievedAt: refreshedAt }));
+    const after = library.queryFacts({ targetYear: "2027" });
+    assert.deepEqual(
+      after.map((fact) => ({ ...fact, retrievedAt: before[0].retrievedAt })),
+      before,
+    );
+    assert.ok(after.every((fact) => fact.retrievedAt === refreshedAt));
+    assert.equal(library.load(request)[0].library?.version, 1);
+    library.save(
+      source({
+        retrievedAt: new Date(time + 2000).toISOString(),
+        excerpt: source().excerpt.replace("812", "813"),
+      }),
+    );
+    assert.equal(library.load(request)[0].library?.version, 2);
+    assert.ok(
+      library
+        .queryFacts({ targetYear: "2027" })
+        .some((fact) => fact.quote.includes("813")),
+    );
+  } finally {
+    store.close();
+  }
+});

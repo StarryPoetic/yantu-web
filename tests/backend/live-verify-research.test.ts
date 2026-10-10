@@ -63,3 +63,29 @@ test("database contention remains diagnosable while unknown exception text stays
     "PAID_ALREADY_STARTED",
   );
 });
+
+test("rehearsal search supplies bounded real library URLs and respects Bocha domain filters", async () => {
+  const { rehearsalSearchResults } = await import(
+    "../../scripts/live-verify-research.mjs"
+  );
+  const sources = Array.from({ length: 6 }, (_, i) => ({
+    id: `${i}`,
+    url: `https://${i % 2 ? "b" : "a"}.edu.cn/${i}`,
+    title: "官网目录",
+    excerpt: "公开原文".repeat(200),
+    retrievedAt: "2026-10-01T00:00:00Z",
+    kind: "official_page" as const,
+    verified: false as const,
+  }));
+  assert.equal(rehearsalSearchResults(sources).length, 4);
+  const hits = rehearsalSearchResults(sources, {
+    include: "a.edu.cn|missing.edu.cn",
+  });
+  assert.equal(hits.length, 3);
+  assert.ok(
+    hits.every(
+      (hit) => hit.url.includes("a.edu.cn") && hit.snippet.length <= 600,
+    ),
+  );
+  assert.deepEqual(rehearsalSearchResults([], {}), []);
+});

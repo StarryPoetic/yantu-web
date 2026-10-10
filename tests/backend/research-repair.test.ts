@@ -324,3 +324,37 @@ test("attachment read order gives the latest historical policy priority over aux
   });
   assert.deepEqual(seen, ["https://example.edu.cn/2026.pdf"]);
 });
+
+test("library gap opening reads different schools concurrently and records every result", async () => {
+  const parents = [
+    page("甲研究大学", "a.edu.cn"),
+    page("乙研究大学", "b.edu.cn"),
+  ].map((source, index) => ({
+    ...source,
+    id: `parent-${index}`,
+    documentLinks: [
+      { url: source.url + ".pdf", title: "2026年硕士专业目录初试科目" },
+    ],
+  }));
+  let active = 0,
+    peak = 0;
+  const result = await repairResearchEvidence({
+    ...base(),
+    gaps: [gap("甲研究大学"), gap("乙研究大学")],
+    sources: parents,
+    maxRequests: 0,
+    readPage: async () => {
+      peak = Math.max(peak, ++active);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      active--;
+      return {
+        text: "030101 法学理论 初试：101思想政治理论",
+        contentType: "application/pdf",
+      };
+    },
+  });
+  assert.equal(peak, 2);
+  assert.equal(result.readCount, 2);
+  assert.equal(result.attempts.length, 2);
+  assert.ok(result.attempts.every((attempt) => attempt.status === "success"));
+});

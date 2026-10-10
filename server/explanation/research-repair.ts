@@ -287,10 +287,55 @@ export async function repairResearchEvidence(input: {
         );
       }
     }
+    // Start one known gap link per school together. Each result is persisted through
+    // the usual read path, so concurrency does not bypass budgets or attempt logs.
+    const opening = [...schools.keys()]
+      .flatMap((school) => {
+        const gap = gaps.find(
+          (value) =>
+            value.institutionName === school &&
+            (!input.needsEvidence || input.needsEvidence(value, sources)),
+        );
+        if (!gap) return [];
+        const parent = sources.find(
+          (source) =>
+            isSchoolPage(source) &&
+            sourceHasSchoolIdentity(source, school) &&
+            source.documentLinks?.some(
+              (link) =>
+                titles[gap.field].test(link.title) &&
+                unread(link.url) &&
+                academicDomain(link.url) === academicDomain(source.url),
+            ),
+        );
+        const link = parent?.documentLinks?.find(
+          (link) =>
+            titles[gap.field].test(link.title) &&
+            unread(link.url) &&
+            academicDomain(link.url) === academicDomain(parent.url),
+        );
+        return parent && link ? [{ candidate: { ...link, parent }, gap }] : [];
+      })
+      .slice(0, Math.min(B.concurrency, maxReads));
+    if (opening.length > 1) {
+      const results = await Promise.allSettled(
+        opening.map(({ candidate }) => scheduler.read(candidate.url)),
+      );
+      for (const [index, { candidate, gap }] of opening.entries()) {
+        prefetched.set(candidate.url, results[index]);
+        await read(candidate, gap);
+      }
+    }
+    const openingAllowance = new Set(
+      opening.length > 1 ? opening.map(({ gap }) => gap.id) : [],
+    );
     for (const gap of gaps) {
       if (readCount >= maxReads) break;
       if (input.needsEvidence && !input.needsEvidence(gap, sources)) continue;
-      gapReadLimit = Math.min(maxReads, readCount + readsPerGap);
+      gapReadLimit = Math.min(
+        maxReads,
+        readCount + readsPerGap - Number(openingAllowance.delete(gap.id)),
+      );
       const owned = sources.filter((source) =>
         sourceHasSchoolIdentity(source, gap.institutionName),
       );

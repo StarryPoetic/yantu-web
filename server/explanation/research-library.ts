@@ -654,10 +654,20 @@ export function createResearchEvidenceLibrary(
           db.prepare(
             "INSERT INTO research_public_aliases(alias, source_key) VALUES (?,?) ON CONFLICT(alias) DO UPDATE SET source_key=excluded.source_key",
           ).run(publicPageKey(alias), storageUrl);
-        rebuildFacts(
-          registrableDomain(new URL(normalized.url).hostname),
-          storageUrl,
-        );
+        if (
+          previous?.content_hash === contentHash &&
+          (JSON.parse(previous.payload) as WebSource).id === normalized.id
+        ) {
+          // An identical refresh changes freshness, not the deterministic facts.
+          db.prepare(
+            "UPDATE research_program_facts SET payload=json_set(payload, '$.retrievedAt', ?) WHERE source_key=?",
+          ).run(normalized.retrievedAt, storageUrl);
+        } else {
+          rebuildFacts(
+            registrableDomain(new URL(normalized.url).hostname),
+            storageUrl,
+          );
+        }
       });
     },
     load(input) {

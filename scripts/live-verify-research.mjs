@@ -33,6 +33,23 @@ const usageLimit = {
   totalInputChars: 6 * B.thinkingChars,
   reads: B.reads,
 };
+export function rehearsalSearchResults(sources, request = {}) {
+  const domains = request.include?.split("|").filter(Boolean) ?? [];
+  return sources
+    .filter((source) => {
+      const host = new URL(source.url).hostname;
+      return (
+        !domains.length ||
+        domains.some((domain) => host === domain || host.endsWith(`.${domain}`))
+      );
+    })
+    .slice(0, 4)
+    .map((source) => ({
+      name: source.title,
+      url: source.url,
+      snippet: source.excerpt.slice(0, 600),
+    }));
+}
 export function safeFailureCode(error) {
   if (error instanceof ModelError) return error.code;
   if (error.code === "ERR_SQLITE_ERROR" && error.errcode === 5)
@@ -225,6 +242,7 @@ export async function main(args = process.argv.slice(2)) {
       ).url,
     ).hostname;
     let activeReads = 0;
+    let rehearsalSources = [];
     const reader = async (url, options) => {
       controller.signal.throwIfAborted();
       const host = new URL(url).hostname;
@@ -255,7 +273,14 @@ export async function main(args = process.argv.slice(2)) {
                 contentType: "application/json",
                 text: JSON.stringify({
                   code: 200,
-                  data: { webPages: { value: [] } },
+                  data: {
+                    webPages: {
+                      value: rehearsalSearchResults(
+                        rehearsalSources,
+                        JSON.parse(options?.body ?? "{}"),
+                      ),
+                    },
+                  },
                 }),
               }
             : await http(url, options);
@@ -305,6 +330,7 @@ export async function main(args = process.argv.slice(2)) {
       ...publicLibrary,
       load(input) {
         const sources = publicLibrary.load(input);
+        rehearsalSources = sources;
         writeFileSync(
           resolve(directory, "library-recall.json"),
           JSON.stringify(sources, null, 2),
