@@ -412,7 +412,15 @@ export function createResearchEvidenceLibrary(
     const insert = db.prepare(
       "INSERT OR IGNORE INTO research_program_facts(identity,field,source_key,school,domain,code,year,payload) VALUES (?,?,?,?,?,?,?,?)",
     );
-    const sources = originals.map((row) => row.source);
+    // Rule upgrades use the same school boundary as single-school refreshes.
+    // Unrelated originals must not be rescanned for every programme/field.
+    const contexts = new Map<string, WebSource[]>();
+    for (const { source } of originals) {
+      const key = registrableDomain(new URL(source.url).hostname);
+      const group = contexts.get(key) ?? [];
+      group.push(source);
+      contexts.set(key, group);
+    }
     if (!changedKey)
       for (const row of originals) {
         // Old payload IDs predate final-URL/scheme normalization. Rebase public
@@ -430,7 +438,7 @@ export function createResearchEvidenceLibrary(
     for (const { key, source } of affected)
       for (const fact of extractProgramFacts(
         source,
-        sources,
+        contexts.get(registrableDomain(new URL(source.url).hostname))!,
         new Date(now()).toISOString(),
       )) {
         const identity = JSON.stringify([

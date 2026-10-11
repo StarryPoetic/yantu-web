@@ -420,6 +420,59 @@ test("rule upgrade re-extracts old public facts without refreshing original time
   }
 });
 
+test("multi-school rule upgrade preserves same-school subdomain policies and never borrows a peer tariff", () => {
+  const store = new Store();
+  try {
+    const library = createResearchEvidenceLibrary(store);
+    for (const [name, root, amount] of [
+      [school, "hdu.edu.cn", 8000],
+      ["浙江师范大学", "zjnu.edu.cn", 18000],
+    ] as const) {
+      library.save({
+        ...page(
+          `${name}2027年硕士研究生招生专业目录\n机械工程学院 | 080200机械工程 学术学位 全日制`,
+          `catalog-${root}`,
+        ),
+        url: `https://grs.${root}/catalog.htm`,
+      });
+      library.save({
+        ...page(
+          `${name}2027年硕士研究生招生章程\n全日制学术学位硕士研究生每生每年学费${amount}元。`,
+          `policy-${root}`,
+        ),
+        url: `https://www.${root}/policy.htm`,
+      });
+    }
+    store.db.exec(
+      "UPDATE research_program_facts SET payload=json_set(payload,'$.extractor','phase2-program-binding@2')",
+    );
+    const upgraded = createResearchEvidenceLibrary(store).queryFacts({
+      targetYear: "2027",
+    });
+    for (const [name, amount, root] of [
+      [school, 8000, "hdu.edu.cn"],
+      ["浙江师范大学", 18000, "zjnu.edu.cn"],
+    ] as const) {
+      const fees = upgraded.filter(
+        (f) =>
+          f.schoolName === name &&
+          f.field === "tuition" &&
+          f.status === "bound",
+      );
+      assert.ok(fees.length > 0, name);
+      assert.ok(
+        fees.every((f) => (f.value as { amount: number }).amount === amount),
+      );
+      assert.ok(
+        fees.some((f) => new URL(f.sourceUrl).hostname === `www.${root}`),
+        "policy on another subdomain still uses the school's coded catalogue",
+      );
+    }
+  } finally {
+    store.close();
+  }
+});
+
 test("a newly read cross-city campus vetoes same-city address fallback even without registry hint", () => {
   const source = {
     ...page(
