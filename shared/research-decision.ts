@@ -1,3 +1,4 @@
+import type { SubjectAdvice } from "./assessment-advice.ts";
 /** Reproducible preparation observations, kept separate from programme requirements. */
 export type PreparationModule = "math" | "english";
 
@@ -40,6 +41,7 @@ export interface DegreeRouteBasis {
 
 export interface ResearchDecisionBasis {
   version: "assessment-route-v1";
+  subjectAdvice?: SubjectAdvice;
   summary: string;
   assessments: PreparationObservation[];
   degreeRoutes: DegreeRouteBasis[];

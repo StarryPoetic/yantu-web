@@ -9,6 +9,9 @@ import { normalizeCityName } from "../../shared/cities.ts";
 import { schoolRegistry, type SchoolRegistryEntry } from "../schools/index.ts";
 import type { ProgramFact } from "./research-facts.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
+import type { SubjectAdvice } from "../../shared/assessment-advice.ts";
+import type { ResearchExamEvidence } from "../../shared/research-matching.ts";
+import { compareExamAdvice } from "./research-subject-advice.ts";
 
 // Product discovery preference, not a live popularity/employment ranking: major
 // regional university centres represented in the local registry. No external lookup.
@@ -34,6 +37,7 @@ export interface LocalEvidence<T> {
 export interface LocalProgram {
   key: string;
   disciplineCode: string;
+  exams?: ResearchExamEvidence;
   catalog?: LocalEvidence<true>;
   assessment?: LocalEvidence<
     "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C+" | "C" | "C-"
@@ -61,6 +65,7 @@ export interface PrefilterProfile {
   university: string;
   year: number;
   disciplineCodes: readonly string[];
+  subjectAdvice?: SubjectAdvice;
   annualBudget?: number;
   maxDuration?: number;
   score?: { total: number; maximum: number };
@@ -82,6 +87,7 @@ export function prefilterProfile(
   profile: Profile,
   disciplineCodes: string[],
   score?: PrefilterProfile["score"],
+  subjectAdvice?: SubjectAdvice,
 ): PrefilterProfile {
   const budgets: Record<string, number> = {
     "1万元以内": 10000,
@@ -99,6 +105,7 @@ export function prefilterProfile(
         : "other"
       : undefined,
     score,
+    ...(subjectAdvice ? { subjectAdvice } : {}),
     cities: profile.cities,
     university: profile.university,
     year: Number(profile.year),
@@ -157,6 +164,48 @@ export function localPrefilterSchools(
         });
     }
     for (const [key, p] of programs) {
+      const examFacts = own.filter(
+        (f) =>
+          f.field === "exams" &&
+          JSON.stringify([f.majorCode, f.collegeName, f.studyMode, f.year]) ===
+            key &&
+          f.freshness !== "stale" &&
+          "subjects" in f.value,
+      );
+      const combinations = new Set(
+        examFacts.map((f) =>
+          "subjects" in f.value
+            ? JSON.stringify(
+                [...f.value.subjects].sort((a, b) => compare(a.code, b.code)),
+              )
+            : "",
+        ),
+      );
+      const examFact = examFacts[0];
+      if (
+        examFact &&
+        examFact.year !== undefined &&
+        combinations.size === 1 &&
+        "subjects" in examFact.value &&
+        examFacts.every(
+          (f) =>
+            "status" in f.value &&
+            ["verified_current", "historical"].includes(f.value.status),
+        )
+      ) {
+        p.exams = structuredClone(examFact.value);
+        // A cached fact may have been "current" for an earlier report year.
+        // Preserve its own year and never present that as this year's requirement.
+        if (examFact.year < targetYear) {
+          p.exams.status = "historical";
+          p.exams.year = examFact.year;
+          p.exams.historicalReference = {
+            ...structuredClone(examFact.value),
+            status: "historical",
+            year: examFact.year,
+          };
+        }
+      }
       const fees = own.filter(
         (f) =>
           f.field === "tuition" &&
@@ -277,24 +326,42 @@ export function prefilterResearchSchools(
       const programScores = eligible
         .map((p) => ({
           p,
+          subjectMatch: compareExamAdvice(
+            profile.subjectAdvice,
+            p.exams?.year !== undefined && p.exams.year <= profile.year
+              ? p.exams
+              : undefined,
+          ),
           points:
             (valid(p.catalog) ? 20 : 0) +
             (valid(p.assessment) ? grades[p.assessment!.value] : 0) +
             (current(p.seats) && p.seats!.value > 0 ? 5 : 0),
         }))
-        .sort((a, b) => b.points - a.points || compare(a.p.key, b.p.key));
+        .sort(
+          (a, b) =>
+            b.points +
+              b.subjectMatch.bonus -
+              (a.points + a.subjectMatch.bonus) || compare(a.p.key, b.p.key),
+        );
       const best = programScores[0]?.p;
-      add("program", programScores[0]?.points ?? 0, [
-        best && valid(best.catalog)
-          ? `目标方向${best.disciplineCode}有${best.catalog!.year}年目录依据：${best.catalog!.quote}（${best.catalog!.sourceUrl}）；历史不保证当年招生。`
-          : "没有可用的目标专业目录证据，存在性记0；未查到不等于不招生。",
-        best && valid(best.assessment)
-          ? `学科评估${best.assessment!.value}：${best.assessment!.quote}`
-          : "学科评估无证据，记0。",
-        best && current(best.seats)
-          ? `招生人数${best.seats!.value}：${best.seats!.quote}`
-          : "当年招生人数无证据，记0。",
-      ]);
+      add(
+        "program",
+        (programScores[0]?.points ?? 0) +
+          (programScores[0]?.subjectMatch.bonus ?? 0),
+        [
+          best && valid(best.catalog)
+            ? `目标方向${best.disciplineCode}有${best.catalog!.year}年目录依据：${best.catalog!.quote}（${best.catalog!.sourceUrl}）；历史不保证当年招生。`
+            : "没有可用的目标专业目录证据，存在性记0；未查到不等于不招生。",
+          best && valid(best.assessment)
+            ? `学科评估${best.assessment!.value}：${best.assessment!.quote}`
+            : "学科评估无证据，记0。",
+          best && current(best.seats)
+            ? `招生人数${best.seats!.value}：${best.seats!.quote}`
+            : "当年招生人数无证据，记0。",
+          ...(programScores[0]?.subjectMatch.factors.map((f) => f.reason) ??
+            []),
+        ],
+      );
       const cutoff = best?.cutoff;
       const comparable =
         profile.score &&

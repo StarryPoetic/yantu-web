@@ -19,6 +19,7 @@ import type {
 import { request } from "./api";
 import type { Resource } from "./api";
 import { Empty, ErrorNotice } from "./ui";
+import { AssessmentAdvice } from "./AssessmentAdvice";
 import {
   QuestionVisuals,
   QuestionTutor,
@@ -642,6 +643,7 @@ export function AssessmentPanel({
               题答对
             </p>
           ))}
+          <AssessmentAdvice diagnosis={diagnosis} />
           <AssessmentReview
             key={diagnosis.assessmentAttemptId}
             attempt={attempt}

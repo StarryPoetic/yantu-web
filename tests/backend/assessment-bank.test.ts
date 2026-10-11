@@ -67,6 +67,16 @@ test("V3B common screens deterministically sample distinguishing domains across 
         );
         for (const area of SCREENING_AREAS[module])
           assert.ok(areas.has(area), `${module}:${area}`);
+        if (module === "english")
+          assert.ok(
+            questions.some(
+              (q) =>
+                q.difficulty === "advanced" &&
+                ["reading", "sentence"].includes(
+                  knowledgeArea(module, q.point),
+                ),
+            ),
+          );
       }
       assert.equal(new Set(attempt.questions.map((q) => q.id)).size, 15);
       assert.ok(

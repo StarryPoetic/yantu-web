@@ -5,6 +5,7 @@ import type {
   ResearchDecisionBasis,
 } from "../../shared/research-decision.ts";
 import type { GuidanceAssessment, GuidanceRun } from "../disciplines/types.ts";
+import { researchSubjectAdvice } from "./research-subject-advice.ts";
 import {
   affirmativePreference,
   explicitDegreeConstraint,
@@ -298,6 +299,9 @@ export function deriveResearchDecision(
   });
   return {
     version: "assessment-route-v1",
+    ...(researchSubjectAdvice(run)
+      ? { subjectAdvice: researchSubjectAdvice(run) }
+      : {}),
     summary:
       "依据个人目标比较培养路线；依据已测知识点安排准备任务；考试科目以目标年度具体学校专业目录为准。",
     assessments,

@@ -14,6 +14,8 @@ export interface DemandMatchFactor {
 }
 export interface DemandMatch {
   ruleVersion: "demand-match-v1";
+  /** Deterministic soft bonus, separate from eligibility and admission probability. */
+  subjectAdviceBonus?: number;
   factors: DemandMatchFactor[];
   summary: string;
 }

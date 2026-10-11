@@ -45,7 +45,7 @@ export class AssessmentError extends Error {
   }
 }
 
-export const ASSEMBLY_VERSION = "screening-five-domains-v2";
+export const ASSEMBLY_VERSION = "screening-five-domains-v3";
 export const SCORING_VERSION = "single-choice-v1";
 const modules: AssessmentModule[] = ["math", "english", "politics", "major"];
 export const QUESTION_REVIEW_CHECKS = [
@@ -411,6 +411,18 @@ export function createAttempt(
       const newPoint = remaining.filter(
         (q) => !selectedQuestions.some((item) => item.point === q.point),
       );
+      // A common English screen includes a challenging reading/sentence item.
+      // Self-rated mathematics foundation must not remove this discriminator.
+      const challenge =
+        module === "english" && areas.length === 4 && index === 4
+          ? newPoint.find(
+              (q) =>
+                q.difficulty === "advanced" &&
+                ["reading", "sentence"].includes(
+                  knowledgeArea(module, q.point),
+                ),
+            )
+          : undefined;
       const areaPool = newPoint.filter(
         (q) => knowledgeArea(module, q.point) === areas[index],
       );
@@ -419,7 +431,8 @@ export function createAttempt(
         : newPoint.length
           ? newPoint
           : remaining;
-      const question = pool.find((q) => q.difficulty === preferred) ?? pool[0];
+      const question =
+        challenge ?? pool.find((q) => q.difficulty === preferred) ?? pool[0];
       selectedQuestions.push(question);
     }
     if (selectedQuestions.some((q, index) => q.difficulty !== pattern[index]))

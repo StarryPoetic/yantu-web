@@ -6,6 +6,7 @@ import {
   priorityCoverage,
   validResearchTarget,
 } from "./research-priority-facts.ts";
+import { researchSubjectAdvice } from "./research-subject-advice.ts";
 import type {
   ResearchPriorityFact,
   ResearchTargetScore,
@@ -1729,6 +1730,7 @@ export function createResearchReportModule(
                       .profile as unknown as import("../../shared/profile.ts").Profile,
                     localCodes,
                     targetScore,
+                    researchSubjectAdvice(run),
                   ),
                   localPrefilterSchools(
                     schoolRegistry.schools,

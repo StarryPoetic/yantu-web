@@ -38,6 +38,10 @@ import {
 } from "./research-evidence.ts";
 import { deriveRecommendationConstraints } from "./research-constraints.ts";
 import { deriveResearchDecision } from "./research-decision.ts";
+import {
+  researchSubjectAdvice,
+  compareExamAdvice,
+} from "./research-subject-advice.ts";
 import { safeSourceYear } from "./research-years.ts";
 import { researchYearPriority } from "../../shared/research-years.ts";
 
@@ -550,6 +554,10 @@ export function evaluateDemandMatch(
   const requestedDegree = desiredDegree(profile);
   const citations = item.citations;
   const factors: DemandMatch["factors"] = [];
+  const subjectMatch = compareExamAdvice(
+    researchSubjectAdvice(run),
+    item.exams,
+  );
   for (const check of item.constraintChecks ?? [])
     factors.push({
       ...check,
@@ -605,6 +613,7 @@ export function evaluateDemandMatch(
     sourceIds: [],
   });
   const city = factors.find((f) => f.field === "cities");
+  factors.push(...subjectMatch.factors);
   const directionMatch =
     target.has(discipline.code) ||
     goal.has(discipline.code) ||
@@ -634,7 +643,17 @@ export function evaluateDemandMatch(
       : tier === "alternative"
         ? "有方向或课程关联，但城市、兴趣或培养路线仍有差异／待核验，列为备选并说明取舍。"
         : "暂未形成明确需求关联，保留为探索选择，需进一步比较兴趣和补修成本。";
-  return { tier, match: { ruleVersion: "demand-match-v1", factors, summary } };
+  return {
+    tier,
+    match: {
+      ruleVersion: "demand-match-v1",
+      factors,
+      summary,
+      ...(subjectMatch.factors.length
+        ? { subjectAdviceBonus: subjectMatch.bonus }
+        : {}),
+    },
+  };
 }
 
 function sourceMatchesProgramScope(
@@ -985,7 +1004,11 @@ export function buildEvidenceCandidates(input: {
           ),
         ])
           if (id && !item.citations.includes(id)) item.citations.push(id);
-        const match = evaluateDemandMatch(item, input.run, discipline);
+        const match = evaluateDemandMatch(
+          { ...item, exams },
+          input.run,
+          discipline,
+        );
         Object.assign(item, match, {
           tierReasons: [
             match.match.summary,
@@ -1226,7 +1249,7 @@ export function rankDemandCandidates(
       ]),
     ];
     const evaluated = evaluateDemandMatch(
-      { ...item, citations },
+      { ...item, citations, exams },
       run,
       discipline,
     );
@@ -1258,6 +1281,18 @@ export function rankDemandCandidates(
         admissionStatus:
           item.admissionStatus ?? ("needs_verification" as const),
         preparation: [...new Set([...item.preparation, ...tasks])].slice(0, 7),
+        uncertainties: [
+          ...new Set([
+            ...item.uncertainties,
+            ...evaluated.match.factors
+              .filter(
+                (factor) =>
+                  factor.field.startsWith("assessment-") &&
+                  factor.status === "mismatch",
+              )
+              .map((factor) => factor.reason),
+          ]),
+        ],
         ...evaluated,
         tierReasons: [
           evaluated.match.summary,
@@ -1270,6 +1305,12 @@ export function rankDemandCandidates(
     ];
   });
   const tierOrder = { preferred: 0, alternative: 1, exploratory: 2 };
+  const preferenceScore = (match: DemandMatch) =>
+    (match.subjectAdviceBonus ?? 0) +
+    match.factors.filter(
+      (factor) =>
+        factor.status === "match" && !factor.field.startsWith("assessment-"),
+    ).length;
   ranked.sort(
     (a, b) =>
       tierOrder[a.tier] - tierOrder[b.tier] ||
@@ -1283,8 +1324,7 @@ export function rankDemandCandidates(
             (f) => f.field === "cities" && f.status === "match",
           ),
         ) ||
-      Number(b.match.factors.filter((f) => f.status === "match").length) -
-        Number(a.match.factors.filter((f) => f.status === "match").length) ||
+      preferenceScore(b.match) - preferenceScore(a.match) ||
       a.institutionName.localeCompare(b.institutionName, "zh-CN") ||
       a.disciplineCode.localeCompare(b.disciplineCode) ||
       a.programName!.localeCompare(b.programName!, "zh-CN") ||
