@@ -440,6 +440,40 @@ class TechnicalDesignTests(unittest.TestCase):
         for command in ("--rehearsal --dns-mode public-doh", "--confirm-paid --dns-mode public-doh", "phase7-paid-run.lock"):
             self.assertIn(command, README.read_text(encoding="utf-8"))
 
+    def test_budgeted_model_completion_keeps_real_costs_and_original_audit_separate(self):
+        record = (ROOT / "docs" / "阶段7真实验证记录.md").read_text(encoding="utf-8")
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        for content in (record, implementation):
+            for phrase in (
+                "零新增搜索的最终分析补完", "0次新搜索", "同一份已批准预算内的补完",
+                "不是新的独立端到端运行", "--confirm-paid --model-completion --dns-mode public-doh",
+                "phase7-model-completion.lock", "PROVIDER_DNS_UNAVAILABLE", "最多重试1次",
+                "不足12000不发送", "0.5", "16384", "15869", "25665", "29583",
+                "19506", "10077", "第一次失败请求计费", "计费未知", "搜索合计22次",
+                "36/36", "12/28＝42.86%", "28/28＝100%", "57.14个百分点",
+                "被拒推荐4 / 模型提出推荐4＝100%", "单句删除数单独计0",
+                "INVALID_RESEARCH_CITATION", "research-1", "BUDGET_EXHAUSTED", "partial",
+                "专业级学费0/4", "学校级学费1/4", "具体校区0/4", "城市级校区核验1/4",
+                "未知城市不算", "2026简章5213.htm", "884项",
+                "3a60ffc", "f79b399", "a086a8f", "32b7020", "ef87e09", "8b690a1",
+                "3e0e8fb", "d470fa1", "20cde04", "88aa3fc", "62bebcf",
+            ):
+                with self.subTest(phrase=phrase):
+                    self.assertIn(phrase, content)
+        header = "| 指标 | 修复前基线 | 本次真实原报告，经人工核对 |"
+        table = record.split(header, 1)[1].split("\n\n", 1)[0]
+        for original_row in (
+            "| 官网读取成功率 | 57.5%，167次尝试 | 37/41＝90.24% | +32.74个百分点 |",
+            "| 专业级初试科目正确绑定 | 0/50 | 1/4；原报告2条中剔除1条错误 | +25个百分点；增加1条 |",
+            "| 校区/城市错误绑定 | 1/50＝2% | 1/4＝25% | +23个百分点；错误条数仍1 |",
+            "| 模型推荐被校验删除比例 | 39%，原提案分母未给 | 0/0，不适用；最终模型未返回提案 |",
+        ):
+            self.assertIn(original_row, table)
+        self.assertIn("零新增搜索补完（真实）", table)
+        self.assertIn("4/4＝100%", table)
+        self.assertIn("较原报告+25个百分点、增加1条", table)
+        self.assertIn("| 初试科目（专业级） | 2/4 | 0/4 | 2/4 |", record)
+
     def test_phase_four_public_facts_prefetch_and_platform_fallback_are_documented(self):
         for path in (README, ROOT / "knowledge" / "README.md", ROOT / "server" / "explanation" / "README.md",
                      DESIGN_DIR / "01-总体架构与演进.md", DESIGN_DIR / "02-数据模型与可信数据.md",
