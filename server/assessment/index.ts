@@ -1,3 +1,4 @@
+import { REASONING_MAX_LENGTH } from "../../shared/input-contracts.ts";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import {
@@ -490,7 +491,8 @@ export function saveDraft(
       fail(422, "INVALID_ANSWER", "题目或选择的选项无效。");
     if (
       answer.reasoning !== undefined &&
-      (typeof answer.reasoning !== "string" || answer.reasoning.length > 1000)
+      (typeof answer.reasoning !== "string" ||
+        answer.reasoning.length > REASONING_MAX_LENGTH)
     )
       fail(422, "INVALID_REASONING", "简要思路最多 1000 字。");
     if (

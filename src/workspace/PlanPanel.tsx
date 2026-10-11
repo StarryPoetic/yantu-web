@@ -245,6 +245,23 @@ export function PlanPanel({
                       })
                     }
                   />
+                  {subject.maxScore === null &&
+                    targets[subject.subjectId] !== undefined && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          setTargets((current) => {
+                            const next = { ...current };
+                            delete next[subject.subjectId];
+                            return next;
+                          });
+                          setSaved(false);
+                        }}
+                      >
+                        清除{subject.name}历史异常分数
+                      </button>
+                    )}
                 </label>
               ))}
             </div>

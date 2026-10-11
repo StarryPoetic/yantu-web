@@ -202,6 +202,8 @@ export function buildPlan(input: PlanInput): PlanSnapshot {
       pendingItems.push(`${subject.name} 的科目、满分与门槛尚未核验`);
     if (subject.maxScore === null)
       pendingItems.push(`${subject.name} 满分待核验`);
+    if (subject.maxScore === null && targetScore !== null)
+      errors.push(`${subject.name} 满分未知，目标分数只能为空，请清除历史数值`);
     if (subject.minimumScore === null)
       pendingItems.push(`${subject.name} 单科最低要求待核验`);
     if (
@@ -282,6 +284,11 @@ export function buildPlan(input: PlanInput): PlanSnapshot {
     ? subjects.reduce((sum, subject) => sum + subject.targetScore!, 0)
     : null;
   const explicitTotal = input.targetTotalScore ?? null;
+  if (
+    program.scoreRequirements.totalMaxScore === null &&
+    explicitTotal !== null
+  )
+    errors.push("总分满分未知，目标总分只能为空");
   if (
     explicitTotal !== null &&
     (!Number.isFinite(explicitTotal) || explicitTotal < 0)

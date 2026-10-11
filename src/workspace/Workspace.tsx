@@ -30,6 +30,7 @@ import { CatalogPanel } from "./CatalogPanel";
 import { Dialog, ErrorNotice } from "./ui";
 import "./workspace.css";
 import "./journey.css";
+import { clearProfileDraft } from "./profile-draft";
 
 const ProfilePanel = lazy(() =>
   import("./ProfilePanel").then((module) => ({ default: module.ProfilePanel })),
@@ -325,6 +326,7 @@ function SignedInWorkspace({
         `/me/jobs/${result.data.jobId}`,
       );
       research.reset();
+      clearProfileDraft(session.user!.accountId);
       setProfile(null);
       setSelections(null);
       setRecommendation(null);
@@ -503,6 +505,7 @@ function SignedInWorkspace({
                 )}
                 {page === "profile" && (
                   <ProfilePanel
+                    accountId={session.user!.accountId}
                     resource={profile}
                     onSaved={(value) => {
                       setProfile(value);
@@ -515,6 +518,7 @@ function SignedInWorkspace({
                     onReload={() => {
                       void request<ProfileResource>("/me/profile")
                         .then((value) => {
+                          clearProfileDraft(session.user!.accountId);
                           setProfile(value);
                           setGeneration((current) => current + 1);
                         })

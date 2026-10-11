@@ -587,6 +587,32 @@ export function CatalogPanel({
           对比已选 {comparison.length} / 3
         </button>
       </div>
+      {favorites && (
+        <div className="ws-notice" role="status">
+          <span>
+            共收藏 {selections.savedProgramIds.length} 项，其中{" "}
+            {Math.max(0, selections.savedProgramIds.length - visible.length)}{" "}
+            项被当前条件隐藏
+          </span>
+          {visible.length < selections.savedProgramIds.length && (
+            <button
+              className="ws-link"
+              onClick={() => {
+                setShowExamples(true);
+                setQuery("");
+                setCity("");
+                setSchool("");
+                setDirection("");
+                setDisciplineCode("");
+                setAdmissionYear("");
+                setDegreeType("");
+              }}
+            >
+              显示全部已收藏项目
+            </button>
+          )}
+        </div>
+      )}
       <div className="ws-cards">
         {visible.map((program) => (
           <article

@@ -1,3 +1,4 @@
+import { REASONING_MAX_LENGTH } from "../../shared/input-contracts";
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
@@ -502,12 +503,24 @@ export function AssessmentPanel({
             <textarea
               disabled={busy}
               value={current?.reasoning ?? ""}
-              maxLength={2000}
+              aria-label="简要思路（选填）"
+              maxLength={REASONING_MAX_LENGTH}
               onChange={(event) =>
                 updateAnswer({ reasoning: event.target.value })
               }
             />
           </label>
+          <p role="status">
+            {current?.reasoning?.length ?? 0} / {REASONING_MAX_LENGTH} 字 · 剩余{" "}
+            {Math.max(
+              0,
+              REASONING_MAX_LENGTH - (current?.reasoning?.length ?? 0),
+            )}{" "}
+            字
+            {(current?.reasoning?.length ?? 0) > REASONING_MAX_LENGTH
+              ? "；旧草稿超限，请精简后保存，原文未截断"
+              : ""}
+          </p>
           <label className="ws-check">
             <input
               disabled={busy}

@@ -287,3 +287,62 @@ test("未保存画像时引导补充，保存后访问推荐结论会自动生�
       .getByText(/^你尚未确认报考专业。/),
   ).toBeVisible();
 });
+
+test("T3-05 profile text controls enforce 200 characters", async ({ page }) => {
+  await registerAccount(page);
+  await page.goto("/#profile");
+  for (const name of ["称呼（选填）", "本科院校", "本科专业"]) {
+    const field = page.getByRole("textbox", { name, exact: true });
+    await expect(field).toHaveAttribute("maxlength", "200");
+    await field.fill("字".repeat(201));
+    await expect(field).toHaveValue("字".repeat(200));
+  }
+  await page.getByRole("button", { name: "保存个人画像", exact: true }).click();
+  await expect(page).toHaveURL(/#assessment$/);
+});
+
+test("T3-06 reasoning shares the 1000 character saving boundary", async ({
+  page,
+}) => {
+  await registerAccount(page);
+  await page.goto("/#assessment");
+  await page.getByRole("button", { name: /开始公共课测评/ }).click();
+  const reasoning = page.getByRole("textbox", {
+    name: "简要思路（选填）",
+    exact: true,
+  });
+  await expect(reasoning).toHaveAttribute("maxlength", "1000");
+  await reasoning.fill("思".repeat(1001));
+  await expect(reasoning).toHaveValue("思".repeat(1000));
+  await page.getByRole("button", { name: "保存思路与草稿" }).click();
+  await expect(page.getByText("剩余 0 字", { exact: false })).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole("button", { name: /恢复草稿/ })
+    .first()
+    .click();
+  await expect(reasoning).toHaveValue("思".repeat(1000));
+});
+
+test("T3-05 oversized legacy profile stays editable and focuses its inline error", async ({
+  page,
+}) => {
+  await registerAccount(page);
+  await page.route("**/api/v1/me/profile", async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.profile.name = "旧".repeat(201);
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/#profile");
+  const field = page.getByRole("textbox", {
+    name: "称呼（选填）",
+    exact: true,
+  });
+  await expect(field).toHaveValue("旧".repeat(201));
+  await page.getByRole("button", { name: "保存个人画像", exact: true }).click();
+  await expect(field).toBeFocused();
+  await expect(field).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("alert")).toContainText("称呼最多 200 字");
+  await expect(field).toHaveValue("旧".repeat(201));
+});

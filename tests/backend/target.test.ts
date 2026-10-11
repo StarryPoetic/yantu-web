@@ -265,3 +265,37 @@ test("targets reject withdrawn revisions, wrong degree mappings and ambiguous le
   assert.equal(explicit.status, 200);
   assert.equal(explicit.body.confirmedMajorId, "research");
 });
+
+test("T3-07 unknown maximum rejects numeric targets and accepts clearing to null", async (t) => {
+  const f = await fixture();
+  t.after(() => f.app.close());
+  const target = f.state.revisions[0];
+  const selection = await f.request("/me/selections");
+  const chosen = await f.request(
+    "/me/target",
+    "PUT",
+    {
+      programId: target.programId,
+      programRevisionId: target.programRevisionId,
+    },
+    selection.etag,
+  );
+  const initial = await f.request("/me/plan");
+  const body = {
+    selectionVersion: chosen.body.selectionVersion,
+    programId: target.programId,
+    programRevisionId: target.programRevisionId,
+    subjectTargets: { [target.subjects[0].subjectId]: 99999 },
+  };
+  const rejected = await f.request("/me/plan", "PUT", body, initial.etag);
+  assert.equal(rejected.status, 422);
+  assert.equal((await f.request("/me/plan")).body.plan, null);
+  const cleared = await f.request(
+    "/me/plan",
+    "PUT",
+    { ...body, subjectTargets: { [target.subjects[0].subjectId]: null } },
+    initial.etag,
+  );
+  assert.equal(cleared.status, 200);
+  assert.equal(cleared.body.plan.subjects[0].targetScore, null);
+});

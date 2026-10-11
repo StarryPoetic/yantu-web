@@ -148,6 +148,44 @@ async function openExampleTarget(page: Page) {
   return programs;
 }
 
+test("T3-07 historical unknown-maximum scores can be cleared and stay cleared after reload", async ({
+  page,
+}) => {
+  await openExampleTarget(page);
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "设置目标与计划" })
+    .click();
+  await page
+    .getByRole("button", { name: "保存目标与计划", exact: true })
+    .click();
+  await expect(page.getByText("目标计划已保存", { exact: true })).toBeVisible();
+  await page.route("**/api/v1/me/plan", async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    const response = await route.fetch();
+    const body = await response.json();
+    body.plan.subjects[0].targetScore = 99999;
+    await route.fulfill({ response, json: body });
+  });
+  await page.reload();
+  const input = page.getByRole("spinbutton").first();
+  await expect(input).toHaveValue("99999");
+  await expect(input).toBeDisabled();
+  await page.getByRole("button", { name: /清除.*历史异常分数/ }).click();
+  await expect(input).toHaveValue("");
+  await page.unroute("**/api/v1/me/plan");
+  await page
+    .getByRole("button", { name: "保存目标与计划", exact: true })
+    .click();
+  await expect(page.getByText("目标计划已保存", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(input).toHaveValue("");
+  expect(
+    (await (await page.request.get("/api/v1/me/plan")).json()).plan.subjects[0]
+      .targetScore,
+  ).toBeNull();
+});
+
 test("选择目标立即保存，刷新和导航可恢复，更换取消不会复活旧计划", async ({
   page,
 }) => {

@@ -8,6 +8,7 @@ import {
 } from "react";
 import { ChevronDown } from "lucide-react";
 import "./interest-picker.css";
+import { profileTextFields } from "../../shared/input-contracts";
 
 const collator = new Intl.Collator("zh-CN-u-co-pinyin");
 const initials = [
@@ -51,12 +52,14 @@ export function InterestPicker({
   onChange,
   label,
   placeholder,
+  error,
 }: {
   value: string;
   options: string[];
   onChange: (value: string) => void;
   label: string;
   placeholder: string;
+  error?: string;
 }) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -162,6 +165,11 @@ export function InterestPicker({
       }}
     >
       <label htmlFor={`${id}-input`}>{label}</label>
+      {error && (
+        <small id={`${id}-error`} role="alert">
+          {error}
+        </small>
+      )}
       <div ref={anchor} className="interest-anchor">
         <input
           ref={input}
@@ -173,10 +181,12 @@ export function InterestPicker({
           aria-activedescendant={
             open && active >= 0 ? `${id}-option-${active}` : undefined
           }
-          aria-describedby={`${id}-help`}
+          aria-describedby={`${id}-help${error ? ` ${id}-error` : ""}`}
           value={value}
           placeholder={placeholder}
-          maxLength={200}
+          name="targetMajor"
+          aria-invalid={Boolean(error)}
+          maxLength={profileTextFields.targetMajor[1]}
           autoComplete="off"
           onFocus={() => {
             setOpen(true);

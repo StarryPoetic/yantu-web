@@ -1,5 +1,9 @@
 import { fields, HttpError, integer, object, text } from "./http.ts";
 import type { Profile } from "../shared/profile.ts";
+import {
+  profileTextFields,
+  profileTextError,
+} from "../shared/input-contracts.ts";
 
 export const priorities = [
   "专业兴趣",
@@ -46,13 +50,19 @@ export function validateProfile(input: unknown): Profile {
   ];
   fields(body, [...strings, "cities", "priorities"]);
   const result = blankProfile();
-  for (const field of strings)
-    if (field in body)
+  for (const field of strings) {
+    if (field in body) {
+      const error = profileTextError(field, body[field]);
+      if (error) throw new HttpError(422, "invalid_field", error, { field });
+      const [label, limit] =
+        profileTextFields[field as keyof typeof profileTextFields];
       (result as unknown as Record<string, unknown>)[field] = text(
         body[field],
-        field,
-        field === "notes" || field === "courses" ? 3000 : 200,
+        label,
+        limit,
       );
+    }
+  }
   if (!/^20\d{2}$/.test(result.year))
     throw new HttpError(422, "invalid_year", "请选择有效的招生年份。");
   if (!Array.isArray(body.cities) || body.cities.length > 30)

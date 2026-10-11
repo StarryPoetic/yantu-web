@@ -1,14 +1,23 @@
+import {
+  profileTextFields,
+  profileTextError,
+} from "../../shared/input-contracts";
 import { useResearch } from "./ResearchContext";
 import { RESEARCH_INPUT_LOCK_MESSAGE } from "../../shared/research-status";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Profile } from "../types";
 import { CityPicker } from "../CityPicker";
-import { request } from "./api";
+import { request, ApiError } from "./api";
 import type { Resource } from "./api";
 import type { ProfileResource } from "./contracts";
 import { Dialog, DegreeInfo, ErrorNotice } from "./ui";
 import type { DisciplineCatalog } from "../../server/disciplines/types";
 import { InterestPicker } from "./InterestPicker";
+import {
+  readProfileDraft,
+  profileDraftKey,
+  clearProfileDraft,
+} from "./profile-draft";
 
 const currentYear = new Date().getFullYear();
 const fields: {
@@ -132,23 +141,46 @@ const fields: {
   },
 ];
 export function ProfilePanel({
+  accountId,
   resource,
   onSaved,
   onReload,
   onDelete,
 }: {
+  accountId: string;
   resource: Resource<ProfileResource>;
   onSaved: (value: Resource<ProfileResource>) => void;
   onReload: () => void;
   onDelete: () => void;
 }) {
   const { locked, loading } = useResearch();
-  const [form, setForm] = useState(resource.data.profile),
+  const formRef = useRef<HTMLFormElement>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [draft] = useState(() => readProfileDraft(accountId));
+  const [baseEtag, setBaseEtag] = useState(draft?.baseEtag ?? resource.etag);
+  const [storageFailed, setStorageFailed] = useState(false);
+  const [form, setForm] = useState(draft?.profile ?? resource.data.profile),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(),
     [saved, setSaved] = useState(false),
     [degree, setDegree] = useState(false),
     [disciplineNames, setDisciplineNames] = useState<string[]>([]);
+  const dirty = JSON.stringify(form) !== JSON.stringify(resource.data.profile);
+  useEffect(() => {
+    if (!dirty || !storageFailed) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, storageFailed]);
+  function discardDraft() {
+    clearProfileDraft(accountId);
+    setForm(resource.data.profile);
+    setBaseEtag(resource.etag);
+    setFieldErrors({});
+  }
   useEffect(() => {
     const controller = new AbortController();
     void request<DisciplineCatalog>("/disciplines", {
@@ -163,25 +195,64 @@ export function ProfilePanel({
     return () => controller.abort();
   }, []);
   function set<K extends keyof Profile>(key: K, value: Profile[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    const next = { ...form, [key]: value };
+    setForm(next);
+    try {
+      localStorage.setItem(
+        profileDraftKey(accountId),
+        JSON.stringify({ schemaVersion: 1, profile: next, baseEtag }),
+      );
+      setStorageFailed(false);
+    } catch {
+      setStorageFailed(true);
+    }
     setSaved(false);
+    setFieldErrors((current) => ({ ...current, [key]: "" }));
   }
   async function save(event: React.FormEvent) {
     event.preventDefault();
     if (locked) return;
+    const errors = Object.fromEntries(
+      Object.entries(form).flatMap(([key, value]) => {
+        const message = profileTextError(key, value);
+        return message ? [[key, message]] : [];
+      }),
+    );
+    setFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      formRef.current
+        ?.querySelector<HTMLElement>(`[name="${Object.keys(errors)[0]}"]`)
+        ?.focus();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const result = await request<ProfileResource>("/me/profile", {
         method: "PUT",
-        etag: resource.etag,
+        etag: baseEtag,
         body: form,
       });
+      clearProfileDraft(accountId);
       onSaved(result);
       setForm(result.data.profile);
       setSaved(true);
     } catch (error) {
       setError(error);
+      if (
+        error instanceof ApiError &&
+        error.details &&
+        typeof error.details === "object" &&
+        "field" in error.details
+      ) {
+        const key = String(error.details.field);
+        if (key in profileTextFields) {
+          setFieldErrors({ [key]: error.message });
+          formRef.current
+            ?.querySelector<HTMLElement>(`[name="${key}"]`)
+            ?.focus();
+        }
+      }
     } finally {
       setBusy(false);
     }
@@ -205,12 +276,42 @@ export function ProfilePanel({
         </span>
       </div>
       <ErrorNotice error={error} onReload={onReload} />
+      {dirty && (
+        <div className="ws-notice" role="status">
+          有未保存的画像草稿。
+          {storageFailed
+            ? "本机草稿保存失败，离开前请保存到账号。"
+            : "仅保留在本机当前账号，切换栏目或刷新可恢复；尚未用于推荐。"}
+          {baseEtag !== resource.etag && (
+            <p>
+              账号中的已保存版本已变化。草稿仍保留，请核对后决定是否基于新版本保存。
+            </p>
+          )}
+          <button
+            type="button"
+            className="ws-link"
+            disabled={locked}
+            onClick={discardDraft}
+          >
+            放弃画像草稿
+          </button>
+          {baseEtag !== resource.etag && (
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => setBaseEtag(resource.etag)}
+            >
+              已核对，基于当前版本继续编辑
+            </button>
+          )}
+        </div>
+      )}
       {locked && (
         <p id="research-profile-lock" role="status">
           {loading ? "正在确认报告状态…" : RESEARCH_INPUT_LOCK_MESSAGE}
         </p>
       )}
-      <form onSubmit={save}>
+      <form ref={formRef} onSubmit={save}>
         <fieldset
           className="ws-stack research-inputs"
           disabled={locked}
@@ -228,6 +329,7 @@ export function ProfilePanel({
                     value={form.targetMajor ?? ""}
                     options={disciplineNames}
                     onChange={(value) => set("targetMajor", value)}
+                    error={fieldErrors.targetMajor}
                   />
                 ) : (
                   <label key={field.key}>
@@ -250,9 +352,26 @@ export function ProfilePanel({
                       <input
                         value={String(form[field.key] ?? "")}
                         placeholder={field.placeholder}
-                        maxLength={300}
+                        name={field.key}
+                        aria-label={field.label}
+                        aria-invalid={Boolean(fieldErrors[field.key])}
+                        aria-describedby={
+                          fieldErrors[field.key]
+                            ? `error-${field.key}`
+                            : undefined
+                        }
+                        maxLength={
+                          profileTextFields[
+                            field.key as keyof typeof profileTextFields
+                          ]?.[1]
+                        }
                         onChange={(event) => set(field.key, event.target.value)}
                       />
+                    )}
+                    {fieldErrors[field.key] && (
+                      <small id={`error-${field.key}`} role="alert">
+                        {fieldErrors[field.key]}
+                      </small>
                     )}
                   </label>
                 ),
@@ -332,11 +451,16 @@ export function ProfilePanel({
             <label>
               补充说明
               <textarea
+                aria-label="补充说明"
                 value={form.notes ?? ""}
-                maxLength={1000}
+                name="notes"
+                maxLength={profileTextFields.notes[1]}
                 onChange={(event) => set("notes", event.target.value)}
                 placeholder="想了解什么、有哪些约束（选填）"
               />
+              {fieldErrors.notes && (
+                <small role="alert">{fieldErrors.notes}</small>
+              )}
             </label>
           </section>
           <div className="ws-actions">

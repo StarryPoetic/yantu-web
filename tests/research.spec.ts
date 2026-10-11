@@ -3255,8 +3255,13 @@ test("任务一：浏览器直接修改和另一标签页保存均被真实后�
       .getByRole("button", { name: "个人画像", exact: true })
       .click();
     await expect(page.getByLabel("本科专业", { exact: true })).toHaveValue(
-      "法学",
+      "经济学",
     );
+    // The other tab's account-scoped draft survives; it has not changed the locked server snapshot.
+    expect(
+      (await (await page.request.get(baseURL + "/api/v1/me/profile")).json())
+        .profile.major,
+    ).toBe("法学");
     await expect(page.getByLabel("本科专业", { exact: true })).toBeDisabled();
     const attempts = await page.request.get(
       baseURL + "/api/v1/assessment-attempts",
@@ -3321,7 +3326,6 @@ test("任务一：切换栏目和手动刷新始终只有一个活动轮询，�
   let fail = true;
   await page.route("**/api/v1/research-jobs/*", async (route) => {
     if (fail) {
-      fail = false;
       await route.abort();
     } else await route.fallback();
   });
@@ -3331,6 +3335,7 @@ test("任务一：切换栏目和手动刷新始终只有一个活动轮询，�
       .getByRole("region", { name: "联网研究报告", exact: true })
       .getByRole("alert"),
   ).toContainText("暂时无法连接服务");
+  fail = false;
   service.stage("analyzing");
   await page.clock.runFor(2000);
   await expect(page.getByRole("progressbar")).toHaveAttribute(

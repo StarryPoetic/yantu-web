@@ -1,4 +1,4 @@
-import test from "node:test";
+﻿import test from "node:test";
 import assert from "node:assert/strict";
 import {
   AssessmentError,
@@ -22,6 +22,29 @@ import type {
 import { validStem } from "../../server/assessment/presentation.ts";
 
 const bank = await loadQuestionBank();
+test("T3-06 reasoning saves at 1000, rejects 1001 and lets legacy drafts be shortened without truncation", () => {
+  const original = createAttempt(bank, {
+    subjectId: "reasoning-owner",
+    allowExampleBank: true,
+    modules: ["math"],
+  });
+  const questionId = original.questions[0].id;
+  const save = (reasoning: string) =>
+    saveDraft(original, {
+      expectedAttemptVersion: original.attemptVersion,
+      answers: [{ questionId, selectedOption: null, reasoning }],
+    });
+  assert.equal(
+    save("字".repeat(1000)).answers.find((a) => a.questionId === questionId)
+      ?.reasoning?.length,
+    1000,
+  );
+  assert.throws(() => save("字".repeat(1001)), { code: "INVALID_REASONING" });
+  original.answers[0].reasoning = "旧".repeat(1500);
+  assert.equal(publicAttempt(original).answers[0].reasoning?.length, 1500);
+  assert.equal(save("字".repeat(1000)).answers[0].reasoning?.length, 1000);
+  assert.equal(original.answers[0].reasoning?.length, 1500);
+});
 test("question stem permits inline mathematics but rejects diagrams, hidden fields and altered conditions", () => {
   const question = bank.questions.find((question) => question.id === "v2-m4")!;
   assert.equal(validStem(question.stem, question.text), true);
