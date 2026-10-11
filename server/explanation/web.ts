@@ -1,3 +1,4 @@
+import { expandResearchTableSpans } from "./research-table-text.ts";
 import { sourceCitationInstruction } from "./source-citations.ts";
 import { lookup } from "node:dns/promises";
 import { request as httpsRequest } from "node:https";
@@ -688,7 +689,7 @@ export const readOfficialHttps = createHttpsReader();
 
 export function webPageText(html: string): string {
   return (
-    html
+    expandResearchTableSpans(html)
       .replace(/<!--[^]*?-->/g, " ")
       .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ")
       // Keep table cells on their physical row despite paragraph wrappers inside cells.

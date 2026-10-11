@@ -36,6 +36,7 @@ export function collectionModelOptions(
     timeoutMs: B.normalTimeoutMs,
     maxOutputTokens: B.collectionOutputTokens,
     researchParallel: true,
+    finalTokenHeadroom: B.thinkingChars + B.finalOutputTokens,
   };
 }
 export function createResearchCollector(input: {

@@ -25,6 +25,8 @@ export interface ModelRequestOptions {
   onCall?: () => void;
   /** Server-owned collection lane; never sent to the provider or accepted from browser input. */
   researchParallel?: boolean;
+  /** Internal collection headroom for the final analysis; never sent upstream. */
+  finalTokenHeadroom?: number;
   onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
   format?: "json" | "text";
   maxOutputTokens?: number;
@@ -279,6 +281,10 @@ export function resolveModelRequest(options: ModelRequestOptions = {}) {
   if (
     (options.researchParallel !== undefined &&
       typeof options.researchParallel !== "boolean") ||
+    (options.finalTokenHeadroom !== undefined &&
+      (!Number.isSafeInteger(options.finalTokenHeadroom) ||
+        options.finalTokenHeadroom < 0 ||
+        options.finalTokenHeadroom > B.thinkingChars + B.finalOutputTokens)) ||
     (options.model !== undefined &&
       !["deepseek-flash", "deepseek-v4-pro"].includes(options.model)) ||
     (options.thinking !== undefined && typeof options.thinking !== "boolean") ||

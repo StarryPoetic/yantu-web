@@ -1,4 +1,3 @@
-import { PRIORITY_SEARCH_TERMS } from "./research-priority-facts.ts";
 import type { ResearchPrefilter } from "../../shared/research-prefilter.ts";
 import type { ResearchEvidenceGap } from "../../shared/research-coverage.ts";
 import type { GuidanceRun, Discipline } from "../disciplines/types.ts";
@@ -48,7 +47,6 @@ export async function refineResearchSchools(
   );
   const grouped = new Map<number, ReturnType<typeof input.web.answer>>();
   let groupedRequests = 0;
-  const keywords = (input.queryTerms ?? PRIORITY_SEARCH_TERMS).join(" ");
   const names = input.disciplines.map((d) => d.name).join(" ");
   const years = historicalReferenceYears(input.targetYear);
 
@@ -91,7 +89,7 @@ export async function refineResearchSchools(
           gaps,
           maxRequests: 1,
           queryForGap: (gap) => [
-            `${school.institutionName} ${names} ${years.join(" ")} ${gap.field === "program" ? "硕士招生专业目录 招生简章 初试科目" : gap.field === "exams" ? "硕士复试分数线 拟录取名单 报录统计" : gap.field === "location" ? "学科评估 就业质量报告 校区 培养地点" : "硕士招生简章 学费 报录统计"} ${keywords}`,
+            `${school.institutionName} ${years[0]}年 ${names} 硕士招生专业目录`,
           ],
           web:
             groupSize === 1
@@ -111,7 +109,7 @@ export async function refineResearchSchools(
                         {
                           ...request,
                           question:
-                            `${group.map((s) => s.institutionName).join(" OR ")} ${names} ${years.join(" ")} 硕士招生目录 ${keywords}`.slice(
+                            `${group.map((s) => s.institutionName).join(" OR ")} ${names} ${years[0]}年 硕士招生目录`.slice(
                               0,
                               600,
                             ),

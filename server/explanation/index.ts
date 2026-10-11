@@ -139,9 +139,9 @@ export function createModelRuntime(
       )
         throw new ModelError("CONCURRENCY_LIMIT");
       if (
-        account.tokens + reserve >
+        account.tokens + reserve + (options.finalTokenHeadroom ?? 0) >
           (config.userDailyTokens ?? B.userDailyTokens) ||
-        globalTokens + reserve >
+        globalTokens + reserve + (options.finalTokenHeadroom ?? 0) >
           (config.globalDailyTokens ?? B.globalDailyTokens)
       )
         throw new ModelError("BUDGET_EXHAUSTED");

@@ -6,6 +6,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class BatchOneResearchDocsTests(unittest.TestCase):
+    def test_two_run_acceptance_keeps_cash_limit_and_failed_first_run(self):
+        text = (ROOT / 'docs/阶段7真实验证记录.md').read_text(encoding='utf-8').split('## 两次限额验收授权', 1)[1]
+        for phrase in ('最多2次', '9.50元', '1.60元', '141.466', '78405/1091',
+                       '2.242769', '2.325538', 'HTTP_410=8', 'HTTP_404=3',
+                       'WEB_TLS_CERT=3', '0/3=0%', '56384', '原文', '不读取'):
+            self.assertIn(phrase, text)
+
     def test_second_review_records_comparable_coverage_and_failure_boundaries(self):
         text = (ROOT / 'docs/实施说明.md').read_text(encoding='utf-8').split('### 13.20.', 1)[1]
         for phrase in ('f8af633', '完全相同的增补夹具', '159→38', '0/2→2/2',

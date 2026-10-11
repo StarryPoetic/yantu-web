@@ -26,6 +26,7 @@ export const RESEARCH_BUDGET = {
   geographyReads: 2,
   searches: 72,
   prioritySearchReserve: 48,
+  prioritySchoolSearches: 10,
   initialSearches: 54,
   feeSearches: 18,
   repairSearches: 4,

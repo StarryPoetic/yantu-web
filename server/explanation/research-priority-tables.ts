@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { researchTextRows } from "./research-table-text.ts";
 import type { WebSource } from "./web.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import type {
@@ -111,7 +112,7 @@ export function tablePriorityFacts(
         ? undefined
         : safeSourceYear(source);
   if (!year || year > Number(targetYear)) return [];
-  const lines = redactAdmissionsText(source.excerpt).split("\n");
+  const lines = researchTextRows(redactAdmissionsText(source.excerpt));
   const facts: ResearchPriorityFact[] = [];
   let header: string[] = [],
     headerQuote = "";
@@ -184,8 +185,9 @@ export function tablePriorityFacts(
       ...fact,
     });
   }
-  for (const line of lines) {
-    const row = cells(line);
+  for (const entry of lines) {
+    const line = entry.line;
+    const row = entry.cells ?? cells(line);
     if (row.length < 2) continue;
     if (
       /专业(?:代码|名称)|学科(?:代码|名称)/.test(line) &&

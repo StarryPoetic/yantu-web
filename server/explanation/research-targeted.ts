@@ -83,7 +83,7 @@ export function missingPriorityQueries(
       tasks
         .filter((t) => t.fields.some((f) => !has(f, t.year)))
         .map((t) =>
-          `${school} ${t.year ?? years[0]}年 ${scope?.collegeName ?? ""} ${scope?.majorCode ?? ""} ${discipline.name} ${t.terms}`.replace(
+          `${school} ${t.fields.includes("disciplineAssessment") ? "" : `${t.year ?? years[0]}年`} ${scope?.collegeName ?? ""} ${scope?.majorCode ?? ""} ${discipline.name} ${t.terms}`.replace(
             /\s+/g,
             " ",
           ),
@@ -112,6 +112,7 @@ export async function collectMissingPriorityEvidence(
   const limitations: string[] = [];
   const reads = new Map(input.usedReads ?? []);
   const attempted = new Set<string>();
+  const schoolSearches = new Map<string, number>();
   // Sources in this collection snapshot are immutable; new reads replace objects.
   const extracted = new WeakMap<WebSource, ResearchPriorityFact[]>();
   const factsFor = (source: WebSource) => {
@@ -139,6 +140,21 @@ export async function collectMissingPriorityEvidence(
           )
           .map((s) => academicDomain(s.url)),
   );
+  // A search/read can reveal another target programme after the first inventory.
+  // These are investigation leads only; final recommendations still use binding.
+  const inspected = new WeakSet<WebSource>();
+  const discover = () => {
+    for (const source of sources) {
+      if (inspected.has(source)) continue;
+      inspected.add(source);
+      if (
+        isSchoolPage(source) &&
+        programEntries(source, input.disciplines).length
+      )
+        known.add(academicDomain(source.url));
+    }
+  };
+  discover();
   let candidatesFinished = known.size === 0;
   let exhausted = false;
   // One school gets one query per turn; unused shares return to the next round.
@@ -149,11 +165,14 @@ export async function collectMissingPriorityEvidence(
     !exhausted
   ) {
     input.signal?.throwIfAborted();
+    discover();
     let advanced = false;
     for (const school of input.selected.filter(
       (s) => candidatesFinished || known.has(s.domain),
     )) {
       input.signal?.throwIfAborted();
+      if ((schoolSearches.get(school.domain) ?? 0) >= B.prioritySchoolSearches)
+        continue;
       if (
         requestCount >= input.maxRequests ||
         readCount >= input.maxReads ||
@@ -169,10 +188,21 @@ export async function collectMissingPriorityEvidence(
         (s) => academicDomain(s.url) === school.domain,
       );
       const facts = own.flatMap(factsFor);
-      const programs =
+      const allPrograms =
         input.priorityPrograms?.filter(
           (p) => p.institutionName === school.institutionName,
         ) ?? [];
+      // An unscoped duplicate must not repeat the same major's scoped queries.
+      const programs = allPrograms.filter(
+        (p) =>
+          p.collegeName ||
+          !allPrograms.some(
+            (other) =>
+              other.majorCode === p.majorCode &&
+              other.disciplineCode === p.disciplineCode &&
+              other.collegeName,
+          ),
+      );
       const queries = programs.length
         ? programs.flatMap((p) => {
             const d = input.disciplines.find(
@@ -207,6 +237,10 @@ export async function collectMissingPriorityEvidence(
       );
       if (!query) continue;
       attempted.add(query);
+      schoolSearches.set(
+        school.domain,
+        (schoolSearches.get(school.domain) ?? 0) + 1,
+      );
       advanced = true;
       const gap: ResearchEvidenceGap = {
         id: `priority:${school.key}:${query}`,

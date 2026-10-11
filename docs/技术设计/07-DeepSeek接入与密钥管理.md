@@ -348,6 +348,7 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | 常量 | 值 |
 | --- | --- |
 | `priorityReadsPerTurn` | 3 |
+| `prioritySchoolSearches` | 10 |
 | `prioritySearchReserve` | 48 |
 | `pageRetryTimeoutMs` | 10000 |
 | `pageRetries` | 8 |

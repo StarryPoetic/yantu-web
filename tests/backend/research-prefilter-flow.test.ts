@@ -87,13 +87,13 @@ test("two-stage flow persists local scores before any paid call, reads only sele
       `${school.institutionName} must appear in a real grouped search request`,
     );
   }
-  for (const term of ["复试线", "报录比", "双非", "学科评估", "就业去向"]) {
-    assert.ok(
-      f.questions
-        .filter((q) => q.includes("硕士招生目录"))
-        .every((query) => query.includes(term)),
-    );
-  }
+  const directoryQueries = f.questions.filter((q) =>
+    q.includes("硕士招生目录"),
+  );
+  assert.ok(directoryQueries.length > 0);
+  assert.ok(
+    directoryQueries.every((q) => !/报录比|双非|学科评估|就业去向/.test(q)),
+  );
   assert.ok(f.questions.some((q) => q.includes("复试基本分数线")));
   assert.equal(f.counts.reads, 12);
   assert.equal(f.counts.models, 2);
