@@ -110,6 +110,7 @@ export function ResearchHistory() {
             onProfile={() => {}}
             outcome={researchOutcome(selected.job)}
             readOnly
+            outdated={selected.job.needsRefresh}
           />
         </section>
       )}

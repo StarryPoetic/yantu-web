@@ -756,6 +756,25 @@
   height: 100%;
   overflow: visible;
 }
+.research-road-signs {
+  display: contents;
+}
+@media (max-width: 600px) {
+  .research-road-signs {
+    position: absolute;
+    top: 0;
+    inset-inline: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .research-road-signs .research-road-sign {
+    position: static;
+    transform: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
 .research-road-sign {
   position: absolute;
   top: 0;

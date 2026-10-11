@@ -237,9 +237,33 @@
   outline-offset: 2px;
 }
 @media (max-width: 600px) {
+  body:has(.workspace > .floating-assistant) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .workspace:has(> .floating-assistant) {
+    min-height: 0;
+    height: calc(100dvh - 64px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
   .floating-assistant {
-    right: 14px;
-    bottom: 16px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(64px + env(safe-area-inset-bottom));
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    display: flex;
+    justify-content: flex-end;
+    background: #fffcf6;
+    border-top: 1px solid #deddd2;
+  }
+  .assistant-orb {
+    width: 90px;
+    height: 44px;
+    flex-direction: row;
+    gap: 8px;
+    border-radius: 12px;
   }
   .assistant-panel {
     position: fixed;

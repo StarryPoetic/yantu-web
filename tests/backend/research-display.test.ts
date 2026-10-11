@@ -27,6 +27,37 @@ import {
   withSupplementedTuition,
 } from "../helpers/research-coverage-fixture.ts";
 import { withPhase6Display } from "../helpers/research-phase6-fixture.ts";
+import { RESEARCH_TARGET_SCHOOLS } from "../../shared/research-policy.ts";
+import { RESEARCH_BUDGET } from "../../server/explanation/research-budget.ts";
+
+test("T3-12 new strategy shares the ten-school target without rewriting historical coverage", () => {
+  assert.equal(RESEARCH_TARGET_SCHOOLS, 10);
+  assert.equal(RESEARCH_BUDGET.finalSchools, RESEARCH_TARGET_SCHOOLS);
+  assert.equal(researchCoverage(report()).targetMin, 5);
+  assert.equal(researchCoverage(report()).targetMax, 10);
+});
+
+test("T3-13 stale availability and exported status stay consistent across terminal reports", () => {
+  const run = {
+    inputSnapshot: { profile: { year: 2027 } },
+    directions: [],
+  } as unknown as GuidanceRun;
+  for (const status of ["partial", "completed", "blocked"] as const) {
+    const value = { ...report(), status };
+    const before = JSON.stringify(value);
+    assert.equal(reportAvailability(value, true).title, "需更新");
+    assert.match(
+      researchReportMarkdown(value, run, true),
+      /报告状态：需更新。个人情况或依据已更新/,
+    );
+    assert.ok(
+      researchReportMarkdown(value, run, false).includes(
+        `报告状态：${reportAvailability(value).title}`,
+      ),
+    );
+    assert.equal(JSON.stringify(value), before);
+  }
+});
 
 test("availability distinguishes confirmed, pending and explicit absence for recommended programmes without counting catalogue totals", () => {
   const value = withEvidenceCoverage(report());

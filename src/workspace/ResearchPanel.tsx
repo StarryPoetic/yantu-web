@@ -3,6 +3,7 @@ import { useResearch } from "./ResearchContext";
 import { Download, RefreshCw, Sparkles } from "lucide-react";
 import type { GuidanceRun } from "../../server/disciplines/types";
 import { researchReason } from "../../shared/research-status";
+import { RESEARCH_TARGET_SCHOOLS } from "../../shared/research-policy";
 import { ErrorNotice } from "./ui";
 import { ResearchReportView } from "./ResearchReportView";
 import { ResearchProgress, researchStageName } from "./ResearchProgress";
@@ -96,7 +97,8 @@ export function ResearchPanel({
       )}
       {!report && !failed && (
         <p>
-          结合你的本科背景、跨专业意愿、学习目标和现实条件，目标比较 5–10
+          结合你的本科背景、跨专业意愿、学习目标和现实条件，目标比较{" "}
+          {RESEARCH_TARGET_SCHOOLS}{" "}
           所不同学校及对应专业，说明匹配理由、预算与城市差异、准备成本。
         </p>
       )}
@@ -137,9 +139,23 @@ export function ResearchPanel({
           </p>
         </section>
       )}
+      {job && (failed || report?.failureStage) && (
+        <div className="ws-actions">
+          <button
+            className="ws-primary"
+            onClick={() => generate("retry")}
+            disabled={
+              loading || starting || running || !readiness?.ready || outdated
+            }
+          >
+            立即重试未完成阶段
+          </button>
+        </div>
+      )}
       {report && (
         <ResearchReportView
           report={report}
+          outdated={outdated}
           run={run}
           onProfile={onProfile}
           outcome={outcome}

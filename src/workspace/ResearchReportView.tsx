@@ -29,6 +29,7 @@ export function ResearchReportView({
   outcome,
   jobId,
   readOnly = false,
+  outdated = false,
 }: {
   report: ResearchReport;
   run: GuidanceRun;
@@ -36,12 +37,13 @@ export function ResearchReportView({
   outcome: ReturnType<typeof researchOutcome>;
   jobId?: string;
   readOnly?: boolean;
+  outdated?: boolean;
 }) {
   const hasRecommendations = report.recommendations.length > 0;
   const coverage = researchCoverage(report);
   const groups = recommendationGroups(report.recommendations);
   const legacy = isLegacyResearchReport(report);
-  const availability = reportAvailability(report);
+  const availability = reportAvailability(report, outdated);
   return (
     <div className="research-report">
       <section

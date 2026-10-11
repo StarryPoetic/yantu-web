@@ -262,10 +262,13 @@ function SignedInWorkspace({
     setPage(next);
     location.hash = next;
     window.scrollTo({ top: 0 });
+    document.querySelector(".workspace")?.scrollTo({ top: 0 });
   }
   async function reloadSelections() {
     const value = await request<Selections>("/me/selections");
     setSelections(value);
+    if (selections?.data.selectionVersion !== value.data.selectionVersion)
+      research.invalidate();
   }
   async function changeSelections(change: Partial<Selections>) {
     if (!selections) return;
@@ -282,6 +285,7 @@ function SignedInWorkspace({
       body,
     });
     setSelections(result);
+    research.invalidate();
     setRecommendation(null);
   }
   async function changeTarget(program: Program | null) {
@@ -297,6 +301,7 @@ function SignedInWorkspace({
         : { programId: null },
     });
     setSelections(result);
+    research.invalidate();
     setRecommendation(null);
     setNotice(
       program
@@ -441,9 +446,7 @@ function SignedInWorkspace({
               <span>
                 {research.running || research.startingMode
                   ? "报告生成中，可切换栏目，进度会保留。"
-                  : research.failed
-                    ? "报告未完成，请查看原因并重试。"
-                    : "报告已完成，可以查看研究结果。"}
+                  : `生成结束 · ${research.badge}。${research.badge === "需更新" ? "历史报告仅供回顾，请更新基础结论。" : research.failed ? "请查看原因并重试。" : "可以查看研究结果。"}`}
               </span>
               <button className="ws-link" onClick={() => navigate("guidance")}>
                 查看报告
@@ -520,6 +523,7 @@ function SignedInWorkspace({
                     resource={profile}
                     onSaved={(value) => {
                       setProfile(value);
+                      research.invalidate();
                       setRecommendation(null);
                       setNotice(
                         "个人画像已保存到账号。接下来可完成公共课测评，再查看专业推荐结论。",
@@ -531,6 +535,11 @@ function SignedInWorkspace({
                         .then((value) => {
                           clearProfileDraft(session.user!.accountId);
                           setProfile(value);
+                          if (
+                            profile.data.profileVersion !==
+                            value.data.profileVersion
+                          )
+                            research.invalidate();
                           setGeneration((current) => current + 1);
                         })
                         .catch(setError);
@@ -541,7 +550,28 @@ function SignedInWorkspace({
                 {page === "assessment" && (
                   <AssessmentPanel
                     confirmedMajorId={selections.data.confirmedMajorId}
-                    onCompleted={() => setAssessmentDone(true)}
+                    onCompleted={(diagnosis) => {
+                      setAssessmentDone(true);
+                      const references = research.run
+                        ? [
+                            ...research.run.versions.assessmentRefs,
+                            ...research.run.assessmentSummary.ignored,
+                          ]
+                        : [];
+                      if (
+                        diagnosis.modules.some(
+                          (item) => item.module !== "major",
+                        ) &&
+                        !references.some(
+                          (item) =>
+                            item.assessmentAttemptId ===
+                              diagnosis.assessmentAttemptId &&
+                            item.diagnosisVersion ===
+                              diagnosis.diagnosisVersion,
+                        )
+                      )
+                        research.invalidate();
+                    }}
                   />
                 )}
                 {page === "assessment" && (

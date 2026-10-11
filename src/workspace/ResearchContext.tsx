@@ -12,7 +12,7 @@ import type { GuidanceRun } from "../../server/disciplines/types";
 import type { ResearchReport } from "../../server/explanation/research";
 import { request } from "./api";
 import { startResearchJob, type ResearchRequestMode } from "./research-request";
-import { researchOutcome } from "./research-report";
+import { reportAvailability, researchOutcome } from "./research-report";
 
 type Job = ResearchJob & { needsRefresh?: boolean; refreshReasons?: string[] };
 type Readiness = ReturnType<ResearchEngine["getReadiness"]>;
@@ -184,11 +184,19 @@ function useResearchState() {
     startingMode || running
       ? "生成中"
       : job
-        ? failed
-          ? "未完成"
-          : "已完成"
+        ? job.needsRefresh
+          ? "需更新"
+          : job.report
+            ? reportAvailability(job.report).title
+            : failed
+              ? "未完成"
+              : "已完成"
         : "";
   return {
+    invalidate: () =>
+      setJob((current) =>
+        current ? { ...current, needsRefresh: true } : current,
+      ),
     job,
     run,
     readiness,

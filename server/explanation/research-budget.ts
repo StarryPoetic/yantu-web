@@ -1,8 +1,9 @@
+import { RESEARCH_TARGET_SCHOOLS } from "../../shared/research-policy.ts";
 /** Phase 5 single source of truth; docs/tests verify these exported values. */
 export const RESEARCH_BUDGET = {
   prefilterSchools: 25,
   prefilterCitySchools: 10,
-  finalSchools: 10,
+  finalSchools: RESEARCH_TARGET_SCHOOLS,
   reads: 60,
   schoolReads: 8,
   platformReads: 4,

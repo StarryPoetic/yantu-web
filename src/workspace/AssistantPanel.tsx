@@ -289,26 +289,84 @@ function ConversationPanel({ onClose }: { onClose?: () => void }) {
 }
 export function FloatingAssistant() {
   const [open, setOpen] = useState(false);
+  const [mobile, setMobile] = useState(
+    () => matchMedia("(max-width: 600px)").matches,
+  );
   const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const query = matchMedia("(max-width: 600px)");
+    const update = () => setMobile(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   function close() {
     setOpen(false);
     requestAnimationFrame(() => button.current?.focus());
   }
   useEffect(() => {
     if (!open) return;
+    const element = panel.current!;
+    const background = mobile
+      ? ([
+          ...Array.from(element.closest(".workspace")!.children).filter(
+            (child) => !child.contains(element),
+          ),
+          button.current!,
+        ] as HTMLElement[])
+      : [];
+    const previous = background.map((node) => node.inert);
+    background.forEach((node) => {
+      node.inert = true;
+    });
+    const focusable = () =>
+      Array.from(
+        element.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]',
+        ),
+      ).filter((node) => node.getClientRects().length > 0);
+    if (mobile && !element.contains(document.activeElement))
+      focusable()[0]?.focus();
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
-        button.current?.focus();
+        event.preventDefault();
+        close();
+      } else if (mobile && event.key === "Tab") {
+        const controls = focusable();
+        const first = controls[0],
+          last = controls.at(-1);
+        if (
+          event.shiftKey &&
+          (document.activeElement === first ||
+            !element.contains(document.activeElement))
+        ) {
+          event.preventDefault();
+          last?.focus();
+        } else if (
+          !event.shiftKey &&
+          (document.activeElement === last ||
+            !element.contains(document.activeElement))
+        ) {
+          event.preventDefault();
+          first?.focus();
+        }
       }
     };
     window.addEventListener("keydown", escape);
-    return () => window.removeEventListener("keydown", escape);
-  }, [open]);
+    return () => {
+      window.removeEventListener("keydown", escape);
+      background.forEach((node, index) => {
+        node.inert = previous[index];
+      });
+    };
+  }, [open, mobile]);
   return (
     <div className="floating-assistant">
       {open && (
         <aside
+          ref={panel}
+          role={mobile ? "dialog" : "complementary"}
+          aria-modal={mobile ? true : undefined}
           className="assistant-panel"
           id="assistant-conversation-panel"
           aria-label="研途咨询助手"

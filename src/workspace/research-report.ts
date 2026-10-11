@@ -56,7 +56,7 @@ export function researchOutcome(job: ResearchJob | null) {
 export type SchoolRecommendation = ResearchReport["recommendations"][number];
 
 /** Count the displayed programmes, never all recalled catalogue rows. Unknown is not absent. */
-export function reportAvailability(report: ResearchReport) {
+export function reportAvailability(report: ResearchReport, outdated = false) {
   const labels: Record<string, string> = {
     program: "专业目录",
     exams: "初试科目",
@@ -160,8 +160,9 @@ export function reportAvailability(report: ResearchReport) {
         reason,
       ),
     );
-  const title =
-    !usable && failure
+  const title = outdated
+    ? "需更新"
+    : !usable && failure
       ? "生成失败"
       : report.status === "completed" && !failure && !pending
         ? "完整可用"
@@ -174,7 +175,15 @@ export function reportAvailability(report: ResearchReport) {
     !usable && failure
       ? `${detail || "本次生成未完成。"}可一键重试，复用已取得的资料和完成阶段。`
       : `已保留 ${report.recommendations.length} 个学校专业建议。${missing.size ? "待补查：" + [...missing].join("、") + "。" : "年度资格以对应原文为准。"}${detail}${failure ? "可一键重试补完分析。" : ""}`;
-  return { title, message, confirmed, pending, absent, missing: [...missing] };
+  return {
+    title,
+    message:
+      (outdated ? "个人情况或依据已更新；历史报告仅供回顾。" : "") + message,
+    confirmed,
+    pending,
+    absent,
+    missing: [...missing],
+  };
 }
 export const missingLibraryCoverageNotice = "该报告生成时未记录资料覆盖统计";
 export function libraryCoverageDescription(report: ResearchReport) {
@@ -741,7 +750,7 @@ export function researchReportMarkdown(
   outdated: boolean,
 ) {
   const coverage = researchCoverage(report);
-  const availability = reportAvailability(report);
+  const availability = reportAvailability(report, outdated);
   return [
     "# 研途 · 学校与专业推荐报告",
     report.generatedAt,

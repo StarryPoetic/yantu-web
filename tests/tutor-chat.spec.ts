@@ -8,7 +8,7 @@ test("悬浮咨询支持任意问题、多轮记录、收起恢复、清空和�
   await registerAccount(page);
   await page.goto("/");
   await page.getByRole("button", { name: "打开咨询助手", exact: true }).click();
-  const panel = page.getByRole("complementary", { name: "研途咨询助手" });
+  const panel = page.getByRole("dialog", { name: "研途咨询助手" });
   await expect(
     panel.getByRole("heading", { name: "有什么想聊的？" }),
   ).toBeVisible();

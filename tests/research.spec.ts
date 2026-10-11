@@ -398,6 +398,9 @@ async function researchService(page: Page) {
     setRun(value: GuidanceRun) {
       run = value;
     },
+    stale(needsRefresh = true) {
+      if (current) current = { ...current, needsRefresh };
+    },
     postCount: () => postCount,
     pollCount: () => polls,
     cancel() {
@@ -3083,7 +3086,7 @@ for (const width of [1280, 375]) {
     ).toBeEnabled();
     service.finish("completed");
     await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
-      "已完成",
+      "部分可用",
     );
     const polls = service.pollCount();
     await page.getByRole("button", { name: "查看报告", exact: true }).click();
@@ -3288,7 +3291,7 @@ test("任务一：浏览器直接修改和另一标签页保存均被真实后�
     );
     release();
     await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
-      "已完成",
+      "部分可用",
     );
     await page.getByRole("button", { name: "查看报告", exact: true }).click();
     await expect(
@@ -3456,3 +3459,145 @@ for (const width of [1280, 375]) {
     await expect(explanation).toBeHidden();
   });
 }
+
+for (const width of [1280, 375]) {
+  test(`T3-10 progress labels never intersect at ${width}px including reduced motion`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 812 });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    await page
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    const labels = page.locator(".research-road-sign");
+    await expect(labels).toHaveCount(4);
+    for (const reducedMotion of ["no-preference", "reduce"] as const) {
+      await page.emulateMedia({ reducedMotion });
+      const boxes = await labels.evaluateAll((elements) =>
+        elements.map((element) => {
+          const r = element.getBoundingClientRect();
+          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+        }),
+      );
+      for (let i = 0; i < boxes.length; i++)
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i],
+            b = boxes[j];
+          expect(
+            a.right <= b.left ||
+              b.right <= a.left ||
+              a.bottom <= b.top ||
+              b.bottom <= a.top,
+          ).toBe(true);
+        }
+    }
+  });
+}
+
+test("T3-11 partial report retry is reachable above school cards and shares the request lock", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  await page
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  service.finish("partial", (report) => ({
+    ...report,
+    reason: "MODEL_TIMEOUT",
+    failureStage: "analyzing",
+  }));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  const retry = panel.getByRole("button", {
+    name: "立即重试未完成阶段",
+    exact: true,
+  });
+  await expect(retry).toBeEnabled();
+  const bottom = panel.getByRole("button", {
+    name: "一键重试（复用已完成阶段）",
+    exact: true,
+  });
+  const card = panel.locator(".research-school").first();
+  expect((await retry.boundingBox())!.y).toBeLessThan(
+    (await card.boundingBox())!.y,
+  );
+  let posts = 0;
+  let release!: () => void;
+  const gate = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route(/\/research\/retry$/, async (route) => {
+    posts++;
+    await gate;
+    await route.fallback();
+  });
+  try {
+    await retry.click();
+    await expect(bottom).toBeDisabled();
+    await expect(retry).toBeDisabled();
+    expect(posts).toBe(1);
+  } finally {
+    release();
+  }
+});
+
+test("T3-12 new report entrance targets 10 while historical snapshots keep 5–10", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await expect(panel).toContainText("目标比较 10 所不同学校");
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  service.finish("partial", (report) => ({
+    ...report,
+    coverage: {
+      targetMin: 5,
+      targetMax: 10,
+      schoolCount: 1,
+      preferredCount: 1,
+      alternativeCount: 0,
+      shortfallReasons: ["旧版目标"],
+    },
+  }));
+  await expect(panel).toContainText("目标比较 5–10 所");
+});
+
+test("T3-13 global status matches partial and stale report availability", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  await page
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  service.finish("partial");
+  const badge = page.getByLabel("报告状态", { exact: true });
+  await expect(badge).toHaveText("部分可用");
+  await expect(page.locator(".research-global-notice")).toContainText(
+    "部分可用",
+  );
+  service.stale();
+  await page.getByRole("button", { name: "重新检查服务", exact: true }).click();
+  await expect(badge).toHaveText("需更新");
+  await expect(page.locator(".research-global-notice")).toContainText("需更新");
+  await expect(page.getByLabel("报告可用性", { exact: true })).toContainText(
+    "需更新",
+  );
+  service.stale(false);
+  await page.getByRole("button", { name: "重新检查服务", exact: true }).click();
+  await expect(badge).toHaveText("部分可用");
+  await page
+    .getByRole("navigation", { name: "主要导航" })
+    .getByRole("button", { name: "个人画像", exact: true })
+    .click();
+  await page.getByLabel("本科专业", { exact: true }).fill("经济学");
+  await page.getByRole("button", { name: "保存个人画像", exact: true }).click();
+  await expect(page).toHaveURL(/#assessment$/);
+  await expect(badge).toHaveText("需更新");
+  await expect(page.locator(".research-global-notice")).toContainText("需更新");
+});

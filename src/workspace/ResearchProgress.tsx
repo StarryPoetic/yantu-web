@@ -116,15 +116,17 @@ export function ResearchProgress({
             >
               <ShinchanWalker />
             </div>
-            {researchSteps.map((step) => (
-              <span
-                className="research-road-sign"
-                key={step.stage}
-                style={{ left: `${step.floor}%` }}
-              >
-                {step.name}
-              </span>
-            ))}
+            <div className="research-road-signs">
+              {researchSteps.map((step) => (
+                <span
+                  className="research-road-sign"
+                  key={step.stage}
+                  style={{ left: `${step.floor}%` }}
+                >
+                  {step.name}
+                </span>
+              ))}
+            </div>
           </div>
           <div className="research-road-ends">
             <span>起点</span>
