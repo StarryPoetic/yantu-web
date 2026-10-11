@@ -80,10 +80,12 @@ export async function refineResearchSchools(
           ...input,
           sources: own,
           priorityDocuments: true,
+          discoveryReadLimit:
+            index < B.discoveryReads ? B.schoolDiscoveryReads : 0,
           gaps,
           maxRequests: groupSize > 1 ? 1 : share(B.searches, index),
           queryForGap: (gap) => [
-            `${school.institutionName} ${names} ${years.join(" ")} ${gap.field === "program" ? "硕士招生目录 初试科目 学费" : gap.field === "exams" ? "复试录取" : gap.field === "location" ? "校区 培养地点" : "培养方案"} ${keywords}`,
+            `${school.institutionName} ${names} ${years.join(" ")} ${gap.field === "program" ? "硕士招生专业目录 招生简章 初试科目" : gap.field === "exams" ? "硕士复试分数线 拟录取名单 报录统计" : gap.field === "location" ? "学科评估 就业质量报告 校区 培养地点" : "硕士招生简章 学费 报录统计"} ${keywords}`,
           ],
           web:
             groupSize === 1

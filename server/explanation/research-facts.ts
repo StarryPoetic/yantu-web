@@ -85,6 +85,8 @@ export function extractProgramFacts(
     collegeName?: string;
     studyMode?: string;
   }[],
+  /** One immutable school snapshot only; never reused across source refreshes. */
+  locationCache?: Map<string, LocationEvidence | undefined>,
 ): ProgramFact[] {
   if (!isSchoolPage(source)) return []; // CHSI dynamic catalogue safely falls back to school originals.
   const domain = schoolRegistrableDomain(source.url)!;
@@ -167,14 +169,28 @@ export function extractProgramFacts(
       !programEntries(source, disciplines).length &&
       own.length > context.length
     ) {
-      const chained = bindRecommendationEvidence(
-        bound,
-        run,
-        discipline,
-        own,
+      const key = JSON.stringify([
+        bound.institutionName,
+        bound.programName,
+        bound.majorCode,
+        bound.collegeName,
+        bound.degreeType,
+        bound.studyMode,
+        discipline.code,
         targetYear,
-      );
-      bound.location = chained.location;
+      ]);
+      if (locationCache?.has(key)) bound.location = locationCache.get(key);
+      else {
+        const chained = bindRecommendationEvidence(
+          bound,
+          run,
+          discipline,
+          own,
+          targetYear,
+        );
+        bound.location = chained.location;
+        locationCache?.set(key, chained.location);
+      }
     }
     const add = (
       field: ProgramFact["field"],

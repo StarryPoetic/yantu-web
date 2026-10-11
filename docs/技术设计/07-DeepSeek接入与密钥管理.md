@@ -293,8 +293,11 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `searchDailyRequestsPerUser` | 180 |
 | `searchDailyRequestsGlobal` | 900 |
 | `collectionTargetMs` | 300000 |
+| `finalReserveMs` | 150000 |
 | `reads` | 180 |
 | `schoolReads` | 16 |
+| `schoolDiscoveryReads` | 1 |
+| `discoveryReads` | 8 |
 | `platformReads` | 4 |
 | `concurrency` | 8 |
 | `initialReads` | 120 |

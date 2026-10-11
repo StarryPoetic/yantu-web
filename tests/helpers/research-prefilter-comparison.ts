@@ -74,10 +74,12 @@ try {
           throw new Error("Read-only comparison refuses migrations");
         },
       } as unknown as Store,
-      { now: () => at },
+      { now: () => at, readOnly: true },
     );
     // Frozen library for both variants; simulated requests never mutate the copy.
     library.save = () => {};
+    library.saveIncremental = async () => {};
+    library.flush = async () => {};
     library.recordAttempt = () => {};
     const run = generateGuidance({
       subjectId: "offline-comparison",

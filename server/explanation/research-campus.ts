@@ -26,6 +26,7 @@ export function collegeCampusPolicyApplies(
   body: string,
   collegeName?: string,
 ) {
+  if (!passage.includes("的新生")) return undefined;
   const pattern =
     /(?:录取在)?([^。；\n:：]{2,150})的新生(?:所在校区|培养地点|学习地点)/g;
   const local = [...passage.matchAll(pattern)].at(-1);

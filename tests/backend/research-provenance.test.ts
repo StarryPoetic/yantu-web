@@ -56,6 +56,23 @@ function fixture() {
   return { parent, child };
 }
 
+test("cached provenance and body-year parsing revalidate nested metadata, body and transport identity changes", () => {
+  const { parent, child } = fixture();
+  const linked = normalizeAttachedEvidence(child, parent, plainRows);
+  assert.ok(validatedSourceProvenance(linked));
+  assert.equal(safeSourceYear(linked), 2027);
+  linked.provenance!.parentUrl = "https://other.edu.cn/catalog";
+  assert.equal(validatedSourceProvenance(linked), undefined);
+  assert.equal(safeSourceYear(linked), undefined);
+  linked.provenance!.parentUrl = parent.url;
+  assert.ok(validatedSourceProvenance(linked));
+  linked.excerpt = "其他大学版权所有。2026年硕士研究生招生专业目录。";
+  assert.equal(validatedSourceProvenance(linked), undefined);
+  assert.equal(safeSourceYear(linked), 2026);
+  linked.kind = "search_snippet";
+  assert.equal(safeSourceYear(linked), undefined);
+});
+
 test("linked school XLS binds actual owner and master's scope while preserving exact child words", () => {
   const { parent, child } = fixture();
   assert.equal(sourceHasSchoolIdentity(child, school), false);

@@ -53,7 +53,28 @@ function contradictsOwner(source: WebSource, institutionName: string) {
 }
 
 /** Rechecks context structure and its actual owner passage; source titles alone never bind identity. */
+const provenanceCache = new WeakMap<
+  WebSource,
+  { body: string; key: string; valid: boolean }
+>();
 export function validatedSourceProvenance(source: WebSource) {
+  if (!source.provenance) return undefined;
+  const key = JSON.stringify([
+    source.id,
+    source.url,
+    source.title,
+    source.kind,
+    source.parentSourceId,
+    source.provenance,
+  ]);
+  const cached = provenanceCache.get(source);
+  if (cached?.body === source.excerpt && cached.key === key)
+    return cached.valid ? source.provenance : undefined;
+  const value = validateProvenance(source);
+  provenanceCache.set(source, { body: source.excerpt, key, valid: !!value });
+  return value;
+}
+function validateProvenance(source: WebSource) {
   const context = source.provenance;
   if (
     !context ||

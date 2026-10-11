@@ -71,6 +71,44 @@ const base = () => ({
   }),
 });
 
+test("priority collection spends at most one discovery read per school and never reads doctoral materials", async () => {
+  const titles = [
+    "招生信息首页",
+    "博士招生专业目录",
+    "2024年硕士招生专业目录",
+    "复试分数线",
+    "导航首页",
+    "拟录取名单",
+    "2026年硕士招生专业目录",
+  ];
+  const sources = titles.map((title, i) => ({
+    ...page(),
+    title: `示例研究大学${title}`,
+    url: `https://example.edu.cn/p${i}`,
+    kind: "search_snippet" as const,
+  }));
+  const reads: string[] = [];
+  const result = await repairResearchEvidence({
+    ...base(),
+    sources: [],
+    priorityDocuments: true,
+    web: web(sources),
+    maxReads: 8,
+    readPage: async (url) => {
+      reads.push(url);
+      return { text: page().excerpt, contentType: "text/plain" };
+    },
+  });
+  assert.deepEqual(reads, [
+    sources[6].url,
+    sources[2].url,
+    sources[3].url,
+    sources[5].url,
+    sources[0].url,
+  ]);
+  assert.equal(result.readCount, 5);
+});
+
 test("reused citations are rebased as a source graph without changing original retrieval time or words", () => {
   const parent = page();
   const child: WebSource = {

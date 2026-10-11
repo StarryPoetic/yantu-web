@@ -1,10 +1,26 @@
 import unittest
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class BatchOneResearchDocsTests(unittest.TestCase):
+    def test_rework_records_equivalence_performance_and_no_new_paid_run(self):
+        text = (ROOT / 'docs/实施说明.md').read_text(encoding='utf-8').split('### 13.19.', 1)[1]
+        for phrase in ('saveIncremental', 'research_pending_schools', 'setImmediate',
+                       '13932', '缺失0、多出0', '2528', '242.8毫秒',
+                       'finalReserveMs=150000', 'schoolDiscoveryReads=1',
+                       'RESEARCH_COLLECTION_TIMEOUT', '实际HTTP、付费token及费用始终为0'):
+            self.assertIn(phrase, text)
+        elapsed = re.search(r'累计耗时 \*\*[\d.]+→([\d.]+)秒', text)
+        self.assertIsNotNone(elapsed)
+        self.assertLess(float(elapsed.group(1)), 180.7)
+        record = (ROOT / 'docs/阶段7真实验证记录.md').read_text(encoding='utf-8').split('### 第一批监督返工后的遗留问题更新', 1)[1]
+        self.assertIn('真实网络/付费调用/token/费用均为0', record)
+        self.assertIn('632523毫秒', record)
+        self.assertIn('另行授权', record)
+
     def test_collection_scope_and_evidence_limits_are_explicit(self):
         text = (ROOT / 'docs/实施说明.md').read_text(encoding='utf-8').split('### 13.18.', 1)[1]
         for phrase in ('1–3', '每城最多15', '179校', '60组', '估计',

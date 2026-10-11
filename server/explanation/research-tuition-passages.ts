@@ -1,11 +1,15 @@
+import { researchTextCache } from "./research-cache.ts";
 /** Keep exact continuous fee clauses; normalized text is only for recognition/deduplication. */
-export const normalizedEvidence = (text: string) =>
-  text.normalize("NFKC").replace(/\s+/g, "");
+export const normalizedEvidence = researchTextCache((text: string) =>
+  text.normalize("NFKC").replace(/\s+/g, ""),
+);
 
 export const tuitionMoney =
   /(?<![\d.,])(\d+(?:,\d{3})*(?:\.\d+)?)\s*(万)?\s*元/g;
 
-export function tuitionPassages(body: string) {
+const cachedTuitionPassages = researchTextCache(function tuitionPassages(
+  body: string,
+) {
   const parts = [...body.matchAll(/[^。；;\n]+/g)];
   return parts.flatMap((part, index) => {
     const previous = parts[index - 1];
@@ -53,4 +57,8 @@ export function tuitionPassages(body: string) {
         }),
       );
   });
-}
+});
+
+export const tuitionPassages = (body: string) => [
+  ...cachedTuitionPassages(body),
+];

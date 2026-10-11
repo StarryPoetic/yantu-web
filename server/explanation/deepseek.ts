@@ -19,6 +19,8 @@ export interface ModelAdapter {
   ): Promise<ModelReply>;
 }
 export interface ModelRequestOptions {
+  /** Server-owned cancellation; never serialized into the provider request. */
+  signal?: AbortSignal;
   /** Internal accounting hooks, never sent to the provider. */
   onCall?: () => void;
   /** Server-owned collection lane; never sent to the provider or accepted from browser input. */
@@ -343,6 +345,7 @@ export function createDeepSeekAdapter(
       : globalThis.fetch);
   return {
     async complete(messages, options = {}) {
+      options.signal?.throwIfAborted();
       if (!config.enabled) throw new ModelError("MODEL_DISABLED");
       if (!config.apiKey) throw new ModelError("MODEL_NOT_CONFIGURED");
       const selected = resolveModelRequest(options);
@@ -357,6 +360,8 @@ export function createDeepSeekAdapter(
       )
         throw new ModelError("INVALID_MODEL_OPTIONS");
       const controller = new AbortController();
+      const abort = () => controller.abort(options.signal?.reason);
+      options.signal?.addEventListener("abort", abort, { once: true });
       const timeout = setTimeout(
         () => controller.abort(),
         Math.min(
@@ -448,6 +453,7 @@ export function createDeepSeekAdapter(
         if (error instanceof ModelError) throw error;
         throw new ModelError("PROVIDER_NETWORK_ERROR");
       } finally {
+        options.signal?.removeEventListener("abort", abort);
         clearTimeout(timeout);
         clearTimeout(idleTimeout);
       }

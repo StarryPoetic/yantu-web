@@ -6,6 +6,7 @@ import {
   evaluateDemandMatch,
   extractProgramExams,
   rankDemandCandidates,
+  programEntries,
 } from "../../server/explanation/research-matching.ts";
 import {
   generateGuidance,
@@ -65,6 +66,18 @@ const twoRoutes = () =>
   source(
     `${school}2027年硕士研究生招生专业目录。初试考试科目：\n080200 机械工程 学术学位 ①101思想政治理论 ②201英语一 ③301数学一 ④811机械原理。机械工程培养地点：杭州市钱塘区大学路1号。\n085500 机械 专业学位 ①101思想政治理论 ②204英语二 ③302数学二 ④811机械原理。机械专业硕士培养地点：杭州市钱塘区大学路1号。\n${school}地址：浙江省杭州市钱塘区大学路1号。`,
   );
+
+test("catalogue memoization follows text changes and retains the caller's current discipline objects", () => {
+  const page = twoRoutes();
+  const initial = structuredClone(discipline("0802"));
+  const first = programEntries(page, [initial]);
+  first[0].programName = "caller mutation";
+  const current = { ...initial, degreeType: "professional" as const };
+  assert.equal(programEntries(page, [current])[0].discipline, current);
+  assert.equal(programEntries(page, [current])[0].programName, "机械工程");
+  page.excerpt = "招生专业目录暂无内容";
+  assert.equal(programEntries(page, [current]).length, 0);
+});
 
 test("opt-in scoped exam extraction preserves an active college's same-code programme beside a stopped college", () => {
   const page = source(

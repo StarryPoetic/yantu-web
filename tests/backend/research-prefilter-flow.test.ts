@@ -4,6 +4,28 @@ import { prefilterFixture } from "../helpers/research-prefilter-fixture.ts";
 import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import { researchReportMarkdown } from "../../src/workspace/research-report.ts";
 
+test("national discovery links cannot consume the main read budget across many schools", async () => {
+  const f = prefilterFixture();
+  const reader = f.config.reader!;
+  f.config.reader = async (url, options) => {
+    const response = await reader(url, options);
+    if (new URL(url).hostname === "api.search.brave.com") {
+      const data = JSON.parse(response.text);
+      for (const result of data.web.results)
+        result.title = result.title.replace(/2026.*$/, "招生信息首页");
+      return { ...response, text: JSON.stringify(data) };
+    }
+    return response;
+  };
+  await f.create().generate({
+    strategy: "two-stage",
+    subjectId: f.run.subjectId,
+    run: f.run,
+  });
+  assert.equal(f.counts.reads, B.discoveryReads);
+  assert.equal(new Set(f.readDomains).size, B.discoveryReads);
+});
+
 test("two-stage flow persists local scores before any paid call, reads only selected schools and continues collecting after ten", async () => {
   const f = prefilterFixture();
   const complete = f.config.adapter!.complete;
@@ -188,46 +210,52 @@ test("retry reuses exact shortlist and evidence despite changed local facts, wit
   assert.equal(report.usage!.reads.reads, 0);
 });
 
-test("total deadline during refinement retains completed school evidence, paid counts and the ten-school target", async () => {
-  const f = prefilterFixture();
-  const reader = f.config.reader!;
-  let searches = 0;
-  f.config.researchTotalTimeoutMs = 1500;
-  f.config.reader = async (url, options) => {
-    if (new URL(url).hostname === "api.search.brave.com" && ++searches === 2)
-      return new Promise(() => {});
-    return reader(url, options);
-  };
-  const report = await f.create().generate({
-    strategy: "two-stage",
-    subjectId: f.run.subjectId,
-    run: f.run,
-    onCheckpoint: f.save,
+for (const useFlash of [true, false])
+  test(`collection deadline reserves one final Pro call and resumes (Flash=${useFlash})`, async () => {
+    const f = prefilterFixture();
+    const reader = f.config.reader!;
+    let searches = 0;
+    f.config.researchTotalTimeoutMs = 9000;
+    f.config.researchUseFlash = useFlash;
+    f.config.reader = async (url, options) => {
+      if (new URL(url).hostname === "api.search.brave.com" && ++searches === 2)
+        return new Promise(() => {});
+      return reader(url, options);
+    };
+    const report = await f.create().generate({
+      strategy: "two-stage",
+      subjectId: f.run.subjectId,
+      run: f.run,
+      onCheckpoint: f.save,
+    });
+    assert.equal(report.reason, "RESEARCH_COLLECTION_TIMEOUT");
+    assert.equal(
+      report.usage!.model.byModel?.["deepseek-v4-pro"]?.calls,
+      useFlash ? 1 : 2,
+    );
+    assert.ok(report.prefilter);
+    assert.equal(report.recommendations.length, 5);
+    assert.equal(report.usage!.searches.paid, 2);
+    assert.equal(report.coverage!.targetMin, 10);
+    assert.ok(
+      report.coverage!.shortfallReasons.some((s) => s.includes("尚未达到10所")),
+    );
+    assert.ok(f.checkpoint().prefilter);
+    assert.notEqual(f.checkpoint().evidenceReady, true);
+    f.config.reader = reader;
+    f.config.researchTotalTimeoutMs = 10000;
+    const resumed = await f.create().generate({
+      strategy: "two-stage",
+      subjectId: f.run.subjectId,
+      run: f.run,
+      mode: "retry",
+      checkpoint: f.checkpoint(),
+      previousReport: report,
+      onCheckpoint: f.save,
+    });
+    assert.equal(resumed.recommendations.length, 10);
+    assert.equal(f.counts.reads, 12);
+    assert.equal(f.counts.searches, 60);
+    assert.equal(resumed.usage!.searches.paid, 58);
+    assert.equal(resumed.usage!.reads.reads, 7);
   });
-  assert.equal(report.reason, "RESEARCH_TOTAL_TIMEOUT");
-  assert.ok(report.prefilter);
-  assert.equal(report.recommendations.length, 5);
-  assert.equal(report.usage!.searches.paid, 2);
-  assert.equal(report.coverage!.targetMin, 10);
-  assert.ok(
-    report.coverage!.shortfallReasons.some((s) => s.includes("尚未达到10所")),
-  );
-  assert.ok(f.checkpoint().prefilter);
-  assert.notEqual(f.checkpoint().evidenceReady, true);
-  f.config.reader = reader;
-  f.config.researchTotalTimeoutMs = 10000;
-  const resumed = await f.create().generate({
-    strategy: "two-stage",
-    subjectId: f.run.subjectId,
-    run: f.run,
-    mode: "retry",
-    checkpoint: f.checkpoint(),
-    previousReport: report,
-    onCheckpoint: f.save,
-  });
-  assert.equal(resumed.recommendations.length, 10);
-  assert.equal(f.counts.reads, 12);
-  assert.equal(f.counts.searches, 60);
-  assert.equal(resumed.usage!.searches.paid, 58);
-  assert.equal(resumed.usage!.reads.reads, 7);
-});

@@ -1,3 +1,4 @@
+import { researchCompute } from "./research-compute.ts";
 import type { PlanSnapshot } from "../planning/index.ts";
 import { validResearchTarget } from "./research-priority-facts.ts";
 import type { ResearchTargetScore } from "../../shared/research-priority-facts.ts";
@@ -65,11 +66,14 @@ export interface ResearchEvidenceLibrary {
   coverageStats(): { librarySchoolCount: number; libraryProgramCount: number };
   isFresh(url: string, targetYear: string): boolean;
   save(source: WebSource): void;
+  saveIncremental?(source: WebSource, signal?: AbortSignal): Promise<void>;
+  flush?(signal?: AbortSignal): Promise<void>;
   recordAttempt(attempt: ResearchReadAttempt): void;
   attempts(urls?: string[]): ResearchReadAttempt[];
 }
 
 export interface ResearchLibraryOptions {
+  readOnly?: boolean;
   now?: () => number;
   /** Exact additional public official hosts; *.edu.cn is accepted by default. */
   allowedHosts?: string[];
@@ -383,6 +387,37 @@ export function createResearchEvidenceLibrary(
       "ALTER TABLE research_public_read_attempts ADD COLUMN tls_code TEXT",
     );
 
+  if (!options.readOnly)
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS research_pending_schools(domain TEXT PRIMARY KEY, revision INTEGER NOT NULL DEFAULT 1) STRICT",
+    );
+  let incremental = false;
+  const dirty = new Set<string>();
+  const insertFacts = (key: string, facts: ProgramFact[]) => {
+    const insert = db.prepare(
+      "INSERT OR IGNORE INTO research_program_facts(identity,field,source_key,school,domain,code,year,payload) VALUES (?,?,?,?,?,?,?,?)",
+    );
+    for (const fact of facts)
+      insert.run(
+        JSON.stringify([
+          fact.schoolName,
+          fact.collegeName ?? "",
+          fact.majorCode,
+          fact.programName,
+          fact.degreeType,
+          fact.studyMode ?? "",
+          fact.year ?? null,
+        ]),
+        fact.field,
+        key,
+        fact.schoolName,
+        fact.registrableDomain,
+        fact.disciplineCode,
+        fact.year ?? null,
+        JSON.stringify(fact),
+      );
+  };
+
   // Backfill existing stage-1/3 originals with the same deterministic extraction, never stored recommendations.
   function rebuildFacts(
     domain?: string,
@@ -471,6 +506,8 @@ export function createResearchEvidenceLibrary(
       }
   }
   if (
+    (options.readOnly ||
+      !db.prepare("SELECT 1 FROM research_pending_schools LIMIT 1").get()) &&
     (!db.prepare("SELECT 1 FROM research_program_facts LIMIT 1").get() ||
       db
         .prepare(
@@ -537,6 +574,15 @@ export function createResearchEvidenceLibrary(
         for (const { school } of schoolRegistry.byCity(city))
           names.add(school.name);
       const domains = new Set(input.registrableDomains ?? []);
+      const pendingDomains = new Set(
+        options.readOnly
+          ? []
+          : (
+              db
+                .prepare("SELECT domain FROM research_pending_schools")
+                .all() as { domain: string }[]
+            ).map((row) => row.domain),
+      );
       const supportQuery = db.prepare(
         "SELECT retrieved_at,evidence_year FROM research_public_sources WHERE json_valid(payload) AND json_extract(payload,'$.id')=?",
       );
@@ -545,7 +591,11 @@ export function createResearchEvidenceLibrary(
         { retrieved_at: string; evidence_year: number | null } | undefined
       >();
       return (
-        db.prepare("SELECT payload FROM research_program_facts").all() as {
+        db
+          .prepare(
+            "SELECT payload FROM research_program_facts ORDER BY school,code,year DESC,identity,field,source_key,payload",
+          )
+          .all() as {
           payload: string;
         }[]
       ).flatMap((row) => {
@@ -591,7 +641,9 @@ export function createResearchEvidenceLibrary(
             );
           });
         const current =
-          fresh(fact.retrievedAt, fact.year, input.targetYear) && supportFresh;
+          !pendingDomains.has(fact.registrableDomain) &&
+          fresh(fact.retrievedAt, fact.year, input.targetYear) &&
+          supportFresh;
         return [
           {
             ...fact,
@@ -617,6 +669,141 @@ export function createResearchEvidenceLibrary(
         !!row &&
         fresh(row.retrieved_at, row.evidence_year ?? undefined, targetYear)
       );
+    },
+    async saveIncremental(source, signal) {
+      signal?.throwIfAborted();
+      const normalized = publicSource(source);
+      if (!normalized) return;
+      const key = publicPageKey(normalized.finalUrl ?? normalized.url);
+      incremental = true;
+      try {
+        this.save(source);
+      } finally {
+        incremental = false;
+      }
+      const row = db
+        .prepare("SELECT payload FROM research_public_sources WHERE url=?")
+        .get(key) as { payload: string } | undefined;
+      if (
+        !row ||
+        (JSON.parse(row.payload) as WebSource).retrievedAt !==
+          normalized.retrievedAt
+      )
+        return;
+      const domain = registrableDomain(new URL(normalized.url).hostname);
+      dirty.add(domain);
+      db.prepare(
+        "INSERT INTO research_pending_schools(domain) VALUES (?) ON CONFLICT(domain) DO UPDATE SET revision=revision+1",
+      ).run(domain);
+      const facts = await researchCompute(
+        "facts",
+        [normalized, [normalized], new Date(now()).toISOString()],
+        signal,
+      );
+      signal?.throwIfAborted();
+      // Another refresh may have won while this page was being extracted.
+      if (
+        (
+          db
+            .prepare("SELECT payload FROM research_public_sources WHERE url=?")
+            .get(key) as { payload: string } | undefined
+        )?.payload !== row.payload
+      )
+        return;
+      store.transaction(() => {
+        db.prepare("DELETE FROM research_program_facts WHERE source_key=?").run(
+          key,
+        );
+        insertFacts(key, facts);
+      });
+    },
+    async flush(signal) {
+      if (options.readOnly) return;
+      for (const row of db
+        .prepare("SELECT domain FROM research_pending_schools ORDER BY domain")
+        .all() as { domain: string }[])
+        dirty.add(row.domain);
+      if (!dirty.size) return;
+      const originals = (
+        db
+          .prepare(
+            "SELECT url, payload FROM research_public_sources ORDER BY rowid",
+          )
+          .all() as { url: string; payload: string }[]
+      ).flatMap((row) => {
+        const source = publicSource(JSON.parse(row.payload));
+        return source ? [{ key: row.url, source, payload: row.payload }] : [];
+      });
+      const flushSchool = async (domain: string) => {
+        signal?.throwIfAborted();
+        const rows = originals.filter(
+          (row) =>
+            registrableDomain(new URL(row.source.url).hostname) === domain,
+        );
+        const revision = (
+          db
+            .prepare(
+              "SELECT revision FROM research_pending_schools WHERE domain=?",
+            )
+            .get(domain) as { revision: number } | undefined
+        )?.revision;
+        const facts = await researchCompute(
+          "schoolFacts",
+          { rows, at: new Date(now()).toISOString() },
+          signal,
+        );
+        signal?.throwIfAborted();
+        if (
+          (
+            db
+              .prepare(
+                "SELECT revision FROM research_pending_schools WHERE domain=?",
+              )
+              .get(domain) as { revision: number } | undefined
+          )?.revision !== revision
+        )
+          return;
+        store.transaction(() => {
+          if (
+            rows.some(
+              (row) =>
+                (
+                  db
+                    .prepare(
+                      "SELECT payload FROM research_public_sources WHERE url=?",
+                    )
+                    .get(row.key) as { payload: string } | undefined
+                )?.payload !== row.payload,
+            )
+          )
+            throw new Error(
+              "Research evidence changed during school binding; retry from checkpoint",
+            );
+          for (const row of rows)
+            db.prepare(
+              "DELETE FROM research_program_facts WHERE source_key=?",
+            ).run(row.key);
+          for (const row of facts) insertFacts(row.key, row.facts);
+          db.prepare("DELETE FROM research_pending_schools WHERE domain=?").run(
+            domain,
+          );
+        });
+        dirty.delete(domain);
+      };
+      const domains = [...dirty].sort();
+      for (
+        let offset = 0;
+        offset < domains.length;
+        offset += B.collectionConcurrency
+      ) {
+        const results = await Promise.allSettled(
+          domains
+            .slice(offset, offset + B.collectionConcurrency)
+            .map(flushSchool),
+        );
+        for (const result of results)
+          if (result.status === "rejected") throw result.reason;
+      }
     },
     save(source) {
       const normalized = publicSource(source);
@@ -725,13 +912,20 @@ export function createResearchEvidenceLibrary(
               admissionYear: value.provenance?.admissionYear,
               mastersScope: value.provenance?.mastersScope,
             });
-          rebuildFacts(
-            registrableDomain(new URL(normalized.url).hostname),
-            storageUrl,
-            !previous ||
-              bindingContent(JSON.parse(previous.payload) as WebSource) !==
-                bindingContent(normalized),
-          );
+          if (incremental) {
+            const domain = registrableDomain(new URL(normalized.url).hostname);
+            dirty.add(domain);
+            db.prepare(
+              "INSERT INTO research_pending_schools(domain) VALUES (?) ON CONFLICT(domain) DO UPDATE SET revision=revision+1",
+            ).run(domain);
+          } else
+            rebuildFacts(
+              registrableDomain(new URL(normalized.url).hostname),
+              storageUrl,
+              !previous ||
+                bindingContent(JSON.parse(previous.payload) as WebSource) !==
+                  bindingContent(normalized),
+            );
         }
       });
     },
@@ -768,10 +962,30 @@ export function createResearchEvidenceLibrary(
         params.push(...codes);
         // A geography/fee page may mention another subject, yet be part of an
         // exact bound project chain. Recall its literal support with the fact.
-        clauses.push(`EXISTS (SELECT 1 FROM research_program_facts f WHERE f.code IN (${codes.map(() => "?").join(",")}) AND
-          (f.source_key=s.url OR EXISTS (SELECT 1 FROM json_each(f.payload, '$.value.supportingEvidence') ref
-            WHERE json_extract(ref.value, '$.sourceId')=json_extract(s.payload, '$.id'))))`);
-        params.push(...codes);
+        // Materialize support IDs once. The previous correlated json_each scan
+        // re-parsed every fact for every candidate page and preferred school.
+        const supportKeys = new Set<string>();
+        const supportIds = new Set<string>();
+        for (const row of db
+          .prepare(
+            `SELECT source_key,payload FROM research_program_facts WHERE code IN (${codes.map(() => "?").join(",")})`,
+          )
+          .all(...codes) as { source_key: string; payload: string }[]) {
+          supportKeys.add(row.source_key);
+          const fact = JSON.parse(row.payload) as ProgramFact;
+          if ("supportingEvidence" in fact.value)
+            for (const ref of fact.value.supportingEvidence ?? [])
+              supportIds.add(ref.sourceId);
+        }
+        if (supportKeys.size || supportIds.size) {
+          clauses.push(
+            `(s.url IN (SELECT value FROM json_each(?)) OR json_extract(s.payload,'$.id') IN (SELECT value FROM json_each(?)))`,
+          );
+          params.push(
+            JSON.stringify([...supportKeys]),
+            JSON.stringify([...supportIds]),
+          );
+        }
       }
       if (schools.length) {
         // School-wide policies remain useful, while another indexed subject is not recalled merely by school.

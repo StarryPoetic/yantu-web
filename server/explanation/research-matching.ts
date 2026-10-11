@@ -141,8 +141,39 @@ import {
 } from "./research-program-scope.ts";
 export { programRowScope } from "./research-program-scope.ts";
 
-/** Shared deterministic catalogue row discovery, independent of any user or model. */
+const entryCache = new WeakMap<
+  WebSource,
+  {
+    text: string;
+    title: string;
+    values: Map<string, ReturnType<typeof parseProgramEntries>>;
+  }
+>();
 export function programEntries(
+  source: WebSource,
+  disciplines: readonly Discipline[],
+) {
+  let cache = entryCache.get(source);
+  if (!cache || cache.text !== source.excerpt || cache.title !== source.title) {
+    cache = { text: source.excerpt, title: source.title, values: new Map() };
+    entryCache.set(source, cache);
+  }
+  const key = JSON.stringify(
+    disciplines.map((d) => [d.code, d.name, d.aliases]),
+  );
+  let entries = cache.values.get(key);
+  if (!entries) {
+    entries = parseProgramEntries(source, disciplines);
+    cache.values.set(key, entries);
+  }
+  return entries.map((entry) => ({
+    ...entry,
+    discipline: disciplines.find((d) => entry.majorCode.startsWith(d.code))!,
+  }));
+}
+
+/** Shared deterministic catalogue row discovery, independent of any user or model. */
+function parseProgramEntries(
   source: WebSource,
   disciplines: readonly Discipline[],
 ) {

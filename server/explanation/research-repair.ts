@@ -1,3 +1,4 @@
+import { researchDocumentPriority } from "./research-document-priority.ts";
 import { createResearchReader } from "./research-reader.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import {
@@ -116,13 +117,14 @@ export async function repairResearchEvidence(input: {
   lookupKeys?: readonly string[];
   attempts?: readonly ResearchReadAttempt[];
   readPage: (url: string) => Promise<WebReadResult & { retrievedAt?: string }>;
-  onSource?: (source: WebSource) => void;
+  onSource?: (source: WebSource) => void | Promise<void>;
   onAttempt?: (attempt: ResearchReadAttempt) => void;
   onProgress: (detail: string) => Promise<void>;
   now?: () => number;
   /** Two-stage runs never follow search results outside the selected school. */
   allowedDomains?: readonly string[];
   priorityDocuments?: boolean;
+  discoveryReadLimit?: number;
   queryForGap?: (gap: ResearchEvidenceGap) => string[];
   stop?: (sources: readonly WebSource[]) => boolean;
   needsEvidence?: (
@@ -131,9 +133,25 @@ export async function repairResearchEvidence(input: {
   ) => boolean;
 }) {
   const matchesTitle = (field: ResearchEvidenceGap["field"], title: string) =>
-    titles[field].test(title) ||
-    (!!input.priorityDocuments &&
-      /复试|录取|报录|推免|就业|评估|排名|生源|产业/.test(title));
+    input.priorityDocuments
+      ? researchDocumentPriority(title) > 0
+      : titles[field].test(title);
+  const documentOrder = (
+    a: { title: string; url: string },
+    b: { title: string; url: string },
+    program?: string,
+  ) =>
+    researchDocumentPriority(b.title, program) -
+      researchDocumentPriority(a.title, program) ||
+    researchYearPriority(
+      explicitAdmissionsYears(b.title)[0],
+      input.targetYear,
+    ) -
+      researchYearPriority(
+        explicitAdmissionsYears(a.title)[0],
+        input.targetYear,
+      ) ||
+    a.url.localeCompare(b.url);
   const scheduler = createResearchReader(
     (url) => input.readPage(url),
     input.signal,
@@ -179,6 +197,11 @@ export async function repairResearchEvidence(input: {
       Math.max(1, Math.floor(maxReads / Math.max(1, schools.size))),
     );
     let gapReadLimit = maxReads;
+    const discoveryReads = new Map<string, number>();
+    const discoveryLimit = Math.min(
+      B.schoolDiscoveryReads,
+      Math.max(0, input.discoveryReadLimit ?? B.schoolDiscoveryReads),
+    );
     const at = () => new Date(input.now?.() ?? Date.now()).toISOString();
     const mayRead = (url: string) => {
       if (touched.has(url)) return false;
@@ -208,13 +231,31 @@ export async function repairResearchEvidence(input: {
       candidates: { url: string; title: string; parent?: WebSource }[],
       gap: ResearchEvidenceGap,
     ) {
+      let discoverySlots = Math.max(
+        0,
+        discoveryLimit - (discoveryReads.get(gap.institutionName) ?? 0),
+      );
       const values = candidates
+        .filter(
+          (c) =>
+            !input.priorityDocuments ||
+            researchDocumentPriority(c.title, gap.programName) >= -10,
+        )
+        .sort((a, b) =>
+          input.priorityDocuments ? documentOrder(a, b, gap.programName) : 0,
+        )
         .filter(
           (c) =>
             !input.allowedDomains ||
             input.allowedDomains.includes(academicDomain(c.url)),
         )
         .filter((c) => unread(c.url))
+        .filter(
+          (c) =>
+            !input.priorityDocuments ||
+            researchDocumentPriority(c.title, gap.programName) > 0 ||
+            discoverySlots-- > 0,
+        )
         .filter((c, i, all) => all.findIndex((a) => a.url === c.url) === i)
         .slice(0, Math.min(B.concurrency, gapReadLimit - readCount));
       if (input.stop) {
@@ -254,6 +295,18 @@ export async function repairResearchEvidence(input: {
         ).library?.status?.includes("stale")
       )
         return;
+      if (input.priorityDocuments) {
+        const priority = researchDocumentPriority(
+          candidate.title,
+          gap.programName,
+        );
+        if (priority < -10) return;
+        if (priority <= 0) {
+          const count = discoveryReads.get(gap.institutionName) ?? 0;
+          if (count >= discoveryLimit) return;
+          discoveryReads.set(gap.institutionName, count + 1);
+        }
+      }
       touched.add(candidate.url);
       readCount++;
       await input.onProgress(
@@ -301,7 +354,7 @@ export async function repairResearchEvidence(input: {
             .map(({ url, title }) => ({ url, title }));
         if (existing) sources.splice(sources.indexOf(existing), 1, source);
         else sources.push(source);
-        input.onSource?.(source);
+        await input.onSource?.(source);
         const attempt: ResearchReadAttempt = {
           url: candidate.url,
           status: "success",
@@ -348,12 +401,17 @@ export async function repairResearchEvidence(input: {
                 academicDomain(link.url) === academicDomain(source.url),
             ),
         );
-        const link = parent?.documentLinks?.find(
-          (link) =>
-            matchesTitle(gap.field, link.title) &&
-            unread(link.url) &&
-            academicDomain(link.url) === academicDomain(parent.url),
-        );
+        const link = parent?.documentLinks
+          ?.slice()
+          .sort((a, b) =>
+            input.priorityDocuments ? documentOrder(a, b, gap.programName) : 0,
+          )
+          .find(
+            (link) =>
+              matchesTitle(gap.field, link.title) &&
+              unread(link.url) &&
+              academicDomain(link.url) === academicDomain(parent.url),
+          );
         return parent && link ? [{ candidate: { ...link, parent }, gap }] : [];
       })
       .filter(
@@ -405,6 +463,10 @@ export async function repairResearchEvidence(input: {
         )
         .sort(
           (a, b) =>
+            (input.priorityDocuments
+              ? researchDocumentPriority(b.title, gap.programName) -
+                researchDocumentPriority(a.title, gap.programName)
+              : 0) ||
             researchYearPriority(
               explicitAdmissionsYears(b.title)[0],
               input.targetYear,
@@ -412,9 +474,10 @@ export async function repairResearchEvidence(input: {
               researchYearPriority(
                 explicitAdmissionsYears(a.title)[0],
                 input.targetYear,
-              ) || a.url.localeCompare(b.url),
+              ) ||
+            a.url.localeCompare(b.url),
         );
-      await wave(links.slice(0, B.concurrency), gap);
+      await wave(links, gap);
       if (
         readCount >= gapReadLimit ||
         requestCount >= maxRequests ||
@@ -482,16 +545,20 @@ export async function repairResearchEvidence(input: {
       if (found.reason)
         limitations.push(`${gap.institutionName}定向检索：${found.reason}`);
       const candidates = found.sources
+        .filter(
+          (source) =>
+            !input.priorityDocuments ||
+            researchDocumentPriority(source.title, gap.programName) >= -10,
+        )
+        .sort((a, b) =>
+          input.priorityDocuments ? documentOrder(a, b, gap.programName) : 0,
+        )
         .filter((source) =>
           sourceHasSchoolIdentity(source, gap.institutionName),
         )
         .slice(0, B.concurrency);
       await wave(candidates, gap);
-      for (const value of found.sources
-        .filter((source) =>
-          sourceHasSchoolIdentity(source, gap.institutionName),
-        )
-        .slice(0, B.concurrency)) {
+      for (const value of candidates) {
         if (
           readCount >= gapReadLimit ||
           (input.needsEvidence && !input.needsEvidence(gap, sources))
@@ -507,6 +574,11 @@ export async function repairResearchEvidence(input: {
           for (const child of parent.documentLinks
             ?.filter(
               (link) => matchesTitle(gap.field, link.title) && unread(link.url),
+            )
+            .sort((a, b) =>
+              input.priorityDocuments
+                ? documentOrder(a, b, gap.programName)
+                : 0,
             )
             .slice(0, B.concurrency) ?? [])
             await read({ ...child, parent }, gap);

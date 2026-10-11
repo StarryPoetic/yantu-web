@@ -1,15 +1,16 @@
+import { researchTextCache } from "./research-cache.ts";
 import { schoolRegistry } from "../schools/index.ts";
 import { registrableDomain } from "./web.ts";
 import type { WebSource } from "./web.ts";
 import { validatedSourceProvenance } from "./research-provenance.ts";
 
 /** School navigation links identify peers, not the owner of this page. */
-export function withoutSchoolLinks(text: string) {
+export const withoutSchoolLinks = researchTextCache((text: string) => {
   return text.replace(
     /(?:友情链接|相关链接|院校链接|兄弟院校|兄弟高校|兄弟学校)[\s\S]*?(?=学院地址|学校地址|联系地址|联系方式|联系我们|Copyright|版权所有|$)/gi,
     "",
   );
-}
+});
 
 /** Identify the page's school subject; fetched pages require actual body evidence. */
 const identityCache = new WeakMap<

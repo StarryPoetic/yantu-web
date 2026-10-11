@@ -1,3 +1,4 @@
+import { researchCompute } from "./research-compute.ts";
 import { createResearchCollector } from "./research-collection.ts";
 import {
   extractPriorityFacts,
@@ -1449,6 +1450,10 @@ export function createResearchReportModule(
             : B.researchTotalTimeoutMs),
         input.signal,
       );
+      let collectionStopped = false;
+      let collectionCheck: (() => void) | undefined;
+      let collectionSignal: AbortSignal | undefined;
+      let finalCalls = 0;
       const originalInput = input;
       input = { ...input, signal: deadline.signal };
       let lastStage: ResearchStage = "preparing";
@@ -1585,6 +1590,9 @@ export function createResearchReportModule(
               run: (subject, key, messages, validate, options = {}) =>
                 checkpointRuntime.run(subject, key, messages, validate, {
                   ...options,
+                  signal: options.thinking
+                    ? input.signal
+                    : (collectionSignal ?? input.signal),
                   timeoutMs: Math.min(
                     options.timeoutMs ??
                       (options.thinking
@@ -1594,6 +1602,9 @@ export function createResearchReportModule(
                   ),
                   onCall: () => {
                     live();
+                    if (collectionStopped && options.thinking && finalCalls > 0)
+                      throw new ModelError("RESEARCH_COLLECTION_TIMEOUT");
+                    if (options.thinking) finalCalls++;
                     usage.model.calls++;
                     const name = options.model ?? "deepseek-flash";
                     (byModel[name] ??= {
@@ -1619,7 +1630,7 @@ export function createResearchReportModule(
             };
             let temporaryRetries = 0;
             const beforeRetry = async (phase: ResearchStage) => {
-              if (temporaryRetries++ >= 1)
+              if (collectionStopped || temporaryRetries++ >= 1)
                 throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
               await stage(phase, "模型服务暂时繁忙，正在进行一次自动重试");
             };
@@ -1627,7 +1638,10 @@ export function createResearchReportModule(
               runtime: trackedRuntime,
               subjectId: input.subjectId,
               useFlash: config.researchUseFlash,
-              check: live,
+              check: () => {
+                live();
+                collectionCheck?.();
+              },
               beforeRetry: () => beforeRetry("researching"),
               onFailure: (code) => {
                 report.limitations.push(
@@ -1854,6 +1868,12 @@ export function createResearchReportModule(
                 ? preferredCityCandidateLeads(regions, disciplines)
                 : [];
             const library = dependencies.library;
+            const saveSource = async (source: WebSource) => {
+              live();
+              if (library?.saveIncremental)
+                await library.saveIncremental(source, input.signal);
+              else library?.save(source);
+            };
             const schoolPreferences = {
               cities: regions,
               selectedSchool,
@@ -1920,6 +1940,25 @@ export function createResearchReportModule(
               attempts.push(attempt);
               library?.recordAttempt(attempt);
             };
+            const collectionDeadline = prefilter
+              ? researchDeadline(
+                  Math.max(
+                    1,
+                    Math.min(
+                      B.collectionTargetMs,
+                      deadline.remaining() -
+                        Math.min(
+                          B.finalReserveMs,
+                          (config.researchTotalTimeoutMs ??
+                            B.defaultResearchTotalTimeoutMs) / 3,
+                        ),
+                    ),
+                  ),
+                  input.signal,
+                )
+              : undefined;
+            collectionCheck = () => collectionDeadline?.check();
+            collectionSignal = collectionDeadline?.signal;
             const scheduled = createResearchReader(
               async (value: string, signal: AbortSignal) => {
                 live();
@@ -1958,7 +1997,7 @@ export function createResearchReportModule(
                 await persist();
                 return result;
               },
-              input.signal,
+              collectionDeadline?.signal ?? input.signal,
             );
             usage.reads = scheduled.statistics;
             const cancellationPoll = setInterval(() => {
@@ -2040,7 +2079,7 @@ export function createResearchReportModule(
                   throw error;
                 }
               };
-              const refreshCoverage = () => {
+              const refreshCoverage = async () => {
                 const order = new Map(
                   scheduled.dispatchOrder.map((url, index) => [url, index]),
                 );
@@ -2061,15 +2100,19 @@ export function createResearchReportModule(
                   report.unstructuredSources = retained.unstructuredSources;
                   return;
                 }
-                const value = deriveResearchCoverage({
-                  run,
-                  disciplines: coveredDisciplines,
-                  sources: report.sources,
-                  recommendations: report.recommendations,
-                  candidateAudit: report.candidateAudit ?? [],
-                  targetYear: year,
-                  attempts,
-                });
+                const value = await researchCompute(
+                  "coverage",
+                  {
+                    run,
+                    disciplines: coveredDisciplines,
+                    sources: report.sources,
+                    recommendations: report.recommendations,
+                    candidateAudit: report.candidateAudit ?? [],
+                    targetYear: year,
+                    attempts,
+                  },
+                  input.signal,
+                );
                 report.candidateAudit = value.candidates;
                 report.evidenceCoverage = {
                   strategy: "program-evidence-v1",
@@ -2097,34 +2140,36 @@ export function createResearchReportModule(
                   report.generatedAt,
                 );
               };
-              const priorInventory = resumeEvidence
-                ? { recommendations: [], audit: [] }
-                : buildEvidenceCandidates({
-                    run,
-                    disciplines,
-                    sources: seeds,
-                    targetYear: year,
-                    schoolNames: [
-                      ...candidateLeads.map((item) => item.school),
-                      ...plan.directions.flatMap(
-                        (item) => item.searchSchools ?? [],
-                      ),
-                      ...(input.previousReport?.candidateAudit?.map(
-                        (item) => item.institutionName,
-                      ) ?? []),
-                    ],
-                  });
-              const priorCoverage = resumeEvidence
-                ? { gaps: [] }
-                : deriveResearchCoverage({
-                    run,
-                    disciplines,
-                    sources: seeds,
-                    recommendations: priorInventory.recommendations,
-                    candidateAudit: priorInventory.audit,
-                    targetYear: year,
-                    attempts,
-                  });
+              const priorInventory =
+                resumeEvidence || prefilter
+                  ? { recommendations: [], audit: [] }
+                  : buildEvidenceCandidates({
+                      run,
+                      disciplines,
+                      sources: seeds,
+                      targetYear: year,
+                      schoolNames: [
+                        ...candidateLeads.map((item) => item.school),
+                        ...plan.directions.flatMap(
+                          (item) => item.searchSchools ?? [],
+                        ),
+                        ...(input.previousReport?.candidateAudit?.map(
+                          (item) => item.institutionName,
+                        ) ?? []),
+                      ],
+                    });
+              const priorCoverage =
+                resumeEvidence || prefilter
+                  ? { gaps: [] }
+                  : deriveResearchCoverage({
+                      run,
+                      disciplines,
+                      sources: seeds,
+                      recommendations: priorInventory.recommendations,
+                      candidateAudit: priorInventory.audit,
+                      targetYear: year,
+                      attempts,
+                    });
               let checkedSources: readonly WebSource[] = seeds;
               let pendingGapIds = new Set(
                 priorCoverage.gaps.map((gap) => gap.id),
@@ -2187,41 +2232,81 @@ export function createResearchReportModule(
                 sourceDirections: new Map<string, string>(),
               };
               if (!resumeEvidence && prefilter) {
-                const queryTerms = await collector.plan(
-                  disciplines,
-                  referenceYears,
-                );
-                const refined = await refineResearchSchools({
-                  queryTerms,
-                  prefilter,
-                  run,
-                  disciplines,
-                  subjectId: input.subjectId,
-                  sources: seeds,
-                  targetYear: year,
-                  web,
-                  signal: scheduled.signal,
-                  lookupKeys,
-                  attempts,
-                  readPage: fetchPage,
-                  now: config.now,
-                  onSource: (source) => {
-                    live();
-                    const existing = report.sources.findIndex(
-                      (item) => item.url === source.url,
-                    );
-                    if (existing < 0) report.sources.push(source);
-                    else report.sources[existing] = source;
-                    library?.save(source);
-                  },
-                  onProgress: (detail) => stage("researching", detail),
-                });
-                found = refined;
-                lookupKeys = refined.lookupKeys;
-                pageReads = refined.readCount;
-                report.sources = refined.sources;
-                report.searched = refined.searched;
-                report.limitations.push(...refined.limitations);
+                report.sources = [...seeds];
+                try {
+                  const queryTerms = await collectionDeadline!.wait(
+                    collector.plan(disciplines, referenceYears),
+                  );
+                  const refined = await collectionDeadline!.wait(
+                    refineResearchSchools({
+                      queryTerms,
+                      prefilter,
+                      run,
+                      disciplines,
+                      subjectId: input.subjectId,
+                      sources: seeds,
+                      targetYear: year,
+                      web: {
+                        ...web,
+                        answer: (request, options) => {
+                          collectionDeadline!.check();
+                          return collectionDeadline!.wait(
+                            web.answer(request, options),
+                          );
+                        },
+                      },
+                      signal: scheduled.signal,
+                      lookupKeys,
+                      attempts,
+                      readPage: (url) => {
+                        collectionDeadline!.check();
+                        return collectionDeadline!.wait(fetchPage(url));
+                      },
+                      now: config.now,
+                      onSource: async (source) => {
+                        live();
+                        collectionDeadline!.check();
+                        scheduled.signal.throwIfAborted();
+                        const existing = report.sources.findIndex(
+                          (item) => item.url === source.url,
+                        );
+                        if (existing < 0) report.sources.push(source);
+                        else report.sources[existing] = source;
+                        if (library?.saveIncremental)
+                          await library.saveIncremental(
+                            source,
+                            scheduled.signal,
+                          );
+                        else library?.save(source);
+                      },
+                      onProgress: (detail) => stage("researching", detail),
+                    }),
+                  );
+                  found = refined;
+                  lookupKeys = refined.lookupKeys;
+                  pageReads = refined.readCount;
+                  report.sources = refined.sources;
+                  report.searched = refined.searched;
+                  report.limitations.push(...refined.limitations);
+                } catch (error) {
+                  live();
+                  if (!collectionDeadline!.signal.aborted) throw error;
+                  collectionStopped = true;
+                  report.searched ||=
+                    paidSearches > 0 || report.sources.length > 0;
+                  report.limitations.push(
+                    "收集时间已用尽，停止检索读取并保留最终分析时间；已保存证据可继续补查。",
+                  );
+                }
+                // The collection signal also bounds CPU rebinding; unfinished
+                // schools remain durably dirty and are rebuilt on continuation.
+                try {
+                  await library?.flush?.(collectionDeadline!.signal);
+                } catch (error) {
+                  live();
+                  if (!collectionDeadline!.signal.aborted) throw error;
+                  collectionStopped = true;
+                }
                 await persist();
               }
               if (!resumeEvidence && !prefilter) {
@@ -2240,9 +2325,9 @@ export function createResearchReportModule(
                         lookupKeys,
                         attempts,
                         readPage: fetchPage,
-                        onSource: (source) => {
+                        onSource: async (source) => {
                           live();
-                          library?.save(source);
+                          await saveSource(source);
                         },
                         onProgress: (detail) => stage("researching", detail),
                         now: config.now,
@@ -2623,7 +2708,7 @@ export function createResearchReportModule(
                           ...children,
                         );
                       }
-                      library?.save(source);
+                      await saveSource(source);
                     } catch (failure) {
                       live();
                       if (
@@ -2657,7 +2742,7 @@ export function createResearchReportModule(
                   }
                 }
                 for (const source of report.sources.filter(isSchoolPage))
-                  library?.save(source);
+                  await saveSource(source);
                 // Campus geography is a separate bounded lookup, only after reading an
                 // actual coded programme and a current campus policy. Discovery metadata
                 // never establishes the candidate's city by itself.
@@ -2813,7 +2898,7 @@ export function createResearchReportModule(
                     );
                   }
                 }
-                refreshCoverage();
+                await refreshCoverage();
                 if (
                   library &&
                   !supplement &&
@@ -2849,9 +2934,9 @@ export function createResearchReportModule(
                     lookupKeys,
                     attempts,
                     readPage: fetchPage,
-                    onSource: (source) => {
+                    onSource: async (source) => {
                       live();
-                      library.save(source);
+                      await saveSource(source);
                     },
                     onProgress: (detail) => stage("researching", detail),
                     now: config.now,
@@ -2864,7 +2949,7 @@ export function createResearchReportModule(
                   found.requestCount += extra.requestCount;
                   report.searched ||= extra.searched;
                   report.limitations.push(...extra.limitations);
-                  refreshCoverage();
+                  await refreshCoverage();
                 }
                 if (
                   (!report.sources.some(isSchoolPage) &&
@@ -2929,7 +3014,7 @@ export function createResearchReportModule(
                 report.sources = report.sources.filter((source) =>
                   selectedResearchSource(prefilter, source),
                 );
-                if (!report.sources.some(isSchoolPage))
+                if (!collectionStopped && !report.sources.some(isSchoolPage))
                   return {
                     ...report,
                     status: "partial",
@@ -2948,7 +3033,9 @@ export function createResearchReportModule(
                     },
                   };
               }
-              checkpoint.evidenceReady = true;
+              if (!prefilter && !resumeEvidence)
+                await library?.flush?.(input.signal);
+              checkpoint.evidenceReady = !collectionStopped;
               await stage("analyzing");
               // A search direction is a lead, not a restriction on evidence discovered later.
               // Only currently allowed national categories can be added from actual school text.
@@ -2971,21 +3058,25 @@ export function createResearchReportModule(
                       recommendations: retained.recommendations,
                       audit: retained.candidateAudit ?? [],
                     }
-                  : buildEvidenceCandidates({
-                      run,
-                      disciplines: evidencedDirections,
-                      sources: report.sources,
-                      targetYear: year,
-                      schoolNames: [
-                        ...candidateLeads.map((item) => item.school),
-                        ...(input.previousReport?.candidateAudit?.map(
-                          (item) => item.institutionName,
-                        ) ?? []),
-                        ...plan.directions.flatMap(
-                          (item) => item.searchSchools ?? [],
-                        ),
-                      ],
-                    });
+                  : await researchCompute(
+                      "inventory",
+                      {
+                        run,
+                        disciplines: evidencedDirections,
+                        sources: report.sources,
+                        targetYear: year,
+                        schoolNames: [
+                          ...candidateLeads.map((item) => item.school),
+                          ...(input.previousReport?.candidateAudit?.map(
+                            (item) => item.institutionName,
+                          ) ?? []),
+                          ...plan.directions.flatMap(
+                            (item) => item.searchSchools ?? [],
+                          ),
+                        ],
+                      },
+                      input.signal,
+                    );
               if (prefilter) {
                 inventory.audit = inventory.audit.filter((item) =>
                   prefilter.selected.some(
@@ -3014,12 +3105,32 @@ export function createResearchReportModule(
                 year,
               );
               if (prefilter) {
-                const collected = await collector.extract(
-                  report.sources,
-                  disciplines,
-                  year,
-                  targetScore,
-                );
+                let collected;
+                try {
+                  collected = await collectionDeadline!.wait(
+                    collector.extract(
+                      report.sources,
+                      disciplines,
+                      year,
+                      targetScore,
+                    ),
+                  );
+                } catch (error) {
+                  live();
+                  if (!collectionDeadline!.signal.aborted) throw error;
+                  collectionStopped = true;
+                  collected = {
+                    facts: report.sources.flatMap((source) =>
+                      extractPriorityFacts(
+                        source,
+                        disciplines,
+                        year,
+                        targetScore,
+                      ),
+                    ),
+                    unprocessedPages: report.sources.length,
+                  };
+                }
                 report.priorityFacts = collected.facts;
                 report.priorityCoverage = priorityCoverage(
                   collected.facts,
@@ -3061,17 +3172,15 @@ export function createResearchReportModule(
                       disciplineCodes: evidencedDirections.map((d) => d.code),
                       targetYear: year,
                     }) ?? []),
-                    ...report.sources
-                      .filter(isSchoolPage)
-                      .filter((source) => !source.library)
-                      .flatMap((source) =>
-                        extractProgramFacts(
-                          source,
-                          report.sources,
-                          report.generatedAt,
-                          report.recommendations,
-                        ),
-                      ),
+                    ...(await researchCompute(
+                      "reportFacts",
+                      {
+                        sources: report.sources,
+                        at: report.generatedAt,
+                        focus: report.recommendations,
+                      },
+                      input.signal,
+                    )),
                   ],
                   {
                     recommendations: report.recommendations,
@@ -3670,12 +3779,13 @@ export function createResearchReportModule(
                   `五类优先依据仍有${report.priorityCoverage.pending}个字段/年度待补查；未公开、不可访问或无法绑定的内容不作事实。`,
                 );
               }
+              if (collectionStopped) {
+                report.status = "partial";
+                report.reason = "RESEARCH_COLLECTION_TIMEOUT";
+                checkpoint.evidenceReady = false;
+              }
               report.limitations = [...new Set(report.limitations)];
-              for (const source of report.sources.filter(
-                (source) => !resumeEvidence && isSchoolPage(source),
-              ))
-                library?.save(source);
-              refreshCoverage();
+              await refreshCoverage();
               usage.searches.paid = paidSearches;
               usage.searches.cacheHits += checkpointSearchHits;
               await persist();
@@ -3683,6 +3793,7 @@ export function createResearchReportModule(
             } finally {
               clearInterval(cancellationPoll);
               scheduled.dispose();
+              collectionDeadline?.dispose();
             }
           })(),
         );

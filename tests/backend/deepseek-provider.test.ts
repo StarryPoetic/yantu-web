@@ -22,6 +22,40 @@ const statusCodes: [number, string][] = [
   [501, "PROVIDER_UNAVAILABLE"],
 ];
 
+test("collection cancellation aborts an in-flight provider request without sending its signal in JSON", async () => {
+  const controller = new AbortController();
+  let started!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const adapter = createDeepSeekAdapter({
+    enabled: true,
+    apiKey: "offline-test",
+    fetch: async (_url, init) => {
+      assert.equal(
+        Object.hasOwn(JSON.parse(String(init!.body)), "signal"),
+        false,
+      );
+      started();
+      return new Promise<Response>((_resolve, reject) =>
+        init!.signal!.addEventListener(
+          "abort",
+          () => reject(new Error("aborted")),
+          { once: true },
+        ),
+      );
+    },
+  });
+  const pending = adapter.complete([], { signal: controller.signal });
+  await ready;
+  controller.abort();
+  await assert.rejects(
+    pending,
+    (error: unknown) =>
+      error instanceof ModelError && error.code === "MODEL_TIMEOUT",
+  );
+});
+
 test("DeepSeek HTTP errors are classified by status without reading or exposing provider bodies or retrying inside the adapter", async () => {
   for (const [status, code] of statusCodes) {
     let requests = 0;
