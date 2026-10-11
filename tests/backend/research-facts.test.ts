@@ -180,7 +180,7 @@ test("facts use complete project identity, exact quotes, canonical schools, expl
           f.status === "bound" &&
           f.targetYearApplicable &&
           catalogue.includes(f.quote) &&
-          f.extractor === "phase2-program-binding@2",
+          f.extractor === "phase2-program-binding@3",
       ),
     );
     assert.doesNotMatch(

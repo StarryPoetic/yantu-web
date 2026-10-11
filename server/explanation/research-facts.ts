@@ -175,7 +175,7 @@ export function extractProgramFacts(
         sourceId: source.id,
         retrievedAt: source.retrievedAt,
         extractedAt,
-        extractor: "phase2-program-binding@2",
+        extractor: "phase2-program-binding@3",
         status,
         verified: false,
       });

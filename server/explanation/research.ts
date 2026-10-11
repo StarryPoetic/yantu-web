@@ -1531,19 +1531,9 @@ export function createResearchReportModule(
       const reusedSourceCount = seeds.length;
       usage.searches.libraryHits = seeds.length;
       const newlyReadUrls = new Set<string>();
-      const currentAttempts: ResearchReadAttempt[] = [];
       let coveredDisciplines = disciplines;
       const recordAttempt = (attempt: ResearchReadAttempt) => {
         live();
-        if (
-          !currentAttempts.some(
-            (old) =>
-              old.url === attempt.url &&
-              old.status === attempt.status &&
-              old.attemptedAt === attempt.attemptedAt,
-          )
-        )
-          currentAttempts.push(attempt);
         if (
           attempts.some(
             (old) =>
@@ -1664,18 +1654,10 @@ export function createResearchReportModule(
             (a, b) => (order.get(a.url) ?? -1) - (order.get(b.url) ?? -1),
           );
           report.readStatistics = {
-            success: currentAttempts.filter((a) => a.status === "success")
-              .length,
-            failed: currentAttempts.filter((a) => a.status === "failed").length,
-            failuresByCode: {},
+            success: scheduled.statistics.success,
+            failed: scheduled.statistics.failed,
+            failuresByCode: { ...scheduled.statistics.failuresByCode },
           };
-          for (const attempt of currentAttempts.filter(
-            (a) => a.status === "failed",
-          )) {
-            const code = attempt.reason ?? "WEB_UNAVAILABLE";
-            report.readStatistics.failuresByCode[code] =
-              (report.readStatistics.failuresByCode[code] ?? 0) + 1;
-          }
           const value = deriveResearchCoverage({
             run,
             disciplines: coveredDisciplines,
@@ -1796,7 +1778,6 @@ export function createResearchReportModule(
                   live();
                   library?.save(source);
                 },
-                onAttempt: recordAttempt,
                 onProgress: (detail) => stage("researching", detail),
                 now: config.now,
                 needsEvidence,
@@ -2346,7 +2327,6 @@ export function createResearchReportModule(
               live();
               library.save(source);
             },
-            onAttempt: recordAttempt,
             onProgress: (detail) => stage("researching", detail),
             now: config.now,
             needsEvidence,
@@ -2409,7 +2389,7 @@ export function createResearchReportModule(
               preferredCount: 0,
               alternativeCount: 0,
               shortfallReasons: [
-                `本次检索 ${found.requestCount} 项、尝试读取 ${pageReads} 项官网资料，目前只有搜索摘要，尚未达到5–10校的目标。`,
+                `本次检索 ${found.requestCount} 项、尝试读取 ${scheduled.statistics.reads} 项官网资料，目前只有搜索摘要，尚未达到5–10校的目标。`,
                 ...(found.stoppedReason
                   ? [researchReason(found.stoppedReason)]
                   : []),
@@ -2965,7 +2945,7 @@ export function createResearchReportModule(
         }
         if (schoolCount < 5) {
           shortfallReasons.push(
-            `本次形成 ${schoolCount} 所不同学校的有据建议，尚未达到5–10所的目标。已执行或复用 ${found.requestCount} 项检索、尝试读取 ${pageReads} 项官网资料；搜索摘要和未通过学校专业核对的项目不计入推荐。`,
+            `本次形成 ${schoolCount} 所不同学校的有据建议，尚未达到5–10所的目标。已执行或复用 ${found.requestCount} 项检索、尝试读取 ${scheduled.statistics.reads} 项官网资料；搜索摘要和未通过学校专业核对的项目不计入推荐。`,
           );
           if (found.stoppedReason)
             shortfallReasons.push(researchReason(found.stoppedReason));

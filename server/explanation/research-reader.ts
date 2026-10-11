@@ -82,6 +82,7 @@ export function createResearchReader<T>(
     reads: 0,
     success: 0,
     failed: 0,
+    failuresByCode: {} as Record<string, number>,
     bySchool: {} as Record<
       string,
       { reads: number; success: number; failed: number }
@@ -142,6 +143,10 @@ export function createResearchReader<T>(
           (error) => {
             statistics.failed++;
             counts.failed++;
+            const code =
+              error instanceof ModelError ? error.code : "WEB_UNAVAILABLE";
+            statistics.failuresByCode[code] =
+              (statistics.failuresByCode[code] ?? 0) + 1;
             task.reject(error);
           },
         )

@@ -181,6 +181,45 @@ function seed(
   });
 }
 
+test("library-first repair logs each real read once under an advancing clock and reports only dispatched counts", async () => {
+  const store = new Store();
+  let clock = initialTime;
+  try {
+    const after = setup(store, {
+      now: () => ++clock,
+      noResults: true,
+      fee: "success",
+    });
+    seed(after.library, [{ url: feeUrl, title: "2026年硕士研究生收费标准" }]);
+    const run = guidance("advancing-read-stats");
+    const report = await after.module.generate({
+      subjectId: run.subjectId,
+      run,
+    });
+    assert.equal(after.requests.filter((value) => value === feeUrl).length, 1);
+    assert.equal(
+      report.evidenceCoverage!.attempts.filter(
+        (a) => a.url === feeUrl && a.status === "success",
+      ).length,
+      1,
+    );
+    assert.equal(
+      after.library.attempts([feeUrl]).filter((a) => a.status === "success")
+        .length,
+      1,
+    );
+    assert.equal(report.readStatistics!.success, report.usage!.reads.success);
+    assert.equal(report.readStatistics!.failed, report.usage!.reads.failed);
+    assert.ok(
+      report.coverage!.shortfallReasons.some((s) =>
+        s.includes(`尝试读取 ${report.usage!.reads.reads} 项`),
+      ),
+    );
+  } finally {
+    store.close();
+  }
+});
+
 test("the report module saves real page reads and reuses public evidence after restart for a different user and preference", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "yantu-report-reuse-"));
   const dbPath = join(temporary, "public.sqlite");

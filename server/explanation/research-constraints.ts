@@ -833,9 +833,11 @@ function registrySchoolCity(
       const marker = /地址|校址|校区/.exec(quote)!;
       const prefix = quote.slice(0, marker.index);
       if (
-        /合作|伙伴|邮寄|办公(?:室)?|招生办|咨询|通讯|通信|联系地址/.test(
+        /合作|伙伴|邮寄|办公(?:室)?|招生办|咨询|通讯|通信|联系(?:地址)?/.test(
           prefix.slice(-60),
         ) ||
+        (!/学校地址|办学地址|校址|校区/.test(quote) &&
+          /研究生院|招生办公室|招生办|办公室|联系部门/.test(quote)) ||
         otherProjectOwner(prefix, seed.name) ||
         isRestrictedCampusQuote(source, quote)
       )

@@ -378,7 +378,7 @@ test("rule upgrade re-extracts old public facts without refreshing original time
       now: () => Date.parse("2026-10-11T00:00:00Z"),
     });
     const original = page(
-      `${school}2027年硕士研究生招生专业目录\n080200 机械工程 全日制`,
+      `${school}2027年硕士研究生招生专业目录\n080200 机械工程 全日制\n①101思想政治理论\n②201英语一\n③301数学一\n④820机械原理\n0812Z2 智能交通技术\n①101思想政治理论\n②201英语一\n③301数学一\n④888运筹学`,
     );
     library.save(original);
     const row = store.db
@@ -391,7 +391,7 @@ test("rule upgrade re-extracts old public facts without refreshing original time
       JSON.stringify({
         ...old,
         programName: "等",
-        extractor: "phase2-program-binding@1",
+        extractor: "phase2-program-binding@2",
       }),
     );
     const upgraded = createResearchEvidenceLibrary(store, {
@@ -404,9 +404,16 @@ test("rule upgrade re-extracts old public facts without refreshing original time
       upgraded.every(
         (f) =>
           f.programName === "机械工程" &&
-          f.extractor === "phase2-program-binding@2" &&
+          f.extractor === "phase2-program-binding@3" &&
           f.retrievedAt === original.retrievedAt,
       ),
+    );
+    assert.deepEqual(
+      (
+        upgraded.find((f) => f.field === "exams" && f.status === "bound")
+          ?.value as { subjects: { code: string }[] } | undefined
+      )?.subjects.map((s) => s.code),
+      ["101", "201", "301", "820"],
     );
   } finally {
     store.close();

@@ -254,7 +254,9 @@ export function extractProgramExams(input: {
     if (sourceYear === undefined || sourceYear > Number(input.targetYear))
       continue;
     const body = withoutSchoolLinks(source.excerpt);
-    const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{4}\b/g)];
+    // Self-defined/interdisciplinary rows also terminate the preceding route,
+    // even when that neighbouring code is not a national catalogue identity.
+    const rows = [...body.matchAll(/\b(?:0[1-9]|1[0-4])\d{2}[0-9A-Z]{2}\b/g)];
     for (let i = 0; i < rows.length; i++) {
       const start = rows[i].index!;
       if (!rows[i][0].startsWith(input.discipline.code)) continue;
@@ -280,10 +282,9 @@ export function extractProgramExams(input: {
         continue;
       const afterCode = passage
         .slice(rows[i][0].length)
-        .replace(
-          /^[\s|:：()（）\[\]【】-]*(?:[（(](?:专业学位|学术学位|学术型)[）)]\s*)?/,
-          "",
-        );
+        .replace(/^[\s|:：\[\]【】-]*/, "")
+        .replace(/^[（(](?:专业学位|学术学位|学术型)[）)]\s*/, "")
+        .replace(/^[\s|:：()（）\[\]【】-]*/, "");
       const escapedName = programNamePattern(input.programName, rows[i][0]);
       if (
         !new RegExp(

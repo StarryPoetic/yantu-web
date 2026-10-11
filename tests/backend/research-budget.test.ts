@@ -13,6 +13,7 @@ import { selectModelFacts } from "../../server/explanation/research-model-facts.
 import type { ProgramFact } from "../../server/explanation/research-facts.ts";
 import { createModelRuntime } from "../../server/explanation/index.ts";
 import { reportMessages } from "../../server/explanation/research.ts";
+import { ModelError } from "../../server/explanation/deepseek.ts";
 import {
   generateGuidance,
   getDisciplineCatalog,
@@ -207,6 +208,25 @@ test("atomic reservations cannot exceed total/school/platform budgets and failur
     ),
   );
   assert.equal(platform.statistics.reads, B.platformReads);
+});
+
+test("read failures count dispatched requests and fixed codes, excluding rejected budget reservations", async () => {
+  const scheduler = createResearchReader(async (url) => {
+    if (Number(new URL(url).pathname.slice(1)) % 2)
+      throw new ModelError("WEB_DNS_UNAVAILABLE");
+    return "public text";
+  });
+  await Promise.allSettled(
+    Array.from({ length: 12 }, (_, i) =>
+      scheduler.read(`https://stats.edu.cn/${i}`),
+    ),
+  );
+  assert.equal(scheduler.statistics.reads, B.schoolReads);
+  assert.equal(scheduler.statistics.success, 4);
+  assert.equal(scheduler.statistics.failed, 4);
+  assert.deepEqual(scheduler.statistics.failuresByCode, {
+    WEB_DNS_UNAVAILABLE: 4,
+  });
 });
 
 test("cancellation stops queued dispatch and aborts all in-flight readers", async () => {

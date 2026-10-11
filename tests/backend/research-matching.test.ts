@@ -293,6 +293,34 @@ function exams(sources: WebSource[], code = "0802", programName = "机械工程"
   });
 }
 
+test("letter-coded neighbouring programmes cannot leak their subjects into a numeric programme row", () => {
+  const page = source(
+    `${school}2027年硕士研究生招生专业目录\n080200 机械工程\n①101思想政治理论\n②201英语（一）\n③301数学（一）\n④820机械原理\n0802Z1 低空技术与工程\n①101思想政治理论\n②201英语（一）\n③301数学（一）\n④820机械原理\n0812Z2 智能交通技术\n①101思想政治理论\n②201英语（一）\n③301数学（一）\n④888运筹学`,
+  );
+  const result = exams([page]);
+  assert.equal(result.status, "verified_current");
+  assert.deepEqual(
+    result.subjects.map((s) => s.code),
+    ["101", "201", "301", "820"],
+  );
+  assert.ok(!result.quote?.includes("0802Z1"));
+  assert.ok(!result.quote?.includes("888"));
+  assert.ok(page.excerpt.includes(result.quote!));
+});
+
+test("a parenthesised degree label after the programme code does not hide a literal exam route", () => {
+  const page = source(
+    `${school}2027年硕士研究生招生专业目录\n030700（学术学位）中共党史党建学 15\n①101思想政治理论\n②201英语（一）\n③704马克思主义发展史\n④815中国共产党历史\n1002J1（学术学位）人文医学 3\n①101思想政治理论\n②201英语（一）\n③699医学综合`,
+  );
+  const result = exams([page], "0307", "中共党史党建学");
+  assert.equal(result.status, "verified_current");
+  assert.deepEqual(
+    result.subjects.map((s) => s.code),
+    ["101", "201", "704", "815"],
+  );
+  assert.ok(!result.quote?.includes("1002J1"));
+});
+
 test("a fixed mechanical profile deterministically investigates both academic and professional routes", () => {
   const run = guidance();
   const first = createDemandPlan(run);

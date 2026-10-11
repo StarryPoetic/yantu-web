@@ -330,3 +330,51 @@ test("table-like header years and explicit project row can be quoted, and friend
   );
   assert.equal(wrong.tuition, undefined);
 });
+
+test("registry city fallback rejects contact and graduate-office addresses while retaining an explicit school address", () => {
+  const school = "西北大学";
+  const base = {
+    institutionName: school,
+    programName: "哲学",
+    majorCode: "010100",
+    collegeName: "历史学院",
+    citations: ["nwu"],
+    tuition: undefined,
+    location: undefined,
+  };
+  for (const address of [
+    "联系地址：陕西省西安市长安区学府大道一号",
+    "地址：西安市长安区学府大道1号西北大学研究生院",
+    "研究生院地址：西安市长安区学府大道1号",
+  ]) {
+    const result = deriveRecommendationConstraints(
+      input({
+        ...base,
+        sources: [
+          source(
+            "nwu",
+            `${school}2027年硕士研究生招生简章\n008历史学院 | 010100哲学\n${address}`,
+            { url: "https://yjs.nwu.edu.cn/admissions.htm" },
+          ),
+        ],
+      }),
+    );
+    assert.equal(result.location, undefined, address);
+    assert.equal(cities(result).status, "unknown");
+  }
+  const address = "学校地址：陕西省西安市长安区学府大道一号，电话029-00000000";
+  const result = deriveRecommendationConstraints(
+    input({
+      ...base,
+      sources: [
+        source(
+          "nwu",
+          `${school}2027年硕士研究生招生简章\n008历史学院 | 010100哲学\n${address}`,
+          { url: "https://yjs.nwu.edu.cn/admissions.htm" },
+        ),
+      ],
+    }),
+  );
+  assert.equal(result.location?.city, "西安");
+  assert.equal(result.location?.quote, address);
+});
