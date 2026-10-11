@@ -23,6 +23,18 @@ class BatchOneResearchDocsTests(unittest.TestCase):
         self.assertNotIn('unlink', text)
         self.assertIn('var/batch1-live-copy.sqlite', text)
 
+    def test_paid_acceptance_records_usage_and_all_five_coverage_denominators(self):
+        text = (ROOT / 'docs/阶段7真实验证记录.md').read_text(encoding='utf-8')
+        section = text.split('## 第一批资料收集：唯一一次真实完整运行', 1)[1]
+        for phrase in ('8124a44', '350/500', 'batch1-paid-run.lock',
+                       'node --env-file-if-exists=.env', '耗时', '检索', '读取',
+                       'deepseek-flash', 'deepseek-v4-pro', '输入token', '输出token',
+                       '估算费用', '复试线与录取分', '报录比/人数/推免',
+                       '本科背景', '学科评估与专业排名', '就业去向与城市发展',
+                       '待补查', '是否仍需要补充资料', '没有第二次运行'):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, section)
+
 
 if __name__ == '__main__':
     unittest.main()
