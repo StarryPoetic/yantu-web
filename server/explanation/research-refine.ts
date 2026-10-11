@@ -1,9 +1,9 @@
+import { PRIORITY_SEARCH_TERMS } from "./research-priority-facts.ts";
 import type { ResearchPrefilter } from "../../shared/research-prefilter.ts";
 import type { ResearchEvidenceGap } from "../../shared/research-coverage.ts";
 import type { GuidanceRun, Discipline } from "../disciplines/types.ts";
 import type { WebSource } from "./web.ts";
 import { academicDomain } from "./research-pages.ts";
-import { buildEvidenceCandidates } from "./research-matching.ts";
 import { repairResearchEvidence } from "./research-repair.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
@@ -26,6 +26,7 @@ export async function refineResearchSchools(
     prefilter: ResearchPrefilter;
     run: GuidanceRun;
     disciplines: Discipline[];
+    queryTerms?: readonly string[];
   },
 ) {
   let sources = [...input.sources].filter((s) =>
@@ -35,98 +36,118 @@ export async function refineResearchSchools(
     readCount = 0;
   let lookupKeys = [...(input.lookupKeys ?? [])];
   const limitations: string[] = [];
-  const cache = new Map<
-    string,
-    {
-      signature: string;
-      recommendations: ReturnType<
-        typeof buildEvidenceCandidates
-      >["recommendations"];
-    }
-  >();
-  const counts = (
-    current: readonly WebSource[],
-    school: ResearchPrefilter["selected"][number],
-  ) => {
-    const own = current.filter((s) => academicDomain(s.url) === school.domain);
-    // Run-local only. Exact source content and metadata changes invalidate the result;
-    // unchanged large catalogues need not be parsed after every other school's read.
-    const signature = JSON.stringify(own);
-    const previous = cache.get(school.key);
-    if (previous?.signature === signature) return previous.recommendations;
-    const recommendations = buildEvidenceCandidates({
-      run: input.run,
-      disciplines: input.disciplines,
-      targetYear: input.targetYear,
-      sources: own,
-      schoolNames: [school.institutionName],
-    }).recommendations.filter(
-      (r) =>
-        school.institutionName === r.institutionName &&
-        !(
-          r.tuition?.year === Number(input.targetYear) &&
-          r.constraintChecks?.some(
-            (c) => c.field === "budget" && c.status === "mismatch",
-          )
-        ),
-    );
-    cache.set(school.key, { signature, recommendations });
-    return recommendations;
-  };
-  const enough = (current: readonly WebSource[]) =>
-    input.prefilter.selected.filter((s) => counts(current, s).length > 0)
-      .length >= B.finalSchools;
-  for (const school of input.prefilter.selected) {
+  // Reserve deterministic per-school shares before starting a wave. Completion
+  // timing cannot let a fast school steal another school's search/read allowance.
+  const selected = input.prefilter.selected;
+  const groupSize = Math.max(1, Math.ceil(selected.length / B.searches));
+  const grouped = new Map<number, ReturnType<typeof input.web.answer>>();
+  let groupedRequests = 0;
+  const keywords = (input.queryTerms ?? PRIORITY_SEARCH_TERMS).join(" ");
+  const names = input.disciplines.map((d) => d.name).join(" ");
+  const years = historicalReferenceYears(input.targetYear);
+
+  const share = (total: number, index: number) =>
+    Math.floor(total / Math.max(1, selected.length)) +
+    Number(index < total % Math.max(1, selected.length));
+  for (let offset = 0; offset < selected.length; offset += B.concurrency) {
     input.signal?.throwIfAborted();
-    if (enough(sources) || readCount >= B.reads) break;
-    const own = sources.filter((s) => academicDomain(s.url) === school.domain);
-    const sufficient = (current: readonly WebSource[]) =>
-      counts(current, school).some(
-        (r) =>
-          r.institutionName === school.institutionName &&
-          r.tuition &&
-          r.location &&
-          r.exams?.status !== "unknown" &&
-          !!r.exams,
-      );
-    if (sufficient(own)) continue;
-    const gaps: ResearchEvidenceGap[] = (
-      ["program", "exams", "location", "tuition"] as const
-    ).map((field) => ({
-      id: `prefilter:${school.key}:${field}`,
-      institutionName: school.institutionName,
-      programName: input.disciplines[0]?.name,
-      disciplineCode: input.disciplines[0]?.code,
-      field,
-      targetYear: input.targetYear,
-      referenceYears: historicalReferenceYears(input.targetYear),
-      purpose: "missing_evidence",
-      reason: "粗筛入选，按既有证据补充缺项",
-      nextAction: "核对目标方向目录、科目、城市与学费",
-      sourceIds: [],
-      references: [],
-      priority: field === "program" ? "high" : "normal",
-      attempts: [],
-    }));
-    const result = await repairResearchEvidence({
-      ...input,
-      sources: own,
-      gaps,
-      maxRequests: Math.min(1, B.searches - requestCount),
-      maxReads: Math.min(B.schoolReads, B.reads - readCount),
-      lookupKeys,
-      allowedDomains: [school.domain],
-      stop: sufficient,
-      needsEvidence: undefined,
-    });
-    requestCount += result.requestCount;
-    readCount += result.readCount;
-    lookupKeys = result.lookupKeys;
-    limitations.push(...result.limitations);
-    sources = [
-      ...sources.filter((s) => academicDomain(s.url) !== school.domain),
-      ...result.sources,
-    ];
+    const wave = selected.slice(offset, offset + B.concurrency);
+    const results = await Promise.allSettled(
+      wave.map(async (school, localIndex) => {
+        const index = offset + localIndex;
+        const own = sources.filter(
+          (s) => academicDomain(s.url) === school.domain,
+        );
+        const gaps: ResearchEvidenceGap[] = (
+          ["program", "exams", "location", "tuition"] as const
+        ).map((field) => ({
+          id: `prefilter:${school.key}:${field}`,
+          institutionName: school.institutionName,
+          programName: input.disciplines[0]?.name,
+          disciplineCode: input.disciplines[0]?.code,
+          field,
+          targetYear: input.targetYear,
+          referenceYears: historicalReferenceYears(input.targetYear),
+          purpose: "missing_evidence",
+          reason: "粗筛入选，按既有证据补充缺项",
+          nextAction: "核对目标方向目录、科目、城市与学费",
+          sourceIds: [],
+          references: [],
+          priority: field === "program" ? "high" : "normal",
+          attempts: [],
+        }));
+        return repairResearchEvidence({
+          ...input,
+          sources: own,
+          priorityDocuments: true,
+          gaps,
+          maxRequests: groupSize > 1 ? 1 : share(B.searches, index),
+          queryForGap: (gap) => [
+            `${school.institutionName} ${names} ${years.join(" ")} ${gap.field === "program" ? "硕士招生目录 初试科目 学费" : gap.field === "exams" ? "复试录取" : gap.field === "location" ? "校区 培养地点" : "培养方案"} ${keywords}`,
+          ],
+          web:
+            groupSize === 1
+              ? input.web
+              : {
+                  ...input.web,
+                  answer(request, options) {
+                    const groupIndex = Math.floor(index / groupSize);
+                    let result = grouped.get(groupIndex);
+                    if (!result) {
+                      const group = selected.slice(
+                        groupIndex * groupSize,
+                        (groupIndex + 1) * groupSize,
+                      );
+                      groupedRequests++;
+                      result = input.web.answer(
+                        {
+                          ...request,
+                          question:
+                            `${group.map((s) => s.institutionName).join(" OR ")} ${names} ${years.join(" ")} 硕士招生目录 ${keywords}`.slice(
+                              0,
+                              600,
+                            ),
+                        },
+                        {
+                          ...options,
+                          search: {
+                            count: 10,
+                            includeDomains: group.map((s) => s.domain),
+                          },
+                        },
+                      );
+                      grouped.set(groupIndex, result);
+                    }
+                    return result.then((value) => structuredClone(value));
+                  },
+                },
+          maxReads: Math.min(B.schoolReads, share(B.reads, index)),
+          lookupKeys,
+          allowedDomains: [school.domain],
+          needsEvidence: undefined,
+        });
+      }),
+    );
+    for (let index = 0; index < results.length; index++) {
+      const outcome = results[index];
+      if (outcome.status === "rejected") throw outcome.reason;
+      const result = outcome.value;
+      const school = wave[index];
+      requestCount += result.requestCount;
+      readCount += result.readCount;
+      lookupKeys = [...new Set([...lookupKeys, ...result.lookupKeys])];
+      limitations.push(...result.limitations);
+      sources = [
+        ...sources.filter((s) => academicDomain(s.url) !== school.domain),
+        ...result.sources,
+      ];
+    }
+  }
+  if (groupSize > 1) {
+    requestCount = groupedRequests;
+    limitations.push(
+      `全国范围${selected.length}校均纳入分组定向查询，每组最多${groupSize}校；结果仍逐校核验，搜索未返回不表示学校没有该专业。`,
+    );
   }
   return {
     sources,

@@ -1,3 +1,6 @@
+import type { PlanSnapshot } from "../planning/index.ts";
+import { validResearchTarget } from "./research-priority-facts.ts";
+import type { ResearchTargetScore } from "../../shared/research-priority-facts.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { researchSchoolPriorities } from "./research-school-priority.ts";
 import { programEntries } from "./research-matching.ts";
@@ -32,6 +35,11 @@ export interface ResearchReadAttempt {
 }
 
 export interface ResearchEvidenceLibrary {
+  /** Owner-scoped read of a saved target, never stored in public evidence. */
+  targetScore?(
+    subjectId: string,
+    year: string,
+  ): ResearchTargetScore | undefined;
   load(input: {
     disciplineCodes: string[];
     targetYear: string;
@@ -486,6 +494,23 @@ export function createResearchEvidenceLibrary(
           : historicalTtl);
 
   return {
+    targetScore(subjectId, year) {
+      if (typeof store.get !== "function") return undefined;
+      const plan = store.get<PlanSnapshot | null>(subjectId, "plan")?.value;
+      if (
+        !plan ||
+        plan.subjectId !== subjectId ||
+        plan.programSnapshot?.isExample ||
+        plan.programSnapshot?.identity.targetAdmissionYear !== Number(year) ||
+        plan.status === "needs_review" ||
+        plan.errors.length
+      )
+        return undefined;
+      return validResearchTarget({
+        total: plan.totalTargetScore,
+        maximum: plan.totalMaxScore,
+      });
+    },
     coverageStats() {
       const school = db
         .prepare(
@@ -761,7 +786,7 @@ export function createResearchEvidenceLibrary(
         .prepare(
           `SELECT s.* FROM research_public_sources s WHERE ${predicate}
           ORDER BY CASE s.evidence_year WHEN ? THEN 0 WHEN ? THEN 1 WHEN ? THEN 2 ELSE 3 END,
-          s.retrieved_at DESC, s.url LIMIT 200`,
+          s.retrieved_at DESC, s.url LIMIT ${B.candidates * 3}`,
         )
         .all(...params, ...acceptableYears, ...years) as unknown as SourceRow[];
       // A separate bounded window prevents a large historical inventory from hiding current changes.

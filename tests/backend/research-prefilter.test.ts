@@ -20,7 +20,7 @@ const evidence = <T>(value: T, year = 2027): LocalEvidence<T> => ({
   sourceUrl: "https://school.edu.cn/policy",
 });
 const profile: PrefilterProfile = {
-  cities: [],
+  cities: ["杭州"],
   university: "本科大学",
   year: 2027,
   disciplineCodes: ["0802"],
@@ -117,17 +117,17 @@ test("undergraduate advantage needs current policy for this exact university and
   assert.equal(points(s, "undergraduate"), 0);
 });
 test("multiple cities preserve input order and never exceed the per-city ceiling", () => {
-  const schools = Array.from({ length: 45 }, (_, i) =>
+  const schools = Array.from({ length: 80 }, (_, i) =>
     school(
       String(i).padStart(3, "0"),
-      ["杭州", "上海", "南京"][Math.floor(i / 15)],
+      ["杭州", "上海", "南京", "西安"][Math.floor(i / 20)],
     ),
   );
   const result = prefilterResearchSchools(
-    { ...profile, cities: ["上海", "杭州", "南京"] },
+    { ...profile, cities: ["上海", "杭州", "南京", "西安"] },
     schools,
   );
-  assert.equal(result.selected.length, B.prefilterSchools);
+  assert.equal(result.selected.length, 4 * B.prefilterCitySchools);
   assert.equal(result.selected[0].city, "上海");
   for (const city of result.cities)
     assert.ok(
@@ -136,7 +136,7 @@ test("multiple cities preserve input order and never exceed the per-city ceiling
     );
   assert.ok(result.omitted.some((s) => s.reason === "城市名额上限"));
   const reverse = prefilterResearchSchools(
-    { ...profile, cities: ["杭州", "上海", "南京"] },
+    { ...profile, cities: ["杭州", "上海", "南京", "西安"] },
     schools,
   );
   assert.equal(reverse.selected[0].city, "杭州");
@@ -146,7 +146,7 @@ test("single city can fill the shortlist; national markers do not discard explic
   assert.equal(
     prefilterResearchSchools({ ...profile, cities: ["杭州"] }, schools).selected
       .length,
-    25,
+    30,
   );
   assert.deepEqual(
     prefilterResearchSchools(
@@ -159,7 +159,7 @@ test("single city can fill the shortlist; national markers do not discard explic
 test("national mode uses explicit tier and fixed city clues, without inventing discipline assessment", () => {
   const s = school();
   s.tags = ["双一流"];
-  assert.equal(points(s, "national"), 7);
+  assert.equal(points(s, "national", { ...profile, cities: [] }), 7);
   assert.equal(points(s, "program"), 0);
   for (const cities of [[], ["全国"], ["不限城市"], ["不确定"]])
     assert.equal(points(s, "national", { ...profile, cities }), 7);
@@ -285,7 +285,7 @@ test("real fact adapter separates programme identities, ignores stale/pending/co
   };
   const run = (facts: ProgramFact[]) =>
     prefilterResearchSchools(
-      { ...profile, annualBudget: 10000 },
+      { ...profile, cities: [seed.city], annualBudget: 10000 },
       localPrefilterSchools([seed], facts, 2027),
     );
   assert.equal(
@@ -306,5 +306,76 @@ test("real fact adapter separates programme identities, ignores stale/pending/co
     run([catalog, fee, { ...fee, value: { ...fee.value, amount: 8000 } }])
       .selected.length,
     1,
+  );
+});
+
+test("one to three cities keep every eligible school, including unknown programme evidence", () => {
+  const schools = Array.from({ length: 90 }, (_, i) =>
+    school(String(i), ["杭州", "南京", "西安"][i % 3]),
+  );
+  for (const cities of [["杭州"], ["杭州", "南京"], ["杭州", "南京", "西安"]]) {
+    const result = prefilterResearchSchools({ ...profile, cities }, schools);
+    assert.equal(result.selected.length, cities.length * 30);
+    assert.ok(result.selected.every((s) => cities.includes(s.city)));
+    assert.ok(result.omitted.every((s) => s.reason === "不在本次城市范围"));
+  }
+});
+
+test("national scope uses exactly nine cities and excludes evidenced or explicitly estimated high challenges", () => {
+  const strong = { ...school("strong"), tags: ["双一流"] };
+  const low = {
+    ...school("low"),
+    programs: [
+      {
+        key: "p",
+        disciplineCode: "0802",
+        cutoff: evidence({ total: 360, maximum: 500 }, 2026),
+      },
+    ],
+  };
+  const schools = [strong, low, school("ordinary"), school("outside", "天津")];
+  const result = prefilterResearchSchools(
+    {
+      ...profile,
+      cities: ["全国"],
+      undergraduateTier: "other",
+      score: { total: 320, maximum: 500 },
+    },
+    schools,
+  );
+  assert.deepEqual(
+    result.selected.map((s) => s.key),
+    ["ordinary"],
+  );
+  assert.match(result.omitted.find((s) => s.key === "strong")!.reason, /估计/);
+  assert.match(
+    result.omitted.find((s) => s.key === "low")!.reason,
+    /目标分差-40/,
+  );
+  const local = prefilterResearchSchools(
+    {
+      ...profile,
+      cities: ["杭州"],
+      undergraduateTier: "other",
+      score: { total: 320, maximum: 500 },
+    },
+    schools,
+  );
+  assert.equal(
+    local.selected.length,
+    3,
+    "local scope does not turn uncertain admission chance into a hard exclusion",
+  );
+  assert.deepEqual(
+    prefilterResearchSchools(
+      {
+        ...profile,
+        cities: ["全国"],
+        undergraduateTier: "other",
+        score: { total: 320, maximum: 500 },
+      },
+      [...schools].reverse(),
+    ),
+    result,
   );
 });

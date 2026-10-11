@@ -4,11 +4,12 @@ import { prefilterFixture } from "../helpers/research-prefilter-fixture.ts";
 import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import { researchReportMarkdown } from "../../src/workspace/research-report.ts";
 
-test("two-stage flow persists local scores before any paid call, reads only selected schools and stops at ten", async () => {
+test("two-stage flow persists local scores before any paid call, reads only selected schools and continues collecting after ten", async () => {
   const f = prefilterFixture();
   const complete = f.config.adapter!.complete;
   f.config.adapter = {
     async complete(messages, options) {
+      if (!options?.thinking) return complete(messages, options);
       assert.ok(messages[0].content.includes("目标为10所不同学校"));
       const sources = JSON.parse(messages[1].content).sources as {
         id: string;
@@ -50,20 +51,29 @@ test("two-stage flow persists local scores before any paid call, reads only sele
     },
   });
   assert.equal(first, false);
-  assert.equal(report.prefilter!.selected.length, 25);
+  assert.equal(report.prefilter!.selected.length, 179);
   assert.equal(report.recommendations.length, 10);
   assert.equal(report.coverage!.targetMin, 10);
   assert.equal(report.coverage!.targetMax, 10);
   assert.ok(
     report.coverage!.shortfallReasons.every((s) => !s.includes("尚未达到")),
   );
-  assert.equal(f.counts.searches, 10);
-  assert.equal(f.counts.reads, 10);
-  assert.equal(f.counts.models, 1);
-  assert.ok(f.counts.searches < B.searches && f.counts.reads < B.reads);
+  assert.equal(f.counts.searches, 60);
+  for (const school of report.prefilter!.selected) {
+    assert.ok(
+      f.questions.some((query) => query.includes(school.institutionName)),
+      `${school.institutionName} must appear in a real grouped search request`,
+    );
+  }
+  for (const term of ["复试线", "报录比", "双非", "学科评估", "就业去向"]) {
+    assert.ok(f.questions.every((query) => query.includes(term)));
+  }
+  assert.equal(f.counts.reads, 12);
+  assert.equal(f.counts.models, 2);
+  assert.ok(f.counts.searches <= B.searches && f.counts.reads < B.reads);
   assert.deepEqual(
     f.readDomains,
-    report.prefilter!.selected.slice(0, 10).map((s) => s.domain),
+    report.prefilter!.selected.slice(0, 12).map((s) => s.domain),
   );
   assert.ok(
     report.sources.every((s) =>
@@ -84,10 +94,10 @@ test("fewer than ten grounded schools remains partial with explicit shortfall an
   assert.equal(report.recommendations.length, 3);
   assert.equal(report.status, "partial");
   assert.ok(report.coverage!.shortfallReasons.some((s) => s.includes("10所")));
-  assert.ok(f.counts.searches <= 24 && f.counts.reads <= 60);
+  assert.ok(f.counts.searches <= B.searches && f.counts.reads <= B.reads);
 });
 
-test("sufficient school evidence stops before duplicate results consume remaining reads", async () => {
+test("all schools retain collection opportunities even when basic fields are complete", async () => {
   const complete = prefilterFixture({
     completeFields: true,
     duplicatePages: true,
@@ -107,8 +117,8 @@ test("sufficient school evidence stops before duplicate results consume remainin
   assert.ok(
     full.recommendations.every((r) => r.tuition && r.location && r.exams),
   );
-  assert.equal(complete.counts.reads, 10);
-  assert.equal(partial.counts.reads, 30);
+  assert.equal(complete.counts.reads, 13);
+  assert.equal(partial.counts.reads, 13);
   assert.equal(limited.recommendations.length, 10);
 });
 test("zero evidence still exposes the saved prefilter and explains the ten-school shortfall without a model call", async () => {
@@ -122,7 +132,7 @@ test("zero evidence still exposes the saved prefilter and explains the ten-schoo
   assert.ok(report.prefilter);
   assert.equal(report.coverage!.targetMin, 10);
   assert.ok(report.coverage!.shortfallReasons.length);
-  assert.equal(f.counts.models, 0);
+  assert.equal(f.counts.models, 1);
 });
 
 test("national mode is not treated as an unmatched city in the final report", async () => {
@@ -133,7 +143,7 @@ test("national mode is not treated as an unmatched city in the final report", as
     run: f.run,
   });
   assert.deepEqual(report.prefilter!.cities, []);
-  assert.equal(report.status, "completed");
+  assert.equal(report.status, "partial");
   assert.equal(report.recommendations.length, 10);
   assert.equal(report.coverage!.preferredCities, undefined);
   assert.ok(
@@ -196,8 +206,8 @@ test("total deadline during refinement retains completed school evidence, paid c
   });
   assert.equal(report.reason, "RESEARCH_TOTAL_TIMEOUT");
   assert.ok(report.prefilter);
-  assert.equal(report.recommendations.length, 1);
-  assert.equal(report.usage!.searches.paid, 1);
+  assert.equal(report.recommendations.length, 5);
+  assert.equal(report.usage!.searches.paid, 2);
   assert.equal(report.coverage!.targetMin, 10);
   assert.ok(
     report.coverage!.shortfallReasons.some((s) => s.includes("尚未达到10所")),
@@ -216,8 +226,8 @@ test("total deadline during refinement retains completed school evidence, paid c
     onCheckpoint: f.save,
   });
   assert.equal(resumed.recommendations.length, 10);
-  assert.equal(f.counts.reads, 10);
-  assert.equal(f.counts.searches, 10);
-  assert.equal(resumed.usage!.searches.paid, 9);
-  assert.equal(resumed.usage!.reads.reads, 9);
+  assert.equal(f.counts.reads, 12);
+  assert.equal(f.counts.searches, 60);
+  assert.equal(resumed.usage!.searches.paid, 58);
+  assert.equal(resumed.usage!.reads.reads, 7);
 });

@@ -21,6 +21,8 @@ export interface ModelAdapter {
 export interface ModelRequestOptions {
   /** Internal accounting hooks, never sent to the provider. */
   onCall?: () => void;
+  /** Server-owned collection lane; never sent to the provider or accepted from browser input. */
+  researchParallel?: boolean;
   onUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
   format?: "json" | "text";
   maxOutputTokens?: number;
@@ -273,6 +275,8 @@ async function readThinkingStream(
 /** Called by the shared budget ledger too, so reserved output equals the provider cap. */
 export function resolveModelRequest(options: ModelRequestOptions = {}) {
   if (
+    (options.researchParallel !== undefined &&
+      typeof options.researchParallel !== "boolean") ||
     (options.model !== undefined &&
       !["deepseek-flash", "deepseek-v4-pro"].includes(options.model)) ||
     (options.thinking !== undefined && typeof options.thinking !== "boolean") ||

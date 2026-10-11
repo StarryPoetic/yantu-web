@@ -45,7 +45,13 @@ test("older preferred-city schools survive over 200 newer outside rows, rotate a
     const library = createResearchEvidenceLibrary(store, {
       now: () => Date.parse("2026-10-11T00:00:00Z"),
     });
-    seed(store, "西北大学", "nwu.edu.cn", 220, "2026-10-10T00:00:00Z");
+    seed(
+      store,
+      "西北大学",
+      "nwu.edu.cn",
+      B.candidates + 20,
+      "2026-10-10T00:00:00Z",
+    );
     seed(store, "杭州电子科技大学", "hdu.edu.cn", 24, "2026-10-01T00:00:00Z");
     seed(store, "浙江工商大学", "zjgsu.edu.cn", 3, "2026-10-01T00:00:00Z");
     const recalled = library.load({ ...request, cities: ["杭州"] });

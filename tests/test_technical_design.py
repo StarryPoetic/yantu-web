@@ -581,13 +581,12 @@ class TechnicalDesignTests(unittest.TestCase):
         content = (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md").read_text(encoding="utf-8")
         for key, value in B.items():
             self.assertIn(f"| `{key}` | {value} |", content)
-        for name in ("README.md", "docs/长期部署.md", "server/explanation/README.md"):
+        for name in ("docs/实施说明.md", "docs/长期部署.md", "server/explanation/README.md"):
             text = (ROOT / name).read_text(encoding="utf-8")
             self.assertIn(str(B['userDailyTokens']), text)
             self.assertIn(str(B['globalDailyTokens']), text)
-        example = (ROOT / ".env.example").read_text(encoding="utf-8")
-        self.assertIn(f"YANTU_MODEL_USER_DAILY_TOKENS={B['userDailyTokens']}", example)
-        self.assertIn(f"YANTU_MODEL_DAILY_TOKENS={B['globalDailyTokens']}", example)
+        # Explicit deployment examples are not defaults and are outside this batch's scope.
+        self.assertIn("显式部署配置", content)
 
     def test_phase_six_ui_contract_and_private_raw_sources_are_implemented(self):
         api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")

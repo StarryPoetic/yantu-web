@@ -280,3 +280,59 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `finalOutputTokens` | 16384 |
 | `userDailyTokens` | 300000 |
 | `globalDailyTokens` | 900000 |
+
+
+## 第一批现行预算（2026-10-11，覆盖旧阶段默认值）
+
+检索72次搜索，240条搜索候选，180次正文读取，初期54次搜索、120次读取，费用最多18次搜索，城市恢复追加24次读取；最多72条同校PDF附件候选。每账号每日4000000、全站12000000 token，搜索每账号180次、全站900次。显式部署配置优先，不修改.env；旧配置示例只代表显式限额，不再代表当前默认值。
+
+| 常量 | 值 |
+| --- | --- |
+| `prefilterSchools` | 240 |
+| `prefilterCitySchools` | 15 |
+| `searchDailyRequestsPerUser` | 180 |
+| `searchDailyRequestsGlobal` | 900 |
+| `collectionTargetMs` | 300000 |
+| `reads` | 180 |
+| `schoolReads` | 16 |
+| `platformReads` | 4 |
+| `concurrency` | 8 |
+| `initialReads` | 120 |
+| `cityReads` | 24 |
+| `geographyReads` | 2 |
+| `searches` | 72 |
+| `initialSearches` | 54 |
+| `feeSearches` | 18 |
+| `repairSearches` | 4 |
+| `candidates` | 240 |
+| `librarySourcesPerSchool` | 8 |
+| `modelSources` | 40 |
+| `attachments` | 72 |
+| `attachmentLinks` | 12 |
+| `attachmentDepth` | 3 |
+| `registryReads` | 6 |
+| `cityCandidates` | 12 |
+| `pendingPerField` | 2 |
+| `thinkingChars` | 40000 |
+| `normalChars` | 16000 |
+| `repairHeadroom` | 2000 |
+| `requestBytes` | 131072 |
+| `pageTimeoutMs` | 8000 |
+| `normalTimeoutMs` | 30000 |
+| `thinkingIdleTimeoutMs` | 45000 |
+| `thinkingTimeoutMs` | 300000 |
+| `researchTotalTimeoutMs` | 1800000 |
+| `planningOutputTokens` | 4096 |
+| `finalOutputTokens` | 16384 |
+| `userDailyTokens` | 4000000 |
+| `globalDailyTokens` | 12000000 |
+
+现行城市恢复最多120次读取、追加24次读取、全报告最多180次正文读取；补查沿用72 次搜索、180 次正文读取上限。
+| 收集新增常量 | 值 |
+| --- | --- |
+| `collectionPages` | 180 |
+| `collectionSummaryCalls` | 36 |
+| `collectionConcurrency` | 4 |
+| `collectionInputChars` | 12000 |
+| `collectionOutputTokens` | 2048 |
+| `defaultResearchTotalTimeoutMs` | 600000 |

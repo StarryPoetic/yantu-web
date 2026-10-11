@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -27,7 +28,7 @@ test("live verification without explicit consent exits before credentials, datab
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout.trim());
   assert.equal(output.event, "consent-required");
-  assert.equal(output.upperBound.searches, 24);
+  assert.equal(output.upperBound.searches, B.searches);
   assert.equal(output.upperBound.modelCalls, 6);
   assert.equal(output.upperBound.inputCharsPerCall, 40000);
   assert.doesNotMatch(result.stdout + result.stderr, /must-not-be-printed/);

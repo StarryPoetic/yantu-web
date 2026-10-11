@@ -58,6 +58,14 @@ try {
       models: 0,
       inputChars: 0,
       finalInputChars: 0,
+      perModel: {} as Record<
+        string,
+        {
+          calls: number;
+          estimatedInputTokens: number;
+          estimatedOutputTokens: number;
+        }
+      >,
     };
     const library = createResearchEvidenceLibrary(
       {
@@ -101,14 +109,36 @@ try {
       searchDailyRequestsPerUser: 100,
       searchDailyRequestsGlobal: 500,
       adapter: {
-        async complete(messages) {
+        async complete(messages, options) {
           counts.models++;
           const size = JSON.stringify(messages).length;
           counts.inputChars += size;
           const planning = messages[0].content.includes(
             "research-direction-plan",
           );
-          if (!planning) counts.finalInputChars = size;
+          if (options?.thinking) counts.finalInputChars = size;
+          const name = options?.model ?? "deepseek-v4-pro";
+          const model = (counts.perModel[name] ??= {
+            calls: 0,
+            estimatedInputTokens: 0,
+            estimatedOutputTokens: 0,
+          });
+          model.calls++;
+          model.estimatedInputTokens += Math.ceil(size * 0.5);
+          if (
+            /research-(?:query-plan|page-extract|school-summary)-v1/.test(
+              messages[0].content,
+            )
+          ) {
+            const content = JSON.stringify({
+              focus: [0, 0, 0, 0, 0],
+              facts: [],
+              factIds: [],
+            });
+            model.estimatedOutputTokens += Math.ceil(content.length * 0.5);
+            return { model: name, inputTokens: 0, outputTokens: 0, content };
+          }
+          model.estimatedOutputTokens += 90;
           return {
             model: "deepseek-v4-pro",
             inputTokens: 0,
@@ -211,6 +241,22 @@ try {
         availability.confirmed /
         (availability.confirmed + availability.pending || 1),
       selected: report.prefilter?.selected.length,
+      priorityConfirmed: report.priorityCoverage?.confirmed ?? 0,
+      priorityPending:
+        report.priorityCoverage?.pending ?? report.recommendations.length * 15,
+      schoolsWithCutoff: report.priorityCoverage?.schoolsWithCutoff ?? 0,
+      categoryCoverage: report.priorityCoverage?.groups,
+      paidTokens: 0,
+      paidCostCny: 0,
+      estimatedOffPeakModelCny: Object.entries(counts.perModel).reduce(
+        (total, [name, m]) =>
+          total +
+          (m.estimatedInputTokens * (name === "deepseek-flash" ? 1 : 4.5) +
+            m.estimatedOutputTokens * (name === "deepseek-flash" ? 4 : 13.5)) /
+            1e6,
+        0,
+      ),
+      estimatedSearchCny: counts.searches * 0.036,
     };
     results.push(row);
     writeFileSync(resolve(output), JSON.stringify(results, null, 2));

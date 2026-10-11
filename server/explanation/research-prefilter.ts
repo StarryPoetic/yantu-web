@@ -1,3 +1,4 @@
+import type { ResearchPriorityFact } from "../../shared/research-priority-facts.ts";
 import type { Profile } from "../../shared/profile.ts";
 import type {
   ResearchPrefilter,
@@ -5,7 +6,7 @@ import type {
   PrefilterScore,
 } from "../../shared/research-prefilter.ts";
 import { normalizeCityName } from "../../shared/cities.ts";
-import type { SchoolRegistryEntry } from "../schools/index.ts";
+import { schoolRegistry, type SchoolRegistryEntry } from "../schools/index.ts";
 import type { ProgramFact } from "./research-facts.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 
@@ -21,11 +22,9 @@ export const PREFILTER_POPULAR_CITIES = [
   "武汉",
   "成都",
   "西安",
-  "天津",
-  "重庆",
 ] as const;
 export const PREFILTER_CITY_BASIS =
-  "全国模式优先调查本地种子库中的主要区域高校中心；固定产品偏好，不代表实时热度或就业排名。";
+  "全国模式限定北京、上海、广州、深圳、杭州、南京、武汉、成都、西安：选择依据为教育资源较强的区域高校中心，不代表实时热度或就业排名。";
 export interface LocalEvidence<T> {
   value: T;
   quote: string;
@@ -65,6 +64,7 @@ export interface PrefilterProfile {
   annualBudget?: number;
   maxDuration?: number;
   score?: { total: number; maximum: number };
+  undergraduateTier?: "double-first-class" | "other";
 }
 const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 export function prefilterCities(cities: readonly string[]) {
@@ -81,6 +81,7 @@ export function prefilterCities(cities: readonly string[]) {
 export function prefilterProfile(
   profile: Profile,
   disciplineCodes: string[],
+  score?: PrefilterProfile["score"],
 ): PrefilterProfile {
   const budgets: Record<string, number> = {
     "1万元以内": 10000,
@@ -88,7 +89,16 @@ export function prefilterProfile(
     "2-5万元": 50000,
     "5-10万元": 100000,
   };
+  const undergraduate = schoolRegistry.schools.find(
+    (s) => s.name === profile.university,
+  );
   return {
+    undergraduateTier: undergraduate
+      ? undergraduate.tags.includes("双一流")
+        ? "double-first-class"
+        : "other"
+      : undefined,
+    score,
     cities: profile.cities,
     university: profile.university,
     year: Number(profile.year),
@@ -103,6 +113,7 @@ export function localPrefilterSchools(
   schools: readonly SchoolRegistryEntry[],
   facts: readonly ProgramFact[],
   targetYear = Number.POSITIVE_INFINITY,
+  priorityFacts: readonly ResearchPriorityFact[] = [],
 ): LocalSchool[] {
   return schools.map((school) => {
     const own = facts.filter(
@@ -168,6 +179,33 @@ export function localPrefilterSchools(
           sourceUrl: f.sourceUrl,
           year: f.year,
         };
+    }
+    for (const p of programs.values()) {
+      const cutoffs = priorityFacts.filter(
+        (f) =>
+          f.schoolName === school.name &&
+          f.disciplineCode === p.disciplineCode &&
+          f.field === "cutoff" &&
+          f.year <= targetYear &&
+          f.value.maximum &&
+          f.value.number !== undefined &&
+          (!f.majorCode || JSON.parse(p.key)[0] === f.majorCode),
+      );
+      const latest = Math.max(...cutoffs.map((f) => f.year));
+      const applicable = cutoffs.filter((f) => f.year === latest);
+      if (
+        applicable.length &&
+        new Set(applicable.map((f) => `${f.value.number}/${f.value.maximum}`))
+          .size === 1
+      ) {
+        const f = applicable[0];
+        p.cutoff = {
+          value: { total: f.value.number!, maximum: f.value.maximum! },
+          quote: f.quote,
+          sourceUrl: f.sourceUrl,
+          year: f.year,
+        };
+      }
     }
     return {
       key: school.registrableDomain,
@@ -276,7 +314,7 @@ export function prefilterResearchSchools(
           : 0,
         [
           comparable
-            ? `同满分口径自报总分${profile.score!.total}，参考${cutoff!.year}年分数线${cutoff!.value.total}：${cutoff!.quote}；不代表录取概率。`
+            ? `同满分口径目标总分${profile.score!.total}，参考${cutoff!.year}年分数线${cutoff!.value.total}：${cutoff!.quote}；不代表录取概率。`
             : "缺少可比分数线或用户总分，记0；不换算小测成绩。",
         ],
       );
@@ -290,8 +328,11 @@ export function prefilterResearchSchools(
           ? `有适用于本科学校的政策：${advantage!.quote}`
           : "没有适用本科优势政策证据，记0；同校、同省或同系统不自动加分。",
       ]);
+      const scopeCities = cities.length
+        ? cities
+        : [...PREFILTER_POPULAR_CITIES];
       const city =
-        cities.find((c) => c === s.city || s.campusCities?.includes(c)) ??
+        scopeCities.find((c) => c === s.city || s.campusCities?.includes(c)) ??
         s.city;
       const cityIndex = cities.indexOf(city);
       add("city", cityIndex >= 0 ? Math.max(1, 40 - cityIndex) : 0, [
@@ -334,7 +375,45 @@ export function prefilterResearchSchools(
             : "有明确城市偏好，不启用全国调查偏好分。",
         ],
       );
+      const comparablePrograms = eligible.filter(
+        (p) =>
+          profile.score &&
+          valid(p.cutoff) &&
+          p.cutoff!.value.maximum === profile.score.maximum,
+      );
+      const allBelow =
+        eligible.length > 0 &&
+        comparablePrograms.length === eligible.length &&
+        comparablePrograms.every(
+          (p) => profile.score!.total < p.cutoff!.value.total - 30,
+        );
+      const estimatedHigh =
+        !comparablePrograms.length &&
+        s.tags.includes("双一流") &&
+        profile.undergraduateTier === "other";
+      const feasibility = {
+        basis: comparablePrograms.length
+          ? ("evidence" as const)
+          : ("estimate" as const),
+        risk:
+          allBelow || estimatedHigh
+            ? ("high" as const)
+            : comparablePrograms.some(
+                  (p) => profile.score!.total >= p.cutoff!.value.total,
+                )
+              ? ("lower" as const)
+              : ("unknown" as const),
+        reason: comparablePrograms.length
+          ? comparablePrograms
+              .map(
+                (p) =>
+                  `${p.cutoff!.year}年参考线${p.cutoff!.value.total}，目标分差${profile.score!.total - p.cutoff!.value.total}；${p.cutoff!.sourceUrl}`,
+              )
+              .join("；")
+          : `估计：${estimatedHigh ? "本科院校非双一流，目标院校为双一流，暂列高挑战" : "缺少可比目标分或院校背景证据，保留调查"}；院校层次不能证明录取机会或本科歧视。`,
+      };
       return {
+        feasibility,
         institutionName: s.name,
         key: s.key,
         domain: s.domain,
@@ -346,6 +425,11 @@ export function prefilterResearchSchools(
     })
     .sort(
       (a, b) =>
+        (cities.length ? cities.indexOf(a.city) - cities.indexOf(b.city) : 0) ||
+        (cities.length > 3
+          ? { lower: 0, unknown: 1, high: 2 }[a.feasibility.risk] -
+            { lower: 0, unknown: 1, high: 2 }[b.feasibility.risk]
+          : 0) ||
         b.score - a.score ||
         compare(a.key, b.key) ||
         compare(a.institutionName, b.institutionName),
@@ -354,14 +438,19 @@ export function prefilterResearchSchools(
     omitted: ResearchPrefilter["omitted"] = [];
   const counts = new Map<string, number>();
   for (const school of scored) {
+    const scopeCities: readonly string[] = cities.length
+      ? cities
+      : PREFILTER_POPULAR_CITIES;
     const reason = school.excludedReasons.length
       ? "明确不满足限制"
-      : cities.length > 1 &&
-          (counts.get(school.city) ?? 0) >= B.prefilterCitySchools
-        ? "城市名额上限"
-        : selected.length >= B.prefilterSchools
-          ? "粗筛名额上限"
-          : "";
+      : !scopeCities.includes(school.city)
+        ? "不在本次城市范围"
+        : !cities.length && school.feasibility!.risk === "high"
+          ? `全国模式高挑战剔除：${school.feasibility!.reason}`
+          : cities.length > 3 &&
+              (counts.get(school.city) ?? 0) >= B.prefilterCitySchools
+            ? "城市名额上限"
+            : "";
     if (reason) omitted.push({ ...school, reason });
     else {
       selected.push(school);

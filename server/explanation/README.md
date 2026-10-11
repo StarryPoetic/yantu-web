@@ -249,3 +249,50 @@ npx playwright test tests/tutor-chat.spec.ts
 额度按输入 JSON 字符数加最大输出预留：规划每次 16000 + 4096 = 20096，最终每次 40000 + 16384 = 56384。规划与最终各一次修复，加一次整份报告共享的临时故障重试，最坏 2 × 20096 + 3 × 56384 = 209344；可选覆盖补充再加 56384，完整上界 265728。整份报告最多6次模型请求，规划与初次报告每阶段最多3次，但二者共享一次临时故障重试。默认每账号每日300000、全站900000模型 token，应用和直接创建运行时一致。研究、咨询和解释使用同一额度；这是本地账本，不是供应商账户余额或充值。
 
 整份报告默认30分钟总超时，最终模型流式思考默认45秒空闲超时与300秒总上限；最终请求还会取整份报告剩余时间的较小值。非思考规划保持30秒，单页下载8秒，PDF/XLS解析另有5秒上限。超时保留MODEL_TIMEOUT或RESEARCH_TOTAL_TIMEOUT失败原因、可用建议和断点，允许用户手动续跑；不自动重试超时，未知用量仍保留预留额度。所有超时常量集中在research-budget.ts，取消检查贯穿所有阶段。
+
+## 第一批现行预算（2026-10-11，覆盖旧阶段默认值）
+
+检索72次搜索，240条搜索候选，180次正文读取，初期54次搜索、120次读取，费用最多18次搜索，城市恢复追加24次读取；最多72条同校PDF附件候选。每账号每日4000000、全站12000000 token，搜索每账号180次、全站900次。显式部署配置优先，不修改.env；旧配置示例只代表显式限额，不再代表当前默认值。
+
+| 常量                         | 值       |
+| ---------------------------- | -------- |
+| `prefilterSchools`           | 240      |
+| `prefilterCitySchools`       | 15       |
+| `searchDailyRequestsPerUser` | 180      |
+| `searchDailyRequestsGlobal`  | 900      |
+| `collectionTargetMs`         | 300000   |
+| `reads`                      | 180      |
+| `schoolReads`                | 16       |
+| `platformReads`              | 4        |
+| `concurrency`                | 8        |
+| `initialReads`               | 120      |
+| `cityReads`                  | 24       |
+| `geographyReads`             | 2        |
+| `searches`                   | 72       |
+| `initialSearches`            | 54       |
+| `feeSearches`                | 18       |
+| `repairSearches`             | 4        |
+| `candidates`                 | 240      |
+| `librarySourcesPerSchool`    | 8        |
+| `modelSources`               | 40       |
+| `attachments`                | 72       |
+| `attachmentLinks`            | 12       |
+| `attachmentDepth`            | 3        |
+| `registryReads`              | 6        |
+| `cityCandidates`             | 12       |
+| `pendingPerField`            | 2        |
+| `thinkingChars`              | 40000    |
+| `normalChars`                | 16000    |
+| `repairHeadroom`             | 2000     |
+| `requestBytes`               | 131072   |
+| `pageTimeoutMs`              | 8000     |
+| `normalTimeoutMs`            | 30000    |
+| `thinkingIdleTimeoutMs`      | 45000    |
+| `thinkingTimeoutMs`          | 300000   |
+| `researchTotalTimeoutMs`     | 1800000  |
+| `planningOutputTokens`       | 4096     |
+| `finalOutputTokens`          | 16384    |
+| `userDailyTokens`            | 4000000  |
+| `globalDailyTokens`          | 12000000 |
+
+现行城市恢复最多120次读取、追加24次读取、全报告最多180次正文读取；补查沿用72 次搜索、180 次正文读取上限。

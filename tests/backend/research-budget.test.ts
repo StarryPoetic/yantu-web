@@ -176,7 +176,7 @@ test("shared scheduler bounds concurrency and serialises hosts; outcome merging 
   });
   const urls = Array.from(
     { length: 20 },
-    (_, i) => `https://s${i % 5}.edu.cn/${i}`,
+    (_, i) => `https://s${i % B.concurrency}.edu.cn/${i}`,
   );
   const results: string[] = [];
   await orderedReadWave(
@@ -199,8 +199,8 @@ test("atomic reservations cannot exceed total/school/platform budgets and failur
     throw new Error("offline failure");
   });
   await Promise.allSettled(
-    Array.from({ length: 100 }, (_, i) =>
-      scheduler.read(`https://s${i % 10}.edu.cn/${i}`),
+    Array.from({ length: B.reads + 20 }, (_, i) =>
+      scheduler.read(`https://s${i % 20}.edu.cn/${i}`),
     ),
   );
   assert.equal(dispatched, B.reads);
@@ -231,15 +231,15 @@ test("read failures count dispatched requests and fixed codes, excluding rejecte
     return "public text";
   });
   await Promise.allSettled(
-    Array.from({ length: 12 }, (_, i) =>
+    Array.from({ length: B.schoolReads + 4 }, (_, i) =>
       scheduler.read(`https://stats.edu.cn/${i}`),
     ),
   );
   assert.equal(scheduler.statistics.reads, B.schoolReads);
-  assert.equal(scheduler.statistics.success, 4);
-  assert.equal(scheduler.statistics.failed, 4);
+  assert.equal(scheduler.statistics.success, B.schoolReads / 2);
+  assert.equal(scheduler.statistics.failed, B.schoolReads / 2);
   assert.deepEqual(scheduler.statistics.failuresByCode, {
-    WEB_DNS_UNAVAILABLE: 4,
+    WEB_DNS_UNAVAILABLE: B.schoolReads / 2,
   });
 });
 
@@ -481,7 +481,8 @@ test("a worst-case report including repairs, one retry and optional coverage fit
   const reserve = researchReservation();
   assert.equal(
     reserve.required,
-    2 * (B.normalChars + B.planningOutputTokens) +
+    reserve.collection +
+      2 * (B.normalChars + B.planningOutputTokens) +
       3 * (B.thinkingChars + B.finalOutputTokens),
   );
   assert.ok(reserve.withCoverage <= B.userDailyTokens);

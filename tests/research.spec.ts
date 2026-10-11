@@ -3426,7 +3426,7 @@ for (const width of [1280, 375]) {
       })),
     );
     service.finish("partial", (report) => ({ ...report, prefilter }));
-    const heading = panel.getByText("筛选依据：从 32 所中选出 20 所精查", {
+    const heading = panel.getByText("筛选依据：从 32 所中选出 32 所精查", {
       exact: true,
     });
     await expect(heading).toBeVisible();
@@ -3437,9 +3437,9 @@ for (const width of [1280, 375]) {
     await expect(explanation).toBeHidden();
     await heading.click();
     await expect(explanation).toBeVisible();
-    await expect(
-      panel.getByText("城市名额上限", { exact: true }),
-    ).toBeVisible();
+    await expect(panel.getByText("城市名额上限", { exact: true })).toHaveCount(
+      0,
+    );
     await panel.getByText("筛选学校0的分项分与依据", { exact: true }).click();
     await expect(
       panel

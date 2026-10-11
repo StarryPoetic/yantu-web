@@ -645,7 +645,10 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
   assert.equal(planning.context.profile.priorities["就业机会"], 90);
   assert.equal(planning.context.profile.university, "本科教育背景大学");
   for (const request of [...planningCalls, ...calls]) {
-    assert.equal(request.options?.model, "deepseek-v4-pro");
+    assert.equal(
+      request.options?.model,
+      request.options?.thinking ? "deepseek-v4-pro" : "deepseek-flash",
+    );
     const sent = JSON.stringify(request.messages);
     assert.ok(sent.includes("阅读理解"));
     assert.ok(sent.includes("私密补充信息"));
@@ -666,7 +669,7 @@ test("two-stage research receives all 184 disciplines and full relevant profile,
   const queries = events
     .filter((event) => new URL(event.url).hostname === "api.search.brave.com")
     .map((event) => new URL(event.url).searchParams.get("q")!);
-  assert.ok(queries.length > 6 && queries.length <= 24);
+  assert.ok(queries.length > 6 && queries.length <= B.searches);
   assert.equal(queries[0], "上海 硕士研究生 招生单位 招生专业目录");
   assert.equal(queries[0].includes("2027"), false);
   assert.ok(
@@ -1916,17 +1919,16 @@ test("retrieval reserves fee capacity within shared search/read budgets, with al
   const report = await module.generate({ subjectId: "student", run });
   assert.equal(
     searches,
-    19,
-    `18 discovery requests plus the retained school's fee request (${JSON.stringify({ reason: report.reason, failureStage: report.failureStage, recommendations: report.recommendations.length, calls: calls.length, planningCalls: planningCalls.length, limit: report.limitations.at(-1) })})`,
+    B.initialSearches + 1,
+    `Configured discovery requests plus the retained school's fee request (${JSON.stringify({ reason: report.reason, failureStage: report.failureStage, recommendations: report.recommendations.length, calls: calls.length, planningCalls: planningCalls.length, limit: report.limitations.at(-1) })})`,
   );
   assert.equal(
     pages,
-    B.initialReads,
+    66,
     "catalogue discovery leaves the remaining reads for actual fee evidence",
   );
   assert.ok(
-    report.sources.length >= B.initialReads &&
-      report.sources.length <= B.candidates,
+    report.sources.length >= 66 && report.sources.length <= B.candidates,
   );
   for (const call of [...calls, ...planningCalls])
     assert.ok(JSON.stringify(call.messages).length < B.thinkingChars);

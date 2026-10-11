@@ -73,7 +73,10 @@ export function createModelRuntime(
   }
   const adapter = config.adapter ?? createDeepSeekAdapter(config);
   const now = config.now ?? Date.now;
-  const ledger = new Map<string, { tokens: number; active: number }>();
+  const ledger = new Map<
+    string,
+    { tokens: number; active: number; collecting: number }
+  >();
   const cache = new Map<
     string,
     { user: string; result: unknown; expires: number }
@@ -111,7 +114,11 @@ export function createModelRuntime(
         globalTokens = 0;
         ledger.clear();
       }
-      const account = ledger.get(user) ?? { tokens: 0, active: 0 };
+      const account = ledger.get(user) ?? {
+        tokens: 0,
+        active: 0,
+        collecting: 0,
+      };
       // One token per input character is deliberately conservative for mixed Chinese/English.
       const reserve =
         JSON.stringify(messages).length + selected.maxOutputTokens;
@@ -123,7 +130,13 @@ export function createModelRuntime(
             B.finalOutputTokens
       )
         throw new ModelError("EVIDENCE_TOO_LARGE");
-      if (account.active >= 1 || active >= (config.globalConcurrency ?? 4))
+      if (
+        account.active >=
+          (options.researchParallel && account.collecting === account.active
+            ? B.collectionConcurrency
+            : 1) ||
+        active >= (config.globalConcurrency ?? 4)
+      )
         throw new ModelError("CONCURRENCY_LIMIT");
       if (
         account.tokens + reserve >
@@ -135,6 +148,7 @@ export function createModelRuntime(
       const generation = generations.get(user) ?? 0;
       account.tokens += reserve;
       account.active += 1;
+      if (options.researchParallel) account.collecting++;
       globalTokens += reserve;
       active += 1;
       ledger.set(user, account);
@@ -167,6 +181,7 @@ export function createModelRuntime(
         // An unknown upstream outcome retains its full reservation: timeout does not imply free.
         account.tokens += actual - reserve;
         account.active -= 1;
+        if (options.researchParallel) account.collecting--;
         globalTokens += actual - reserve;
         active -= 1;
       }

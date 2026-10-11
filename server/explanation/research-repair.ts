@@ -122,12 +122,18 @@ export async function repairResearchEvidence(input: {
   now?: () => number;
   /** Two-stage runs never follow search results outside the selected school. */
   allowedDomains?: readonly string[];
+  priorityDocuments?: boolean;
+  queryForGap?: (gap: ResearchEvidenceGap) => string[];
   stop?: (sources: readonly WebSource[]) => boolean;
   needsEvidence?: (
     gap: ResearchEvidenceGap,
     sources: readonly WebSource[],
   ) => boolean;
 }) {
+  const matchesTitle = (field: ResearchEvidenceGap["field"], title: string) =>
+    titles[field].test(title) ||
+    (!!input.priorityDocuments &&
+      /复试|录取|报录|推免|就业|评估|排名|生源|产业/.test(title));
   const scheduler = createResearchReader(
     (url) => input.readPage(url),
     input.signal,
@@ -337,14 +343,14 @@ export async function repairResearchEvidence(input: {
             sourceHasSchoolIdentity(source, school) &&
             source.documentLinks?.some(
               (link) =>
-                titles[gap.field].test(link.title) &&
+                matchesTitle(gap.field, link.title) &&
                 unread(link.url) &&
                 academicDomain(link.url) === academicDomain(source.url),
             ),
         );
         const link = parent?.documentLinks?.find(
           (link) =>
-            titles[gap.field].test(link.title) &&
+            matchesTitle(gap.field, link.title) &&
             unread(link.url) &&
             academicDomain(link.url) === academicDomain(parent.url),
         );
@@ -393,7 +399,7 @@ export async function repairResearchEvidence(input: {
         )
         .filter(
           (link) =>
-            titles[gap.field].test(link.title) &&
+            matchesTitle(gap.field, link.title) &&
             domains.includes(academicDomain(link.url)) &&
             unread(link.url),
         )
@@ -422,25 +428,27 @@ export async function repairResearchEvidence(input: {
               ...historicalReferenceYears(input.targetYear),
               Number(input.targetYear),
             ];
-      const queries = years
-        .filter(Number.isInteger)
-        .map((year) =>
-          [
-            gap.institutionName,
-            gap.collegeName,
-            gap.majorCode,
-            gap.programName,
-            `${year}年`,
-            gap.studyMode === "full_time"
-              ? "全日制"
-              : gap.studyMode === "part_time"
-                ? "非全日制"
-                : "",
-            terms[gap.field],
-          ]
-            .filter(Boolean)
-            .join(" "),
-        );
+      const queries =
+        input.queryForGap?.(gap) ??
+        years
+          .filter(Number.isInteger)
+          .map((year) =>
+            [
+              gap.institutionName,
+              gap.collegeName,
+              gap.majorCode,
+              gap.programName,
+              `${year}年`,
+              gap.studyMode === "full_time"
+                ? "全日制"
+                : gap.studyMode === "part_time"
+                  ? "非全日制"
+                  : "",
+              terms[gap.field],
+            ]
+              .filter(Boolean)
+              .join(" "),
+          );
       const query = queries.find(
         (question) =>
           !keys.has(
@@ -498,7 +506,7 @@ export async function repairResearchEvidence(input: {
         if (parent)
           for (const child of parent.documentLinks
             ?.filter(
-              (link) => titles[gap.field].test(link.title) && unread(link.url),
+              (link) => matchesTitle(gap.field, link.title) && unread(link.url),
             )
             .slice(0, B.concurrency) ?? [])
             await read({ ...child, parent }, gap);

@@ -161,10 +161,10 @@ test("the shared search and remaining-read ceilings rotate actual schools withou
       },
     }),
   );
-  assert.equal(queries.length, 6);
-  assert.equal(result.requestCount, 6);
-  assert.equal(result.readCount, B.feeSearches * 3);
-  assert.equal(reads.length, B.feeSearches * 3);
+  assert.equal(queries.length, 10);
+  assert.equal(result.requestCount, 10);
+  assert.equal(result.readCount, Math.min(10, B.feeSearches) * 3);
+  assert.equal(reads.length, Math.min(10, B.feeSearches) * 3);
   assert.equal(
     new Set(reads.slice(0, 6).map((url) => new URL(url).hostname)).size,
     6,

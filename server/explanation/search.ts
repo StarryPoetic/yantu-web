@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { ModelError } from "./deepseek.ts";
 import { isIP } from "node:net";
 
@@ -80,16 +81,20 @@ export function searchConfigFromEnvironment(
         : env.BRAVE_SEARCH_API_KEY
       )?.trim() || undefined,
     searchDailyRequestsPerUser: Number(
-      env.YANTU_SEARCH_USER_DAILY_REQUESTS ?? 60,
+      env.YANTU_SEARCH_USER_DAILY_REQUESTS ?? B.searchDailyRequestsPerUser,
     ),
-    searchDailyRequestsGlobal: Number(env.YANTU_SEARCH_DAILY_REQUESTS ?? 300),
+    searchDailyRequestsGlobal: Number(
+      env.YANTU_SEARCH_DAILY_REQUESTS ?? B.searchDailyRequestsGlobal,
+    ),
   };
 }
 
 /** Reserve before sending; failed requests may still be billed and clearing chat does not refund them. */
 export function createSearchBudget(config: SearchConfig = {}): SearchBudget {
-  const userLimit = config.searchDailyRequestsPerUser ?? 10;
-  const globalLimit = config.searchDailyRequestsGlobal ?? 100;
+  const userLimit =
+    config.searchDailyRequestsPerUser ?? B.searchDailyRequestsPerUser;
+  const globalLimit =
+    config.searchDailyRequestsGlobal ?? B.searchDailyRequestsGlobal;
   if (
     [userLimit, globalLimit].some(
       (value) => !Number.isSafeInteger(value) || value < 0,

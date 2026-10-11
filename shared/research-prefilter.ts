@@ -15,6 +15,11 @@ export interface PrefilterSchoolResult {
   key: string;
   domain: string;
   city: string;
+  feasibility?: {
+    basis: "evidence" | "estimate";
+    risk: "lower" | "unknown" | "high";
+    reason: string;
+  };
   score: number;
   scores: PrefilterScore[];
   excludedReasons: string[];

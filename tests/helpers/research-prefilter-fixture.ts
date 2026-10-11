@@ -138,9 +138,24 @@ export function prefilterFixture(
       };
     },
     adapter: {
-      async complete(messages) {
+      async complete(messages, requestOptions) {
         counts.models++;
         counts.inputChars += JSON.stringify(messages).length;
+        const collection =
+          /research-(?:query-plan|page-extract|school-summary)-v1/.test(
+            messages[0].content,
+          );
+        if (collection)
+          return {
+            content: JSON.stringify({
+              focus: [0, 0, 0, 0, 0],
+              facts: [],
+              factIds: [],
+            }),
+            inputTokens: 100,
+            outputTokens: 20,
+            model: requestOptions?.model ?? "deepseek-flash",
+          };
         if (failModel) {
           failModel = false;
           throw new ModelError("MODEL_TIMEOUT");

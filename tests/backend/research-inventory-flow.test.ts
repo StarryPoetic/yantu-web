@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createResearchReportModule } from "../../server/explanation/research.ts";
@@ -93,7 +94,7 @@ for (const city of ["合肥", "成都"]) {
     });
     const report = await engine.generate({ subjectId: run.subjectId, run });
     assert.ok(reads.includes(url));
-    assert.ok(queries <= 24 && reads.length <= 24);
+    assert.ok(queries <= B.searches && reads.length <= B.reads);
     assert.ok(
       reads.filter(
         (u) => schoolRegistry.byHost(new URL(u).hostname)?.name === lead.school,
@@ -264,7 +265,7 @@ for (const campusChain of ["complete", "unreadable"] as const) {
         assert.ok(main.citations.includes(evidence.sourceId));
       }
     }
-    assert.ok(reads.length <= 24);
+    assert.ok(reads.length <= B.reads);
   });
 }
 for (const failure of ["none", "plan", "report"] as const) {
@@ -424,7 +425,7 @@ test("an unregistered city and school recover both degree routes and campus city
     reads.filter((url) => new URL(url).hostname.endsWith("qingyuan.edu.cn")),
     [directory, charter, campus],
   );
-  assert.ok(reads.length <= 24);
+  assert.ok(reads.length <= B.reads);
   assert.equal(report.recommendations.length, 1);
   const main = report.recommendations[0];
   assert.equal(main.institutionName, university);
