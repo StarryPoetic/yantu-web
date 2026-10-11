@@ -67,6 +67,8 @@ const messages: Record<string, string> = {
     "模型服务暂时故障，本次生成未完成，请稍后重试。",
   PROVIDER_NETWORK_ERROR:
     "连接模型服务失败或中途断开，请检查服务器网络后重试。",
+  PROVIDER_DNS_UNAVAILABLE:
+    "连接模型服务失败或中途断开，请检查服务器网络后重试。",
   PROVIDER_UNAVAILABLE:
     "模型服务未完成本次请求，请检查服务状态与配置；无需修改画像。",
   INVALID_RESPONSE: "模型服务返回的数据无法读取，请稍后重试；无需修改画像。",

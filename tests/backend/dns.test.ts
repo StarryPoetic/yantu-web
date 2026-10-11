@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import { ModelError } from "../../server/explanation/deepseek.ts";
 import {
   createPublicDohResolver,
   dnsModeFromEnvironment,
@@ -314,4 +315,110 @@ test("HTTPS reader pins DoH's public address, keeps original TLS hostname and ne
   pinned(host, { all: true }, (_error, addresses) =>
     assert.deepEqual(addresses, [{ address: "8.8.8.8", family: 4 }]),
   );
+});
+
+test("independent families retain A success when AAAA fails or times out, and preserve original errors if neither succeeds", async () => {
+  for (const hanging of [false, true]) {
+    const resolver = createPublicDohResolver({
+      timeoutMs: 10,
+      fetch: (async (value) => {
+        const url = new URL(String(value));
+        if (url.searchParams.get("type") === "28") {
+          if (hanging) return new Promise(() => {});
+          throw new Error("mock failure");
+        }
+        return json(payload(url));
+      }) as typeof fetch,
+    });
+    assert.deepEqual(await resolver(host, { all: true, verbatim: true }), [
+      { address: "8.8.8.8", family: 4 },
+    ]);
+  }
+  for (const [fetcher, code] of [
+    [
+      async () => {
+        throw new Error("private DNS error");
+      },
+      "WEB_DNS_UNAVAILABLE",
+    ],
+    [async () => new Promise(() => {}), "WEB_DNS_TIMEOUT"],
+  ] as const) {
+    const resolver = createPublicDohResolver({
+      fetch: fetcher as typeof fetch,
+      timeoutMs: 5,
+    });
+    await assert.rejects(resolver(host, { all: true, verbatim: true }), {
+      code,
+    });
+  }
+});
+
+test("reader retries only transient DNS failures once and never repeats search POST", async () => {
+  for (const code of ["WEB_DNS_UNAVAILABLE", "WEB_DNS_TIMEOUT"]) {
+    let resolutions = 0,
+      posts = 0;
+    const reader = createHttpsReader({
+      resolver: async () => {
+        if (++resolutions === 1) throw new ModelError(code);
+        return [{ address: "8.8.8.8", family: 4 }];
+      },
+      request: ((
+        _url: URL,
+        _options: unknown,
+        callback: (response: unknown) => void,
+      ) => {
+        const req = new EventEmitter();
+        return Object.assign(req, {
+          end() {
+            posts++;
+            const response = Object.assign(new EventEmitter(), {
+              statusCode: 200,
+              headers: { "content-type": "application/json" },
+              destroy() {},
+            });
+            queueMicrotask(() => {
+              callback(response);
+              response.emit("data", Buffer.from("{}"));
+              response.emit("end");
+            });
+          },
+          destroy() {},
+        });
+      }) as never,
+    });
+    await reader("https://api.bocha.cn/v1/web-search", {
+      allowedHosts: [host],
+      method: "POST",
+      body: "{}",
+    });
+    assert.equal(resolutions, 2);
+    assert.equal(posts, 1);
+  }
+});
+
+test("DNS retry stays within the original deadline and never retries unsafe or invalid answers", async () => {
+  let calls = 0;
+  const started = Date.now();
+  await assert.rejects(
+    resolvePublicAddress(
+      host,
+      async () => {
+        calls++;
+        return new Promise(() => {});
+      },
+      { timeoutMs: 10 },
+    ),
+    { code: "WEB_DNS_TIMEOUT" },
+  );
+  assert.equal(calls, 1);
+  assert.ok(Date.now() - started < 500);
+  calls = 0;
+  await assert.rejects(
+    resolvePublicAddress(host, async () => {
+      calls++;
+      throw new ModelError("WEB_DNS_INVALID_RESPONSE");
+    }),
+    { code: "WEB_DNS_INVALID_RESPONSE" },
+  );
+  assert.equal(calls, 1);
 });

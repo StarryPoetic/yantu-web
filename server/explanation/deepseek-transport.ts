@@ -36,7 +36,7 @@ function responseBody(response: IncomingMessage): ReadableStream<Uint8Array> {
   );
 }
 
-/** Fixed-provider transport for explicit public-DoH mode; no fallback or retry. */
+/** Fixed-provider transport; only DNS may retry, never the model POST. */
 export function createDeepSeekTransport(
   dependencies: {
     resolver?: AddressResolver;
@@ -67,15 +67,13 @@ export function createDeepSeekTransport(
     let address;
     try {
       address = await Promise.race([
-        resolvePublicAddress(url.hostname, resolver),
+        resolvePublicAddress(url.hostname, resolver, { signal }),
         aborted,
       ]);
     } catch (error) {
       if (signal.aborted) throw new ModelError("MODEL_TIMEOUT");
       // DNS details are transport failures, never facts about the user's profile.
-      if (error instanceof ModelError)
-        throw new ModelError("PROVIDER_NETWORK_ERROR");
-      throw error;
+      throw new ModelError("PROVIDER_DNS_UNAVAILABLE");
     } finally {
       signal.removeEventListener("abort", onAbort);
     }
@@ -133,7 +131,13 @@ export function createDeepSeekTransport(
           );
         },
       );
-      req.once("error", reject);
+      req.once("error", () =>
+        reject(
+          new ModelError(
+            signal.aborted ? "MODEL_TIMEOUT" : "PROVIDER_NETWORK_ERROR",
+          ),
+        ),
+      );
       req.end(init.body);
     });
   };

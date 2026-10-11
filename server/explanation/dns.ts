@@ -152,20 +152,28 @@ export function createPublicDohResolver(
           throw new ModelError("WEB_DNS_UNAVAILABLE");
         return answers(await readJson(response), host, type);
       };
-      return (
-        await Promise.race([
-          Promise.all([request(1), request(28)]),
-          new Promise<never>((_, reject) => {
-            timer = setTimeout(
-              () => {
-                reject(new ModelError("WEB_DNS_TIMEOUT"));
-                controller.abort();
-              },
-              Math.max(1, Math.min(dependencies.timeoutMs ?? 5000, 5000)),
-            );
-          }),
-        ])
-      ).flat();
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => {
+            reject(new ModelError("WEB_DNS_TIMEOUT"));
+            controller.abort();
+          },
+          Math.max(1, Math.min(dependencies.timeoutMs ?? 5000, 5000)),
+        );
+      });
+      const results = await Promise.allSettled([
+        Promise.race([request(1), timeout]),
+        Promise.race([request(28), timeout]),
+      ]);
+      // Retain every accepted address, including unsafe ones, for the caller's
+      // all-public guard. A failed family never discards the other family's data.
+      const addresses = results.flatMap((result) =>
+        result.status === "fulfilled" ? result.value : [],
+      );
+      if (addresses.length) return addresses;
+      const failed = results.find((result) => result.status === "rejected");
+      if (failed?.status === "rejected") throw failed.reason;
+      return [];
     } catch (error) {
       if (error instanceof ModelError) throw error;
       throw new ModelError("WEB_DNS_UNAVAILABLE");
@@ -174,4 +182,48 @@ export function createPublicDohResolver(
       controller.abort();
     }
   };
+}
+
+/** Retry only name resolution once, within the original deadline. Never retry HTTP. */
+export async function resolveDnsWithRetry(
+  host: string,
+  resolver: AddressResolver,
+  options: { timeoutMs?: number; signal?: AbortSignal } = {},
+): Promise<LookupAddress[]> {
+  const deadline = Date.now() + (options.timeoutMs ?? 5000);
+  for (let attempt = 0; ; attempt++) {
+    options.signal?.throwIfAborted();
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new ModelError("WEB_DNS_TIMEOUT");
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let onAbort: (() => void) | undefined;
+    try {
+      return await Promise.race([
+        resolver(host, { all: true, verbatim: true }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new ModelError("WEB_DNS_TIMEOUT")),
+            remaining,
+          );
+          if (options.signal) {
+            onAbort = () => reject(options.signal!.reason);
+            options.signal.addEventListener("abort", onAbort, { once: true });
+            if (options.signal.aborted) onAbort();
+          }
+        }),
+      ]);
+    } catch (error) {
+      options.signal?.throwIfAborted();
+      if (
+        attempt ||
+        !(error instanceof ModelError) ||
+        !["WEB_DNS_UNAVAILABLE", "WEB_DNS_TIMEOUT"].includes(error.code) ||
+        Date.now() >= deadline
+      )
+        throw error;
+    } finally {
+      clearTimeout(timer);
+      if (onAbort) options.signal?.removeEventListener("abort", onAbort);
+    }
+  }
 }

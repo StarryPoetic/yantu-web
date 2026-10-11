@@ -2,6 +2,7 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { ModelError } from "./deepseek.ts";
 import type { AddressResolver } from "./dns.ts";
+import { resolveDnsWithRetry } from "./dns.ts";
 
 /** Reject special-use networks; IPv4-mapped, tunnelling, and non-global IPv6 are denied. */
 export function isPublicAddress(address: string): boolean {
@@ -42,8 +43,9 @@ export function isPublicAddress(address: string): boolean {
 export async function resolvePublicAddress(
   host: string,
   resolver: AddressResolver = lookup,
+  options: { timeoutMs?: number; signal?: AbortSignal } = {},
 ): Promise<{ address: string; family: number }> {
-  const addresses = await resolver(host, { all: true, verbatim: true });
+  const addresses = await resolveDnsWithRetry(host, resolver, options);
   if (
     !addresses.length ||
     addresses.some((entry) => !isPublicAddress(entry.address))

@@ -6,6 +6,7 @@ import { PassThrough } from "node:stream";
 import type { RequestOptions } from "node:https";
 import { createDeepSeekTransport } from "../../server/explanation/deepseek-transport.ts";
 import { createDeepSeekAdapter } from "../../server/explanation/deepseek.ts";
+import { ModelError } from "../../server/explanation/deepseek.ts";
 
 const endpoint = "https://api.deepseek.com/chat/completions";
 const publicAddresses = [
@@ -172,7 +173,7 @@ test("all DNS answers must be public; mixed Fake-IP or IPv6 cannot bypass the sh
       }) as never,
     });
     await assert.rejects(transport(endpoint, init()), {
-      code: "PROVIDER_NETWORK_ERROR",
+      code: "PROVIDER_DNS_UNAVAILABLE",
     });
   }
   assert.equal(requests, 0);
@@ -352,4 +353,58 @@ test("native response abort stays within the adapter total timeout and does not 
   );
   assert.equal(calls, 1);
   assert.equal(response?.destroyed, true);
+});
+
+test("one DNS retry can recover without repeating the model POST; DNS and TLS errors stay distinct", async () => {
+  let resolutions = 0,
+    posts = 0;
+  const recovered = createDeepSeekTransport({
+    resolver: async () => {
+      if (++resolutions === 1) throw new ModelError("WEB_DNS_UNAVAILABLE");
+      return publicAddresses;
+    },
+    request: fakeRequest((_url, _opts, _body, response) => {
+      posts++;
+      response.end("{}");
+    }),
+  });
+  await (await recovered(endpoint, init())).text();
+  assert.equal(resolutions, 2);
+  assert.equal(posts, 1);
+  for (const code of ["WEB_DNS_UNAVAILABLE", "WEB_DNS_TIMEOUT"]) {
+    resolutions = 0;
+    const failed = createDeepSeekTransport({
+      resolver: async () => {
+        resolutions++;
+        throw new ModelError(code);
+      },
+      request: (() => {
+        posts++;
+        throw new Error("must not POST");
+      }) as never,
+    });
+    await assert.rejects(failed(endpoint, init()), {
+      code: "PROVIDER_DNS_UNAVAILABLE",
+    });
+    assert.equal(resolutions, 2);
+    assert.equal(posts, 1);
+  }
+  const tls = createDeepSeekTransport({
+    resolver: async () => publicAddresses,
+    request: (() => {
+      const req = new EventEmitter();
+      return Object.assign(req, {
+        end() {
+          posts++;
+          queueMicrotask(() =>
+            req.emit("error", new Error("private TLS details")),
+          );
+        },
+      });
+    }) as never,
+  });
+  await assert.rejects(tls(endpoint, init()), {
+    code: "PROVIDER_NETWORK_ERROR",
+  });
+  assert.equal(posts, 2);
 });

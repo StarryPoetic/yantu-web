@@ -378,7 +378,10 @@ export function createHttpsReader(
             if (options.signal.aborted) dnsAbort();
           }
         }),
-        resolvePublicAddress(url.hostname, resolver),
+        resolvePublicAddress(url.hostname, resolver, {
+          timeoutMs: remaining(),
+          signal: options.signal,
+        }),
         new Promise<never>((_, reject) => {
           dnsTimer = setTimeout(
             () => reject(new ModelError("WEB_TIMEOUT")),
