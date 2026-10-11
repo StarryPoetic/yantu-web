@@ -263,6 +263,22 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
     handle(c: Context): Reply | undefined {
       if (c.path === "/research/status" && c.method === "GET")
         return { body: engine.getReadiness() };
+      if (c.path === "/research/latest" && c.method === "GET") {
+        const jobs = store
+          .list<ResearchJob>(c.session.subjectId, "research-job")
+          .map((row) => row.value);
+        const job = jobs.sort(
+          (a, b) =>
+            Number(activeStatus(b)) - Number(activeStatus(a)) ||
+            b.createdAt.localeCompare(a.createdAt),
+        )[0];
+        return {
+          body: {
+            job: job ? view(c, job) : null,
+            run: job ? currentRun(c, job.guidanceRunId, false) : null,
+          },
+        };
+      }
       const existing = /^\/research-jobs\/([^/]+)$/.exec(c.path);
       if (existing && c.method === "GET")
         return {

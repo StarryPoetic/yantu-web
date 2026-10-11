@@ -1,3 +1,4 @@
+import { useResearch } from "./ResearchContext";
 import { useEffect, useState } from "react";
 import { Compass, Sparkles } from "lucide-react";
 import type { GuidanceRun } from "../../server/disciplines/types";
@@ -28,6 +29,7 @@ export function GuidancePanel({
   onProfile: () => void;
   onSelection: (value: Partial<Selections>) => Promise<void>;
 }) {
+  const research = useResearch();
   const [run, setRun] = useState<Guidance | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
@@ -40,6 +42,7 @@ export function GuidancePanel({
   const [notice, setNotice] = useState("");
   const saved = profile.profileCompleted || Number(profile.profileVersion) > 0;
   async function generate(signal?: AbortSignal, reuse = false) {
+    if (research.running || research.startingMode) return;
     setBusy(true);
     setError(null);
     setModel(null);
@@ -104,14 +107,27 @@ export function GuidancePanel({
     }
   }
   useEffect(() => {
-    if (!saved) return;
+    if (!saved || research.loading) return;
+    if (
+      research.run &&
+      (research.job || research.startingMode) &&
+      (research.running ||
+        research.startingMode ||
+        (research.run.versions.profileVersion ===
+          Number(profile.profileVersion) &&
+          research.run.versions.selectionVersion ===
+            Number(selections.selectionVersion)))
+    ) {
+      setRun(research.run);
+      return;
+    }
     const controller = new AbortController();
     void generate(controller.signal, true);
     return () => controller.abort();
     // Each visit creates a snapshot for the profile and selection versions shown here.
     // Changing a confirmed major below is explicit and requires pressing regenerate.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile.profileVersion]);
+  }, [profile.profileVersion, research.loading]);
   async function explain() {
     if (!run) return;
     setModelBusy(true);
@@ -268,6 +284,7 @@ export function GuidancePanel({
                               </ul>
                             </details>
                             <button
+                              disabled={research.locked}
                               className="ws-secondary"
                               onClick={() => {
                                 void onSelection({
@@ -357,7 +374,7 @@ export function GuidancePanel({
             </button>
             <button
               className="ws-secondary"
-              disabled={busy}
+              disabled={busy || research.locked}
               onClick={() => void generate()}
             >
               重新生成结论

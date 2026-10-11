@@ -824,3 +824,120 @@ test("a saved profile-based school recommendation survives refresh with admissio
   assert.match(latest.message, /匹配理由/);
   assert.doesNotMatch(latest.message, /资格已|条件已|录取/);
 });
+
+for (const terminal of [
+  "completed",
+  "failed",
+  "cancelled",
+  "partial",
+  "blocked",
+] as const) {
+  test(`report input lock is owner-scoped and released after ${terminal}`, async (t) => {
+    const release = deferred(),
+      started = deferred();
+    const engine: ResearchReportModule = {
+      getReadiness: () => ({ ready: true, reasons: [], model }),
+      clearSubject() {
+        release.resolve();
+      },
+      async generate(input) {
+        await input.onProgress?.("analyzing");
+        started.resolve();
+        await release.promise;
+        return output(input);
+      },
+    };
+    const { app, request, runId, client } = await fixture(t, engine);
+    t.after(() => release.resolve());
+    const initial = await request(`/guidance/${runId}/research`, "POST", {});
+    await started.promise;
+    const profile = await request("/me/profile");
+    const selection = await request("/me/selections");
+    const row = app.store.db
+      .prepare("SELECT owner FROM resources WHERE kind='research-job' AND id=?")
+      .get(initial.body.jobId) as { owner: string };
+    const current = (await request(`/research-jobs/${initial.body.jobId}`))
+      .body;
+    for (const status of ["queued", "running"] as const) {
+      app.store.put(row.owner, "research-job", initial.body.jobId, {
+        ...current,
+        status,
+      });
+      const result = await request(
+        "/me/profile",
+        "PUT",
+        { ...profile.body.profile, major: "经济学" },
+        { "If-Match": profile.etag },
+      );
+      assert.equal(result.status, 409, status);
+      assert.equal(result.body.code, "research_inputs_locked");
+      assert.equal(
+        result.body.message,
+        "报告生成中，完成、失败或取消后可修改。",
+      );
+    }
+    assert.equal(
+      (
+        await request(
+          "/me/selections",
+          "PUT",
+          {
+            confirmedMajorId: "0301",
+            savedProgramIds: [],
+            exclusions: [],
+            targetProgramId: null,
+          },
+          { "If-Match": selection.etag },
+        )
+      ).body.code,
+      "research_inputs_locked",
+    );
+    assert.equal(
+      (
+        await request(
+          "/me/target",
+          "PUT",
+          { programId: null },
+          { "If-Match": selection.etag },
+        )
+      ).body.code,
+      "research_inputs_locked",
+    );
+    assert.equal((await request("/assessment-attempts")).status, 200);
+    assert.equal(
+      (await request("/research/latest")).body.job.jobId,
+      initial.body.jobId,
+    );
+    const other = await client();
+    assert.equal((await other("/research/latest")).body.job, null);
+    const theirs = await other("/me/profile");
+    assert.equal(
+      (
+        await other(
+          "/me/profile",
+          "PUT",
+          { ...theirs.body.profile, major: "法学" },
+          { "If-Match": theirs.etag },
+        )
+      ).status,
+      200,
+    );
+    release.resolve();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    app.store.put(row.owner, "research-job", initial.body.jobId, {
+      ...current,
+      status: terminal,
+    });
+    assert.equal(
+      (
+        await request(
+          "/me/profile",
+          "PUT",
+          { ...profile.body.profile, major: "经济学" },
+          { "If-Match": profile.etag },
+        )
+      ).status,
+      200,
+    );
+  });
+}

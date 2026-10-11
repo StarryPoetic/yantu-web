@@ -1,12 +1,18 @@
 import type { ResearchJob } from "../../server/routes/research";
 
-const steps = [
-  ["preparing", "结合画像选择研究方向"],
-  ["researching", "检索学校与专业"],
-  ["analyzing", "分析匹配与准备成本"],
-  ["writing", "整理具体建议"],
-] as const;
-
+import { useEffect, useState } from "react";
+import { useResearch } from "./ResearchContext";
+import { ShinchanWalker } from "./ShinchanWalker";
+import {
+  researchSteps,
+  progressBounds,
+  progressStopped,
+  progressTarget,
+  advanceProgress,
+} from "./research-progress";
+const steps = researchSteps.map(
+  (step) => [step.stage, step.description] as const,
+);
 export function researchStageName(stage: ResearchJob["stage"]) {
   return steps.find(([value]) => value === stage)?.[1];
 }
@@ -18,10 +24,68 @@ export function ResearchProgress({
   job: ResearchJob;
   failed?: boolean;
 }) {
+  const { position } = useResearch();
+  if (position.current.jobId !== job.jobId)
+    position.current = {
+      jobId: job.jobId,
+      value: Math.min(
+        progressBounds(job.report?.failureStage ?? job.stage).floor,
+        job.progress,
+      ),
+    };
+  const [value, setValue] = useState(position.current.value);
+  const [reduced, setReduced] = useState(
+    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    const media = matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(media.matches);
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  useEffect(() => {
+    if (progressStopped(job)) {
+      setValue(position.current.value);
+      return;
+    }
+    if (reduced) {
+      position.current.value = Math.max(
+        position.current.value,
+        progressBounds(job.stage).floor,
+      );
+      setValue(position.current.value);
+      return;
+    }
+    let frame = 0,
+      previous = performance.now();
+    const tick = (time: number) => {
+      let next = advanceProgress(
+        position.current.value,
+        progressTarget(job),
+        time - previous,
+        progressBounds(job.stage).floor,
+      );
+      if (job.stage === "done" && 100 - next < 0.01) next = 100;
+      previous = time;
+      position.current.value = next;
+      setValue(next);
+      if (next < progressTarget(job)) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [
+    job.jobId,
+    job.stage,
+    job.status,
+    job.progress,
+    job.report?.failureStage,
+    reduced,
+    position,
+  ]);
   const running = job.status === "queued" || job.status === "running";
   const stopped =
     failed || ["blocked", "failed", "cancelled"].includes(job.status);
-  const stage = job.report?.failureStage ?? job.stage;
+  const stage = (running ? undefined : job.report?.failureStage) ?? job.stage;
   const knownProgress = !(failed && job.stage === "done");
   const index =
     stage === "done" && !stopped
@@ -33,10 +97,40 @@ export function ResearchProgress({
         <strong role="status">
           {failed ? "本次报告生成未完成" : job.message}
         </strong>
-        {knownProgress && <span>{job.progress}%</span>}
+        {knownProgress && <span>{Math.floor(value)}%</span>}
       </div>
       {knownProgress && (
-        <progress max={100} value={job.progress} aria-label="报告阶段进度" />
+        <div
+          className="research-journey"
+          role="progressbar"
+          aria-label="报告阶段进度"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Number(value.toFixed(2))}
+          aria-valuetext={`${researchStageName(stage) ?? (stage === "done" ? "已完成" : "等待开始")}，${Math.floor(value)}%`}
+        >
+          <div className="research-road">
+            <div
+              className={`research-walker ${running && !reduced ? "is-walking" : ""}`}
+              style={{ left: `${value}%` }}
+            >
+              <ShinchanWalker />
+            </div>
+            {researchSteps.map((step) => (
+              <span
+                className="research-road-sign"
+                key={step.stage}
+                style={{ left: `${step.floor}%` }}
+              >
+                {step.name}
+              </span>
+            ))}
+          </div>
+          <div className="research-road-ends">
+            <span>起点</span>
+            <span>终点</span>
+          </div>
+        </div>
       )}
       <ol>
         {steps.map(([value, name], position) => (
@@ -59,7 +153,7 @@ export function ResearchProgress({
       </ol>
       <small className="ws-muted">
         {running
-          ? "进度随实际阶段更新。等待模型分析时会停留在当前阶段，离开后可回来继续查看。"
+          ? "位置随真实阶段更新，区间内为等待动画，不代表精确完成比例。离开后可回来继续查看。"
           : stopped
             ? "本次处理已停止，不会在后台继续。需要再次生成时，请手动点击生成按钮。"
             : "本次处理已结束。再次生成需要你手动发起。"}

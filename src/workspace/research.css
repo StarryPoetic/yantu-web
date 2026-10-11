@@ -719,3 +719,108 @@
 .research-availability dd {
   margin: 4px 0 0;
 }
+
+.research-journey {
+  margin: 24px 0 12px;
+  padding: 0 28px;
+}
+.research-road {
+  position: relative;
+  height: 132px;
+  border-bottom: 12px solid #b5c6a7;
+  background: linear-gradient(transparent 92%, #e0e8d8 92%);
+}
+.research-road::after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  bottom: -7px;
+  left: 0;
+  right: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    #fff9df 0 10px,
+    transparent 10px 20px
+  );
+}
+.research-walker {
+  position: absolute;
+  width: 72px;
+  height: 90px;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.shinchan {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.research-road-sign {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #365341;
+  border-left: 2px solid #7a9268;
+  padding: 2px 5px;
+  background: #e5ecd9;
+}
+.research-road-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-top: 8px;
+  color: #526647;
+}
+.shinchan-leg,
+.shinchan-arm {
+  transform-box: view-box;
+  transform-origin: 50px 85px;
+}
+.shinchan-arm {
+  transform-origin: 52px 63px;
+}
+.is-walking .shinchan-leg,
+.is-walking .shinchan-arm {
+  animation: shinchan-step 0.65s ease-in-out infinite alternate;
+}
+.is-walking .back {
+  animation-delay: -0.65s;
+}
+@keyframes shinchan-step {
+  from {
+    transform: rotate(-17deg);
+  }
+  to {
+    transform: rotate(17deg);
+  }
+}
+@media (max-width: 600px) {
+  .research-progress {
+    padding: 14px 10px;
+  }
+  .research-journey {
+    padding: 0 20px;
+  }
+  .research-walker {
+    width: 56px;
+    height: 76px;
+  }
+  .research-progress ol {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .research-walker {
+    transition: left 0.12s linear;
+  }
+  .is-walking .shinchan-leg,
+  .is-walking .shinchan-arm {
+    animation: none;
+  }
+}

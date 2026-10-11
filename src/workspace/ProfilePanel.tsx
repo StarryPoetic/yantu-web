@@ -1,3 +1,5 @@
+import { useResearch } from "./ResearchContext";
+import { RESEARCH_INPUT_LOCK_MESSAGE } from "../../shared/research-status";
 import { useEffect, useState } from "react";
 import type { Profile } from "../types";
 import { CityPicker } from "../CityPicker";
@@ -140,6 +142,7 @@ export function ProfilePanel({
   onReload: () => void;
   onDelete: () => void;
 }) {
+  const { locked, loading } = useResearch();
   const [form, setForm] = useState(resource.data.profile),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(),
@@ -165,6 +168,7 @@ export function ProfilePanel({
   }
   async function save(event: React.FormEvent) {
     event.preventDefault();
+    if (locked) return;
     setBusy(true);
     setError(null);
     try {
@@ -201,137 +205,150 @@ export function ProfilePanel({
         </span>
       </div>
       <ErrorNotice error={error} onReload={onReload} />
-      <form onSubmit={save} className="ws-stack">
-        <section className="ws-panel">
-          <h2>个人情况</h2>
-          <div className="ws-form-grid">
-            {fields.map((field) =>
-              field.key === "targetMajor" ? (
-                <InterestPicker
-                  key={field.key}
-                  label={field.label}
-                  placeholder={field.placeholder}
-                  value={form.targetMajor ?? ""}
-                  options={disciplineNames}
-                  onChange={(value) => set("targetMajor", value)}
-                />
-              ) : (
-                <label key={field.key}>
-                  {field.label}
-                  {field.options ? (
-                    <select
-                      value={String(form[field.key] ?? "")}
-                      onChange={(event) => set(field.key, event.target.value)}
-                    >
-                      <option value="">{field.placeholder}</option>
-                      {String(form[field.key] ?? "") &&
-                        !field.options.includes(String(form[field.key])) && (
-                          <option>{String(form[field.key])}</option>
-                        )}
-                      {field.options.map((option) => (
-                        <option key={option}>{option}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      value={String(form[field.key] ?? "")}
-                      placeholder={field.placeholder}
-                      maxLength={300}
-                      onChange={(event) => set(field.key, event.target.value)}
-                    />
-                  )}
-                </label>
-              ),
-            )}
-            <label>
-              跨专业意愿
-              <select
-                value={form.crossMajor}
-                onChange={(event) => set("crossMajor", event.target.value)}
-              >
-                <option value="">不确定</option>
-                <option>接受相近专业</option>
-                <option>接受跨专业</option>
-                <option>不接受跨专业</option>
-              </select>
-            </label>
-            <label>
-              学位偏好
-              <select
-                value={form.degreePreference ?? "不确定"}
-                onChange={(event) =>
-                  set("degreePreference", event.target.value)
-                }
-              >
-                <option>不确定</option>
-                <option>学术学位</option>
-                <option>专业学位</option>
-              </select>
-            </label>
-          </div>
-          <button
-            type="button"
-            className="ws-link"
-            onClick={() => setDegree(true)}
-          >
-            学硕和专硕有什么区别？
-          </button>
-        </section>
-        <section className="ws-panel">
-          <h2>意向城市</h2>
-          <p className="ws-muted">
-            支持中文、拼音、首字母搜索与自定义城市。“不确定”与具体城市互斥。
-          </p>
-          <CityPicker
-            value={form.cities}
-            onChange={(cities) => set("cities", cities)}
-          />
-        </section>
-        <section className="ws-panel">
-          <h2>你更看重什么</h2>
-          <p className="ws-muted">七项偏好影响比较顺序，不替代真实报考条件。</p>
-          <div className="ws-form-grid">
-            {Object.entries(form.priorities).map(([label, value]) => (
-              <label key={label}>
-                {label}
-                <div className="ws-range">
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={value}
-                    aria-label={label}
-                    onChange={(event) =>
-                      set("priorities", {
-                        ...form.priorities,
-                        [label]: Number(event.target.value),
-                      })
-                    }
+      {locked && (
+        <p id="research-profile-lock" role="status">
+          {loading ? "正在确认报告状态…" : RESEARCH_INPUT_LOCK_MESSAGE}
+        </p>
+      )}
+      <form onSubmit={save}>
+        <fieldset
+          className="ws-stack research-inputs"
+          disabled={locked}
+          aria-describedby={locked ? "research-profile-lock" : undefined}
+        >
+          <section className="ws-panel">
+            <h2>个人情况</h2>
+            <div className="ws-form-grid">
+              {fields.map((field) =>
+                field.key === "targetMajor" ? (
+                  <InterestPicker
+                    key={field.key}
+                    label={field.label}
+                    placeholder={field.placeholder}
+                    value={form.targetMajor ?? ""}
+                    options={disciplineNames}
+                    onChange={(value) => set("targetMajor", value)}
                   />
-                  <output>{value}</output>
-                </div>
+                ) : (
+                  <label key={field.key}>
+                    {field.label}
+                    {field.options ? (
+                      <select
+                        value={String(form[field.key] ?? "")}
+                        onChange={(event) => set(field.key, event.target.value)}
+                      >
+                        <option value="">{field.placeholder}</option>
+                        {String(form[field.key] ?? "") &&
+                          !field.options.includes(String(form[field.key])) && (
+                            <option>{String(form[field.key])}</option>
+                          )}
+                        {field.options.map((option) => (
+                          <option key={option}>{option}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={String(form[field.key] ?? "")}
+                        placeholder={field.placeholder}
+                        maxLength={300}
+                        onChange={(event) => set(field.key, event.target.value)}
+                      />
+                    )}
+                  </label>
+                ),
+              )}
+              <label>
+                跨专业意愿
+                <select
+                  value={form.crossMajor}
+                  onChange={(event) => set("crossMajor", event.target.value)}
+                >
+                  <option value="">不确定</option>
+                  <option>接受相近专业</option>
+                  <option>接受跨专业</option>
+                  <option>不接受跨专业</option>
+                </select>
               </label>
-            ))}
-          </div>
-          <label>
-            补充说明
-            <textarea
-              value={form.notes ?? ""}
-              maxLength={1000}
-              onChange={(event) => set("notes", event.target.value)}
-              placeholder="想了解什么、有哪些约束（选填）"
+              <label>
+                学位偏好
+                <select
+                  value={form.degreePreference ?? "不确定"}
+                  onChange={(event) =>
+                    set("degreePreference", event.target.value)
+                  }
+                >
+                  <option>不确定</option>
+                  <option>学术学位</option>
+                  <option>专业学位</option>
+                </select>
+              </label>
+            </div>
+            <button
+              type="button"
+              className="ws-link"
+              onClick={() => setDegree(true)}
+            >
+              学硕和专硕有什么区别？
+            </button>
+          </section>
+          <section className="ws-panel">
+            <h2>意向城市</h2>
+            <p className="ws-muted">
+              支持中文、拼音、首字母搜索与自定义城市。“不确定”与具体城市互斥。
+            </p>
+            <CityPicker
+              value={form.cities}
+              onChange={(cities) => set("cities", cities)}
             />
-          </label>
-        </section>
-        <div className="ws-actions">
-          <button className="ws-primary" disabled={busy} type="submit">
-            {busy ? "正在保存…" : "保存个人画像"}
-          </button>
-          {saved && <span role="status">个人画像已保存到账号</span>}
-          <button type="button" className="ws-danger" onClick={onDelete}>
-            删除我的个人资料
-          </button>
-        </div>
+          </section>
+          <section className="ws-panel">
+            <h2>你更看重什么</h2>
+            <p className="ws-muted">
+              七项偏好影响比较顺序，不替代真实报考条件。
+            </p>
+            <div className="ws-form-grid">
+              {Object.entries(form.priorities).map(([label, value]) => (
+                <label key={label}>
+                  {label}
+                  <div className="ws-range">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={value}
+                      aria-label={label}
+                      onChange={(event) =>
+                        set("priorities", {
+                          ...form.priorities,
+                          [label]: Number(event.target.value),
+                        })
+                      }
+                    />
+                    <output>{value}</output>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <label>
+              补充说明
+              <textarea
+                value={form.notes ?? ""}
+                maxLength={1000}
+                onChange={(event) => set("notes", event.target.value)}
+                placeholder="想了解什么、有哪些约束（选填）"
+              />
+            </label>
+          </section>
+          <div className="ws-actions">
+            <button className="ws-primary" disabled={busy} type="submit">
+              {busy ? "正在保存…" : "保存个人画像"}
+            </button>
+            {saved && <span role="status">个人画像已保存到账号</span>}
+            <button type="button" className="ws-danger" onClick={onDelete}>
+              删除我的个人资料
+            </button>
+          </div>
+        </fieldset>
       </form>
       {degree && (
         <Dialog title="学硕与专硕，怎样选择" onClose={() => setDegree(false)}>

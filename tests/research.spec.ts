@@ -1,3 +1,6 @@
+import { createApplication } from "../server/app";
+import type { ResearchReportModule } from "../server/explanation/research";
+import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
@@ -316,6 +319,10 @@ async function researchService(page: Page) {
     | { status: number; code: string; message: string }
     | undefined;
   const jobId = "browser-research-" + randomUUID();
+  let polls = 0;
+  await page.route("**/api/v1/research/latest", (route) =>
+    route.fulfill({ json: { job: current, run } }),
+  );
   await page.route("**/api/v1/research/status", (route) =>
     route.fulfill({
       contentType: "application/json",
@@ -379,17 +386,23 @@ async function researchService(page: Page) {
       }
     },
   );
-  await page.route("**/api/v1/research-jobs/*", (route) =>
-    route.fulfill({
+  await page.route("**/api/v1/research-jobs/*", (route) => {
+    polls++;
+    return route.fulfill({
       contentType: "application/json",
       body: JSON.stringify(current),
-    }),
-  );
+    });
+  });
   return {
     setRun(value: GuidanceRun) {
       run = value;
     },
     postCount: () => postCount,
+    pollCount: () => polls,
+    cancel() {
+      if (current)
+        current = { ...current, status: "cancelled", message: "任务已取消" };
+    },
     supplementCount: () => supplementCount,
     failNextSupplement() {
       supplementError = {
@@ -702,9 +715,16 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
   ).toBeDisabled();
   for (const stage of ["preparing", "researching", "analyzing"] as const) {
     service.stage(stage);
-    await expect(
-      panel.getByRole("progressbar", { name: "报告阶段进度" }),
-    ).toHaveAttribute("value", String(stages[stage].progress));
+    await expect(panel.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      new RegExp(
+        stage === "preparing"
+          ? "选择研究方向"
+          : stage === "researching"
+            ? "读取官网"
+            : "分析匹配",
+      ),
+    );
     await expect(panel.locator('li[aria-current="step"]')).toHaveCount(1);
     await expect(
       panel.getByText(stages[stage].message, { exact: true }).first(),
@@ -718,21 +738,25 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
         await expect(
           panel.getByRole("status").filter({ hasText: detail }),
         ).toBeVisible();
-        await expect(panel.getByRole("progressbar")).toHaveAttribute(
-          "value",
-          "30",
-        );
+        expect(
+          Number(
+            await panel.getByRole("progressbar").getAttribute("aria-valuenow"),
+          ),
+        ).toBeLessThanOrEqual(60);
       }
     }
   }
   await page.reload();
   await expect(
     panel.getByRole("progressbar", { name: "报告阶段进度" }),
-  ).toHaveAttribute("value", "60");
+  ).toHaveAttribute("aria-valuetext", /分析匹配/);
   expect(service.postCount()).toBe(1);
   expect(service.latestCount()).toBeGreaterThanOrEqual(2);
   service.stage("writing");
-  await expect(panel.getByRole("progressbar")).toHaveAttribute("value", "90");
+  await expect(panel.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuetext",
+    /整理具体建议/,
+  );
   const plaintextNote =
     "明文传输（HTTP）读取，内容可能被网络中间环节篡改，仅作待核验线索。";
   service.finish("completed", (report) => ({
@@ -744,8 +768,10 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
     })),
   }));
   await expect(panel.getByText("研究报告", { exact: true })).toBeVisible();
-  await expect(panel.locator("progress")).toHaveAttribute("value", "100");
-  await expect(panel.getByRole("progressbar")).toHaveCount(0);
+  await expect(
+    panel.getByRole("progressbar", { includeHidden: true }),
+  ).toHaveAttribute("aria-valuenow", "100", { timeout: 15000 });
+  await expect(panel.getByRole("progressbar")).toHaveCount(1);
   const school = panel.getByRole("article", {
     name: "浏览器测试大学 · 法学（民商法方向）",
     exact: true,
@@ -2963,3 +2989,397 @@ for (const reportVersion of [
     ).toBeVisible();
   });
 }
+
+for (const width of [1280, 375]) {
+  test(`任务一：${width}px 连续进度、跨栏目锁定、刷新恢复与完成通知`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    const progress = panel.getByRole("progressbar");
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    service.stage("researching");
+    await expect(progress).toHaveAttribute("aria-valuetext", /读取官网/);
+    await expect
+      .poll(async () => Number(await progress.getAttribute("aria-valuenow")))
+      .toBeGreaterThan(1);
+    const samples = await progress.evaluate(async (element) => {
+      const result: { value: number; left: number; time: number }[] = [];
+      for (let i = 0; i < 24; i++) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        result.push({
+          value: Number(element.getAttribute("aria-valuenow")),
+          left: element
+            .querySelector(".research-walker")!
+            .getBoundingClientRect().left,
+          time: performance.now(),
+        });
+      }
+      return result;
+    });
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i].value).toBeGreaterThanOrEqual(samples[i - 1].value);
+      expect(samples[i].value).toBeLessThanOrEqual(60);
+      expect(samples[i].value - samples[i - 1].value).toBeLessThan(1);
+      expect(samples[i].left).toBeGreaterThanOrEqual(samples[i - 1].left);
+    }
+    expect(samples.at(-1)!.value).toBeGreaterThan(samples[0].value);
+    await expect
+      .poll(async () => Number(await progress.getAttribute("aria-valuenow")))
+      .toBeGreaterThanOrEqual(30);
+    await page.getByRole("main").focus();
+    await panel.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `var/task1-${width}.png`, fullPage: true });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    const position = Number(await progress.getAttribute("aria-valuenow"));
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "个人画像", exact: true })
+      .click();
+    await expect(page.getByLabel("本科专业", { exact: true })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: "保存个人画像", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByText("报告生成中，完成、失败或取消后可修改。", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "查看报告", exact: true }).click();
+    await expect(progress).toBeVisible();
+    expect(
+      Number(await progress.getAttribute("aria-valuenow")),
+    ).toBeGreaterThanOrEqual(position);
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "个人画像", exact: true })
+      .click();
+    await page.reload();
+    await expect(page.getByLabel("本科专业", { exact: true })).toBeDisabled();
+    await expect(
+      page.getByText("报告生成中，完成、失败或取消后可修改。", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "查看报告", exact: true }).click();
+    await expect(progress).toHaveAttribute("aria-valuetext", /读取官网/);
+    expect(
+      Number(await progress.getAttribute("aria-valuenow")),
+    ).toBeGreaterThanOrEqual(30);
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "基础测评", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "查看专业推荐结论", exact: true }),
+    ).toBeEnabled();
+    service.finish("completed");
+    await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+      "已完成",
+    );
+    const polls = service.pollCount();
+    await page.getByRole("button", { name: "查看报告", exact: true }).click();
+    await expect(
+      panel.getByRole("heading", { name: "浏览器测试大学", exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "个人画像", exact: true })
+      .click();
+    await expect(page.getByLabel("本科专业", { exact: true })).toBeEnabled();
+    await expect(
+      page.getByRole("button", { name: "保存个人画像", exact: true }),
+    ).toBeEnabled();
+    // Advance a controlled browser clock to prove that terminal tasks do not poll.
+    await page.clock.install();
+    await page.clock.runFor(3500);
+    expect(service.pollCount()).toBe(polls);
+    expect(service.postCount()).toBe(1);
+  });
+}
+
+test("任务一：失败停止、导航跳回续跑及取消恢复", async ({ page }) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  service.stage("analyzing");
+  await expect(panel.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuetext",
+    /分析匹配/,
+  );
+  await page
+    .getByRole("navigation", { name: "主要导航" })
+    .getByRole("button", { name: "个人画像", exact: true })
+    .click();
+  service.stop("analyzing", "MODEL_TIMEOUT", false);
+  await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+    "未完成",
+  );
+  await expect(page.getByLabel("本科专业", { exact: true })).toBeEnabled();
+  await page.getByLabel("报告状态", { exact: true }).click();
+  const progress = panel.getByRole("progressbar");
+  await expect(
+    panel.getByRole("region", { name: "报告生成失败", exact: true }),
+  ).toContainText("本次研究未能完成");
+  const stopped = await progress.getAttribute("aria-valuenow");
+  await page.clock.install();
+  await page.clock.runFor(2000);
+  await expect(progress).toHaveAttribute("aria-valuenow", stopped!);
+  await expect(panel.locator(".is-walking")).toHaveCount(0);
+  await page.clock.resume();
+  await panel
+    .getByRole("button", { name: "一键重试（复用已完成阶段）", exact: true })
+    .click();
+  await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+    "生成中",
+  );
+  service.cancel();
+  await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+    "未完成",
+  );
+  await page
+    .getByRole("navigation", { name: "主要导航" })
+    .getByRole("button", { name: "个人画像", exact: true })
+    .click();
+  await expect(page.getByLabel("本科专业", { exact: true })).toBeEnabled();
+});
+
+test("任务一：减少动画模式使用静态阶段位置", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  service.stage("researching");
+  await expect(panel.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "30",
+  );
+  await expect(panel.locator(".shinchan-leg").first()).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  await page.clock.install();
+  await page.clock.runFor(10000);
+  await expect(panel.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "30",
+  );
+  service.stage("analyzing");
+  await page.clock.resume();
+  await expect(panel.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "60",
+  );
+});
+
+test("任务一：浏览器直接修改和另一标签页保存均被真实后端拒绝，测评仍可作答", async ({
+  browser,
+}) => {
+  let release!: () => void;
+  const pending = new Promise<void>((done) => {
+    release = done;
+  });
+  const origins: string[] = [];
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {
+      release();
+    },
+    async generate(input) {
+      await input.onProgress?.("analyzing");
+      await pending;
+      return reportFor(input.run, "completed");
+    },
+  };
+  const app = await createApplication(
+    {
+      databasePath: ":memory:",
+      sampleData: true,
+      staticDirectory: resolve("dist"),
+      origins,
+      bootstrapAdmins: [],
+      admins: [],
+      secureCookies: false,
+    },
+    { research: engine },
+  );
+  await new Promise<void>((done) => app.server.listen(0, "127.0.0.1", done));
+  const address = app.server.address();
+  if (!address || typeof address !== "object")
+    throw new Error("Missing test listener");
+  const baseURL = `http://127.0.0.1:${address.port}`;
+  origins.push(baseURL);
+  const context = await browser.newContext({ baseURL });
+  const page = await context.newPage();
+  try {
+    await openGuidance(page);
+    const staleTab = await context.newPage();
+    await staleTab.goto("/#profile");
+    await staleTab.getByLabel("本科专业", { exact: true }).fill("经济学");
+    await page
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+      "生成中",
+    );
+    const rejected = staleTab.waitForResponse(
+      (response) =>
+        response.url().endsWith("/me/profile") &&
+        response.request().method() === "PUT",
+    );
+    await staleTab
+      .getByRole("button", { name: "保存个人画像", exact: true })
+      .click();
+    const response = await rejected;
+    expect(response.status()).toBe(409);
+    expect((await response.json()).code).toBe("research_inputs_locked");
+    await expect(staleTab.getByRole("alert")).toContainText(
+      "报告生成中，完成、失败或取消后可修改。",
+    );
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "个人画像", exact: true })
+      .click();
+    await expect(page.getByLabel("本科专业", { exact: true })).toHaveValue(
+      "法学",
+    );
+    await expect(page.getByLabel("本科专业", { exact: true })).toBeDisabled();
+    const attempts = await page.request.get(
+      baseURL + "/api/v1/assessment-attempts",
+    );
+    expect(attempts.status()).toBe(200);
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "基础测评", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "查看专业推荐结论", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: /开始公共课测评/ }).click();
+    await expect(page.getByRole("radio").first()).toBeEnabled();
+    const answerSaved = page.waitForResponse(
+      (response) =>
+        /assessment-attempts/.test(response.url()) &&
+        response.request().method() === "PATCH",
+    );
+    await page.getByRole("radio").first().check();
+    expect((await answerSaved).ok()).toBe(true);
+    await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+      "生成中",
+    );
+    release();
+    await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+      "已完成",
+    );
+    await page.getByRole("button", { name: "查看报告", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "浏览器测试大学", exact: true }),
+    ).toBeVisible();
+  } finally {
+    release();
+    await context.close();
+    await app.close();
+  }
+});
+
+test("任务一：切换栏目和手动刷新始终只有一个活动轮询，短暂网络失败后恢复", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  await page
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
+    "生成中",
+  );
+  await page.clock.install();
+  for (const name of ["个人画像", "推荐结论", "基础测评", "推荐结论"]) {
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name, exact: true })
+      .click();
+  }
+  const before = service.pollCount();
+  await page.clock.runFor(3200);
+  expect(service.pollCount() - before).toBeGreaterThanOrEqual(2);
+  expect(service.pollCount() - before).toBeLessThanOrEqual(4);
+  let fail = true;
+  await page.route("**/api/v1/research-jobs/*", async (route) => {
+    if (fail) {
+      fail = false;
+      await route.abort();
+    } else await route.fallback();
+  });
+  await page.clock.runFor(1500);
+  await expect(
+    page
+      .getByRole("region", { name: "联网研究报告", exact: true })
+      .getByRole("alert"),
+  ).toContainText("暂时无法连接服务");
+  service.stage("analyzing");
+  await page.clock.runFor(2000);
+  await expect(page.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuetext",
+    /分析匹配/,
+  );
+  await expect(
+    page
+      .getByRole("region", { name: "联网研究报告", exact: true })
+      .getByRole("alert"),
+  ).toHaveCount(0);
+});
+
+test("任务一：创建请求尚未返回时切换栏目仍保留状态且不会重复创建", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  let release!: () => void;
+  const pending = new Promise<void>((done) => {
+    release = done;
+  });
+  await page.route(/\/api\/v1\/guidance\/[^/]+\/research$/, async (route) => {
+    if (route.request().method() === "POST") await pending;
+    await route.fallback();
+  });
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  try {
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    await expect(
+      panel.getByRole("button", { name: "正在创建报告任务…", exact: true }),
+    ).toBeDisabled();
+    await page
+      .getByRole("navigation", { name: "主要导航" })
+      .getByRole("button", { name: "个人画像", exact: true })
+      .click();
+    await expect(page.getByLabel("本科专业", { exact: true })).toBeDisabled();
+    await page.getByRole("button", { name: "查看报告", exact: true }).click();
+    await expect(
+      panel.getByRole("button", { name: "正在创建报告任务…", exact: true }),
+    ).toBeDisabled();
+    release();
+    await expect(
+      panel.getByRole("button", { name: "报告生成中…", exact: true }),
+    ).toBeDisabled();
+    await expect(panel.getByRole("progressbar")).toBeVisible();
+    expect(service.postCount()).toBe(1);
+  } finally {
+    release();
+  }
+});

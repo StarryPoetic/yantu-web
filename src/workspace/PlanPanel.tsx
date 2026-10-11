@@ -1,3 +1,4 @@
+import { useResearch } from "./ResearchContext";
 import { useEffect, useState } from "react";
 import { Download, Flag } from "lucide-react";
 import { request } from "./api";
@@ -25,6 +26,7 @@ export function PlanPanel({
   onSelectionsChanged: () => Promise<void>;
   onTargetChange: (program: Program | null) => Promise<void>;
 }) {
+  const { locked } = useResearch();
   const [resource, setResource] = useState<Resource<PlanResource> | null>(null),
     [tasks, setTasks] = useState<Task[]>([]),
     [reports, setReports] = useState<Report[]>([]),
@@ -163,7 +165,7 @@ export function PlanPanel({
           <button
             type="button"
             className="ws-link"
-            disabled={busy}
+            disabled={busy || locked}
             onClick={() => void act(() => onTargetChange(null))}
           >
             取消当前目标
@@ -188,7 +190,7 @@ export function PlanPanel({
           目标院校与专业
           <select
             value={programId}
-            disabled={busy}
+            disabled={busy || locked}
             onChange={(event) => {
               const next =
                 programs.find(

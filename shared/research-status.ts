@@ -102,3 +102,7 @@ export function researchReason(reason: string) {
       : reason)
   );
 }
+
+export const RESEARCH_INPUT_LOCK_CODE = "research_inputs_locked";
+export const RESEARCH_INPUT_LOCK_MESSAGE =
+  "报告生成中，完成、失败或取消后可修改。";

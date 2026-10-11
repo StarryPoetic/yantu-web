@@ -1,3 +1,4 @@
+import { useResearch } from "./ResearchContext";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -49,6 +50,7 @@ export function CatalogPanel({
   onRecommend,
   favorites = false,
 }: Props) {
+  const { locked } = useResearch();
   const [diagnoses, setDiagnoses] = useState<PublicAttempt[]>([]),
     [assessmentIds, setAssessmentIds] = useState<string[]>([]);
   useEffect(() => {
@@ -619,7 +621,7 @@ export function CatalogPanel({
                 aria-pressed={selections.savedProgramIds.includes(
                   program.programId,
                 )}
-                disabled={busy}
+                disabled={locked || busy}
                 onClick={() => save(program)}
               >
                 <Heart
@@ -817,7 +819,7 @@ export function CatalogPanel({
           <div className="ws-actions">
             <button
               className="ws-secondary"
-              disabled={busy}
+              disabled={busy || locked}
               onClick={() => save(detail)}
             >
               {selections.savedProgramIds.includes(detail.programId)
@@ -826,14 +828,14 @@ export function CatalogPanel({
             </button>
             <button
               className="ws-secondary"
-              disabled={busy}
+              disabled={busy || locked}
               onClick={() => exclude(detail)}
             >
               {exclusions.has(detail.programId) ? "恢复推荐" : "屏蔽此项目"}
             </button>
             <button
               className="ws-secondary"
-              disabled={busy}
+              disabled={busy || locked}
               onClick={() =>
                 toggleExclusion("institution", detail.identity.institutionId)
               }
@@ -846,7 +848,7 @@ export function CatalogPanel({
               <button
                 key={id}
                 className="ws-secondary"
-                disabled={busy}
+                disabled={busy || locked}
                 onClick={() => toggleExclusion("majorDirection", id)}
               >
                 {hasExclusion("majorDirection", id)
@@ -856,7 +858,7 @@ export function CatalogPanel({
             ))}
             <button
               className="ws-primary"
-              disabled={busy}
+              disabled={busy || locked}
               onClick={() => {
                 void act(async () => {
                   await onPlan(detail);

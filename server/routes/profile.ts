@@ -1,3 +1,4 @@
+import { requireResearchInputsUnlocked } from "./research-lock.ts";
 import { blankProfile, blankSelections, validateProfile } from "../profile.ts";
 import type { Selections } from "../profile.ts";
 import type { Profile } from "../../shared/profile.ts";
@@ -87,6 +88,7 @@ function requirePlanReview(c: Context, reason: string) {
   }
 }
 function saveSelections(c: Context, desired: Selections): Reply {
+  requireResearchInputsUnlocked(c);
   const current = selectionsResource(c);
   matchEtag(c.request.headers["if-match"], current.etag);
   const programs = catalog(c.store).programs;
@@ -226,6 +228,7 @@ export function profileRoutes(c: Context): Reply | undefined {
     const current = profileResource(c);
     if (c.method === "GET") return { body: current.value, etag: current.etag };
     if (c.method === "PUT") {
+      requireResearchInputsUnlocked(c);
       matchEtag(c.request.headers["if-match"], current.etag);
       const profile = validateProfile(c.body);
       if (

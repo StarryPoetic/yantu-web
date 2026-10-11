@@ -1,25 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
+import { useResearch } from "./ResearchContext";
 import { Download, RefreshCw, Sparkles } from "lucide-react";
-import type { ResearchJob, ResearchEngine } from "../../server/routes/research";
 import type { GuidanceRun } from "../../server/disciplines/types";
 import { researchReason } from "../../shared/research-status";
-import { request } from "./api";
 import { ErrorNotice } from "./ui";
 import { ResearchReportView } from "./ResearchReportView";
 import { ResearchProgress, researchStageName } from "./ResearchProgress";
 import { downloadResearchReport, researchOutcome } from "./research-report";
-import { startResearchJob, type ResearchRequestMode } from "./research-request";
-import type { ResearchReport } from "../../server/explanation/research.ts";
+import { type ResearchRequestMode } from "./research-request";
 import "./research.css";
-
-type Job = ResearchJob & {
-  needsRefresh?: boolean;
-  refreshReasons?: string[];
-  mode?: ResearchRequestMode;
-};
-type Readiness = ReturnType<ResearchEngine["getReadiness"]>;
-const active = (job: Job | null) =>
-  !!job && ["queued", "running"].includes(job.status);
 
 export function ResearchPanel({
   run,
@@ -30,130 +19,28 @@ export function ResearchPanel({
   stale: boolean;
   onProfile: () => void;
 }) {
-  const [readiness, setReadiness] = useState<Readiness | null>(null);
-  const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [startingMode, setStartingMode] = useState<ResearchRequestMode | null>(
-    null,
-  );
-  const [savedReport, setSavedReport] = useState<{
-    guidanceRunId: string;
-    report: ResearchReport;
-  } | null>(null);
-  const startLock = useRef(false);
-  const startController = useRef<AbortController | null>(null);
+  const {
+    job,
+    readiness,
+    loading,
+    startingMode,
+    savedReport,
+    error,
+    refresh,
+    generate: start,
+    selectRun,
+  } = useResearch();
+  useEffect(() => {
+    selectRun(run);
+  }, [run.guidanceRunId, selectRun]);
+  const running = !!job && ["queued", "running"].includes(job.status);
   const starting = startingMode !== null;
-  const [error, setError] = useState<unknown>();
-  const [reload, setReload] = useState(0);
-  function acceptJob(next: Job | null) {
-    setJob(next);
-    if (!next || (next.mode !== "supplement" && !next.report))
-      setSavedReport(null);
-    else if (
-      next.report &&
-      !(
-        next.mode === "supplement" &&
-        (next.report.failureStage ||
-          ["failed", "cancelled", "blocked"].includes(next.status))
-      )
-    ) {
-      setSavedReport({
-        guidanceRunId: next.guidanceRunId,
-        report: next.report,
-      });
-    }
-  }
-  useEffect(() => {
-    setStartingMode(null);
-    return () => {
-      startController.current?.abort();
-      startController.current = null;
-      startLock.current = false;
-    };
-  }, [run.guidanceRunId]);
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    void Promise.all([
-      request<Readiness>("/research/status", { signal: controller.signal }),
-      request<{ job: Job | null }>(
-        "/guidance/" + run.guidanceRunId + "/research/latest",
-        { signal: controller.signal },
-      ),
-    ])
-      .then(([configuration, latest]) => {
-        if (!controller.signal.aborted) {
-          setReadiness(configuration.data);
-          acceptJob(latest.data.job);
-        }
-      })
-      .catch((failure) => {
-        if (!controller.signal.aborted) setError(failure);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [run.guidanceRunId, reload]);
-  const running = active(job);
-  useEffect(() => {
-    if (!job || !running) return;
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const poll = async () => {
-      try {
-        const result = await request<Job>("/research-jobs/" + job.jobId, {
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        acceptJob(result.data);
-        if (active(result.data)) timer = setTimeout(() => void poll(), 1000);
-      } catch (failure) {
-        if (!controller.signal.aborted) setError(failure);
-      }
-    };
-    timer = setTimeout(() => void poll(), 500);
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [job?.jobId, running, reload]);
-  async function generate(mode: ResearchRequestMode = "generate") {
-    if (
-      startLock.current ||
-      loading ||
-      running ||
-      !readiness?.ready ||
-      outdated
-    )
-      return;
-    if (mode === "supplement" && !report) return;
-    startLock.current = true;
-    const controller = new AbortController();
-    startController.current = controller;
-    setStartingMode(mode);
-    setError(null);
-    try {
-      const result = await startResearchJob(
-        run.guidanceRunId,
-        mode,
-        controller.signal,
-      );
-      if (!controller.signal.aborted)
-        acceptJob({ ...result.data, mode: result.data.mode ?? mode });
-    } catch (failure) {
-      if (!controller.signal.aborted) setError(failure);
-    } finally {
-      if (startController.current === controller) {
-        startLock.current = false;
-        startController.current = null;
-        setStartingMode(null);
-      }
-    }
-  }
+  const generate = (mode: ResearchRequestMode = "generate") => {
+    if (!outdated) void start(mode);
+  };
   const outdated = stale || !!job?.needsRefresh;
   const supplementFailed =
+    !running &&
     job?.mode === "supplement" &&
     (["failed", "cancelled", "blocked"].includes(job.status) ||
       !!job.report?.failureStage);
@@ -204,16 +91,16 @@ export function ResearchPanel({
           </span>
         )}
       </div>
+      {job && (
+        <ResearchProgress job={job} failed={failed || supplementFailed} />
+      )}
       {!report && !failed && (
         <p>
           结合你的本科背景、跨专业意愿、学习目标和现实条件，目标比较 5–10
           所不同学校及对应专业，说明匹配理由、预算与城市差异、准备成本。
         </p>
       )}
-      <ErrorNotice
-        error={error}
-        onReload={() => setReload((value) => value + 1)}
-      />
+      <ErrorNotice error={error} onReload={refresh} />
       {loading && <p role="status">正在读取报告和服务状态…</p>}
       {outdated && (
         <p className="research-stale" role="status">
@@ -310,7 +197,7 @@ export function ResearchPanel({
         <button
           className="ws-secondary"
           disabled={loading || starting}
-          onClick={() => setReload((value) => value + 1)}
+          onClick={refresh}
         >
           <RefreshCw size={16} />
           {running ? "刷新生成进度" : "重新检查服务"}
@@ -335,23 +222,19 @@ export function ResearchPanel({
             : "继续补查会复用已有资料，优先补齐缺少的原文；已有报告在补查期间仍可查看。"}
         </small>
       )}
-      {job &&
-        (report ? (
-          <details className="research-job-details">
-            <summary>
-              {job.mode === "supplement"
-                ? "补查过程与服务信息"
-                : "生成过程与服务信息"}
-            </summary>
-            <ResearchProgress job={job} failed={failed || supplementFailed} />
-            {serviceNotice}
-            {readiness?.ready && (
-              <p>使用模型：{readiness.model.name}，已启用思考。</p>
-            )}
-          </details>
-        ) : (
-          <ResearchProgress job={job} failed={failed} />
-        ))}
+      {job && report && (
+        <details className="research-job-details">
+          <summary>
+            {job.mode === "supplement"
+              ? "补查过程与服务信息"
+              : "生成过程与服务信息"}
+          </summary>
+          {serviceNotice}
+          {readiness?.ready && (
+            <p>使用模型：{readiness.model.name}，已启用思考。</p>
+          )}
+        </details>
+      )}
     </section>
   );
 }

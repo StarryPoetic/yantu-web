@@ -1157,3 +1157,37 @@
     transition: none !important;
   }
 }
+
+.research-inputs {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.research-inputs:disabled {
+  opacity: 0.75;
+}
+.research-global-notice {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ws-sidebar nav button .research-nav-badge {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .ws-sidebar nav button:has(.research-nav-badge) {
+    position: relative;
+  }
+  .ws-sidebar nav button .research-nav-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 1px 3px;
+    background: #315f4d;
+    color: white;
+    border-radius: 4px;
+  }
+}

@@ -1,3 +1,4 @@
+import { useResearch } from "./ResearchContext";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Search } from "lucide-react";
 import type { DisciplineCatalog } from "../../server/disciplines/types";
@@ -13,6 +14,7 @@ export function DisciplineExplorer({
   onConfirm: (id: string | null) => Promise<void>;
   onBrowse: (code: string) => void;
 }) {
+  const { locked } = useResearch();
   const [catalog, setCatalog] = useState<DisciplineCatalog | null>(null);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("");
@@ -101,7 +103,7 @@ export function DisciplineExplorer({
             {confirmedMajorId && (
               <button
                 className="ws-link"
-                disabled={busy}
+                disabled={busy || locked}
                 onClick={() => void confirm(null)}
               >
                 恢复未确定专业
@@ -187,7 +189,7 @@ export function DisciplineExplorer({
                   </button>
                   <button
                     className="ws-secondary"
-                    disabled={busy}
+                    disabled={busy || locked}
                     aria-pressed={confirmedMajorId === item.code}
                     onClick={() =>
                       void confirm(

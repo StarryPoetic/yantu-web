@@ -1,3 +1,5 @@
+import { ResearchProvider, useResearch } from "./ResearchContext";
+import { RESEARCH_INPUT_LOCK_MESSAGE } from "../../shared/research-status";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   BookOpen,
@@ -154,12 +156,14 @@ export default function Workspace() {
       </div>
     );
   return (
-    <SignedInWorkspace
-      key={session.user.accountId}
-      session={session}
-      onLogout={() => void logout()}
-      globalError={error}
-    />
+    <ResearchProvider key={session.user.accountId}>
+      <SignedInWorkspace
+        key={session.user.accountId}
+        session={session}
+        onLogout={() => void logout()}
+        globalError={error}
+      />
+    </ResearchProvider>
   );
 }
 
@@ -172,6 +176,7 @@ function SignedInWorkspace({
   onLogout: () => void;
   globalError?: unknown;
 }) {
+  const research = useResearch();
   const [page, setPage] = useState<Page>(currentPage),
     [profile, setProfile] = useState<Resource<ProfileResource> | null>(null),
     [selections, setSelections] = useState<Resource<Selections> | null>(null),
@@ -319,6 +324,7 @@ function SignedInWorkspace({
       const job = await request<{ status: string }>(
         `/me/jobs/${result.data.jobId}`,
       );
+      research.reset();
       setProfile(null);
       setSelections(null);
       setRecommendation(null);
@@ -373,6 +379,11 @@ function SignedInWorkspace({
             >
               <Icon size={19} />
               <span>{name}</span>
+              {id === "guidance" && research.badge && (
+                <small className="research-nav-badge" aria-label="报告状态">
+                  {research.badge}
+                </small>
+              )}
               {id === "favorites" && (
                 <small>{selections?.data.savedProgramIds.length ?? 0}</small>
               )}
@@ -412,6 +423,26 @@ function SignedInWorkspace({
         </header>
         <main id="workspace-content" className="ws-main" tabIndex={-1}>
           <ErrorNotice error={globalError} />
+          {research.badge && (
+            <div className="ws-notice research-global-notice" role="status">
+              <span>
+                {research.running || research.startingMode
+                  ? "报告生成中，可切换栏目，进度会保留。"
+                  : research.failed
+                    ? "报告未完成，请查看原因并重试。"
+                    : "报告已完成，可以查看研究结果。"}
+              </span>
+              <button className="ws-link" onClick={() => navigate("guidance")}>
+                查看报告
+              </button>
+            </div>
+          )}
+          {research.running && page !== "guidance" && page !== "profile" && (
+            <p role="status">
+              {RESEARCH_INPUT_LOCK_MESSAGE} 测评与咨询仍可使用。
+            </p>
+          )}
+
           <div className="ws-progress" aria-label="准备进度">
             <button onClick={() => navigate("profile")}>
               <span>01</span>个人画像{" "}
