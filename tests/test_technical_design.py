@@ -474,6 +474,40 @@ class TechnicalDesignTests(unittest.TestCase):
         self.assertIn("较原报告+25个百分点、增加1条", table)
         self.assertIn("| 初试科目（专业级） | 2/4 | 0/4 | 2/4 |", record)
 
+    def test_citation_fix_offline_diagnosis_preserves_real_results_and_school_gaps(self):
+        record = (ROOT / "docs" / "阶段7真实验证记录.md").read_text(encoding="utf-8")
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        section = record.split("## 引用修复与离线诊断", 1)[1]
+        summary = implementation.split("### 13.12.", 1)[1]
+        for content in (section, summary):
+            for phrase in (
+                "离线诊断", "a2e0190", "b474da2", "sources[].id", "不得自造或改写",
+                "NO_WEB_EVIDENCE", "EVIDENCE_TOO_LARGE", "37928", "435", "158", "66",
+                "37", "100字符", "结构化事实", "全部", "裁剪", "scopeMatched=false",
+                "0453", "0802", "0855", "0854", "1256", "1252", "pending", "bound",
+                "UNSUPPORTED_RESEARCH_CLAIM", "2026", "0→7", "0→0", "与能源工程学院",
+                "被拒推荐4 / 模型提出推荐4＝100%", "单句删除数单独计0", "真实数字",
+                "29583", "19506", "10077", "verified:false", "890项", "10/10通过",
+                "修复后未经真实运行验证", "需要一次新的、另获用户授权的真实运行",
+            ):
+                with self.subTest(phrase=phrase):
+                    self.assertIn(phrase, content)
+            for school in (
+                "杭州师范大学", "浙江财经大学", "浙江理工大学", "浙江外国语学院",
+                "浙江传媒学院", "浙江工商大学", "浙江科技大学", "浙江中医药大学",
+                "杭州电子科技大学", "浙江大学",
+            ):
+                self.assertRegex(content, rf"(?m)^\| {school}(?:（[^|]+）)?[（\s|]")
+        self.assertIn("真实模型0次、真实搜索0次、实际网络0次", section)
+        self.assertIn("0／0／0", section)
+        self.assertIn("最终编号全部", section)
+        self.assertIn("3/3事实保留", section)
+        self.assertIn("不计入真实对比", section)
+        self.assertIn("浙江大学仅有资料库复用", section)
+        for outdated in ("“照抄示例”只是推测", "“模型照抄示例”是有依据的推测"):
+            self.assertNotIn(outdated, record)
+            self.assertNotIn(outdated, implementation)
+
     def test_phase_four_public_facts_prefetch_and_platform_fallback_are_documented(self):
         for path in (README, ROOT / "knowledge" / "README.md", ROOT / "server" / "explanation" / "README.md",
                      DESIGN_DIR / "01-总体架构与演进.md", DESIGN_DIR / "02-数据模型与可信数据.md",
