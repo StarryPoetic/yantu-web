@@ -124,6 +124,7 @@ export async function repairResearchEvidence(input: {
   /** Two-stage runs never follow search results outside the selected school. */
   allowedDomains?: readonly string[];
   priorityDocuments?: boolean;
+  searchFirst?: boolean;
   discoveryReadLimit?: number;
   queryForGap?: (gap: ResearchEvidenceGap) => string[];
   stop?: (sources: readonly WebSource[]) => boolean;
@@ -141,8 +142,8 @@ export async function repairResearchEvidence(input: {
     b: { title: string; url: string },
     program?: string,
   ) =>
-    researchDocumentPriority(b.title, program) -
-      researchDocumentPriority(a.title, program) ||
+    researchDocumentPriority(b.title, program, b.url) -
+      researchDocumentPriority(a.title, program, a.url) ||
     researchYearPriority(
       explicitAdmissionsYears(b.title)[0],
       input.targetYear,
@@ -189,6 +190,7 @@ export async function repairResearchEvidence(input: {
     );
     const maxReads = Math.min(B.reads, Math.max(0, Math.floor(input.maxReads)));
     const limitations: string[] = [];
+    let stoppedReason: string | undefined;
     let requestCount = 0,
       readCount = 0,
       searched = false;
@@ -239,7 +241,7 @@ export async function repairResearchEvidence(input: {
         .filter(
           (c) =>
             !input.priorityDocuments ||
-            researchDocumentPriority(c.title, gap.programName) >= -10,
+            researchDocumentPriority(c.title, gap.programName, c.url) >= -10,
         )
         .sort((a, b) =>
           input.priorityDocuments ? documentOrder(a, b, gap.programName) : 0,
@@ -253,7 +255,7 @@ export async function repairResearchEvidence(input: {
         .filter(
           (c) =>
             !input.priorityDocuments ||
-            researchDocumentPriority(c.title, gap.programName) > 0 ||
+            researchDocumentPriority(c.title, gap.programName, c.url) > 0 ||
             discoverySlots-- > 0,
         )
         .filter((c, i, all) => all.findIndex((a) => a.url === c.url) === i)
@@ -299,6 +301,7 @@ export async function repairResearchEvidence(input: {
         const priority = researchDocumentPriority(
           candidate.title,
           gap.programName,
+          candidate.url,
         );
         if (priority < -10) return;
         if (priority <= 0) {
@@ -382,7 +385,7 @@ export async function repairResearchEvidence(input: {
     }
     // Start one known gap link per school together. Each result is persisted through
     // the usual read path, so concurrency does not bypass budgets or attempt logs.
-    const opening = [...schools.keys()]
+    const opening = (input.searchFirst ? [] : [...schools.keys()])
       .flatMap((school) => {
         const gap = gaps.find(
           (value) =>
@@ -450,7 +453,7 @@ export async function repairResearchEvidence(input: {
             0,
             2,
           );
-      const links = owned
+      const links = (input.searchFirst ? [] : owned)
         .filter(isSchoolPage)
         .flatMap((parent) =>
           (parent.documentLinks ?? []).map((link) => ({ ...link, parent })),
@@ -464,8 +467,8 @@ export async function repairResearchEvidence(input: {
         .sort(
           (a, b) =>
             (input.priorityDocuments
-              ? researchDocumentPriority(b.title, gap.programName) -
-                researchDocumentPriority(a.title, gap.programName)
+              ? researchDocumentPriority(b.title, gap.programName, b.url) -
+                researchDocumentPriority(a.title, gap.programName, a.url)
               : 0) ||
             researchYearPriority(
               explicitAdmissionsYears(b.title)[0],
@@ -544,11 +547,17 @@ export async function repairResearchEvidence(input: {
       searched ||= found.searched;
       if (found.reason)
         limitations.push(`${gap.institutionName}定向检索：${found.reason}`);
+      if (found.reason === "SEARCH_BUDGET_EXHAUSTED")
+        stoppedReason = found.reason;
       const candidates = found.sources
         .filter(
           (source) =>
             !input.priorityDocuments ||
-            researchDocumentPriority(source.title, gap.programName) >= -10,
+            researchDocumentPriority(
+              source.title,
+              gap.programName,
+              source.url,
+            ) >= -10,
         )
         .sort((a, b) =>
           input.priorityDocuments ? documentOrder(a, b, gap.programName) : 0,
@@ -592,6 +601,7 @@ export async function repairResearchEvidence(input: {
       requestCount,
       readCount,
       searched,
+      stoppedReason,
     };
   } finally {
     scheduler.dispose();

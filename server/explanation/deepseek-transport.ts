@@ -2,7 +2,7 @@ import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { request as httpsRequest } from "node:https";
 import type { IncomingMessage } from "node:http";
 import { ModelError, validateDeepSeekEndpoint } from "./deepseek.ts";
-import { createPublicDohResolver } from "./dns.ts";
+import { createResilientPublicDohResolver } from "./dns.ts";
 import type { AddressResolver } from "./dns.ts";
 import { resolvePublicAddress } from "./public-address.ts";
 
@@ -43,7 +43,7 @@ export function createDeepSeekTransport(
     request?: typeof httpsRequest;
   } = {},
 ): typeof fetch {
-  const resolver = dependencies.resolver ?? createPublicDohResolver();
+  const resolver = dependencies.resolver ?? createResilientPublicDohResolver();
   const request = dependencies.request ?? httpsRequest;
   return async (input, init) => {
     if (typeof input !== "string" && !(input instanceof URL))
@@ -73,7 +73,10 @@ export function createDeepSeekTransport(
     } catch (error) {
       if (signal.aborted) throw new ModelError("MODEL_TIMEOUT");
       // DNS details are transport failures, never facts about the user's profile.
-      throw new ModelError("PROVIDER_DNS_UNAVAILABLE");
+      throw Object.assign(new ModelError("PROVIDER_DNS_UNAVAILABLE"), {
+        dnsCode:
+          error instanceof ModelError ? error.code : "WEB_DNS_UNAVAILABLE",
+      });
     } finally {
       signal.removeEventListener("abort", onAbort);
     }

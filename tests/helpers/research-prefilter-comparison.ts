@@ -10,8 +10,14 @@ import type {
   ResearchReport,
 } from "../../server/explanation/research.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
+import {
+  priorityFixturePages,
+  matchingPriorityPages,
+} from "./research-priority-fixture.ts";
 
-const [root, database, output, strategy, onlyScenario] = process.argv.slice(2);
+const [root, database, output, strategy, scenarioArg] = process.argv.slice(2);
+const onlyScenario = scenarioArg === "all" ? undefined : scenarioArg;
+const enriched = process.argv[7] === "priority";
 if (
   !root ||
   !database ||
@@ -44,6 +50,9 @@ const sources = (
     .all() as { payload: string }[]
 ).map((r) => JSON.parse(r.payload) as WebSource);
 const results = [];
+const synthetic = enriched
+  ? schoolRegistry.schools.flatMap(priorityFixturePages)
+  : [];
 try {
   for (const [scenario, cities] of [
     ["杭州"],
@@ -165,6 +174,25 @@ try {
           const named = schoolRegistry.schools.find((s: { name: string }) =>
             query.includes(s.name),
           );
+          const targeted = named
+            ? matchingPriorityPages(
+                synthetic.filter((p) => p.title.startsWith(named.name)),
+                query,
+              )
+            : [];
+          if (targeted.length)
+            return {
+              contentType: "application/json",
+              text: JSON.stringify({
+                web: {
+                  results: targeted.map((p) => ({
+                    url: p.url,
+                    title: p.title,
+                    description: p.title,
+                  })),
+                },
+              }),
+            };
           const candidates = sources
             .filter(
               (s) =>
@@ -195,6 +223,9 @@ try {
           };
         }
         counts.reads++;
+        const syntheticPage = synthetic.find((p) => p.url === url);
+        if (syntheticPage)
+          return { contentType: "text/plain", text: syntheticPage.text };
         const saved = sources.find(
           (s) =>
             s.url.replace(/^http:/, "https:") ===
@@ -248,6 +279,18 @@ try {
         report.priorityCoverage?.pending ?? report.recommendations.length * 15,
       schoolsWithCutoff: report.priorityCoverage?.schoolsWithCutoff ?? 0,
       categoryCoverage: report.priorityCoverage?.groups,
+      recommendationIdentities: report.recommendations.map((r) => ({
+        school: r.institutionName,
+        code: r.disciplineCode,
+        major: r.majorCode,
+      })),
+      priorityFactScopes: [
+        ...new Set(
+          report.priorityFacts?.map(
+            (f) => `${f.schoolName}/${f.disciplineCode}/${f.field}`,
+          ),
+        ),
+      ],
       paidTokens: 0,
       paidCostCny: 0,
       estimatedOffPeakModelCny: Object.entries(counts.perModel).reduce(

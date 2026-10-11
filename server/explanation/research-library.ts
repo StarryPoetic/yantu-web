@@ -1,4 +1,5 @@
 import { researchCompute } from "./research-compute.ts";
+import { redactAdmissionsText } from "./research-priority-tables.ts";
 import type { PlanSnapshot } from "../planning/index.ts";
 import { validResearchTarget } from "./research-priority-facts.ts";
 import type { ResearchTargetScore } from "../../shared/research-priority-facts.ts";
@@ -276,7 +277,7 @@ export function createResearchEvidenceLibrary(
           : "官网公开资料",
       url,
       retrievedAt,
-      excerpt: source.excerpt,
+      excerpt: redactAdmissionsText(source.excerpt),
       kind: "official_page",
       verified: false,
     };

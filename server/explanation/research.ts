@@ -1,4 +1,5 @@
 import { researchCompute } from "./research-compute.ts";
+import { redactAdmissionsText } from "./research-priority-tables.ts";
 import { createResearchCollector } from "./research-collection.ts";
 import {
   extractPriorityFacts,
@@ -180,6 +181,7 @@ export interface ResearchReport {
         { reads: number; success: number; failed: number }
       >;
       platformReads: number;
+      failuresByCode?: Record<string, number>;
     };
     model: {
       calls: number;
@@ -1235,6 +1237,12 @@ export function reportMessages(
                 number: value.number,
                 maximum: value.maximum,
                 targetGap: value.targetGap,
+                singleSubject: value.singleSubject,
+                grade: value.grade,
+                employmentRate: value.employmentRate,
+                destinations: value.destinations,
+                statistics: value.statistics,
+                scopeNote: value.statistics ? value.text : undefined,
               },
             })),
           structuredFacts: structuredFacts
@@ -1473,9 +1481,18 @@ export function createResearchReportModule(
             checkpointSearchHits++;
             return structuredClone(checkpoint.searches[key]);
           }
-          const result = await deadline.wait(baseWeb.answer(request, options));
+          const result = await deadline.wait(
+            baseWeb.answer(request, {
+              ...options,
+              onSearchDispatch: () => {
+                deadline.check();
+                paidSearches++;
+                if (checkpoint.prefilter && checkpoint.report?.usage)
+                  checkpoint.report.usage.searches.paid = paidSearches;
+              },
+            }),
+          );
           deadline.check();
-          if (result.searched) paidSearches++;
           if (checkpoint.prefilter && checkpoint.report?.usage)
             checkpoint.report.usage.searches.paid = paidSearches;
           checkpoint.searches[key] = structuredClone(result);
@@ -1944,21 +1961,19 @@ export function createResearchReportModule(
               ? researchDeadline(
                   Math.max(
                     1,
-                    Math.min(
-                      B.collectionTargetMs,
-                      deadline.remaining() -
-                        Math.min(
-                          B.finalReserveMs,
-                          (config.researchTotalTimeoutMs ??
-                            B.defaultResearchTotalTimeoutMs) / 3,
-                        ),
-                    ),
+                    deadline.remaining() -
+                      Math.min(
+                        B.finalReserveMs,
+                        (config.researchTotalTimeoutMs ??
+                          B.defaultResearchTotalTimeoutMs) / 3,
+                      ),
                   ),
                   input.signal,
                 )
               : undefined;
             collectionCheck = () => collectionDeadline?.check();
             collectionSignal = collectionDeadline?.signal;
+            const retriedPages = new Set<string>();
             const scheduled = createResearchReader(
               async (value: string, signal: AbortSignal) => {
                 live();
@@ -1966,7 +1981,7 @@ export function createResearchReportModule(
                 const allowedHosts = hosts.includes(url.hostname)
                   ? hosts
                   : [...hosts, url.hostname];
-                const result =
+                let result =
                   checkpoint.pages[value] ??
                   (await deadline.wait(
                     sharedResearchRead(value, signal, () =>
@@ -1975,7 +1990,9 @@ export function createResearchReportModule(
                         allowedHosts,
                         maxRedirects: 3,
                         allowHttp: true,
-                        timeoutMs: B.pageTimeoutMs,
+                        timeoutMs: retriedPages.has(value)
+                          ? B.pageRetryTimeoutMs
+                          : B.pageTimeoutMs,
                         maxBytes: 512000,
                         allowPdf: true,
                         maxPdfBytes: 5000000,
@@ -1984,6 +2001,22 @@ export function createResearchReportModule(
                       }),
                     ),
                   ));
+                if (
+                  /拟录取|录取名单/.test(result.text) &&
+                  /姓名|考号|考生(?:编号|号)|准考证|身份证|证件号码|联系电话|手机号|邮箱/.test(
+                    result.text,
+                  )
+                ) {
+                  result = {
+                    ...result,
+                    text: redactAdmissionsText(
+                      /html/i.test(result.contentType)
+                        ? webPageText(result.text)
+                        : result.text,
+                    ),
+                    contentType: "text/plain",
+                  };
+                }
                 const body = /^(?:application\/pdf|application\/vnd\.)/i.test(
                   result.contentType,
                 )
@@ -2028,7 +2061,33 @@ export function createResearchReportModule(
                 if (cached && cached.expires > (config.now?.() ?? Date.now()))
                   return cached;
                 try {
-                  const result = await scheduled.read(safe.href);
+                  let result;
+                  try {
+                    result = await scheduled.read(safe.href);
+                  } catch (error) {
+                    live();
+                    if (
+                      !(error instanceof ModelError) ||
+                      !["WEB_TIMEOUT", "WEB_CONNECTION_RESET"].includes(
+                        error.code,
+                      ) ||
+                      retriedPages.has(safe.href) ||
+                      retriedPages.size >= B.pageRetries ||
+                      (collectionDeadline?.remaining() ??
+                        deadline.remaining()) <= B.pageRetryTimeoutMs
+                    )
+                      throw error;
+                    recordAttempt({
+                      url: safe.href,
+                      status: "failed",
+                      reason: error.code,
+                      attemptedAt: new Date(
+                        config.now?.() ?? Date.now(),
+                      ).toISOString(),
+                    });
+                    retriedPages.add(safe.href);
+                    result = await scheduled.read(safe.href);
+                  }
                   live();
                   const actualBody =
                     /^(?:application\/pdf|application\/vnd\.)/i.test(

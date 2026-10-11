@@ -126,7 +126,11 @@ async function readJson(response: Response): Promise<string> {
 
 /** Fixed TLS endpoint, no credentials or configurable DNS URL. Caller still applies all-public IP checks and pins the chosen address. */
 export function createPublicDohResolver(
-  dependencies: { fetch?: typeof fetch; timeoutMs?: number } = {},
+  dependencies: {
+    fetch?: typeof fetch;
+    timeoutMs?: number;
+    provider?: "ali" | "cloudflare";
+  } = {},
 ): AddressResolver {
   const fetcher = dependencies.fetch ?? fetch;
   return async (value) => {
@@ -135,7 +139,11 @@ export function createPublicDohResolver(
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const request = async (type: 1 | 28) => {
-        const url = new URL(endpoint);
+        const url = new URL(
+          dependencies.provider === "cloudflare"
+            ? "https://cloudflare-dns.com/dns-query"
+            : endpoint,
+        );
         url.searchParams.set("name", host);
         url.searchParams.set("type", String(type));
         const response = await fetcher(url, {
@@ -180,6 +188,31 @@ export function createPublicDohResolver(
     } finally {
       clearTimeout(timer);
       controller.abort();
+    }
+  };
+}
+
+/** Two fixed HTTPS resolvers share the caller's five-second DNS deadline.
+ * Invalid answers and unsafe addresses never trigger an alternate resolution. */
+export function createResilientPublicDohResolver(
+  dependencies: { fetch?: typeof fetch } = {},
+): AddressResolver {
+  const primary = createPublicDohResolver({ ...dependencies, timeoutMs: 2000 });
+  const fallback = createPublicDohResolver({
+    ...dependencies,
+    provider: "cloudflare",
+    timeoutMs: 2000,
+  });
+  return async (host, options) => {
+    try {
+      return await primary(host, options);
+    } catch (error) {
+      if (
+        !(error instanceof ModelError) ||
+        !["WEB_DNS_TIMEOUT", "WEB_DNS_UNAVAILABLE"].includes(error.code)
+      )
+        throw error;
+      return fallback(host, options);
     }
   };
 }

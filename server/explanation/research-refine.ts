@@ -7,6 +7,8 @@ import { academicDomain } from "./research-pages.ts";
 import { repairResearchEvidence } from "./research-repair.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
+import { collectMissingPriorityEvidence } from "./research-targeted.ts";
+import { researchCompute } from "./research-compute.ts";
 
 export function selectedResearchSource(
   prefilter: ResearchPrefilter,
@@ -36,10 +38,14 @@ export async function refineResearchSchools(
     readCount = 0;
   let lookupKeys = [...(input.lookupKeys ?? [])];
   const limitations: string[] = [];
+  const usedReads = new Map<string, number>();
   // Reserve deterministic per-school shares before starting a wave. Completion
   // timing cannot let a fast school steal another school's search/read allowance.
   const selected = input.prefilter.selected;
-  const groupSize = Math.max(1, Math.ceil(selected.length / B.searches));
+  const groupSize = Math.max(
+    1,
+    Math.ceil(selected.length / (B.searches - B.prioritySearchReserve)),
+  );
   const grouped = new Map<number, ReturnType<typeof input.web.answer>>();
   let groupedRequests = 0;
   const keywords = (input.queryTerms ?? PRIORITY_SEARCH_TERMS).join(" ");
@@ -83,7 +89,7 @@ export async function refineResearchSchools(
           discoveryReadLimit:
             index < B.discoveryReads ? B.schoolDiscoveryReads : 0,
           gaps,
-          maxRequests: groupSize > 1 ? 1 : share(B.searches, index),
+          maxRequests: 1,
           queryForGap: (gap) => [
             `${school.institutionName} ${names} ${years.join(" ")} ${gap.field === "program" ? "硕士招生专业目录 招生简章 初试科目" : gap.field === "exams" ? "硕士复试分数线 拟录取名单 报录统计" : gap.field === "location" ? "学科评估 就业质量报告 校区 培养地点" : "硕士招生简章 学费 报录统计"} ${keywords}`,
           ],
@@ -123,7 +129,7 @@ export async function refineResearchSchools(
                     return result.then((value) => structuredClone(value));
                   },
                 },
-          maxReads: Math.min(B.schoolReads, share(B.reads, index)),
+          maxReads: Math.min(3, share(B.reads, index)),
           lookupKeys,
           allowedDomains: [school.domain],
           needsEvidence: undefined,
@@ -137,6 +143,7 @@ export async function refineResearchSchools(
       const school = wave[index];
       requestCount += result.requestCount;
       readCount += result.readCount;
+      usedReads.set(school.domain, result.readCount);
       lookupKeys = [...new Set([...lookupKeys, ...result.lookupKeys])];
       limitations.push(...result.limitations);
       sources = [
@@ -151,6 +158,32 @@ export async function refineResearchSchools(
       `全国范围${selected.length}校均纳入分组定向查询，每组最多${groupSize}校；结果仍逐校核验，搜索未返回不表示学校没有该专业。`,
     );
   }
+  const inventory = await researchCompute(
+    "inventory",
+    {
+      run: input.run,
+      disciplines: input.disciplines,
+      sources,
+      targetYear: input.targetYear,
+      schoolNames: selected.map((s) => s.institutionName),
+    },
+    input.signal,
+  );
+  const targeted = await collectMissingPriorityEvidence({
+    ...input,
+    selected,
+    sources,
+    lookupKeys,
+    usedReads,
+    priorityPrograms: inventory.recommendations,
+    maxRequests: B.searches - requestCount,
+    maxReads: B.reads - readCount,
+  });
+  sources = targeted.sources;
+  lookupKeys = targeted.lookupKeys;
+  requestCount += targeted.requestCount;
+  readCount += targeted.readCount;
+  limitations.push(...targeted.limitations);
   return {
     sources,
     requestCount,

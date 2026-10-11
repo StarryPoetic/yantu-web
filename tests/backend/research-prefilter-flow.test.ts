@@ -80,7 +80,7 @@ test("two-stage flow persists local scores before any paid call, reads only sele
   assert.ok(
     report.coverage!.shortfallReasons.every((s) => !s.includes("尚未达到")),
   );
-  assert.equal(f.counts.searches, 60);
+  assert.equal(f.counts.searches, 72);
   for (const school of report.prefilter!.selected) {
     assert.ok(
       f.questions.some((query) => query.includes(school.institutionName)),
@@ -88,8 +88,13 @@ test("two-stage flow persists local scores before any paid call, reads only sele
     );
   }
   for (const term of ["复试线", "报录比", "双非", "学科评估", "就业去向"]) {
-    assert.ok(f.questions.every((query) => query.includes(term)));
+    assert.ok(
+      f.questions
+        .filter((q) => q.includes("硕士招生目录"))
+        .every((query) => query.includes(term)),
+    );
   }
+  assert.ok(f.questions.some((q) => q.includes("复试基本分数线")));
   assert.equal(f.counts.reads, 12);
   assert.equal(f.counts.models, 2);
   assert.ok(f.counts.searches <= B.searches && f.counts.reads < B.reads);
@@ -135,13 +140,19 @@ test("all schools retain collection opportunities even when basic fields are com
     subjectId: partial.run.subjectId,
     run: partial.run,
   });
-  assert.equal(full.recommendations.length, 10);
+  // Eight-school discovery groups request ten results. With three duplicate
+  // pages per school, this provider fixture exposes four schools per group.
+  assert.equal(full.recommendations.length, 8);
   assert.ok(
     full.recommendations.every((r) => r.tuition && r.location && r.exams),
   );
-  assert.equal(complete.counts.reads, 13);
-  assert.equal(partial.counts.reads, 13);
-  assert.equal(limited.recommendations.length, 10);
+  assert.equal(complete.counts.reads, 24);
+  assert.equal(partial.counts.reads, 24);
+  assert.equal(limited.recommendations.length, 8);
+  for (const school of full.prefilter!.selected)
+    assert.ok(
+      complete.questions.some((q) => q.includes(school.institutionName)),
+    );
 });
 test("zero evidence still exposes the saved prefilter and explains the ten-school shortfall without a model call", async () => {
   const f = prefilterFixture({ available: 0 });
@@ -234,7 +245,7 @@ for (const useFlash of [true, false])
       useFlash ? 1 : 2,
     );
     assert.ok(report.prefilter);
-    assert.equal(report.recommendations.length, 5);
+    assert.equal(report.recommendations.length, 8);
     assert.equal(report.usage!.searches.paid, 2);
     assert.equal(report.coverage!.targetMin, 10);
     assert.ok(
@@ -255,7 +266,7 @@ for (const useFlash of [true, false])
     });
     assert.equal(resumed.recommendations.length, 10);
     assert.equal(f.counts.reads, 12);
-    assert.equal(f.counts.searches, 60);
-    assert.equal(resumed.usage!.searches.paid, 58);
-    assert.equal(resumed.usage!.reads.reads, 7);
+    assert.equal(f.counts.searches, 72);
+    assert.equal(resumed.usage!.searches.paid, 71);
+    assert.equal(resumed.usage!.reads.reads, 4);
   });

@@ -39,11 +39,24 @@ export interface ResearchPriorityFact {
   quote: string;
   sourceId: string;
   sourceUrl: string;
+  collegeName?: string;
+  /** Literal, non-personal table header/identity fragments, never model prose. */
+  evidenceQuotes?: string[];
   value: {
     text: string;
     number?: number;
     maximum?: number;
     targetGap?: number;
+    singleSubject?: { maximum100?: number; above100?: number };
+    grade?: string;
+    employmentRate?: number;
+    destinations?: string;
+    statistics?: {
+      rows: number;
+      examination: number;
+      recommended: number;
+      method: "published_roster_rows";
+    };
   };
   status: "bound";
   verified: false;

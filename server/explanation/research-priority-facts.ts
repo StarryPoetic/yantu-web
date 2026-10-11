@@ -13,6 +13,10 @@ import { sourceHasSchoolIdentity } from "./research-school.ts";
 import { isSchoolPage } from "./research-evidence.ts";
 import { safeSourceYear } from "./research-years.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
+import {
+  tablePriorityFacts,
+  redactAdmissionsText,
+} from "./research-priority-tables.ts";
 
 const labels: Record<ResearchPriorityField, RegExp> = {
   cutoff:
@@ -35,7 +39,11 @@ const labels: Record<ResearchPriorityField, RegExp> = {
     /(?:城市发展|产业发展|地区生产总值|产业布局|就业市场)[^。\n]{2,100}/,
 };
 export function hasPriorityEvidence(source: WebSource) {
-  return Object.values(labels).some((pattern) => pattern.test(source.excerpt));
+  return (
+    /复试.*(?:分数|基本)|拟录取名单|录取名单|学科评估|就业质量报告/.test(
+      source.title + source.excerpt.slice(0, 1000),
+    ) || Object.values(labels).some((pattern) => pattern.test(source.excerpt))
+  );
 }
 export const PRIORITY_SEARCH_TERMS = [
   "复试线 录取最低分 录取平均分",
@@ -71,6 +79,8 @@ export function validatePriorityFacts(
   const school = schoolRegistry.byHost(new URL(source.url).hostname);
   if (!school || !sourceHasSchoolIdentity(source, school.name)) return [];
   const result: ResearchPriorityFact[] = [];
+  const publicText = redactAdmissionsText(source.excerpt);
+  const tables = tablePriorityFacts(source, disciplines, targetYear, target);
   for (const item of proposals.slice(0, 48)) {
     if (!item || typeof item !== "object") continue;
     const { field, quote, sourceId } = item as Record<string, unknown>;
@@ -82,10 +92,18 @@ export function validatePriorityFacts(
       quote.length > 600 ||
       sourceId !== source.id ||
       quote.includes(" … ") ||
-      !source.excerpt.includes(quote)
+      !source.excerpt.includes(quote) ||
+      !publicText.includes(quote)
     )
       continue;
     const key = field as ResearchPriorityField;
+    const tableMatches = tables.filter(
+      (f) => f.field === key && f.quote === quote,
+    );
+    if (tableMatches.length) {
+      result.push(...tableMatches);
+      continue;
+    }
     const matched = quote.match(labels[key]);
     if (!matched) continue;
     const years = [
@@ -185,6 +203,22 @@ export function validatePriorityFacts(
         text: quote,
         ...(number !== undefined ? { number } : {}),
         ...(maximum ? { maximum } : {}),
+        ...(key === "disciplineAssessment"
+          ? { grade: quote.match(/(?:为|等级|结果|：|:)\s*([ABC][+-]?)/)?.[1] }
+          : {}),
+        ...(key === "employment"
+          ? {
+              employmentRate:
+                Number(
+                  quote.match(
+                    /(?:就业率|去向落实率)[：:为\s]*(\d+(?:\.\d+)?)\s*[%％]/,
+                  )?.[1],
+                ) || undefined,
+              destinations: quote.match(
+                /(?:就业去向|主要去向|就业单位|就业行业)[：:为\s]*([^。\n]+)/,
+              )?.[1],
+            }
+          : {}),
         ...(target && maximum === target.maximum && number !== undefined
           ? { targetGap: target.total - number }
           : {}),
@@ -209,16 +243,20 @@ export function extractPriorityFacts(
   year: string,
   target?: ResearchTargetScore,
 ) {
-  const proposals = source.excerpt
+  const proposals = redactAdmissionsText(source.excerpt)
     .split(/[\n。]/)
     .flatMap((quote) =>
       RESEARCH_PRIORITY_FIELDS.filter((field) => labels[field].test(quote)).map(
         (field) => ({ field, quote, sourceId: source.id }),
       ),
     );
-  return validatePriorityFacts(proposals, source, disciplines, year, target);
+  return deduplicatePriorityFacts([
+    ...validatePriorityFacts(proposals, source, disciplines, year, target),
+    ...tablePriorityFacts(source, disciplines, year, target),
+  ]);
 }
 export function compactPriorityPage(source: WebSource) {
+  source = { ...source, excerpt: redactAdmissionsText(source.excerpt) };
   const chunks: string[] = [];
   const matches = [
     ...source.excerpt.matchAll(
@@ -251,6 +289,8 @@ export function deduplicatePriorityFacts(
       fact.majorCode ?? fact.disciplineCode,
       fact.field,
       fact.year,
+      fact.collegeName,
+      fact.value,
       fact.quote,
     ]);
     if (!unique.has(key)) unique.set(key, fact);
@@ -263,6 +303,7 @@ export function priorityCoverage(
     institutionName: string;
     disciplineCode: string;
     majorCode?: string;
+    collegeName?: string;
   }[],
   year: string,
 ) {
@@ -274,7 +315,8 @@ export function priorityCoverage(
       (f) =>
         f.schoolName === r.institutionName &&
         (!f.disciplineCode || f.disciplineCode === r.disciplineCode) &&
-        (!f.majorCode || !r.majorCode || f.majorCode === r.majorCode),
+        (!f.majorCode || !r.majorCode || f.majorCode === r.majorCode) &&
+        (!f.collegeName || !r.collegeName || f.collegeName === r.collegeName),
     );
     const confirmed = RESEARCH_PRIORITY_FIELDS.filter((field) =>
       own.some((f) => f.field === field),

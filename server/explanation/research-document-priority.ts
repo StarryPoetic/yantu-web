@@ -1,9 +1,23 @@
 import { getDisciplineCatalog } from "../disciplines/index.ts";
 
 /** Titles rank leads only; they never establish facts or admission eligibility. */
-export function researchDocumentPriority(title: string, program?: string) {
+export function researchDocumentPriority(
+  title: string,
+  program?: string,
+  url = "",
+) {
+  if (
+    /\/bszs\//i.test(url) ||
+    /本科(?:专业|招生|录取)|普通类招生结果/.test(title)
+  )
+    return -100;
   if (/博士|博后|博士后/.test(title) && !/硕士|硕博/.test(title)) return -100;
   if (program && /学院/.test(title) && !title.includes(program)) {
+    if (
+      /机械/.test(program) &&
+      /生物与化学|法学院|外国语|会计学院|财税学院/.test(title)
+    )
+      return -50;
     const other = getDisciplineCatalog().items.some(
       (d) =>
         !program.includes(d.name) &&

@@ -339,3 +339,17 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `collectionInputChars` | 12000 |
 | `collectionOutputTokens` | 2048 |
 | `defaultResearchTotalTimeoutMs` | 600000 |
+
+
+### 五类定向补查新增预算（2026-10-12）
+
+以下常量用于第二次真实验收后的离线修复，不修改.env或提高原搜索/读取硬上限。详情及模拟覆盖率见实施说明13.20。collectionTargetMs仍是300秒性能目标，收集硬截止改为总时限减最终分析预留（默认600−150=450秒）。
+
+| 常量 | 值 |
+| --- | --- |
+| `priorityReadsPerTurn` | 3 |
+| `prioritySearchReserve` | 48 |
+| `pageRetryTimeoutMs` | 10000 |
+| `pageRetries` | 8 |
+
+从72次查询中预留48次给五类缺项；每校每轮最多读3页，依然服从全报告180次/每校16次。仅超时或连接重置每URL最多重试一次，每报告最多8次；首次8秒、重试10秒且不突破读取器原硬上限，重试仍扣原预算。证书、私网、404/410不以重试或降级绕过。

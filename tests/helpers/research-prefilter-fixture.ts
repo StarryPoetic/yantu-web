@@ -20,10 +20,15 @@ export function prefilterFixture(
     completeFields?: boolean;
     duplicatePages?: boolean;
     cities?: string[];
+    schoolNames?: string[];
   } = {},
 ) {
   const schools = schoolRegistry.schools
-    .filter((s) => ["杭州", "南京", "西安"].includes(s.city))
+    .filter((s) =>
+      options.schoolNames
+        ? options.schoolNames.includes(s.name)
+        : ["杭州", "南京", "西安"].includes(s.city),
+    )
     .slice(0, 12);
   let saved: ResearchCheckpoint | undefined;
   let failModel = options.failModel;

@@ -21,7 +21,7 @@ import {
   validateSearchOptions,
 } from "./search.ts";
 import type { SearchConfig, SearchOptions } from "./search.ts";
-import { createPublicDohResolver } from "./dns.ts";
+import { createResilientPublicDohResolver } from "./dns.ts";
 import type { AddressResolver, DnsMode } from "./dns.ts";
 import { pdfText, pdfTextLimits } from "./pdf-text.ts";
 import { spreadsheetText, spreadsheetTextLimits } from "./spreadsheet-text.ts";
@@ -70,6 +70,7 @@ export interface WebAnswerInput {
   search?: boolean;
 }
 export interface WebAnswerResult {
+  searchDispatched?: boolean;
   status: "answered" | "sources_only" | "unavailable";
   answer: string;
   points: Array<{ text: string; citations: string[] }>;
@@ -80,6 +81,7 @@ export interface WebAnswerResult {
   needsSearch: boolean;
 }
 export interface WebAnswerOptions {
+  onSearchDispatch?: () => void;
   sourcesOnly?: boolean;
   search?: SearchOptions;
   /** Research-only: retain academic HTTP search results, never user URLs. */
@@ -337,7 +339,7 @@ export function createHttpsReader(
   const resolver =
     dependencies.resolver ??
     (dependencies.dnsMode === "public-doh"
-      ? createPublicDohResolver({ fetch: dependencies.fetch })
+      ? createResilientPublicDohResolver({ fetch: dependencies.fetch })
       : lookup);
   return async (value, options) => {
     options.signal?.throwIfAborted();
@@ -785,6 +787,7 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
       ];
       let reason: string | undefined;
       let searched = false;
+      let searchDispatched = false;
       const retrievedAt = new Date(config.now?.() ?? Date.now()).toISOString();
       for (const value of input.urls ?? []) {
         try {
@@ -823,6 +826,8 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
                 question,
                 options.search,
               );
+              searchDispatched = true;
+              options.onSearchDispatch?.();
               const response = await reader(request.url, request.options);
               const results = normalizeSearchResponse(
                 provider,
@@ -862,6 +867,7 @@ export function createWebAnswerModule(config: WebAnswerConfig = {}) {
           );
       }
       const base: WebAnswerResult = {
+        searchDispatched,
         status: sources.length ? "sources_only" : "unavailable",
         answer: sources.length
           ? "已找到相关网页依据。请结合来源原文核对适用年份、专业和考试范围。"

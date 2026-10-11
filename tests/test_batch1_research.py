@@ -6,6 +6,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class BatchOneResearchDocsTests(unittest.TestCase):
+    def test_second_review_records_comparable_coverage_and_failure_boundaries(self):
+        text = (ROOT / 'docs/实施说明.md').read_text(encoding='utf-8').split('### 13.20.', 1)[1]
+        for phrase in ('f8af633', '完全相同的增补夹具', '159→38', '0/2→2/2',
+                       '0/4→3/4', '0/5→3/5', '1/5→4/5', 'HTTP_404=8',
+                       'HTTP_410=3', 'WEB_TLS_CERT=7', 'WEB_TIMEOUT=6',
+                       'WEB_CONNECTION_RESET=1', '未联网验证其实际恢复数',
+                       'COLLECTION_FALLBACK_RULES_', 'published_roster_rows',
+                       '实际费用0元', '085502', 'verified:false'):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+        record = (ROOT / 'docs/阶段7真实验证记录.md').read_text(encoding='utf-8').split('### 第二次真实运行复核后的遗留问题更新', 1)[1]
+        for phrase in ('未开始第三次真实运行', '2.369682元另Flash未知项',
+                       '7/14/21→8/17/22', '151.247秒', '另行授权'):
+            self.assertIn(phrase, record)
+
     def test_rework_records_equivalence_performance_and_no_new_paid_run(self):
         text = (ROOT / 'docs/实施说明.md').read_text(encoding='utf-8').split('### 13.19.', 1)[1]
         for phrase in ('saveIncremental', 'research_pending_schools', 'setImmediate',
