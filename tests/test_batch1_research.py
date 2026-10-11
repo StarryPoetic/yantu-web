@@ -13,6 +13,15 @@ class BatchOneResearchDocsTests(unittest.TestCase):
                        'WEB_TLS_CERT=3', '0/3=0%', '56384', '原文', '不读取'):
             self.assertIn(phrase, text)
 
+    def test_second_capped_run_records_failure_without_hiding_semantic_gaps(self):
+        text = (ROOT / 'docs/阶段7真实验证记录.md').read_text(encoding='utf-8').split('### 第2次：bcef53c', 1)[1]
+        for phrase in ('243823', '73/49/24/0', '22288/48', '13515/9577',
+                       '4.615356', '4.910712', '2.372587', '4/41',
+                       'HTTP_404=5', 'HTTP_410=11', 'WEB_TLS_CERT=4', 'HTTP_4XX=4',
+                       '不再运行第3次', '0/3=0%', 'collegeName=005/012',
+                       '博士招生条款', '未在本轮第2次后修改产品代码'):
+            self.assertIn(phrase, text)
+
     def test_second_review_records_comparable_coverage_and_failure_boundaries(self):
         text = (ROOT / 'docs/实施说明.md').read_text(encoding='utf-8').split('### 13.20.', 1)[1]
         for phrase in ('f8af633', '完全相同的增补夹具', '159→38', '0/2→2/2',
