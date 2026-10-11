@@ -5,6 +5,7 @@ import { deflateSync } from "node:zlib";
 import { decodedResearchDocuments } from "../../server/explanation/research-encoded-documents.ts";
 import { prefilterFixture } from "../helpers/research-prefilter-fixture.ts";
 import { setTimeout as pause } from "node:timers/promises";
+import { scopedAdmissionEvidence } from "../../server/explanation/research-evidence.ts";
 import {
   realReplayFixture,
   combinedRealReplayFixture,
@@ -27,13 +28,64 @@ import {
 } from "../../server/explanation/research-pages.ts";
 import { runRealReportReplay } from "../helpers/research-real-report-replay.ts";
 import { programEntries } from "../../server/explanation/research-matching.ts";
-import { replayAcceptanceCriteria } from "../helpers/research-replay-live.ts";
+import {
+  replayAcceptanceCriteria,
+  replayVerifiedCoverage,
+} from "../helpers/research-replay-live.ts";
 import {
   missingPriorityQueries,
   fairPriorityQueries,
   priorityQueryCategory,
 } from "../../server/explanation/research-targeted.ts";
 const fixture = realReplayFixture();
+test("progress comparison cannot retain an old unquoted false-positive coverage ceiling", () => {
+  const source = fixture.pages.find((p) => p.source)!.source!;
+  const report = {
+    sources: [source],
+    recommendations: [
+      {
+        institutionName: "浙江理工大学",
+        majorCode: "085501",
+        programName: "机械工程",
+        disciplineCode: "0855",
+      },
+    ],
+    priorityFacts: [
+      {
+        field: "cityDevelopment",
+        sourceId: source.id,
+        quote: "原文没有的杭州产业发展999%",
+      },
+    ],
+  } as unknown as Parameters<typeof replayVerifiedCoverage>[0];
+  assert.equal(replayVerifiedCoverage(report).partialAverage, 0);
+});
+test("real closure section applies to its faculty row, not the same major in the following section", () => {
+  const source = realReplayFixture("research-v3a6-run3.json").pages.find((p) =>
+    p.url.endsWith("/1993.htm"),
+  )!.source!;
+  const scope = {
+    institutionName: "浙江科技大学",
+    programName: "机械",
+    majorCode: "085500",
+    disciplineCode: "0855",
+    studyMode: "full_time" as const,
+  };
+  assert.equal(
+    scopedAdmissionEvidence(source, "2027", {
+      ...scope,
+      collegeName: "生物与化学工程学院",
+    }).exclusionKind,
+    "closure",
+  );
+  assert.notEqual(
+    scopedAdmissionEvidence(source, "2027", {
+      ...scope,
+      collegeName: "艺术设计与服装学院",
+    }).exclusionKind,
+    "closure",
+  );
+});
 test("initial search throttling keeps page reads concurrent across schools", async () => {
   const f = prefilterFixture();
   const reader = f.config.reader!;
@@ -138,6 +190,20 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
   assert.equal(result.peakSearches, B.initialSearchConcurrency);
   assert.equal(result.finalCalls, 1);
   assert.deepEqual(new Set(result.finalDirections), new Set(["0802", "0855"]));
+  assert.ok(
+    result.searchQueries.some((q) => /硕士招生专业目录 site:/.test(q)),
+    "unknown programmes need graduate-site catalogue recovery before score queries",
+  );
+  assert.ok(
+    result.report.recommendations.every(
+      (r) =>
+        !(
+          r.institutionName === "浙江科技大学" &&
+          r.majorCode === "085500" &&
+          r.collegeName === "生物与化学工程学院"
+        ),
+    ),
+  );
   assert.ok(combined.pages.filter((p) => p.source).length >= 210);
   assert.ok(coverage.confirmed >= 8);
   for (const row of audit) {

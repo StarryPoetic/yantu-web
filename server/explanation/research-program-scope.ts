@@ -17,7 +17,7 @@ export function programRowScope(body: string, start: number, end?: number) {
   const precedingLine =
     lineStart < 0
       ? ""
-      : body.slice(body.lastIndexOf("\n", lineStart - 1) + 1, lineStart).trim();
+      : body.slice(0, lineStart).trimEnd().split("\n").at(-1)!.trim();
   const collegePattern =
     /(?:^|[|\s:：。；])\d{0,3}([\p{Script=Han}]{1,24}(?:学院|研究院|研究所|学部|中心))\s*\|?\s*$/u;
   const wholeFaculty = (value: string) =>

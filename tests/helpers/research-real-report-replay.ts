@@ -20,6 +20,7 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
     activeSearches = 0,
     peakSearches = 0;
   let finalDirections: string[] = [];
+  const searchQueries: string[] = [];
   const run = generateGuidance({
     subjectId: "batch1-synthetic-hangzhou",
     guidanceRunId: "real-replay",
@@ -84,6 +85,7 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
           await setImmediate();
           activeSearches--;
           const q = JSON.parse(options.body ?? "{}").query ?? "";
+          searchQueries.push(q);
           const saved = fixture.runs
             .flatMap((r) => r.queries)
             .find((r) => r.query === q);
@@ -136,5 +138,13 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
     strategy: "two-stage",
     targetScore: { total: 350, maximum: 500 },
   });
-  return { report, finalCalls, reads, searches, peakSearches, finalDirections };
+  return {
+    report,
+    finalCalls,
+    reads,
+    searches,
+    peakSearches,
+    finalDirections,
+    searchQueries,
+  };
 }

@@ -14,6 +14,7 @@ import type { ResearchPrefilter } from "../../shared/research-prefilter.ts";
 import { programEntries } from "./research-matching.ts";
 import { isSchoolPage } from "./research-evidence.ts";
 import type { WebSource } from "./web.ts";
+import { schoolRegistry } from "../schools/index.ts";
 
 /** Short, category-specific queries. Score years remain independent evidence slots. */
 export function missingPriorityQueries(
@@ -266,7 +267,21 @@ export async function collectMissingPriorityEvidence(
             ),
           );
       // Interleave the same category across programmes before advancing years.
-      const queries = fairPriorityQueries(queryLists);
+      const graduateEntry = schoolRegistry.byHost(
+        school.domain,
+      )?.graduateAdmissionsUrl;
+      const seedHost = graduateEntry
+        ? new URL(graduateEntry).hostname
+        : school.domain;
+      const catalogHost =
+        seedHost === `www.${school.domain}` ? school.domain : seedHost;
+      const catalogRecovery = !known.has(school.domain)
+        ? `${school.institutionName} ${historicalReferenceYears(input.targetYear)[0]} ${input.disciplines[0]?.name ?? ""} 硕士招生专业目录 site:${catalogHost}`
+        : undefined;
+      const queries = [
+        ...(catalogRecovery ? [catalogRecovery] : []),
+        ...fairPriorityQueries(queryLists),
+      ];
       const query = [...queries, ...queries.map((q) => q + " 官网 附件")].find(
         (q) =>
           !attempted.has(q) &&
@@ -316,7 +331,7 @@ export async function collectMissingPriorityEvidence(
         allowedDomains: [school.domain],
         priorityDocuments: true,
         searchFirst: true,
-        discoveryReadLimit: 0,
+        discoveryReadLimit: query === catalogRecovery ? 1 : 0,
         queryForGap: () => [query],
         needsEvidence: undefined,
         stop: undefined,

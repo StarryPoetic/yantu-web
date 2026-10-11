@@ -749,14 +749,13 @@ function currentProgramConflict(
   };
   const wholePage = admissionEvidence(source, year);
   if (wholePage.exclusionKind === "closure") return true;
+  if (scopedAdmissionEvidence(source, year, scope).exclusionKind === "closure")
+    return true;
   if (
     !supportsProgram(source, item.institutionName, item.programName, discipline)
   )
     return false;
-  return (
-    scopedAdmissionEvidence(source, year, scope).exclusionKind === "closure" ||
-    scopedKnownAdmissionConflict(source, scope, discipline, profile, year)
-  );
+  return scopedKnownAdmissionConflict(source, scope, discipline, profile, year);
 }
 
 /** The most recent supported historical programme is the baseline; current facts remain separate. */

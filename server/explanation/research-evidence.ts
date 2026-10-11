@@ -159,11 +159,21 @@ export function scopedProgramPassages(
       )
         return [];
       const actual = rowScope(body, row.index!, rows[index + 1]?.index);
+      const section = [
+        ...body
+          .slice(0, row.index!)
+          .matchAll(
+            /(?:^|\n)\s*(?:\d+[.、]|[一二三四五六七八九十]+[、.])\s*[^\n]{1,80}/g,
+          ),
+      ].at(-1);
+      const closedSection =
+        section && closure.test(section[0]) && /专业/.test(section[0]);
       if (
         (scope.collegeName && actual.collegeName !== scope.collegeName) ||
         (scope.studyMode &&
           scope.studyMode !== "unspecified" &&
-          actual.studyMode !== scope.studyMode)
+          actual.studyMode !== scope.studyMode &&
+          !(closedSection && !actual.studyMode))
       )
         return [];
       const next = rows[index + 1]?.index;
@@ -171,7 +181,12 @@ export function scopedProgramPassages(
         next === undefined ? undefined : body.lastIndexOf("\n", next);
       const end =
         nextLine !== undefined && nextLine > row.index! ? nextLine : next;
-      return [body.slice(row.index!, end).split(" … ")[0].trim()];
+      return [
+        body
+          .slice(closedSection ? section.index : row.index!, end)
+          .split(" … ")[0]
+          .trim(),
+      ];
     });
   return programPassages(body, scope.programName).filter((passage) => {
     const colleges =

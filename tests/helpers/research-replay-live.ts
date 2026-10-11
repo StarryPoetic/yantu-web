@@ -6,11 +6,15 @@ import {
   writeFileSync,
   appendFileSync,
   readFileSync,
+  existsSync,
 } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Store } from "../../server/store.ts";
-import { generateGuidance } from "../../server/disciplines/index.ts";
+import {
+  generateGuidance,
+  getDisciplineCatalog,
+} from "../../server/disciplines/index.ts";
 import { blankProfile } from "../../server/profile.ts";
 import {
   createResearchReportModule,
@@ -28,7 +32,10 @@ import {
   searchRequest,
 } from "../../server/explanation/search.ts";
 import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
-import { priorityCoverage } from "../../server/explanation/research-priority-facts.ts";
+import {
+  priorityCoverage,
+  validatePriorityFacts,
+} from "../../server/explanation/research-priority-facts.ts";
 import { execFileSync } from "node:child_process";
 import { reportAvailability } from "../../src/workspace/research-report.ts";
 
@@ -105,6 +112,21 @@ export function acquireBatchPaidLock(path: string) {
     closeSync(fd);
   }
 }
+/** Old extraction false positives must not become a fabricated progress ceiling. */
+export function replayVerifiedCoverage(report: ResearchReport) {
+  const disciplines = getDisciplineCatalog().items.filter((d) =>
+    ["0802", "0855"].includes(d.code),
+  );
+  const facts = report.sources.flatMap((source) =>
+    validatePriorityFacts(
+      (report.priorityFacts ?? []).filter((f) => f.sourceId === source.id),
+      source,
+      disciplines,
+      "2027",
+    ),
+  );
+  return priorityCoverage(facts, report.recommendations, "2027");
+}
 export async function runBatchLive(args: string[]) {
   if (
     args.length !== 2 ||
@@ -119,9 +141,29 @@ export async function runBatchLive(args: string[]) {
     throw new Error("Commit checked changes first");
   const gitHead = git("rev-parse", "HEAD");
   const prefix = `var/v3a6-run${index}`;
-  const previous = Array.from({ length: index - 1 }, (_, i) =>
-    JSON.parse(readFileSync(`var/v3a6-run${i + 1}-live/metrics.json`, "utf8")),
-  );
+  const previous = Array.from({ length: index - 1 }, (_, i) => {
+    const directory = `var/v3a6-run${i + 1}-live`;
+    const metrics = JSON.parse(
+      readFileSync(`${directory}/metrics.json`, "utf8"),
+    );
+    if (existsSync(`${directory}/report.json`))
+      metrics.priorityCoverage = replayVerifiedCoverage(
+        JSON.parse(readFileSync(`${directory}/report.json`, "utf8")),
+      );
+    return metrics;
+  });
+  previous.forEach((m, i) => {
+    m.progress =
+      (m.priorityCoverage?.partialAverage ?? 0) >
+        Math.max(
+          0,
+          ...previous
+            .slice(0, i)
+            .map((p) => p.priorityCoverage?.partialAverage ?? 0),
+        ) ||
+      m.recommendations >
+        Math.max(3, ...previous.slice(0, i).map((p) => p.recommendations));
+  });
   if (previous.some((m) => m.acceptance?.passed))
     throw new Error("Already accepted");
   if (
