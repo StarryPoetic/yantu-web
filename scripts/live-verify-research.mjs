@@ -23,6 +23,13 @@ import {
   searchRequest,
 } from "../server/explanation/search.ts";
 import { RESEARCH_BUDGET as B } from "../server/explanation/research-budget.ts";
+import {
+  completionLimit,
+  assertCompletionNotStarted,
+  acquireCompletionLock,
+  createCompletionModelGuard,
+  createSearchProtectedReader,
+} from "./model-completion-guards.mjs";
 
 // Deliberately no environment-file loading here: only the explicitly approved CLI loads it.
 const usageLimit = {
@@ -77,47 +84,63 @@ export function safeFailureCode(error) {
     return error.message;
   return "LIVE_VERIFY_FAILED";
 }
-export async function main(args = process.argv.slice(2)) {
+// Programmatic seams allow the exact CLI assembly to be exercised with an
+// isolated database, synthetic profile and fake HTTP; CLI never supplies them.
+export async function main(args = process.argv.slice(2), dependencies = {}) {
   const { values } = parseArgs({
     args,
     options: {
       "confirm-paid": { type: "boolean" },
       rehearsal: { type: "boolean" },
+      "model-completion": { type: "boolean" },
       "dns-mode": { type: "string" },
     },
   });
-  if (!values["confirm-paid"] && !values.rehearsal) {
+  const modelCompletion = !!values["model-completion"];
+  const limits = modelCompletion ? completionLimit : usageLimit;
+  if (!values["confirm-paid"] && (modelCompletion || !values.rehearsal)) {
     console.log(
       JSON.stringify({
         event: "consent-required",
         message:
           "未启动：将读取杭州画像快照、使用真实资料库和线上研究模块；付费运行必须显式传 --confirm-paid，零费用彩排传 --rehearsal。",
-        upperBound: usageLimit,
+        modelCompletion,
+        upperBound: limits,
       }),
     );
     return;
   }
-  if (values["confirm-paid"] && values.rehearsal)
+  if (values["confirm-paid"] && values.rehearsal && !modelCompletion)
     throw new Error("MODE_CONFLICT");
   const rehearsal = !!values.rehearsal;
   const dnsMode = values["dns-mode"] ?? dnsModeFromEnvironment(process.env);
   if (!["system", "public-doh"].includes(dnsMode))
     throw new Error("INVALID_DNS_MODE");
-  const directory = resolve(
-    "var",
-    `${rehearsal ? "rehearsal" : "live"}-verify-${new Date().toISOString().replace(/[:.]/g, "-")}`,
-  );
+  const directory =
+    dependencies.directory ??
+    resolve(
+      "var",
+      `${modelCompletion ? "model-completion" : `${rehearsal ? "rehearsal" : "live"}-verify`}-${new Date().toISOString().replace(/[:.]/g, "-")}`,
+    );
   await mkdir(directory, { recursive: true });
   const log = (event) => {
     const line = JSON.stringify({ at: new Date().toISOString(), ...event });
     appendFileSync(resolve(directory, "events.ndjson"), line + "\n");
-    console.log(line);
+    if (dependencies.log) dependencies.log(event);
+    else console.log(line);
   };
-  log({ event: "预计上限", rehearsal, dnsMode, upperBound: usageLimit });
+  log({
+    event: "预计上限",
+    rehearsal,
+    modelCompletion,
+    dnsMode,
+    upperBound: limits,
+  });
   const started = Date.now();
   let store;
   const totals = {
     searches: 0,
+    simulatedSearches: 0,
     reads: 0,
     modelCalls: 0,
     inputChars: 0,
@@ -126,10 +149,16 @@ export async function main(args = process.argv.slice(2)) {
     peakConcurrentReads: 0,
   };
   const controller = new AbortController();
+  const completionLock = rehearsal
+    ? resolve(directory, "rehearsal-model-completion.lock")
+    : "var/phase7-model-completion.lock";
   try {
-    const run = JSON.parse(
-      await readFile("var/research-tiered-current-run.json", "utf8"),
-    );
+    if (modelCompletion) await assertCompletionNotStarted(completionLock);
+    const run =
+      dependencies.run ??
+      JSON.parse(
+        await readFile("var/research-tiered-current-run.json", "utf8"),
+      );
     if (
       JSON.stringify(run.inputSnapshot.profile.cities) !==
       JSON.stringify(["杭州"])
@@ -152,15 +181,16 @@ export async function main(args = process.argv.slice(2)) {
         process.env.YANTU_MODEL_DAILY_TOKENS ?? B.globalDailyTokens,
       ),
     };
-    const searchConfig = rehearsal
-      ? {
-          searchEnabled: true,
-          searchProvider: "bocha",
-          searchKey: "rehearsal-only",
-          searchDailyRequestsPerUser: 60,
-          searchDailyRequestsGlobal: 300,
-        }
-      : searchConfigFromEnvironment(process.env);
+    const searchConfig =
+      rehearsal || modelCompletion
+        ? {
+            searchEnabled: true,
+            searchProvider: "bocha",
+            searchKey: "rehearsal-only",
+            searchDailyRequestsPerUser: 60,
+            searchDailyRequestsGlobal: 300,
+          }
+        : searchConfigFromEnvironment(process.env);
     const missing = [];
     if (!config.enabled) missing.push("MODEL_DISABLED");
     if (!config.apiKey) missing.push("MODEL_NOT_CONFIGURED");
@@ -194,56 +224,62 @@ export async function main(args = process.argv.slice(2)) {
           },
         }
       : createDeepSeekAdapter(config);
-    const runtime = createModelRuntime({
-      ...config,
-      adapter: {
-        async complete(messages, options) {
-          controller.signal.throwIfAborted();
-          const n = ++totals.modelCalls,
-            chars = JSON.stringify(messages).length;
-          if (
-            n > usageLimit.modelCalls ||
-            chars > (options?.thinking ? B.thinkingChars : B.normalChars)
-          ) {
-            controller.abort(new Error("LIVE_BUDGET_EXCEEDED"));
-            throw controller.signal.reason;
-          }
-          totals.inputChars += chars;
+    const observedAdapter = {
+      async complete(messages, options) {
+        controller.signal.throwIfAborted();
+        const n = ++totals.modelCalls,
+          chars = JSON.stringify(messages).length;
+        if (
+          n > limits.modelCalls ||
+          chars > (options?.thinking ? B.thinkingChars : B.normalChars)
+        ) {
+          controller.abort(new Error("LIVE_BUDGET_EXCEEDED"));
+          throw controller.signal.reason;
+        }
+        totals.inputChars += chars;
+        log({
+          event: "model-request",
+          n,
+          inputChars: chars,
+          simulated: rehearsal,
+        });
+        try {
+          const reply = await adapter.complete(messages, options);
+          totals.inputTokens += reply.inputTokens;
+          totals.outputTokens += reply.outputTokens;
+          // Private raw replies support counting every proposed recommendation, even rejected ones.
+          await writeFile(
+            resolve(directory, `model-reply-${n}.json`),
+            JSON.stringify(reply, null, 2),
+          );
           log({
-            event: "model-request",
+            event: "model-reply",
             n,
-            inputChars: chars,
+            inputTokens: reply.inputTokens,
+            outputTokens: reply.outputTokens,
             simulated: rehearsal,
           });
-          try {
-            const reply = await adapter.complete(messages, options);
-            totals.inputTokens += reply.inputTokens;
-            totals.outputTokens += reply.outputTokens;
-            // Private raw replies support counting every proposed recommendation, even rejected ones.
-            await writeFile(
-              resolve(directory, `model-reply-${n}.json`),
-              JSON.stringify(reply, null, 2),
-            );
-            log({
-              event: "model-reply",
-              n,
-              inputTokens: reply.inputTokens,
-              outputTokens: reply.outputTokens,
-              simulated: rehearsal,
-            });
-            return reply;
-          } catch (error) {
-            log({
-              event: "model-failed",
-              n,
-              code: error.code ?? "MODEL_UNAVAILABLE",
-            });
-            throw error;
-          }
-        },
+          return reply;
+        } catch (error) {
+          log({
+            event: "model-failed",
+            n,
+            code: error.code ?? "MODEL_UNAVAILABLE",
+          });
+          throw error;
+        }
       },
+    };
+    const runtime = createModelRuntime({
+      ...config,
+      adapter: modelCompletion
+        ? createCompletionModelGuard(observedAdapter, {
+            lock: () => acquireCompletionLock(completionLock, directory),
+            log,
+          })
+        : observedAdapter,
     });
-    const http = createHttpsReader({ dnsMode });
+    const http = dependencies.http ?? createHttpsReader({ dnsMode });
     const searchHost = new URL(
       searchRequest(
         searchConfig.searchProvider,
@@ -253,13 +289,26 @@ export async function main(args = process.argv.slice(2)) {
     ).hostname;
     let activeReads = 0;
     let rehearsalSources = [];
+    const simulateSearch = rehearsal || modelCompletion;
+    const protectedHttp = simulateSearch
+      ? createSearchProtectedReader({
+          http,
+          searchHost,
+          sources: () => rehearsalSources,
+          searchResults: rehearsalSearchResults,
+        })
+      : http;
     const firstReads = [];
     const reader = async (url, options) => {
       controller.signal.throwIfAborted();
-      const host = new URL(url).hostname;
+      const host = new URL(url).hostname.replace(/\.$/, "");
       const isSearch = host === searchHost;
       const geography = isSearch ? {} : publicSchoolContext(host);
-      const n = isSearch ? ++totals.searches : ++totals.reads;
+      const n = isSearch
+        ? simulateSearch
+          ? ++totals.simulatedSearches
+          : ++totals.searches
+        : ++totals.reads;
       if (isSearch && n > B.searches) {
         controller.abort(new Error("LIVE_BUDGET_EXCEEDED"));
         throw controller.signal.reason;
@@ -278,26 +327,10 @@ export async function main(args = process.argv.slice(2)) {
         n,
         host,
         ...geography,
-        simulated: isSearch && rehearsal,
+        simulated: isSearch && simulateSearch,
       });
       try {
-        const result =
-          isSearch && rehearsal
-            ? {
-                contentType: "application/json",
-                text: JSON.stringify({
-                  code: 200,
-                  data: {
-                    webPages: {
-                      value: rehearsalSearchResults(
-                        rehearsalSources,
-                        JSON.parse(options?.body ?? "{}"),
-                      ),
-                    },
-                  },
-                }),
-              }
-            : await http(url, options);
+        const result = await protectedHttp(url, options);
         if (!isSearch)
           await writeFile(
             resolve(directory, `web-${n}.json`),
@@ -333,7 +366,7 @@ export async function main(args = process.argv.slice(2)) {
         if (!isSearch) activeReads--;
       }
     };
-    store = new Store("var/yantu.sqlite");
+    store = new Store(dependencies.databasePath ?? "var/yantu.sqlite");
     const allowedHosts = process.env.YANTU_OFFICIAL_HOSTS?.split(",")
       .map((s) => s.trim())
       .filter(Boolean);
@@ -409,7 +442,7 @@ export async function main(args = process.argv.slice(2)) {
     );
     if (!engine.getReadiness().ready) throw new Error("CONFIGURATION_MISSING");
     log({ event: "library-before", ...library.coverageStats() });
-    if (!rehearsal) {
+    if (!rehearsal && !modelCompletion) {
       // Persist an exclusive marker BEFORE any billable request; a failed run is never auto-restarted.
       const lock = await open("var/phase7-paid-run.lock", "wx");
       await lock.writeFile(
@@ -437,6 +470,7 @@ export async function main(args = process.argv.slice(2)) {
     const summary = {
       event: "result",
       rehearsal,
+      modelCompletion,
       elapsedMs: Date.now() - started,
       status: report.status,
       reason: report.reason,
@@ -455,6 +489,7 @@ export async function main(args = process.argv.slice(2)) {
     );
     log(summary);
     if (report.status === "blocked") process.exitCode = 1;
+    return summary;
   } catch (error) {
     // Never print arbitrary error messages/objects from a provider or configuration.
     log({

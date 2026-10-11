@@ -4,6 +4,7 @@ import { generateGuidance } from "../../server/disciplines/index.ts";
 import { blankProfile } from "../../server/profile.ts";
 import { createResearchReportModule } from "../../server/explanation/research.ts";
 import { createModelRuntime } from "../../server/explanation/index.ts";
+import { createCompletionModelGuard } from "../../scripts/model-completion-guards.mjs";
 import {
   ModelError,
   type ModelMessage,
@@ -86,6 +87,7 @@ function setup(
     firstUsage?: number;
     restrictedSchool?: number;
     coded?: boolean;
+    modelCompletion?: boolean;
   } = {},
 ) {
   const count = settings.count ?? 6;
@@ -179,7 +181,12 @@ function setup(
       };
     },
   };
-  const shared = createModelRuntime(config);
+  const shared = createModelRuntime({
+    ...config,
+    adapter: settings.modelCompletion
+      ? createCompletionModelGuard(config.adapter)
+      : config.adapter,
+  });
   const runtime = {
     run: (async (...args: Parameters<typeof shared.run>) => {
       runtimeKeys.push(args[1] as { task?: string });
@@ -397,4 +404,30 @@ test("supplemental cards still reject current eligibility conflicts, unknown cit
     setupResult.requests.filter((request) => request.supplemental).length,
     1,
   );
+});
+
+test("completion guard blocks the third model POST while retaining final validated model recommendations", async () => {
+  const result = setup({ modelCompletion: true });
+  const report = await result.module.generate({
+    subjectId: result.run.subjectId,
+    run: result.run,
+  });
+  assert.equal(
+    result.requests.length,
+    2,
+    "only planning and final analysis reach the adapter",
+  );
+  assert.deepEqual(
+    report.recommendations.map((item) => item.institutionName),
+    schools.slice(0, 2),
+  );
+  assert.ok(
+    report.recommendations.every((item) =>
+      item.rationale.includes("基于培养方向的推断"),
+    ),
+  );
+  assert.ok(
+    report.limitations.some((value) => value.includes("学校覆盖补充未完成")),
+  );
+  assert.equal(report.status, "partial");
 });
