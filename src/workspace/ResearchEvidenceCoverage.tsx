@@ -272,10 +272,9 @@ export function ResearchEvidenceCoverage({
         <>
           <p>{coverage.summary}</p>
           <p>
-            本次调查 {coverage.schoolCount} 所学校、{coverage.programCount}{" "}
-            个专业；
-            {coverage.supportedProgramCount} 个专业已有项目原文，
-            {coverage.pendingProgramCount} 个专业仍有实质缺项。
+            调查记录包含 {coverage.schoolCount} 所学校、{coverage.programCount}{" "}
+            个候选专业，其中 {coverage.supportedProgramCount} 个有项目原文。
+            这些是调查线索，推荐所需资料见顶部三类状态与学校卡片。
           </p>
           <p className="ws-muted">
             仅统计本次实际调查的学校与专业；未出现的学校不据此排除。目录已有原文时，学费、校区或考试缺项会分别记录。

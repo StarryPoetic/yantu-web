@@ -699,3 +699,23 @@
   margin-top: 0;
   border-top: 0;
 }
+.research-availability {
+  padding: 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 12px;
+  background: var(--surface, #f8fafc);
+}
+.research-availability strong {
+  font-size: 1.1rem;
+}
+.research-availability dl {
+  display: grid;
+  gap: 10px;
+}
+.research-availability dt {
+  font-weight: 600;
+}
+.research-availability dd {
+  margin: 4px 0 0;
+}

@@ -1,3 +1,4 @@
+import type { ResearchCheckpoint } from "../explanation/research-resume.ts";
 import type { Context } from "../context.ts";
 import { catalog, program, required } from "../context.ts";
 import type { Store } from "../store.ts";
@@ -33,7 +34,7 @@ export interface ResearchJob {
   updatedAt: string;
   events: { stage: string; message: string; at: string }[];
   report?: ResearchReport;
-  mode?: "generate" | "supplement";
+  mode?: "generate" | "supplement" | "retry";
   target?: {
     programId: string;
     programRevisionId: string;
@@ -155,6 +156,20 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             selectedProgram,
             mode: initial.mode,
             previousReport,
+            checkpoint: store.get<ResearchCheckpoint>(
+              owner,
+              "research-checkpoint",
+              initial.jobId,
+            )?.value,
+            onCheckpoint: (checkpoint) => {
+              live(c, run, job);
+              store.put(
+                owner,
+                "research-checkpoint",
+                initial.jobId,
+                checkpoint,
+              );
+            },
             checkLive: () => live(c, run, job),
             onProgress: async (stage, detail) => {
               live(c, run, job);
@@ -197,8 +212,9 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
                 }
               : report;
           const done = report.status !== "blocked" && !report.failureStage;
+          const usable = delivered.recommendations.length > 0;
           const message = report.failureStage
-            ? report.summary
+            ? `${usable ? "部分可用，已保留建议。" : "生成失败。"}${researchReason(report.reason ?? "MODEL_UNAVAILABLE")}可一键重试，复用已完成阶段。`
             : report.status === "completed"
               ? "学校与专业建议已生成，可逐项查看匹配理由和报考条件"
               : report.status === "partial"
@@ -207,7 +223,7 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
           job = {
             ...job,
             report: delivered,
-            status: report.status,
+            status: report.failureStage && !usable ? "failed" : report.status,
             stage: done ? "done" : job.stage,
             progress: done ? 100 : job.progress,
             message,
@@ -262,7 +278,7 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
           ),
         };
       const route =
-        /^\/guidance\/([^/]+)\/research(?:\/(latest|supplement))?$/.exec(
+        /^\/guidance\/([^/]+)\/research(?:\/(latest|supplement|retry))?$/.exec(
           c.path,
         );
       if (!route) return;
@@ -285,6 +301,13 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
       if (previous && activeStatus(previous))
         return { status: 202, body: view(c, previous) };
       const supplement = route[2] === "supplement";
+      const retry = route[2] === "retry";
+      if (retry && !previous)
+        throw new HttpError(
+          409,
+          "research_missing",
+          "请先生成研究任务再重试。",
+        );
       if (supplement && !previous?.report)
         throw new HttpError(
           409,
@@ -318,7 +341,7 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
         createdAt: created,
         updatedAt: created,
         events: [],
-        mode: supplement ? "supplement" : "generate",
+        mode: supplement ? "supplement" : retry ? "retry" : "generate",
         ...(supplement ? { report: previous!.report } : {}),
         ...(selectedProgram
           ? {
@@ -330,6 +353,15 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             }
           : {}),
       };
+      if (retry && previous) {
+        const saved = store.get<ResearchCheckpoint>(
+          owner,
+          "research-checkpoint",
+          previous.jobId,
+        );
+        if (saved)
+          store.put(owner, "research-checkpoint", job.jobId, saved.value);
+      }
       store.put(owner, "research-job", job.jobId, job);
       store.put(owner, "research-latest", run.guidanceRunId, {
         jobId: job.jobId,
@@ -340,14 +372,16 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
           run,
           job,
           selectedProgram,
-          supplement ? previous!.report : undefined,
+          supplement || retry ? previous?.report : undefined,
         );
       return { status: 202, body: view(c, job) };
     },
     replay(c: Context, saved: Record<string, unknown>): Reply | undefined {
       if (
         c.method !== "POST" ||
-        !/^\/guidance\/[^/]+\/research(?:\/supplement)?$/.test(c.path) ||
+        !/^\/guidance\/[^/]+\/research(?:\/(?:supplement|retry))?$/.test(
+          c.path,
+        ) ||
         typeof saved.jobId !== "string"
       )
         return;

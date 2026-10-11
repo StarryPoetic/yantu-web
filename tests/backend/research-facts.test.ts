@@ -12,6 +12,7 @@ import type {
 } from "../../shared/research-recommendation.ts";
 import { libraryMissingGaps } from "../../server/explanation/research-library-first.ts";
 import type { ResearchEvidenceGap } from "../../shared/research-coverage.ts";
+import { extractProgramFacts } from "../../server/explanation/research-facts.ts";
 
 const epoch = Date.parse("2026-10-11T00:00:00Z");
 const catalogue =
@@ -28,6 +29,49 @@ function page(path: string, excerpt = catalogue, offset = 0): WebSource {
   };
 }
 const query = { targetYear: "2027", disciplineCodes: ["0802"] };
+
+test("model fact extraction focuses on exact recommended identities without changing the exhaustive public facts or binding rules", () => {
+  const source = page(
+    "focus",
+    catalogue +
+      "\n计算机学院\n081200计算机科学与技术 全日制 ①101思想政治理论②201英语一③301数学一④813计算机基础",
+  );
+  const all = extractProgramFacts(source, [source], source.retrievedAt);
+  assert.ok(all.some((fact) => fact.majorCode === "081200"));
+  const focus = [
+    {
+      institutionName: "杭州电子科技大学",
+      majorCode: "080200",
+      programName: "机械工程",
+      collegeName: "机械工程学院",
+      studyMode: "full_time",
+    },
+  ];
+  const selected = extractProgramFacts(
+    source,
+    [source],
+    source.retrievedAt,
+    focus,
+  );
+  assert.ok(selected.length > 0);
+  assert.ok(selected.every((fact) => fact.majorCode === "080200"));
+  assert.deepEqual(
+    selected,
+    all.filter((fact) => fact.majorCode === "080200"),
+  );
+  assert.deepEqual(
+    extractProgramFacts(source, [source], source.retrievedAt, [
+      { ...focus[0], collegeName: "计算机学院" },
+    ]),
+    [],
+  );
+  assert.deepEqual(
+    extractProgramFacts(source, [source], source.retrievedAt, [
+      { ...focus[0], studyMode: "part_time" },
+    ]),
+    [],
+  );
+});
 
 test("known registry schools' non-edu HTTPS originals persist, while their HTTP and unregistered domains remain rejected", () => {
   const store = new Store(),

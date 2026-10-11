@@ -54,6 +54,128 @@ export function researchOutcome(job: ResearchJob | null) {
 }
 
 export type SchoolRecommendation = ResearchReport["recommendations"][number];
+
+/** Count the displayed programmes, never all recalled catalogue rows. Unknown is not absent. */
+export function reportAvailability(report: ResearchReport) {
+  const labels: Record<string, string> = {
+    program: "专业目录",
+    exams: "初试科目",
+    location: "培养地点",
+    tuition: "学费",
+    eligibility: "报考条件",
+    curriculum: "培养方案",
+  };
+  let confirmed = 0,
+    pending = 0,
+    absent = 0;
+  const missing = new Set<string>();
+  const related = (report.candidateAudit ?? [])
+    .flatMap((candidate) => candidate.coverage?.programs ?? [])
+    .filter((program) =>
+      report.recommendations.some(
+        (item) =>
+          item.institutionName === program.institutionName &&
+          (item.majorCode
+            ? item.majorCode === program.majorCode
+            : item.programName === program.programName) &&
+          (!item.collegeName || item.collegeName === program.collegeName) &&
+          (!item.studyMode || item.studyMode === program.studyMode),
+      ),
+    );
+  for (const program of related) {
+    for (const field of RESEARCH_EVIDENCE_FIELDS) {
+      const evidence = program.fields[field];
+      if (
+        ["supported_current", "supported_reference"].includes(evidence.status)
+      )
+        confirmed++;
+      else if (evidence.status !== "not_applicable") {
+        pending++;
+        missing.add(labels[field]);
+      }
+    }
+  }
+  for (const item of report.recommendations) {
+    if (
+      related.some(
+        (program) =>
+          program.institutionName === item.institutionName &&
+          (item.majorCode
+            ? item.majorCode === program.majorCode
+            : item.programName === program.programName),
+      )
+    )
+      continue;
+    const bound = {
+      program: item.citations.some((id) =>
+        report.sources.some(
+          (source) => source.id === id && source.kind === "official_page",
+        ),
+      ),
+      exams: recommendationFieldState(item, "exams") === "已绑定",
+      tuition: recommendationFieldState(item, "tuition") === "已绑定",
+      location: recommendationFieldState(item, "location") === "已绑定",
+      eligibility: false,
+      curriculum: false,
+    };
+    for (const field of RESEARCH_EVIDENCE_FIELDS) {
+      if (bound[field]) confirmed++;
+      else {
+        pending++;
+        missing.add(labels[field]);
+      }
+    }
+  }
+  // Only an explicit dated programme cessation passage can establish non-existence.
+  for (const candidate of report.candidateAudit ?? []) {
+    for (const program of candidate.coverage?.programs ?? []) {
+      const evidence = program.fields.program;
+      if (
+        evidence.status === "excluded" &&
+        evidence.references.some(
+          (ref) =>
+            ref.year === Number(report.referencePolicy?.targetYear) &&
+            /停招|停止招生|暂停招生|取消招生/.test(ref.quote) &&
+            !/(?:未|不|没有|是否|可能|拟|待确认).{0,8}(?:停招|停止招生|暂停招生|取消招生)/.test(
+              ref.quote,
+            ) &&
+            !!program.majorCode &&
+            ref.quote.includes(program.majorCode) &&
+            report.sources.some(
+              (source) =>
+                source.id === ref.sourceId &&
+                source.kind === "official_page" &&
+                source.excerpt.includes(ref.quote),
+            ),
+        )
+      )
+        absent++;
+    }
+  }
+  const usable = report.recommendations.length > 0;
+  const failure =
+    !!report.failureStage ||
+    (report.reason?.split(",") ?? []).some((reason) =>
+      /^(MODEL_|PROVIDER_|INVALID_|UNGROUNDED_|BUDGET_|CONCURRENCY_|RESEARCH_TOTAL_TIMEOUT$|TIMEOUT$|RATE_LIMITED$|RESPONSE_TOO_LARGE$|INCOMPLETE_RESPONSE$|UNKNOWN_USAGE$|EVIDENCE_TOO_LARGE$)/.test(
+        reason,
+      ),
+    );
+  const title =
+    !usable && failure
+      ? "生成失败"
+      : report.status === "completed" && !failure && !pending
+        ? "完整可用"
+        : "部分可用";
+  const detail =
+    report.reason && failure
+      ? report.reason.split(",").map(researchReason).join(" ")
+      : "";
+  const message =
+    !usable && failure
+      ? `${detail || "本次生成未完成。"}可一键重试，复用已取得的资料和完成阶段。`
+      : `已保留 ${report.recommendations.length} 个学校专业建议。${missing.size ? "待补查：" + [...missing].join("、") + "。" : "年度资格以对应原文为准。"}${detail}${failure ? "可一键重试补完分析。" : ""}`;
+  return { title, message, confirmed, pending, absent, missing: [...missing] };
+}
 export const missingLibraryCoverageNotice = "该报告生成时未记录资料覆盖统计";
 export function libraryCoverageDescription(report: ResearchReport) {
   const coverage = report.evidenceCoverage;
@@ -619,9 +741,12 @@ export function researchReportMarkdown(
   outdated: boolean,
 ) {
   const coverage = researchCoverage(report);
+  const availability = reportAvailability(report);
   return [
     "# 研途 · 学校与专业推荐报告",
     report.generatedAt,
+    `报告状态：${availability.title}。${availability.message}`,
+    `已确认：${availability.confirmed} 项推荐相关资料；待补查：${availability.pending} 项；已确认不存在：${availability.absent} 个明确停招项目。未查到不等于不存在，公开原文未经人工审核。`,
     ...(report.referencePolicy
       ? ["## 资料年份与使用顺序", report.referencePolicy.summary]
       : []),
@@ -637,7 +762,7 @@ export function researchReportMarkdown(
       ? [
           "## 专业资料覆盖与缺项",
           report.evidenceCoverage.summary,
-          `本次调查 ${report.evidenceCoverage.schoolCount} 所学校、${report.evidenceCoverage.programCount} 个专业；${report.evidenceCoverage.supportedProgramCount} 个专业已有项目原文，${report.evidenceCoverage.pendingProgramCount} 个专业仍有实质缺项。`,
+          `调查记录包含 ${report.evidenceCoverage.schoolCount} 所学校、${report.evidenceCoverage.programCount} 个候选专业，其中 ${report.evidenceCoverage.supportedProgramCount} 个有项目原文；推荐所需资料见三类状态与学校卡片。`,
           "仅统计本次实际调查的学校与专业；未出现的学校不据此排除。目录已有原文时，学费、校区或考试缺项会分别记录。",
           ...(report.evidenceCoverage.reusedSourceCount !== undefined ||
           report.evidenceCoverage.supplementedSourceCount !== undefined

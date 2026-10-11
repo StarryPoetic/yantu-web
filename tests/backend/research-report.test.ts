@@ -1515,7 +1515,7 @@ test("local advice failures preserve grounded identity, cited department, two pr
   );
 });
 
-test("a card still fails when its core rationale or minimum remaining fit/tradeoff evidence fails", async () => {
+test("unsafe rationale is deleted, while missing minimum fit/tradeoff evidence still rejects a card", async () => {
   for (const mode of ["rationale", "one-fit", "no-tradeoff"]) {
     const body = reportBody();
     if (mode === "rationale") body.recommendations[0].rationale = "保证录取。";
@@ -1528,7 +1528,15 @@ test("a card still fails when its core rationale or minimum remaining fit/tradeo
       subjectId: "student",
       run: fixture(),
     });
-    assert.equal(report.recommendations.length, 0, mode);
+    assert.equal(
+      report.recommendations.length,
+      mode === "rationale" ? 1 : 0,
+      mode,
+    );
+    assert.doesNotMatch(
+      JSON.stringify(report.recommendations),
+      /保证录取|已符合报考条件/,
+    );
   }
 });
 
@@ -1667,7 +1675,7 @@ test("sentence delimiters and invented commute assertions are isolated while unc
   }
 });
 
-test("core invented price, probability and eligibility claims still reject cards across advice fields", async () => {
+test("invented price, probability and eligibility sentences are removed across fields while grounded cards survive", async () => {
   for (const [field, claim] of [
     ["preparation", "该校学费8000元。"],
     ["tradeoffs", "录取概率90%。"],
@@ -1682,11 +1690,12 @@ test("core invented price, probability and eligibility claims still reject cards
       subjectId: "student",
       run: fixture(),
     });
-    assert.equal(report.recommendations.length, 0, field);
+    assert.equal(report.recommendations.length, 1, field);
+    assert.equal(JSON.stringify(report.recommendations).includes(claim), false);
     assert.ok(
       report.rejectedRecommendations?.some(
         (r) =>
-          r.code === "UNSUPPORTED_RESEARCH_CLAIM" && r.removedSentences === 0,
+          r.code === "UNSUPPORTED_RESEARCH_CLAIM" && r.removedSentences > 0,
       ),
       field,
     );
@@ -1835,8 +1844,12 @@ test("actual personal budget restatements and negative guarantees are allowed, e
       subjectId: "student",
       run: fixture(),
     });
-    assert.equal(report.recommendations.length, 0, claim);
-    assert.equal(report.reason, "UNSUPPORTED_RESEARCH_CLAIM");
+    assert.equal(report.recommendations.length, 1, claim);
+    assert.equal(report.reason, "RESEARCH_PARTIAL_VALIDATION");
+    assert.equal(JSON.stringify(report.recommendations).includes(claim), false);
+    assert.ok(
+      report.rejectedRecommendations?.some((item) => item.removedSentences > 0),
+    );
   }
 });
 

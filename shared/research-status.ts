@@ -80,6 +80,9 @@ const messages: Record<string, string> = {
     "模型服务未返回有效的用量记录，本次生成未完成；请稍后重试，无需修改画像。",
   RATE_LIMITED: "模型服务请求较多，请稍后再试。",
   TIMEOUT: "本次模型分析超时，已保留可查看的网页资料。",
+  RESEARCH_TOTAL_TIMEOUT:
+    "本次研究超过总时限，已保留已取得的资料和完成阶段；可一键重试继续生成。",
+  MODEL_UNAVAILABLE: "模型分析暂未完成，已保留通过核对的建议与资料，可重试。",
   MODEL_TIMEOUT: "本次模型分析超时，已保留可查看的网页资料。",
   WEB_TIMEOUT: "网页读取超时。",
   WEB_EMPTY: "网页未返回可用正文。",

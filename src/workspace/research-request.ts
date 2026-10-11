@@ -1,7 +1,7 @@
 import type { ResearchJob } from "../../server/routes/research.ts";
 import { request } from "./api";
 
-export type ResearchRequestMode = "generate" | "supplement";
+export type ResearchRequestMode = "generate" | "supplement" | "retry";
 
 export function startResearchJob(
   guidanceRunId: string,
@@ -12,7 +12,7 @@ export function startResearchJob(
     "/guidance/" +
       guidanceRunId +
       "/research" +
-      (mode === "supplement" ? "/supplement" : ""),
+      (mode === "generate" ? "" : "/" + mode),
     { method: "POST", body: {}, signal },
   );
 }

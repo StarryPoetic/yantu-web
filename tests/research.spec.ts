@@ -323,7 +323,7 @@ async function researchService(page: Page) {
     }),
   );
   await page.route(
-    /\/api\/v1\/guidance\/[^/]+\/research(?:\/(?:latest|supplement))?$/,
+    /\/api\/v1\/guidance\/[^/]+\/research(?:\/(?:latest|supplement|retry))?$/,
     async (route) => {
       if (route.request().method() === "POST") {
         const mode = new URL(route.request().url()).pathname.endsWith(
@@ -673,7 +673,10 @@ test("修改画像并保存后再次生成使用新版本、新结论和新研�
   await page.reload();
   expect((await (await restored).json()).job.jobId).toBe(nextJob.jobId);
   await expect(
-    panel.getByRole("button", { name: "重新调研并生成报告", exact: true }),
+    panel.getByRole("button", {
+      name: "一键重试（复用已完成阶段）",
+      exact: true,
+    }),
   ).toBeEnabled();
   expect(guidanceRequests).toHaveLength(2);
   expect(guidanceRequests[1]).toMatchObject({
@@ -903,7 +906,23 @@ test("手机上明确展示部分报告与搜索摘要，保留来源和适用�
     failureStage: "analyzing",
     reason: "MODEL_TIMEOUT",
   }));
-  await expect(panel.getByText("部分研究报告", { exact: true })).toBeVisible();
+  await expect(panel.getByText("部分可用报告", { exact: true })).toBeVisible();
+  const availability = panel.getByRole("status", { name: "报告可用性" });
+  await expect(
+    availability.getByText("部分可用", { exact: true }),
+  ).toBeVisible();
+  await expect(availability.getByText(/本次模型分析超时/)).toBeVisible();
+  await expect(availability.getByText("已确认", { exact: true })).toBeVisible();
+  await expect(availability.getByText("待补查", { exact: true })).toBeVisible();
+  await expect(
+    availability.getByText("已确认不存在", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole("button", {
+      name: "一键重试（复用已完成阶段）",
+      exact: true,
+    }),
+  ).toBeEnabled();
   await expect(
     panel.getByRole("region", { name: "报告生成失败", exact: true }),
   ).toHaveCount(0);
@@ -1379,7 +1398,7 @@ test("五所外地学校仍显示真实部分结果及杭州覆盖缺口，不�
       })),
     };
   });
-  await expect(panel.getByText("部分研究报告", { exact: true })).toBeVisible();
+  await expect(panel.getByText("部分可用报告", { exact: true })).toBeVisible();
   await expect(
     panel.getByText("本次建议 5 所不同学校，目标比较 5–10 所", { exact: true }),
   ).toBeVisible();
@@ -1505,7 +1524,10 @@ test("模型供应服务故障显示真实原因，不误称画像或资料校�
     panel.getByRole("button", { name: "补充个人情况", exact: true }),
   ).toHaveCount(0);
   await expect(
-    panel.getByRole("button", { name: "重新调研并生成报告", exact: true }),
+    panel.getByRole("button", {
+      name: "一键重试（复用已完成阶段）",
+      exact: true,
+    }),
   ).toBeEnabled();
 });
 
@@ -1590,7 +1612,7 @@ test("规划技术失败显示停止阶段，刷新保留画像且仅手动重�
   await expect(
     failure.getByText(/你的个人画像仍已保存，无需重新填写/),
   ).toBeVisible();
-  await expect(panel.getByText("部分研究报告", { exact: true })).toHaveCount(0);
+  await expect(panel.getByText("部分可用报告", { exact: true })).toHaveCount(0);
   await expect(
     panel.getByRole("button", { name: "补充个人情况", exact: true }),
   ).toHaveCount(0);
@@ -1619,7 +1641,7 @@ test("规划技术失败显示停止阶段，刷新保留画像且仅手动重�
   const profile = await (await page.request.get("/api/v1/me/profile")).json();
   expect(profile.profile).toMatchObject(run.inputSnapshot.profile);
   await panel
-    .getByRole("button", { name: "重新调研并生成报告", exact: true })
+    .getByRole("button", { name: "一键重试（复用已完成阶段）", exact: true })
     .click();
   await expect(
     panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
@@ -1637,7 +1659,7 @@ for (const { reason, failureStage } of [
 ] as const) {
   test(
     (failureStage ? "明确失败阶段" : "旧 partial 完成态") +
-      "中的模型错误仍显示失败，不误称部分研究报告或缺画像：" +
+      "中的模型错误仍显示失败，不误称部分可用报告或缺画像：" +
       reason,
     async ({ page }) => {
       const service = await researchService(page);
@@ -1668,7 +1690,7 @@ for (const { reason, failureStage } of [
         ).toBeVisible();
       }
       await expect(
-        panel.getByText("部分研究报告", { exact: true }),
+        panel.getByText("部分可用报告", { exact: true }),
       ).toHaveCount(0);
       await expect(
         panel.getByText("旧结果遗留的补充问题", { exact: true }),
@@ -1766,7 +1788,10 @@ test("真正缺画像的阻断状态保留补充入口，任务未生成报告�
     panel.getByText("未完成阶段：分析匹配与准备成本。", { exact: true }),
   ).toBeVisible();
   await expect(
-    panel.getByRole("button", { name: "重新调研并生成报告", exact: true }),
+    panel.getByRole("button", {
+      name: "一键重试（复用已完成阶段）",
+      exact: true,
+    }),
   ).toBeEnabled();
   await expect(
     panel.getByRole("button", { name: "补充个人情况", exact: true }),
@@ -2455,7 +2480,9 @@ test("逐专业缺项独立展示已读原文、历史与当年状态、失败�
     exact: true,
   });
   await expect(
-    overview.getByText(/本次调查 2 所学校、2 个专业；2 个专业已有项目原文/),
+    overview.getByText(
+      /调查记录包含 2 所学校、2 个候选专业，其中 2 个有项目原文/,
+    ),
   ).toBeVisible();
   await expect(
     overview.getByText(/仅统计本次实际调查的学校与专业/),
@@ -2746,7 +2773,7 @@ for (const width of [1280, 375]) {
       }),
     ).toBeVisible();
     await expect(
-      coverage.getByText(/本次调查 2 所学校、2 个专业/),
+      coverage.getByText(/调查记录包含 2 所学校、2 个候选专业/),
     ).toBeVisible();
     await expect(coverage).not.toContainText("全国覆盖");
     await coverage.getByText("查看读取失败原因分布", { exact: true }).click();

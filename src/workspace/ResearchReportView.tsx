@@ -17,6 +17,7 @@ import {
   suitabilityNotice,
   isLegacyResearchReport,
   legacyResearchNotice,
+  reportAvailability,
   type researchOutcome,
 } from "./research-report";
 
@@ -35,8 +36,35 @@ export function ResearchReportView({
   const coverage = researchCoverage(report);
   const groups = recommendationGroups(report.recommendations);
   const legacy = isLegacyResearchReport(report);
+  const availability = reportAvailability(report);
   return (
     <div className="research-report">
+      <section
+        className="research-availability"
+        aria-label="报告可用性"
+        role="status"
+      >
+        <strong>{availability.title}</strong>
+        <p>{availability.message}</p>
+        <dl>
+          <div>
+            <dt>已确认</dt>
+            <dd>
+              {availability.confirmed} 项推荐相关资料（公开原文，未经人工审核）
+            </dd>
+          </div>
+          <div>
+            <dt>待补查</dt>
+            <dd>{availability.pending} 项推荐相关资料，未查到不等于不存在</dd>
+          </div>
+          <div>
+            <dt>已确认不存在</dt>
+            <dd>
+              {availability.absent} 个明确停招项目；仅凭对应年度官网原文确认
+            </dd>
+          </div>
+        </dl>
+      </section>
       {legacy && (
         <p className="research-legacy" role="status">
           {legacyResearchNotice}

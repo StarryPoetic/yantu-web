@@ -77,6 +77,14 @@ export function extractProgramFacts(
   source: WebSource,
   sources: WebSource[],
   extractedAt: string,
+  /** Model-input extraction may focus on the displayed identities; library extraction stays exhaustive. */
+  focus?: readonly {
+    institutionName: string;
+    programName?: string;
+    majorCode?: string;
+    collegeName?: string;
+    studyMode?: string;
+  }[],
 ): ProgramFact[] {
   if (!isSchoolPage(source)) return []; // CHSI dynamic catalogue safely falls back to school originals.
   const domain = schoolRegistrableDomain(source.url)!;
@@ -106,6 +114,21 @@ export function extractProgramFacts(
       if (!entries.has(key)) entries.set(key, { anchor, entry });
     }
   for (const { anchor, entry } of entries.values()) {
+    if (
+      focus?.length &&
+      !focus.some(
+        (item) =>
+          item.institutionName === schoolName &&
+          (item.majorCode
+            ? item.majorCode === entry.majorCode
+            : item.programName === entry.programName) &&
+          (!item.collegeName ||
+            normalizeCollegeName(schoolName, item.collegeName) ===
+              normalizeCollegeName(schoolName, entry.collegeName)) &&
+          (!item.studyMode || item.studyMode === entry.studyMode),
+      )
+    )
+      continue;
     const { discipline, catalogQuote, ...identity } = entry;
     identity.collegeName = normalizeCollegeName(
       schoolName,

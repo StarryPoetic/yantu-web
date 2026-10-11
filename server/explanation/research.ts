@@ -1,3 +1,8 @@
+import {
+  researchDeadline,
+  resumedRuntime,
+  type ResearchCheckpoint,
+} from "./research-resume.ts";
 import { createResearchReader, sharedResearchRead } from "./research-reader.ts";
 import { extractProgramFacts, type ProgramFact } from "./research-facts.ts";
 import { selectModelFacts } from "./research-model-facts.ts";
@@ -126,6 +131,8 @@ export interface ResearchConfig extends WebAnswerConfig {
   researchModel?: "deepseek-flash" | "deepseek-v4-pro";
   researchEffort?: "low" | "high" | "max";
   researchTimeoutMs?: number;
+  /** Whole job, including discovery, reads and all model phases. */
+  researchTotalTimeoutMs?: number;
   researchMaxOutputTokens?: number;
   /** Server policy only; callers cannot expand trusted hosts. */
   allowAcademicHosts?: boolean;
@@ -233,12 +240,14 @@ export interface ResearchReport {
   searched: boolean;
 }
 export interface ResearchInput {
+  checkpoint?: ResearchCheckpoint;
+  onCheckpoint?: (checkpoint: ResearchCheckpoint) => void | Promise<void>;
   signal?: AbortSignal;
   checkLive?: () => void;
   subjectId: string;
   run: GuidanceRun;
   selectedProgram?: ProgramRevision;
-  mode?: "generate" | "supplement";
+  mode?: "generate" | "supplement" | "retry";
   previousReport?: ResearchReport;
   onProgress?: (stage: ResearchStage, message?: string) => void | Promise<void>;
 }
@@ -381,7 +390,7 @@ function normalizeAdvice(prose: string) {
     })
     .join("");
 }
-/** Core safety claims reject the card, even when other sentences can be retained. */
+/** Every unsafe claim must be removed; programme identity and eligibility conflicts remain card-level checks. */
 function validateCoreProse(prose: string, profile: Record<string, unknown>) {
   const qualified =
     /是否|能否|尚待|待核|需.{0,8}(?:核实|确认|核验)|不代表|不等于|不能据此/.test(
@@ -784,25 +793,6 @@ export function validateReport(
       const recommendationIndex = (body.recommendations as unknown[]).indexOf(
         item,
       );
-      // Core price/probability/qualification claims retain their card-level rejection semantics.
-      for (const value of [
-        entry.rationale,
-        entry.suitabilityReason,
-        ...list(entry.tradeoffs, 5),
-        ...list(entry.preparation, 5),
-        ...list(entry.uncertainties, 6),
-        ...list(entry.fitReasons, 6).map((f) =>
-          f && typeof f === "object"
-            ? (f as { reason?: unknown }).reason
-            : undefined,
-        ),
-      ]) {
-        if (typeof value === "string")
-          for (const sentence of value
-            .split(/(?<=[。；;！？!?\n])/)
-            .filter((s) => s.trim()))
-            validateCoreProse(sentence, profile);
-      }
       for (const evidence of [constraints.tuition, constraints.location]) {
         if (evidence && !refs.includes(evidence.sourceId))
           refs.push(evidence.sourceId);
@@ -1050,10 +1040,42 @@ export function reportMessages(
     disciplines.map((d) => d.code),
     year,
   );
+  const primary = cityInventoryInput?.recommendations ?? [];
+  const primaryFact = (fact: (typeof structuredFacts)[number]) =>
+    primary.some(
+      (item) =>
+        item.institutionName === fact.schoolName &&
+        item.programName === fact.programName &&
+        (!item.majorCode || item.majorCode === fact.majorCode) &&
+        (!item.collegeName || item.collegeName === fact.collegeName) &&
+        (!item.studyMode || item.studyMode === fact.studyMode),
+    );
+  structuredFacts.sort(
+    (a, b) => Number(primaryFact(b)) - Number(primaryFact(a)),
+  );
+  // Round-robin schools: a large catalogue cannot consume every structured fact slot.
+  const groups = new Map<string, typeof structuredFacts>();
+  for (const fact of structuredFacts) {
+    const group = groups.get(fact.schoolName) ?? [];
+    group.push(fact);
+    groups.set(fact.schoolName, group);
+  }
+  const roundRobin: typeof structuredFacts = [];
+  while ([...groups.values()].some((group) => group.length))
+    for (const group of groups.values()) {
+      const fact = group.shift();
+      if (fact) roundRobin.push(fact);
+    }
+  structuredFacts.splice(0, structuredFacts.length, ...roundRobin.slice(0, 80));
   const factSourceIds = new Set(structuredFacts.flatMap(factReferences));
+  const prioritySourceIds = new Set(
+    structuredFacts.filter(primaryFact).flatMap(factReferences),
+  );
   const modelSources = [...diverse, ...remaining]
     .sort(
       (a, b) =>
+        Number(prioritySourceIds.has(b.id)) -
+          Number(prioritySourceIds.has(a.id)) ||
         Number(factSourceIds.has(b.id)) - Number(factSourceIds.has(a.id)),
     )
     .filter(
@@ -1204,18 +1226,29 @@ export function reportMessages(
     candidateCities.pop();
     messages = build();
   }
-  while (
-    JSON.stringify(messages).length > B.thinkingChars - B.repairHeadroom &&
-    structuredFacts.length
-  ) {
-    structuredFacts.pop();
-    messages = build();
-  }
-  while (
-    JSON.stringify(messages).length > B.thinkingChars - B.repairHeadroom &&
-    modelSources.length > 1
-  ) {
-    modelSources.pop();
+  // Prune source/fact pairs together. Keep the highest-priority bound facts and
+  // their complete reference chain before spending the remaining space on other pages.
+  while (JSON.stringify(messages).length > B.thinkingChars - B.repairHeadroom) {
+    const protectedIds = new Set(
+      structuredFacts.slice(0, 8).flatMap(factReferences),
+    );
+    let disposable = -1;
+    for (let index = modelSources.length - 1; index >= 0; index--)
+      if (!protectedIds.has(modelSources[index].id)) {
+        disposable = index;
+        break;
+      }
+    if (disposable >= 0 && modelSources.length > 1)
+      modelSources.splice(disposable, 1);
+    else if (structuredFacts.length > 1) structuredFacts.pop();
+    else if (modelSources.length > 1) modelSources.pop();
+    else break;
+    const visible = new Set(modelSources.map((source) => source.id));
+    for (let index = structuredFacts.length - 1; index >= 0; index--)
+      if (
+        !factReferences(structuredFacts[index]).every((id) => visible.has(id))
+      )
+        structuredFacts.splice(index, 1);
     messages = build();
   }
   if (JSON.stringify(messages).length > B.thinkingChars)
@@ -1231,6 +1264,13 @@ export function createResearchReportModule(
     library?: ResearchEvidenceLibrary;
   } = {},
 ): ResearchReportModule {
+  if (
+    config.researchTotalTimeoutMs !== undefined &&
+    (!Number.isSafeInteger(config.researchTotalTimeoutMs) ||
+      config.researchTotalTimeoutMs < 1 ||
+      config.researchTotalTimeoutMs > 30 * 60000)
+  )
+    throw new ModelError("INVALID_RESEARCH_CONFIG");
   const options: ModelRequestOptions = {
     model: config.researchModel ?? "deepseek-v4-pro",
     thinking: true,
@@ -1259,7 +1299,8 @@ export function createResearchReportModule(
   };
   const runtime =
     dependencies.runtime ?? config.runtime ?? createModelRuntime(config);
-  const web = dependencies.web ?? createWebAnswerModule({ ...config, runtime });
+  const baseWeb =
+    dependencies.web ?? createWebAnswerModule({ ...config, runtime });
   const reader = config.reader ?? readOfficialHttps;
   const hosts = config.allowedHosts ?? DEFAULT_OFFICIAL_HOSTS;
   const generations = new Map<string, number>();
@@ -1288,1395 +1329,1499 @@ export function createResearchReportModule(
     clearSubject(subjectId) {
       generations.set(subjectId, (generations.get(subjectId) ?? 0) + 1);
       runtime.clearSubject(subjectId);
-      web.clearSubject(subjectId);
+      baseWeb.clearSubject(subjectId);
     },
     async generate(input) {
       if (!input.subjectId || input.run.subjectId !== input.subjectId)
         throw new ModelError("GUIDANCE_NOT_FOUND");
-      const generation = generations.get(input.subjectId) ?? 0;
-      const live = () => {
-        input.signal?.throwIfAborted();
-        input.checkLive?.();
-        if ((generations.get(input.subjectId) ?? 0) !== generation)
-          throw new ModelError("DATA_DELETED");
-      };
-      let progressFailure: unknown;
-      const stage = async (value: ResearchStage, message?: string) => {
-        live();
-        try {
-          await input.onProgress?.(value, message);
-        } catch (error) {
-          progressFailure = error;
-          throw error;
-        }
-        live();
-      };
-      await stage("preparing");
-      const run = input.run;
-      if (
-        input.previousReport &&
-        (input.previousReport.guidanceRunId !== run.guidanceRunId ||
-          JSON.stringify(input.previousReport.versions) !==
-            JSON.stringify(run.versions))
-      )
-        throw new ModelError("GUIDANCE_NOT_FOUND");
-      const targetYear = String(run.inputSnapshot.profile.year ?? "");
-      const referenceYears = historicalReferenceYears(targetYear);
-      const report: ResearchReport = {
-        schemaVersion: 1,
-        reportVersion: promptVersion,
-        status: "blocked",
-        generatedAt: new Date(config.now?.() ?? Date.now()).toISOString(),
-        guidanceRunId: run.guidanceRunId,
-        versions: structuredClone(run.versions),
-        summary: "研究报告尚未完成。",
-        facts: [],
-        recommendations: [],
-        sources: [],
-        limitations: [...baseLimitations],
-        model: { ...model },
-        searched: false,
-        decisionBasis: deriveResearchDecision(run),
-        referencePolicy: {
-          strategy: "history-first-v1",
-          targetYear,
-          referenceYears,
-          summary: referenceYears.length
-            ? `优先整合${referenceYears.map((year) => year + "年").join("、")}官网政策作为择校与备考参考；${targetYear}年资料用于补充核验和识别变化。历史条件保留原年份，不等同于目标年度资格已通过。`
-            : "优先整理有明确年份的历年官网政策，目标年度资料用于补充核验和识别变化。",
-        },
-      };
-      const usage = {
-        searches: { paid: 0, cacheHits: 0, libraryHits: 0 },
-        reads: {
-          reads: 0,
-          success: 0,
-          failed: 0,
-          bySchool: {} as Record<
-            string,
-            { reads: number; success: number; failed: number }
-          >,
-          platformReads: 0,
-        },
-        model: { calls: 0, inputTokens: 0, outputTokens: 0 },
-      };
-      report.usage = usage;
-      const trackedRuntime: ModelRuntime = {
-        clearSubject: runtime.clearSubject,
-        run: (subject, key, messages, validate, options = {}) =>
-          runtime.run(subject, key, messages, validate, {
-            ...options,
-            onCall: () => {
-              usage.model.calls++;
-            },
-            onUsage: (actual) => {
-              usage.model.inputTokens += actual.inputTokens;
-              usage.model.outputTokens += actual.outputTokens;
-            },
-          }),
-      };
-      let temporaryRetries = 0;
-      const beforeRetry = async (phase: ResearchStage) => {
-        if (temporaryRetries++ >= 1)
-          throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
-        await stage(phase, "模型服务暂时繁忙，正在进行一次自动重试");
-      };
-      const readiness = getReadiness();
-      if (!readiness.ready)
-        return {
-          ...report,
-          reason: readiness.reasons.join(","),
-          summary: "联网研究尚未启动，需要先配置可用的模型和搜索服务。",
-        };
-      const questions = profileQuestions(run);
-      const directory = researchDirectory(run);
-      if (directory.noCross && !directory.allowed.length)
-        questions.push(
-          "你明确不接受跨专业，请补充本科专业的具体名称，以便核对可研究的对应方向。",
-        );
-      if (questions.length)
-        return {
-          ...report,
-          reason: "RESEARCH_PROFILE_REQUIRED",
-          summary: "还需要了解你的目标与偏好，才能提出具体学校专业建议。",
-          followUpQuestions: questions.slice(0, 3),
-        };
-      const demandPlan = createDemandPlan(run);
-      let plan: ResearchPlan;
-      try {
-        const messages = planningMessages(run);
-        const result = await generateResearchValue({
-          runtime: trackedRuntime,
-          subjectId: input.subjectId,
-          key: {
-            task: "research-direction-plan-v7-history-v1",
-            catalogVersion: directory.catalog.catalogVersion,
-            contextHash: hash(messages),
-          },
-          messages,
-          validate: (raw) => validatePlan(raw, run),
-          options: planningOptions,
-          beforeRepair: () =>
-            stage("preparing", "正在自动修正方向规划格式，无需补填画像"),
-          beforeRetry: () => beforeRetry("preparing"),
-        });
-        live();
-        plan = result.value;
-        if (demandPlan.directions.length) {
-          plan = {
-            ...plan,
-            directions: [
-              ...demandPlan.directions.map((core) => ({
-                ...core,
-                searchSchools:
-                  plan.directions.find(
-                    (item) => item.disciplineCode === core.disciplineCode,
-                  )?.searchSchools ?? [],
-              })),
-              ...plan.directions.filter(
-                (item) =>
-                  !demandPlan.directions.some(
-                    (core) => core.disciplineCode === item.disciplineCode,
-                  ),
-              ),
-            ].slice(0, 6),
-            followUpQuestions: [],
-          };
-        }
-      } catch (failure) {
-        live();
-        if (failure === progressFailure) throw failure;
-        if (failure instanceof ModelError && failure.code === "DATA_DELETED")
-          throw failure;
-        if (demandPlan.directions.length) {
-          plan = demandPlan;
-          report.limitations.push(
-            "模型方向分析未完成，已按当前兴趣、目标和所学课程线索继续调查；不会因此要求你重填已保存画像。",
-          );
-        } else
-          return {
-            ...report,
-            failureStage: "preparing",
-            ...(failure instanceof PlanningValidationError
-              ? {
-                  validationIssues: failure.issues.map(({ path, code }) => ({
-                    path,
-                    code,
-                  })),
-                }
-              : {}),
-            reason:
-              failure instanceof ModelError
-                ? failure.code
-                : "MODEL_UNAVAILABLE",
-            summary:
-              "系统未能完成专业方向规划，还没有开始搜索学校。你的画像已保留，请重试生成，无需先选择学校或专业。",
-          };
-      }
-      // Every callback remains outside model fallback handling: authorization failures cancel delivery.
-      await stage("preparing");
-      report.followUpQuestions = plan.followUpQuestions;
-      if (!plan.directions.length && demandPlan.directions.length)
-        plan = demandPlan;
-      if (!plan.directions.length)
-        return {
-          ...report,
-          reason: "RESEARCH_PROFILE_REQUIRED",
-          summary: "需要先确认这些个人偏好，才能规划具体学校专业。",
-        };
-      const disciplines = plannedDisciplines(plan, run);
-      report.researchDirections = plan.directions.map((item) => ({
-        disciplineCode: item.disciplineCode,
-        name: disciplines.find(
-          (discipline) => discipline.code === item.disciplineCode,
-        )!.name,
-        rationale: item.rationale,
-      }));
-      const year = /^20\d{2}$/.test(String(run.inputSnapshot.profile.year))
-        ? String(run.inputSnapshot.profile.year)
-        : "目标年度";
-      const selectedSchool =
-        input.selectedProgram && !input.selectedProgram.isExample
-          ? input.selectedProgram.display.institutionName
-          : "";
-      const cities = researchContext(run).profile.cities;
-      const regions: string[] = Array.isArray(cities)
-        ? cities
-            .filter(
-              (item): item is string =>
-                typeof item === "string" &&
-                /^[\p{Script=Han}A-Za-z ·-]{2,24}$/u.test(item) &&
-                !/^(?:不确定|不限|无偏好|未确定)$/.test(item),
-            )
-            .slice(0, 3)
-        : [];
-      const candidateLeads =
-        (config.allowAcademicHosts ?? true)
-          ? preferredCityCandidateLeads(regions, disciplines)
-          : [];
-      const library = dependencies.library;
-      const schoolPreferences = {
-        cities: regions,
-        selectedSchool,
-        schoolHints: plan.directions.flatMap(
-          (item) => item.searchSchools ?? [],
-        ),
-      };
-      const loaded =
-        library?.load({
-          ...schoolPreferences,
-          disciplineCodes: disciplines.map((item) => item.code),
-          targetYear: year,
-          schoolNames: [
-            selectedSchool,
-            ...candidateLeads.map((item) => item.school),
-            ...plan.directions.flatMap((item) => item.searchSchools ?? []),
-          ].filter(Boolean),
-          maxSources: B.candidates,
-        }) ?? [];
-      const seeds = reusableResearchSources(
-        [...loaded, ...(input.previousReport?.sources ?? [])],
-        config.now?.() ?? Date.now(),
-      );
-      const attempts: ResearchReadAttempt[] = [
-        ...(input.previousReport?.evidenceCoverage?.attempts ?? []),
-        ...(library?.attempts(seeds.map((source) => source.url)) ?? []),
-      ];
-      let lookupKeys = input.previousReport?.evidenceCoverage?.lookupKeys ?? [];
-      const reusedSourceCount = seeds.length;
-      usage.searches.libraryHits = seeds.length;
-      const newlyReadUrls = new Set<string>();
-      let coveredDisciplines = disciplines;
-      const recordAttempt = (attempt: ResearchReadAttempt) => {
-        live();
-        if (
-          attempts.some(
-            (old) =>
-              old.url === attempt.url &&
-              old.status === attempt.status &&
-              old.attemptedAt === attempt.attemptedAt,
-          )
-        )
-          return;
-        attempts.push(attempt);
-        library?.recordAttempt(attempt);
-      };
-      const scheduled = createResearchReader(
-        async (value: string, signal: AbortSignal) => {
-          live();
-          const url = new URL(value);
-          const allowedHosts = hosts.includes(url.hostname)
-            ? hosts
-            : [...hosts, url.hostname];
-          const result = await sharedResearchRead(value, signal, () =>
-            reader(value, {
-              signal,
-              allowedHosts,
-              maxRedirects: 3,
-              allowHttp: true,
-              timeoutMs: B.pageTimeoutMs,
-              maxBytes: 512000,
-              allowPdf: true,
-              maxPdfBytes: 5000000,
-              allowSpreadsheet: true,
-              maxSpreadsheetBytes: 5000000,
-            }),
-          );
-          const body = /^(?:application\/pdf|application\/vnd\.)/i.test(
-            result.contentType,
-          )
-            ? result.text.trim()
-            : webPageText(result.text);
-          if (!body) throw new ModelError("WEB_EMPTY");
-          if (body.length > 200000) throw new ModelError("WEB_TEXT_TOO_LARGE");
-          return result;
-        },
+      const contextHash = hash({
+        run: input.run,
+        target: input.selectedProgram,
+        promptVersion,
+      });
+      const checkpoint: ResearchCheckpoint =
+        input.checkpoint?.contextHash === contextHash
+          ? structuredClone(input.checkpoint)
+          : { version: 1, contextHash, models: {}, searches: {}, pages: {} };
+      const deadline = researchDeadline(
+        config.researchTotalTimeoutMs ?? 30 * 60000,
         input.signal,
       );
-      usage.reads = scheduled.statistics;
-      const cancellationPoll = setInterval(() => {
-        try {
-          live();
-        } catch {
-          scheduled.abort();
-        }
-      }, 50);
-      cancellationPoll.unref();
+      const originalInput = input;
+      input = { ...input, signal: deadline.signal };
+      let lastStage: ResearchStage = "preparing";
+      let paidSearches = 0;
+      let checkpointSearchHits = 0;
+      const persist = async () => {
+        deadline.check();
+        originalInput.checkLive?.();
+        await originalInput.onCheckpoint?.(checkpoint);
+      };
+      const web: typeof baseWeb = {
+        ...baseWeb,
+        async answer(request, options) {
+          deadline.check();
+          const key = hash({ request, options });
+          if (checkpoint.searches[key]) {
+            checkpointSearchHits++;
+            return structuredClone(checkpoint.searches[key]);
+          }
+          const result = await deadline.wait(baseWeb.answer(request, options));
+          deadline.check();
+          if (result.searched) paidSearches++;
+          checkpoint.searches[key] = structuredClone(result);
+          await persist();
+          return result;
+        },
+      };
       try {
-        const fetchPage = async (value: string) => {
-          const url = new URL(value);
-          const academic =
-            (config.allowAcademicHosts ?? true) &&
-            /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
-          if (!hosts.includes(url.hostname) && !academic)
-            throw new ModelError("WEB_HOST_BLOCKED");
-          const allowedHosts = hosts.includes(url.hostname)
-            ? hosts
-            : [...hosts, url.hostname];
-          const safe = validateOutboundUrl(value, allowedHosts, {
-            allowHttp: true,
-          });
-          const cached = pageCache.get(safe.href);
-          if (cached && cached.expires > (config.now?.() ?? Date.now()))
-            return cached;
-          try {
-            const result = await scheduled.read(safe.href);
-            live();
-            const actualBody = /^(?:application\/pdf|application\/vnd\.)/i.test(
-              result.contentType,
-            )
-              ? result.text.trim()
-              : webPageText(result.text);
-            if (!actualBody) throw new ModelError("WEB_EMPTY");
-            if (actualBody.length > 200000)
-              throw new ModelError("WEB_TEXT_TOO_LARGE");
-            const readAt = new Date(config.now?.() ?? Date.now()).toISOString();
-            recordAttempt({
-              url: safe.href,
-              status: "success",
-              attemptedAt: readAt,
-            });
-            newlyReadUrls.add(safe.href);
-            if (pageCache.size >= 120)
-              pageCache.delete(pageCache.keys().next().value!);
-            const resultWithTime = {
-              ...result,
-              retrievedAt: readAt,
-              expires: (config.now?.() ?? Date.now()) + 15 * 60000,
+        return await deadline.wait(
+          (async () => {
+            const generation = generations.get(input.subjectId) ?? 0;
+            const live = () => {
+              deadline.check();
+              input.signal?.throwIfAborted();
+              input.checkLive?.();
+              if ((generations.get(input.subjectId) ?? 0) !== generation)
+                throw new ModelError("DATA_DELETED");
             };
-            pageCache.set(safe.href, resultWithTime);
-            return resultWithTime;
-          } catch (error) {
-            live();
-            if (error instanceof ModelError && error.code === "DATA_DELETED")
-              throw error;
-            recordAttempt({
-              url: safe.href,
-              status: "failed",
-              reason:
-                error instanceof ModelError ? error.code : "WEB_UNAVAILABLE",
-              tlsCode: (error as { tlsCode?: string })?.tlsCode,
-              attemptedAt: new Date(config.now?.() ?? Date.now()).toISOString(),
-            });
-            throw error;
-          }
-        };
-        const refreshCoverage = () => {
-          const order = new Map(
-            scheduled.dispatchOrder.map((url, index) => [url, index]),
-          );
-          attempts.sort(
-            (a, b) => (order.get(a.url) ?? -1) - (order.get(b.url) ?? -1),
-          );
-          report.readStatistics = {
-            success: scheduled.statistics.success,
-            failed: scheduled.statistics.failed,
-            failuresByCode: { ...scheduled.statistics.failuresByCode },
-          };
-          const value = deriveResearchCoverage({
-            run,
-            disciplines: coveredDisciplines,
-            sources: report.sources,
-            recommendations: report.recommendations,
-            candidateAudit: report.candidateAudit ?? [],
-            targetYear: year,
-            attempts,
-          });
-          report.candidateAudit = value.candidates;
-          report.evidenceCoverage = {
-            strategy: "program-evidence-v1",
-            mode: input.mode ?? "generate",
-            summary: `已记录${value.summary.schoolCount}所学校、${value.summary.programCount}个相关专业；每个专业分别保留官网依据与待补查事项。`,
-            ...value.summary,
-            gaps: value.gaps,
-            ...library?.coverageStats(),
-            reusedSourceCount,
-            supplementedSourceCount: new Set(
-              report.sources
-                .filter(
-                  (source) =>
-                    source.kind === "official_page" &&
-                    newlyReadUrls.has(source.url),
-                )
-                .map((source) => source.url),
-            ).size,
-            lookupKeys,
-            attempts: attempts.slice(-240),
-          };
-          report.unstructuredSources = unstructuredResearchSources(
-            report.sources,
-            newlyReadUrls,
-            report.generatedAt,
-          );
-        };
-        const priorInventory = buildEvidenceCandidates({
-          run,
-          disciplines,
-          sources: seeds,
-          targetYear: year,
-          schoolNames: [
-            ...candidateLeads.map((item) => item.school),
-            ...plan.directions.flatMap((item) => item.searchSchools ?? []),
-            ...(input.previousReport?.candidateAudit?.map(
-              (item) => item.institutionName,
-            ) ?? []),
-          ],
-        });
-        const priorCoverage = deriveResearchCoverage({
-          run,
-          disciplines,
-          sources: seeds,
-          recommendations: priorInventory.recommendations,
-          candidateAudit: priorInventory.audit,
-          targetYear: year,
-          attempts,
-        });
-        let checkedSources: readonly WebSource[] = seeds;
-        let pendingGapIds = new Set(priorCoverage.gaps.map((gap) => gap.id));
-        const needsEvidence = (
-          gap: ResearchEvidenceGap,
-          current: readonly WebSource[],
-        ) => {
-          if (
-            current.length !== checkedSources.length ||
-            current.some((source, index) => source !== checkedSources[index])
-          ) {
-            pendingGapIds = new Set(
-              deriveResearchCoverage({
-                run,
-                disciplines,
-                sources: [...current],
-                recommendations: [],
-                candidateAudit: priorInventory.audit,
-                targetYear: year,
-                attempts,
-              }).gaps.map((item) => item.id),
-            );
-            checkedSources = [...current];
-          }
-          return pendingGapIds.has(gap.id);
-        };
-        const recalledFacts =
-          library?.queryFacts({
-            disciplineCodes: disciplines.map((d) => d.code),
-            targetYear: year,
-          }) ?? [];
-        const libraryFirst =
-          seeds.length > 0 &&
-          recalledFacts.some(
-            (f) => f.field === "catalog" && f.status === "bound",
-          );
-        const supplement = input.mode === "supplement";
-        const recallGaps = libraryMissingGaps(
-          priorCoverage.gaps,
-          recalledFacts,
-          seeds,
-          schoolPreferences,
-        );
-
-        const repaired =
-          supplement || libraryFirst
-            ? await repairResearchEvidence({
-                subjectId: input.subjectId,
-                gaps: recallGaps,
-                sources: seeds,
-                targetYear: year,
-                preferences: schoolPreferences,
-                web,
-                maxRequests: B.initialSearches,
-                maxReads: B.initialReads,
-                signal: scheduled.signal,
-                lookupKeys,
-                attempts,
-                readPage: fetchPage,
-                onSource: (source) => {
-                  live();
-                  library?.save(source);
-                },
-                onProgress: (detail) => stage("researching", detail),
-                now: config.now,
-                needsEvidence,
-              })
-            : undefined;
-        if (repaired) {
-          lookupKeys = repaired.lookupKeys;
-        }
-        const found = repaired
-          ? {
-              sources: repaired.sources,
-              searched: repaired.searched,
-              limitations: repaired.limitations,
-              requestCount: repaired.requestCount,
-              paidRequests: repaired.requestCount,
-              cacheHits: 0,
-              stoppedReason: undefined,
-              sourceDirections: new Map(
-                repaired.sources.map((source) => [
-                  source.id,
-                  disciplines.find((item) =>
-                    new RegExp(`\\b${item.code}\\d{0,2}\\b`).test(
-                      source.excerpt,
-                    ),
-                  )?.code ??
-                    disciplines[0]?.code ??
-                    "",
-                ]),
-              ),
-            }
-          : await searchResearchSources({
-              web,
-              subjectId: input.subjectId,
-              disciplines,
-              regions,
-              selectedSchool,
-              targetYear: year,
-              candidateLeads,
-              schoolHints: new Map(
-                plan.directions.map((item) => [
-                  item.disciplineCode,
-                  item.searchSchools ?? [],
-                ]),
-              ),
-              maxRequests: B.initialSearches,
-              includeFeeSearch: false,
-              maxSources: B.candidates,
-              onProgress: (detail) => stage("researching", detail),
-            });
-        usage.searches.paid += repaired
-          ? repaired.requestCount
-          : (found.paidRequests ?? 0);
-        usage.searches.cacheHits += repaired ? 0 : (found.cacheHits ?? 0);
-        live();
-        report.sources = repaired
-          ? found.sources
-          : [
-              ...seeds,
-              ...found.sources.filter(
-                (source) => !seeds.some((seed) => seed.url === source.url),
-              ),
-            ];
-        report.searched = found.searched;
-        report.limitations.push(...found.limitations);
-        report.candidateAudit = [
-          ...new Set([
-            ...candidateLeads.map((item) => item.school),
-            ...(input.previousReport?.candidateAudit?.map(
-              (item) => item.institutionName,
-            ) ?? []),
-            ...plan.directions.flatMap((item) => item.searchSchools ?? []),
-            ...report.sources.flatMap((source) =>
-              [
-                ...source.excerpt.matchAll(
-                  /(?:^|[\s:：。；|｜])([\p{Script=Han}]{2,20}(?:大学|学院|研究院|研究所))(?=\s|\d|年|硕士|研究生|招生|专业|学科|版权所有|$)/gu,
-                ),
-              ]
-                .map((match) => match[1])
-                .filter((name) => sourceHasSchoolIdentity(source, name)),
-            ),
-          ]),
-        ]
-          .sort()
-          .map((institutionName) => ({
-            institutionName,
-            status: "awaiting_evidence" as const,
-            reasons: [
-              "本次调查线索，尚待对应学校的硕士项目正文与具体条件核验；未读到不等于不适合。",
-            ],
-            sourceIds: report.sources
-              .filter((source) =>
-                sourceHasSchoolIdentity(source, institutionName),
-              )
-              .map((source) => source.id),
-          }));
-        const sourceDirections = found.sourceDirections;
-        for (const source of seeds)
-          sourceDirections.set(
-            source.id,
-            disciplines.find((item) =>
-              new RegExp(`\\b${item.code}\\d{0,2}\\b`).test(source.excerpt),
-            )?.code ??
-              disciplines[0]?.code ??
-              "",
-          );
-        let pageReads = repaired?.readCount ?? 0;
-        let cityRecoveryReads = 0;
-        const {
-          pages: readingOrder,
-          firstRoundCount,
-          priorityDomains,
-        } = researchReadingOrder(
-          report.sources,
-          sourceDirections,
-          disciplines,
-          {
-            cities: regions,
-            selectedSchool,
-            targetYear: year,
-            schoolHints: [
-              ...candidateLeads.map((item) => item.school),
-              ...plan.directions.flatMap((item) => item.searchSchools ?? []),
-            ],
-          },
-        );
-        const seenPages = new Set(readingOrder.map((source) => source.url));
-        const attachedIds = new Set<string>();
-        const attachmentDepth = new Map<string, number>();
-        const schoolReads = new Map<string, number>();
-        let registryNavigationReads = 0;
-        const locationLinks = new Map<
-          string,
-          { url: string; title: string; parentSourceId: string }[]
-        >();
-        let attachmentCount = 0;
-        let cursor = 0;
-        while (cursor < readingOrder.length && pageReads < B.reads) {
-          const wave: {
-            source: WebSource;
-            pageIndex: number;
-            attemptStart: number;
-            url: URL;
-            domain: string;
-          }[] = [];
-          while (cursor < readingOrder.length && wave.length < B.concurrency) {
-            const pageIndex = cursor++;
-            const source = readingOrder[pageIndex];
-            const attemptStart = attempts.length;
-            if (isSchoolPage(source) && source.library?.status !== "stale")
-              continue;
-            if (
-              repaired &&
-              attempts.some(
-                (attempt) =>
-                  attempt.url === source.url &&
-                  attempt.status === "failed" &&
-                  (config.now?.() ?? Date.now()) -
-                    Date.parse(attempt.attemptedAt) <
-                    5 * 60000,
-              )
-            )
-              continue;
-            const url = new URL(source.url);
-            const academic =
-              (config.allowAcademicHosts ?? true) &&
-              /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
-            if (!hosts.includes(url.hostname) && !academic) continue;
-            const registryNavigation =
-              source.retrievalNote?.startsWith("公开学校发现目录");
-            // City recovery is reserved for observed programme evidence, not seeds.
-            if (registryNavigation && pageReads >= B.initialReads) continue;
-            if (pageReads >= B.initialReads) {
-              if (
-                !regions.length ||
-                pageReads >= B.initialReads + B.cityReads ||
-                hasPreferredCityProgramLead(
-                  report.sources,
-                  disciplines,
-                  regions,
-                  year,
-                  researchContext(run).profile,
-                )
-              )
-                break;
-              // A city preference must get recovery reads before outside-school fees.
-              // Only already observed priority schools can borrow at most four slots.
-              if (!priorityDomains.includes(academicDomain(source.url)))
-                continue;
-            }
-            const domain = academicDomain(source.url);
-            // Failed pages from one school cannot consume most of the 24-read budget.
-            const schoolReadCount = schoolReads.get(domain) ?? 0;
-            if (schoolReadCount >= B.schoolReads) continue;
-            if (
-              registryNavigation &&
-              registryNavigationReads >= MAX_REGISTRY_NAVIGATION_READS
-            )
-              continue;
-            if (registryNavigation) registryNavigationReads++;
-            schoolReads.set(domain, schoolReadCount + 1);
-            if (pageReads >= B.initialReads) cityRecoveryReads++;
-            pageReads++;
-            await stage(
-              "researching",
-              `正在读取学校官网及费用原文：第 ${pageReads}/${Math.min(readingOrder.length, B.reads)} 项`,
-            );
-            wave.push({ source, pageIndex, attemptStart, url, domain });
-          }
-          const outcomes = await Promise.allSettled(
-            wave.map(({ source }) => fetchPage(source.url)),
-          );
-          for (let waveIndex = 0; waveIndex < wave.length; waveIndex++) {
-            const { source, pageIndex, attemptStart, url, domain } =
-              wave[waveIndex];
-            try {
-              const allowedHosts = hosts.includes(url.hostname)
-                ? hosts
-                : [...hosts, url.hostname];
-              const safe = validateOutboundUrl(source.url, allowedHosts, {
-                allowHttp: true,
-              });
-              const cachedPage = pageCache.get(safe.href);
-              const cached =
-                cachedPage &&
-                cachedPage.expires > (config.now?.() ?? Date.now())
-                  ? cachedPage
-                  : undefined;
-              const outcome = outcomes[waveIndex];
-              if (outcome.status === "rejected") throw outcome.reason;
-              const result = outcome.value;
+            let progressFailure: unknown;
+            const stage = async (value: ResearchStage, message?: string) => {
               live();
-              const readBody =
-                /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
+              lastStage = value;
+              await persist();
+              try {
+                await input.onProgress?.(value, message);
+              } catch (error) {
+                progressFailure = error;
+                throw error;
+              }
+              live();
+            };
+            await stage("preparing");
+            const run = input.run;
+            if (
+              input.previousReport &&
+              (input.previousReport.guidanceRunId !== run.guidanceRunId ||
+                JSON.stringify(input.previousReport.versions) !==
+                  JSON.stringify(run.versions))
+            )
+              throw new ModelError("GUIDANCE_NOT_FOUND");
+            const targetYear = String(run.inputSnapshot.profile.year ?? "");
+            const referenceYears = historicalReferenceYears(targetYear);
+            const report: ResearchReport = {
+              schemaVersion: 1,
+              reportVersion: promptVersion,
+              status: "blocked",
+              generatedAt: new Date(config.now?.() ?? Date.now()).toISOString(),
+              guidanceRunId: run.guidanceRunId,
+              versions: structuredClone(run.versions),
+              summary: "研究报告尚未完成。",
+              facts: [],
+              recommendations: [],
+              sources: [],
+              limitations: [...baseLimitations],
+              model: { ...model },
+              searched: false,
+              decisionBasis: deriveResearchDecision(run),
+              referencePolicy: {
+                strategy: "history-first-v1",
+                targetYear,
+                referenceYears,
+                summary: referenceYears.length
+                  ? `优先整合${referenceYears.map((year) => year + "年").join("、")}官网政策作为择校与备考参考；${targetYear}年资料用于补充核验和识别变化。历史条件保留原年份，不等同于目标年度资格已通过。`
+                  : "优先整理有明确年份的历年官网政策，目标年度资料用于补充核验和识别变化。",
+              },
+            };
+            const usage = {
+              searches: { paid: 0, cacheHits: 0, libraryHits: 0 },
+              reads: {
+                reads: 0,
+                success: 0,
+                failed: 0,
+                bySchool: {} as Record<
+                  string,
+                  { reads: number; success: number; failed: number }
+                >,
+                platformReads: 0,
+              },
+              model: { calls: 0, inputTokens: 0, outputTokens: 0 },
+            };
+            report.usage = usage;
+            const resumeEvidence =
+              input.mode === "retry" &&
+              (checkpoint.evidenceReady ||
+                !!input.previousReport?.sources.some(isSchoolPage));
+            const retained = checkpoint.report ?? input.previousReport;
+            if (resumeEvidence && retained) {
+              report.sources = structuredClone(retained.sources);
+              report.recommendations = structuredClone(
+                retained.recommendations,
+              );
+              report.candidateAudit = structuredClone(retained.candidateAudit);
+            }
+            checkpoint.report = report;
+            const checkpointRuntime = resumedRuntime(
+              runtime,
+              checkpoint,
+              hash,
+              live,
+              persist,
+            );
+            const trackedRuntime: ModelRuntime = {
+              clearSubject: runtime.clearSubject,
+              run: (subject, key, messages, validate, options = {}) =>
+                checkpointRuntime.run(subject, key, messages, validate, {
+                  ...options,
+                  timeoutMs: Math.min(
+                    options.timeoutMs ?? 120000,
+                    deadline.remaining(),
+                  ),
+                  onCall: () => {
+                    live();
+                    usage.model.calls++;
+                  },
+                  onUsage: (actual) => {
+                    live();
+                    usage.model.inputTokens += actual.inputTokens;
+                    usage.model.outputTokens += actual.outputTokens;
+                  },
+                }),
+            };
+            let temporaryRetries = 0;
+            const beforeRetry = async (phase: ResearchStage) => {
+              if (temporaryRetries++ >= 1)
+                throw new ModelError("PROVIDER_TEMPORARY_UNAVAILABLE");
+              await stage(phase, "模型服务暂时繁忙，正在进行一次自动重试");
+            };
+            const readiness = getReadiness();
+            if (!readiness.ready)
+              return {
+                ...report,
+                reason: readiness.reasons.join(","),
+                summary: "联网研究尚未启动，需要先配置可用的模型和搜索服务。",
+              };
+            const questions = profileQuestions(run);
+            const directory = researchDirectory(run);
+            if (directory.noCross && !directory.allowed.length)
+              questions.push(
+                "你明确不接受跨专业，请补充本科专业的具体名称，以便核对可研究的对应方向。",
+              );
+            if (questions.length)
+              return {
+                ...report,
+                reason: "RESEARCH_PROFILE_REQUIRED",
+                summary: "还需要了解你的目标与偏好，才能提出具体学校专业建议。",
+                followUpQuestions: questions.slice(0, 3),
+              };
+            const demandPlan = createDemandPlan(run);
+            let plan: ResearchPlan;
+            try {
+              const messages = planningMessages(run);
+              const result =
+                resumeEvidence && retained?.researchDirections?.length
+                  ? {
+                      value: {
+                        directions: retained.researchDirections.map((d) => ({
+                          ...d,
+                          fitReasons: [],
+                        })),
+                        followUpQuestions: [],
+                      } as ResearchPlan,
+                    }
+                  : await generateResearchValue({
+                      runtime: trackedRuntime,
+                      subjectId: input.subjectId,
+                      key: {
+                        task: "research-direction-plan-v7-history-v1",
+                        catalogVersion: directory.catalog.catalogVersion,
+                        contextHash: hash(messages),
+                      },
+                      messages,
+                      validate: (raw) => validatePlan(raw, run),
+                      options: planningOptions,
+                      beforeRepair: () =>
+                        stage(
+                          "preparing",
+                          "正在自动修正方向规划格式，无需补填画像",
+                        ),
+                      beforeRetry: () => beforeRetry("preparing"),
+                    });
+              live();
+              plan = result.value;
+              if (demandPlan.directions.length) {
+                plan = {
+                  ...plan,
+                  directions: [
+                    ...demandPlan.directions.map((core) => ({
+                      ...core,
+                      searchSchools:
+                        plan.directions.find(
+                          (item) => item.disciplineCode === core.disciplineCode,
+                        )?.searchSchools ?? [],
+                    })),
+                    ...plan.directions.filter(
+                      (item) =>
+                        !demandPlan.directions.some(
+                          (core) => core.disciplineCode === item.disciplineCode,
+                        ),
+                    ),
+                  ].slice(0, 6),
+                  followUpQuestions: [],
+                };
+              }
+            } catch (failure) {
+              live();
+              if (failure === progressFailure) throw failure;
+              if (
+                failure instanceof ModelError &&
+                failure.code === "DATA_DELETED"
+              )
+                throw failure;
+              if (demandPlan.directions.length) {
+                plan = demandPlan;
+                report.limitations.push(
+                  "模型方向分析未完成，已按当前兴趣、目标和所学课程线索继续调查；不会因此要求你重填已保存画像。",
+                );
+              } else
+                return {
+                  ...report,
+                  failureStage: "preparing",
+                  ...(failure instanceof PlanningValidationError
+                    ? {
+                        validationIssues: failure.issues.map(
+                          ({ path, code }) => ({
+                            path,
+                            code,
+                          }),
+                        ),
+                      }
+                    : {}),
+                  reason:
+                    failure instanceof ModelError
+                      ? failure.code
+                      : "MODEL_UNAVAILABLE",
+                  summary:
+                    "系统未能完成专业方向规划，还没有开始搜索学校。你的画像已保留，请重试生成，无需先选择学校或专业。",
+                };
+            }
+            // Every callback remains outside model fallback handling: authorization failures cancel delivery.
+            await stage("preparing");
+            report.followUpQuestions = plan.followUpQuestions;
+            if (!plan.directions.length && demandPlan.directions.length)
+              plan = demandPlan;
+            if (!plan.directions.length)
+              return {
+                ...report,
+                reason: "RESEARCH_PROFILE_REQUIRED",
+                summary: "需要先确认这些个人偏好，才能规划具体学校专业。",
+              };
+            const disciplines = plannedDisciplines(plan, run);
+            report.researchDirections = plan.directions.map((item) => ({
+              disciplineCode: item.disciplineCode,
+              name: disciplines.find(
+                (discipline) => discipline.code === item.disciplineCode,
+              )!.name,
+              rationale: item.rationale,
+            }));
+            const year = /^20\d{2}$/.test(
+              String(run.inputSnapshot.profile.year),
+            )
+              ? String(run.inputSnapshot.profile.year)
+              : "目标年度";
+            const selectedSchool =
+              input.selectedProgram && !input.selectedProgram.isExample
+                ? input.selectedProgram.display.institutionName
+                : "";
+            const cities = researchContext(run).profile.cities;
+            const regions: string[] = Array.isArray(cities)
+              ? cities
+                  .filter(
+                    (item): item is string =>
+                      typeof item === "string" &&
+                      /^[\p{Script=Han}A-Za-z ·-]{2,24}$/u.test(item) &&
+                      !/^(?:不确定|不限|无偏好|未确定)$/.test(item),
+                  )
+                  .slice(0, 3)
+              : [];
+            const candidateLeads =
+              (config.allowAcademicHosts ?? true)
+                ? preferredCityCandidateLeads(regions, disciplines)
+                : [];
+            const library = dependencies.library;
+            const schoolPreferences = {
+              cities: regions,
+              selectedSchool,
+              schoolHints: plan.directions.flatMap(
+                (item) => item.searchSchools ?? [],
+              ),
+            };
+            const loaded = resumeEvidence
+              ? []
+              : (library?.load({
+                  ...schoolPreferences,
+                  disciplineCodes: disciplines.map((item) => item.code),
+                  targetYear: year,
+                  schoolNames: [
+                    selectedSchool,
+                    ...candidateLeads.map((item) => item.school),
+                    ...plan.directions.flatMap(
+                      (item) => item.searchSchools ?? [],
+                    ),
+                  ].filter(Boolean),
+                  maxSources: B.candidates,
+                }) ?? []);
+            const seeds = reusableResearchSources(
+              [
+                ...report.sources,
+                ...loaded,
+                ...(input.previousReport?.sources ?? []),
+              ],
+              config.now?.() ?? Date.now(),
+            );
+            const attempts: ResearchReadAttempt[] = [
+              ...(input.previousReport?.evidenceCoverage?.attempts ?? []),
+              ...(library?.attempts(seeds.map((source) => source.url)) ?? []),
+            ];
+            let lookupKeys =
+              input.previousReport?.evidenceCoverage?.lookupKeys ?? [];
+            const reusedSourceCount = seeds.length;
+            usage.searches.libraryHits = seeds.length;
+            const newlyReadUrls = new Set<string>();
+            let coveredDisciplines = disciplines;
+            const recordAttempt = (attempt: ResearchReadAttempt) => {
+              live();
+              if (
+                attempts.some(
+                  (old) =>
+                    old.url === attempt.url &&
+                    old.status === attempt.status &&
+                    old.attemptedAt === attempt.attemptedAt,
+                )
+              )
+                return;
+              attempts.push(attempt);
+              library?.recordAttempt(attempt);
+            };
+            const scheduled = createResearchReader(
+              async (value: string, signal: AbortSignal) => {
+                live();
+                const url = new URL(value);
+                const allowedHosts = hosts.includes(url.hostname)
+                  ? hosts
+                  : [...hosts, url.hostname];
+                const result =
+                  checkpoint.pages[value] ??
+                  (await deadline.wait(
+                    sharedResearchRead(value, signal, () =>
+                      reader(value, {
+                        signal,
+                        allowedHosts,
+                        maxRedirects: 3,
+                        allowHttp: true,
+                        timeoutMs: B.pageTimeoutMs,
+                        maxBytes: 512000,
+                        allowPdf: true,
+                        maxPdfBytes: 5000000,
+                        allowSpreadsheet: true,
+                        maxSpreadsheetBytes: 5000000,
+                      }),
+                    ),
+                  ));
+                const body = /^(?:application\/pdf|application\/vnd\.)/i.test(
                   result.contentType,
                 )
                   ? result.text.trim()
                   : webPageText(result.text);
-              const excerpt = readBody;
-              if (!excerpt) throw new ModelError("WEB_EMPTY");
-              if (excerpt.length > 200000)
-                throw new ModelError("WEB_TEXT_TOO_LARGE");
-              source.excerpt = excerpt;
-              source.kind = "official_page";
-              delete source.library;
-              Object.assign(
-                source,
-                normalizeAttachedEvidence(
-                  source,
-                  report.sources.find(
-                    (parent) => parent.id === source.parentSourceId,
-                  ),
-                  readBody,
-                ),
-              );
-              delete source.retrievalNote;
-              delete source.finalUrl;
-              delete source.transport;
-              Object.assign(source, readSourceMetadata(result, source.url));
-              if (attachedIds.has(source.id) && result.transport !== "http")
-                source.retrievalNote =
-                  "已从学校官网发现并成功读取本附件正文，使用独立附件网址引用。";
-              source.retrievedAt =
-                cached?.retrievedAt ??
-                new Date(config.now?.() ?? Date.now()).toISOString();
-              if (!cached) {
-                if (pageCache.size >= 120)
-                  pageCache.delete(pageCache.keys().next().value!);
-                pageCache.set(safe.href, {
-                  ...result,
-                  retrievedAt: source.retrievedAt,
-                  expires: (config.now?.() ?? Date.now()) + 15 * 60000,
-                });
-              }
-              // Read attachment bodies under the same budget and transport guards.
-              // Give every school its first turn before expanding an individual notice.
-              if (
-                (attachmentDepth.get(source.id) ?? 0) < B.attachmentDepth &&
-                /html/i.test(result.contentType ?? "")
-              ) {
-                locationLinks.set(domain, [
-                  ...(locationLinks.get(domain) ?? []),
-                  ...researchLocationLinks(source, result.text).map((link) => ({
-                    ...link,
-                    parentSourceId: source.id,
-                  })),
-                ]);
-                const documentLinks = researchAttachments(source, result.text, {
-                  targetYear: year,
-                  maxLinks: B.attachmentLinks,
-                });
-                source.documentLinks = [
-                  ...researchAttachments(source, result.text, {
-                    targetYear: year,
-                    maxLinks: B.attachmentLinks,
-                  }),
-                  ...researchLocationLinks(source, result.text),
-                ]
-                  .slice(0, B.attachments)
-                  .map(({ url, title }) => ({
-                    url,
-                    title,
-                  }));
-                const children = documentLinks
-                  .filter((link) => !seenPages.has(link.url))
-                  .slice(0, Math.max(0, B.attachments - attachmentCount))
-                  .map((link): WebSource => {
-                    seenPages.add(link.url);
-                    const child = {
-                      id: `research-attachment-${++attachmentCount}`,
-                      title: link.title,
-                      url: link.url,
-                      excerpt: "",
-                      retrievedAt: source.retrievedAt,
-                      kind: "search_snippet" as const,
-                      verified: false as const,
-                      parentSourceId: source.id,
-                      retrievalNote: `从已读取的学校官网页面“${source.title}”发现的目录或附件，正文尚待读取。`,
-                    };
-                    attachedIds.add(child.id);
-                    attachmentDepth.set(
-                      child.id,
-                      (attachmentDepth.get(source.id) ?? 0) + 1,
-                    );
-                    sourceDirections.set(
-                      child.id,
-                      sourceDirections.get(source.id)!,
-                    );
-                    return child;
-                  });
-                report.sources.push(...children);
-                readingOrder.splice(
-                  Math.max(cursor, firstRoundCount),
-                  0,
-                  ...children,
-                );
-              }
-              library?.save(source);
-            } catch (failure) {
-              live();
-              if (
-                !attempts
-                  .slice(attemptStart)
-                  .some(
-                    (attempt) =>
-                      attempt.url === source.url && attempt.status === "failed",
-                  )
-              )
-                recordAttempt({
-                  url: source.url,
-                  status: "failed",
-                  reason:
-                    failure instanceof ModelError
-                      ? failure.code
-                      : "WEB_UNAVAILABLE",
-                  attemptedAt: new Date(
-                    config.now?.() ?? Date.now(),
-                  ).toISOString(),
-                });
-              report.limitations.push(
-                `未能读取一项学校网页正文：${researchReason(failure instanceof ModelError ? failure.code : "WEB_UNAVAILABLE")}已保留搜索摘要。`,
-              );
-            }
-            await stage(
-              "researching",
-              `已读取 ${pageReads} 项学校网页，继续核对专业与费用`,
-            );
-          }
-        }
-        for (const source of report.sources.filter(isSchoolPage))
-          library?.save(source);
-        // Campus geography is a separate bounded lookup, only after reading an
-        // actual coded programme and a current campus policy. Discovery metadata
-        // never establishes the candidate's city by itself.
-        let geographyReads = 0;
-        const observedCandidates = buildEvidenceCandidates({
-          run,
-          disciplines,
-          sources: report.sources,
-          targetYear: year,
-          schoolNames: candidateLeads.map((lead) => lead.school),
-        }).recommendations;
-        const geographySchools = [
-          ...new Set(observedCandidates.map((item) => item.institutionName)),
-        ].map((school) => {
-          const discovery = candidateLeads.find(
-            (lead) => lead.school === school,
-          );
-          const owned = report.sources.find(
-            (source) =>
-              isSchoolPage(source) && sourceHasSchoolIdentity(source, school),
-          );
-          return {
-            school,
-            officialDomain: owned
-              ? academicDomain(owned.url)
-              : discovery?.officialDomain,
-            locationDiscoveryUrls: discovery?.locationDiscoveryUrls,
-          };
-        });
-        for (const lead of geographySchools) {
-          if (!regions.length) break;
-          if (geographyReads >= B.geographyReads || pageReads >= B.reads) break;
-          const observed = observedCandidates.filter(
-            (item) => item.institutionName === lead.school,
-          );
-          if (
-            !observed.some(
-              (item) =>
-                item.collegeName &&
-                item.majorCode &&
-                !item.location &&
-                (item.referenceBasis !== undefined ||
-                  item.admissionStatus === "current_evidence"),
-            )
-          )
-            continue;
-          if (
-            !report.sources.some(
-              (source) =>
-                isSchoolPage(source) &&
-                sourceHasSchoolIdentity(source, lead.school) &&
-                researchSourceYear(source) !== undefined &&
-                /所在校区|培养校区|就读校区|培养地点|教学地点|学习地点/.test(
-                  source.excerpt,
-                ),
-            )
-          )
-            continue;
-          const linked = (
-            locationLinks.get(lead.officialDomain ?? "") ?? []
-          ).find(
-            (link) =>
-              !seenPages.has(link.url) &&
-              report.sources.some(
-                (parent) =>
-                  parent.id === link.parentSourceId &&
-                  isSchoolPage(parent) &&
-                  sourceHasSchoolIdentity(parent, lead.school),
-              ),
-          );
-          const geographyUrl =
-            linked?.url ??
-            lead.locationDiscoveryUrls?.find((value) => !seenPages.has(value));
-          if (!geographyUrl) continue;
-          const url = new URL(geographyUrl);
-          const domain = academicDomain(geographyUrl);
-          if (
-            domain !== lead.officialDomain ||
-            (schoolReads.get(domain) ?? 0) >= B.schoolReads
-          )
-            continue;
-          const academic =
-            (config.allowAcademicHosts ?? true) &&
-            /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
-          if (!hosts.includes(url.hostname) && !academic) continue;
-          geographyReads++;
-          pageReads++;
-          schoolReads.set(domain, (schoolReads.get(domain) ?? 0) + 1);
-          seenPages.add(geographyUrl);
-          await stage("researching", `正在核对${lead.school}的培养校区所在地`);
-          try {
-            const allowedHosts = hosts.includes(url.hostname)
-              ? hosts
-              : [...hosts, url.hostname];
-            const safe = validateOutboundUrl(geographyUrl, allowedHosts, {
-              allowHttp: true,
-            });
-            const saved = pageCache.get(safe.href);
-            const cached =
-              saved && saved.expires > (config.now?.() ?? Date.now())
-                ? saved
-                : undefined;
-            const page = cached ?? (await fetchPage(safe.href));
-            live();
-            const excerpt = compactEvidence(
-              webPageText(page.text),
-              disciplines,
-              6000,
-            );
-            if (!excerpt) throw new ModelError("WEB_EMPTY");
-            const retrievedAt =
-              cached?.retrievedAt ??
-              new Date(config.now?.() ?? Date.now()).toISOString();
-            report.sources.push({
-              id: `research-campus-${geographyReads}`,
-              title: `${lead.school}校区所在地资料`,
-              url: safe.href,
-              ...readSourceMetadata(page, safe.href),
-              excerpt,
-              retrievedAt,
-              kind: "official_page",
-              verified: false,
-            });
-            if (!cached) {
-              if (pageCache.size >= 120)
-                pageCache.delete(pageCache.keys().next().value!);
-              pageCache.set(safe.href, {
-                ...page,
-                retrievedAt,
-                expires: (config.now?.() ?? Date.now()) + 15 * 60000,
-              });
-            }
-          } catch (failure) {
-            live();
-            report.limitations.push(
-              `尚未取得${lead.school}的一项校区所在地资料，城市证据仍按已读取正文核验。`,
-            );
-          }
-        }
-        refreshCoverage();
-        if (
-          library &&
-          !supplement &&
-          report.evidenceCoverage!.gaps.some(
-            (gap) => gap.priority === "high",
-          ) &&
-          pageReads < B.reads &&
-          found.requestCount < B.searches
-        ) {
-          const extra = await repairResearchEvidence({
-            subjectId: input.subjectId,
-            gaps: libraryMissingGaps(
-              report.evidenceCoverage!.gaps.filter(
-                (gap) => gap.priority === "high",
-              ),
-              library?.queryFacts({
-                disciplineCodes: disciplines.map((d) => d.code),
-                targetYear: year,
-              }) ?? [],
-              report.sources,
-              schoolPreferences,
-            ),
-            sources: report.sources,
-            targetYear: year,
-            preferences: schoolPreferences,
-            web,
-            maxRequests: Math.min(
-              B.repairSearches,
-              B.searches - found.requestCount,
-            ),
-            maxReads: Math.min(B.cityReads, B.reads - pageReads),
-            signal: scheduled.signal,
-            lookupKeys,
-            attempts,
-            readPage: fetchPage,
-            onSource: (source) => {
-              live();
-              library.save(source);
-            },
-            onProgress: (detail) => stage("researching", detail),
-            now: config.now,
-            needsEvidence,
-          });
-          report.sources = extra.sources;
-          lookupKeys = extra.lookupKeys;
-          pageReads += extra.readCount;
-          usage.searches.paid += extra.requestCount;
-          found.requestCount += extra.requestCount;
-          report.searched ||= extra.searched;
-          report.limitations.push(...extra.limitations);
-          refreshCoverage();
-        }
-        if (
-          (!report.sources.some(isSchoolPage) &&
-            report.sources.every(
-              (source) =>
-                source.retrievalNote?.startsWith("公开学校发现目录") ||
-                !source.excerpt.trim(),
-            )) ||
-          (!report.searched && !report.sources.some(isSchoolPage)) ||
-          !report.sources.length
-        )
-          return {
-            ...report,
-            status: "blocked",
-            reason: "NO_WEB_EVIDENCE",
-            summary:
-              "已结合画像规划方向，但尚未取得可引用的学校专业资料，不能虚构具体推荐。",
-          };
-        if (
-          report.sources.some(isSchoolPage) &&
-          !report.sources.some(
-            (source) =>
-              isSchoolPage(source) && !admissionEvidence(source, year).excluded,
-          )
-        )
-          return {
-            ...report,
-            status: "partial",
-            reason: "RESEARCH_EVIDENCE_EXCLUDED",
-            summary:
-              "已检索的资料含示例或停招信息，尚不足以支持具体学校专业建议。",
-          };
-        if (!report.sources.some(isSchoolPage))
-          return {
-            ...report,
-            status: "partial",
-            reason: "SEARCH_SNIPPETS_ONLY",
-            summary:
-              "已检索到线索，但学校官网正文尚未读取成功，暂未形成可核对的院校推荐。",
-            limitations: [
-              ...report.limitations,
-              "本次尚未读取学校官网正文，搜索摘要不足以支持最终学校专业分析，未继续调用最终报告模型。",
-            ],
-            coverage: {
-              targetMin: 5,
-              targetMax: 10,
-              schoolCount: 0,
-              preferredCount: 0,
-              alternativeCount: 0,
-              shortfallReasons: [
-                `本次检索 ${found.requestCount} 项、尝试读取 ${scheduled.statistics.reads} 项官网资料，目前只有搜索摘要，尚未达到5–10校的目标。`,
-                ...(found.stoppedReason
-                  ? [researchReason(found.stoppedReason)]
-                  : []),
-                "无法读取资料不代表没有符合条件的学校；请稍后重新检索，已有来源已保留。",
-              ],
-            },
-          };
-        await stage("analyzing");
-        // A search direction is a lead, not a restriction on evidence discovered later.
-        // Only currently allowed national categories can be added from actual school text.
-        const evidenceText = report.sources
-          .filter(isSchoolPage)
-          .map((source) => source.excerpt)
-          .join(" ");
-        const evidencedDirections = directory.allowed.filter(
-          (discipline) =>
-            disciplines.some((item) => item.code === discipline.code) ||
-            new RegExp(`\\b${discipline.code}\\d{0,2}\\b`).test(evidenceText) ||
-            evidenceText.includes(discipline.name),
-        );
-        coveredDisciplines = evidencedDirections;
-        const inventory = buildEvidenceCandidates({
-          run,
-          disciplines: evidencedDirections,
-          sources: report.sources,
-          targetYear: year,
-          schoolNames: [
-            ...candidateLeads.map((item) => item.school),
-            ...(input.previousReport?.candidateAudit?.map(
-              (item) => item.institutionName,
-            ) ?? []),
-            ...plan.directions.flatMap((item) => item.searchSchools ?? []),
-          ],
-        });
-        report.candidateAudit = inventory.audit;
-        report.recommendations = rankDemandCandidates(
-          inventory.recommendations,
-          run,
-          evidencedDirections,
-          report.sources,
-          year,
-        );
-        try {
-          const rememberValidation = (
-            value: ReturnType<typeof validateReport>,
-          ) => {
-            report.rejectedRecommendations = [
-              ...(report.rejectedRecommendations ?? []),
-              ...value.rejectedRecommendations,
-            ];
-            report.validationIssues = [
-              ...new Map(
-                [
-                  ...(report.validationIssues ?? []),
-                  ...value.validationIssues,
-                ].map((issue) => [`${issue.path}:${issue.code}`, issue]),
-              ).values(),
-            ];
-            return value;
-          };
-          const messages = reportMessages(
-            run,
-            plan,
-            evidencedDirections,
-            report.sources,
-            year,
-            [
-              ...(library?.queryFacts({
-                disciplineCodes: evidencedDirections.map((d) => d.code),
-                targetYear: year,
-              }) ?? []),
-              ...report.sources
-                .filter(isSchoolPage)
-                .filter((source) => !source.library)
-                .flatMap((source) =>
-                  extractProgramFacts(
-                    source,
-                    report.sources,
-                    report.generatedAt,
-                  ),
-                ),
-            ],
-            { recommendations: report.recommendations, audit: inventory.audit },
-          );
-          const visibleIds = new Set<string>();
-          const modelInput = JSON.parse(messages[1].content);
-          for (const source of modelInput.sources) visibleIds.add(source.id);
-          for (const fact of modelInput.structuredFacts) {
-            visibleIds.add(fact.sourceId);
-            if ("supportingEvidence" in fact.value)
-              for (const ref of fact.value.supportingEvidence ?? [])
-                visibleIds.add(ref.sourceId);
-          }
-          const visibleSources = report.sources
-            .filter((s) => visibleIds.has(s.id))
-            .map((source) => ({
-              ...source,
-              excerpt: [
-                ...modelInput.sources
-                  .filter((s: { id: string }) => s.id === source.id)
-                  .map((s: { excerpt: string }) => s.excerpt),
-                ...modelInput.structuredFacts
-                  .filter((f: ProgramFact) => f.sourceId === source.id)
-                  .flatMap((f: ProgramFact) => [
-                    f.quote,
-                    "quote" in f.value ? f.value.quote : "",
-                  ]),
-                ...modelInput.structuredFacts.flatMap((f: ProgramFact) =>
-                  "supportingEvidence" in f.value
-                    ? (f.value.supportingEvidence ?? [])
-                        .filter((r) => r.sourceId === source.id)
-                        .map((r) => r.quote)
-                    : [],
-                ),
-              ]
-                .filter(
-                  (quote): quote is string =>
-                    typeof quote === "string" && !!quote,
-                )
-                .filter(
-                  (quote, index, all) =>
-                    !all.some(
-                      (other, otherIndex) =>
-                        (other.length > quote.length ||
-                          (other.length === quote.length &&
-                            otherIndex < index)) &&
-                        other.includes(quote),
-                    ),
-                )
-                .join("\n"),
-            }));
-          const result = await generateResearchValue({
-            runtime: trackedRuntime,
-            subjectId: input.subjectId,
-            key: {
-              task: promptVersion,
-              guidanceRunId: run.guidanceRunId,
-              versions: run.versions,
-              evidenceHash: hash(messages),
-            },
-            messages,
-            validate: (raw) => {
-              const value = rememberValidation(
-                validateReport(
-                  raw,
-                  run,
-                  visibleSources,
-                  evidencedDirections,
-                  year,
-                ),
-              );
-              if (!value.recommendations.length && value.rejected.length)
-                if (
-                  !new Set([
-                    "SEARCH_SNIPPETS_ONLY",
-                    "KNOWN_ADMISSION_CONFLICT",
-                    "RESEARCH_EVIDENCE_EXCLUDED",
-                  ]).has(value.rejected[0])
-                )
-                  throw new ModelError(value.rejected[0]);
-              return value;
-            },
-            options,
-            beforeRepair: () =>
-              stage("analyzing", "正在核对并修正学校专业建议，无需补填画像"),
-            beforeRetry: () => beforeRetry("analyzing"),
-          });
-          live();
-          let value = result.value;
-          value = {
-            ...value,
-            recommendations: rankDemandCandidates(
-              [
-                ...value.recommendations.map((item) => {
-                  const grounded = inventory.recommendations.filter(
-                    (candidate) =>
-                      candidate.institutionName === item.institutionName &&
-                      candidate.disciplineCode === item.disciplineCode &&
-                      candidate.programName === item.programName,
-                  );
-                  return grounded.length === 1
-                    ? {
-                        ...grounded[0],
-                        ...item,
-                        collegeName:
-                          grounded[0].collegeName ?? item.collegeName,
-                        majorCode: grounded[0].majorCode ?? item.majorCode,
-                        location: grounded[0].location ?? item.location,
-                        constraintChecks: (item.constraintChecks ?? []).map(
-                          (check) =>
-                            check.field === "cities" && grounded[0].location
-                              ? grounded[0].constraintChecks!.find(
-                                  (groundCheck) =>
-                                    groundCheck.field === "cities",
-                                )!
-                              : check,
-                        ),
-                        citations: [
-                          ...new Set([
-                            ...item.citations,
-                            ...grounded[0].citations,
-                          ]),
-                        ],
-                      }
-                    : item;
-                }),
-                ...inventory.recommendations,
-              ],
-              run,
-              evidencedDirections,
-              report.sources,
-              year,
-            ),
-          };
-          const schoolPages = report.sources.filter(
-            (source) =>
-              isSchoolPage(source) && /硕士|研究生/.test(source.excerpt),
-          );
-          const observedNames = new Set(
-            schoolPages.flatMap((source) =>
-              (
-                source.excerpt.match(/[\p{Script=Han}]{2,16}(?:大学|学院)/gu) ??
-                []
-              ).filter((name) => sourceHasSchoolIdentity(source, name)),
-            ),
-          );
-          const needsCityCoverage =
-            regions.length > 0 &&
-            !value.recommendations.some(matchesPreferredCity);
-          const canInvestigateCity = hasPreferredCityProgramLead(
-            report.sources,
-            evidencedDirections,
-            regions,
-            year,
-            researchContext(run).profile,
-          );
-          if (
-            (value.recommendations.length < 5 &&
-              new Set(schoolPages.map((source) => academicDomain(source.url)))
-                .size >= 5 &&
-              observedNames.size >= 5) ||
-            (needsCityCoverage && canInvestigateCity)
-          ) {
-            await stage(
-              "analyzing",
-              needsCityCoverage && canInvestigateCity
-                ? "意向城市尚未形成建议，正在依据已读取官网补充比较"
-                : "已有多所学校官网依据，正在补充尚未充分比较的学校建议",
-            );
-            const supplemental = [
-              ...messages,
-              {
-                role: "user" as const,
-                content: `${sourceCitationInstruction}已有${value.recommendations.length}所学校通过核验。${value.recommendations.length < 5 ? "仍未达到5–10校目标。" : "数量已达到目标，但不能代替意向城市覆盖。"}${needsCityCoverage && canInvestigateCity ? `本人意向城市是${regions.join("、")}，目前没有可核验符合意向城市的建议，已有官网原文包含本地项目线索；优先重新比较这些学校，逐项给出同校同专业的官网培养城市地址证据。不得把外地项目说成符合意向城市，不得推定接受跨城通勤。` : ""}请重新检查上述真实官网资料，补充其他有据且适合本人的学校及具体专业，优先给出此前遗漏的学校；不编造项目，不放宽已知资格冲突。仍返回完整同格式JSON。已保留：${value.recommendations
-                  .map((item) => item.institutionName)
-                  .join("、")
-                  .slice(0, 180)}。`,
+                if (!body) throw new ModelError("WEB_EMPTY");
+                if (body.length > 200000)
+                  throw new ModelError("WEB_TEXT_TOO_LARGE");
+                live();
+                checkpoint.pages[value] = result;
+                await persist();
+                return result;
               },
-            ];
-            if (JSON.stringify(supplemental).length <= B.thinkingChars) {
+              input.signal,
+            );
+            usage.reads = scheduled.statistics;
+            const cancellationPoll = setInterval(() => {
               try {
-                const extra = await trackedRuntime.run(
-                  input.subjectId,
+                live();
+              } catch {
+                scheduled.abort();
+              }
+            }, 50);
+            cancellationPoll.unref();
+            try {
+              const fetchPage = async (value: string) => {
+                const url = new URL(value);
+                const academic =
+                  (config.allowAcademicHosts ?? true) &&
+                  /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
+                if (!hosts.includes(url.hostname) && !academic)
+                  throw new ModelError("WEB_HOST_BLOCKED");
+                const allowedHosts = hosts.includes(url.hostname)
+                  ? hosts
+                  : [...hosts, url.hostname];
+                const safe = validateOutboundUrl(value, allowedHosts, {
+                  allowHttp: true,
+                });
+                if (checkpoint.pages[safe.href])
+                  return checkpoint.pages[safe.href];
+                const cached = pageCache.get(safe.href);
+                if (cached && cached.expires > (config.now?.() ?? Date.now()))
+                  return cached;
+                try {
+                  const result = await scheduled.read(safe.href);
+                  live();
+                  const actualBody =
+                    /^(?:application\/pdf|application\/vnd\.)/i.test(
+                      result.contentType,
+                    )
+                      ? result.text.trim()
+                      : webPageText(result.text);
+                  if (!actualBody) throw new ModelError("WEB_EMPTY");
+                  if (actualBody.length > 200000)
+                    throw new ModelError("WEB_TEXT_TOO_LARGE");
+                  const readAt = new Date(
+                    config.now?.() ?? Date.now(),
+                  ).toISOString();
+                  recordAttempt({
+                    url: safe.href,
+                    status: "success",
+                    attemptedAt: readAt,
+                  });
+                  newlyReadUrls.add(safe.href);
+                  if (pageCache.size >= 120)
+                    pageCache.delete(pageCache.keys().next().value!);
+                  const resultWithTime = {
+                    ...result,
+                    retrievedAt: readAt,
+                    expires: (config.now?.() ?? Date.now()) + 15 * 60000,
+                  };
+                  pageCache.set(safe.href, resultWithTime);
+                  return resultWithTime;
+                } catch (error) {
+                  live();
+                  if (
+                    error instanceof ModelError &&
+                    error.code === "DATA_DELETED"
+                  )
+                    throw error;
+                  recordAttempt({
+                    url: safe.href,
+                    status: "failed",
+                    reason:
+                      error instanceof ModelError
+                        ? error.code
+                        : "WEB_UNAVAILABLE",
+                    tlsCode: (error as { tlsCode?: string })?.tlsCode,
+                    attemptedAt: new Date(
+                      config.now?.() ?? Date.now(),
+                    ).toISOString(),
+                  });
+                  throw error;
+                }
+              };
+              const refreshCoverage = () => {
+                const order = new Map(
+                  scheduled.dispatchOrder.map((url, index) => [url, index]),
+                );
+                attempts.sort(
+                  (a, b) => (order.get(a.url) ?? -1) - (order.get(b.url) ?? -1),
+                );
+                report.readStatistics = {
+                  success: scheduled.statistics.success,
+                  failed: scheduled.statistics.failed,
+                  failuresByCode: { ...scheduled.statistics.failuresByCode },
+                };
+                if (resumeEvidence && retained?.evidenceCoverage) {
+                  report.evidenceCoverage = {
+                    ...retained.evidenceCoverage,
+                    reusedSourceCount: report.sources.length,
+                    supplementedSourceCount: 0,
+                  };
+                  report.unstructuredSources = retained.unstructuredSources;
+                  return;
+                }
+                const value = deriveResearchCoverage({
+                  run,
+                  disciplines: coveredDisciplines,
+                  sources: report.sources,
+                  recommendations: report.recommendations,
+                  candidateAudit: report.candidateAudit ?? [],
+                  targetYear: year,
+                  attempts,
+                });
+                report.candidateAudit = value.candidates;
+                report.evidenceCoverage = {
+                  strategy: "program-evidence-v1",
+                  mode: input.mode === "supplement" ? "supplement" : "generate",
+                  summary: `已记录${value.summary.schoolCount}所学校、${value.summary.programCount}个相关专业；每个专业分别保留官网依据与待补查事项。`,
+                  ...value.summary,
+                  gaps: value.gaps,
+                  ...library?.coverageStats(),
+                  reusedSourceCount,
+                  supplementedSourceCount: new Set(
+                    report.sources
+                      .filter(
+                        (source) =>
+                          source.kind === "official_page" &&
+                          newlyReadUrls.has(source.url),
+                      )
+                      .map((source) => source.url),
+                  ).size,
+                  lookupKeys,
+                  attempts: attempts.slice(-240),
+                };
+                report.unstructuredSources = unstructuredResearchSources(
+                  report.sources,
+                  newlyReadUrls,
+                  report.generatedAt,
+                );
+              };
+              const priorInventory = resumeEvidence
+                ? { recommendations: [], audit: [] }
+                : buildEvidenceCandidates({
+                    run,
+                    disciplines,
+                    sources: seeds,
+                    targetYear: year,
+                    schoolNames: [
+                      ...candidateLeads.map((item) => item.school),
+                      ...plan.directions.flatMap(
+                        (item) => item.searchSchools ?? [],
+                      ),
+                      ...(input.previousReport?.candidateAudit?.map(
+                        (item) => item.institutionName,
+                      ) ?? []),
+                    ],
+                  });
+              const priorCoverage = resumeEvidence
+                ? { gaps: [] }
+                : deriveResearchCoverage({
+                    run,
+                    disciplines,
+                    sources: seeds,
+                    recommendations: priorInventory.recommendations,
+                    candidateAudit: priorInventory.audit,
+                    targetYear: year,
+                    attempts,
+                  });
+              let checkedSources: readonly WebSource[] = seeds;
+              let pendingGapIds = new Set(
+                priorCoverage.gaps.map((gap) => gap.id),
+              );
+              const needsEvidence = (
+                gap: ResearchEvidenceGap,
+                current: readonly WebSource[],
+              ) => {
+                if (
+                  current.length !== checkedSources.length ||
+                  current.some(
+                    (source, index) => source !== checkedSources[index],
+                  )
+                ) {
+                  pendingGapIds = new Set(
+                    deriveResearchCoverage({
+                      run,
+                      disciplines,
+                      sources: [...current],
+                      recommendations: [],
+                      candidateAudit: priorInventory.audit,
+                      targetYear: year,
+                      attempts,
+                    }).gaps.map((item) => item.id),
+                  );
+                  checkedSources = [...current];
+                }
+                return pendingGapIds.has(gap.id);
+              };
+              const recalledFacts = resumeEvidence
+                ? []
+                : (library?.queryFacts({
+                    disciplineCodes: disciplines.map((d) => d.code),
+                    targetYear: year,
+                  }) ?? []);
+              const libraryFirst =
+                seeds.length > 0 &&
+                recalledFacts.some(
+                  (f) => f.field === "catalog" && f.status === "bound",
+                );
+              const supplement = input.mode === "supplement";
+              const recallGaps = libraryMissingGaps(
+                priorCoverage.gaps,
+                recalledFacts,
+                seeds,
+                schoolPreferences,
+              );
+
+              let pageReads = 0;
+              let cityRecoveryReads = 0;
+              const schoolReads = new Map<string, number>();
+              let found = {
+                sources: seeds,
+                searched: !!seeds.length,
+                limitations: [] as string[],
+                requestCount: 0,
+                paidRequests: 0,
+                cacheHits: 0,
+                stoppedReason: undefined as string | undefined,
+                sourceDirections: new Map<string, string>(),
+              };
+              if (!resumeEvidence) {
+                const repaired =
+                  supplement || libraryFirst
+                    ? await repairResearchEvidence({
+                        subjectId: input.subjectId,
+                        gaps: recallGaps,
+                        sources: seeds,
+                        targetYear: year,
+                        preferences: schoolPreferences,
+                        web,
+                        maxRequests: B.initialSearches,
+                        maxReads: B.initialReads,
+                        signal: scheduled.signal,
+                        lookupKeys,
+                        attempts,
+                        readPage: fetchPage,
+                        onSource: (source) => {
+                          live();
+                          library?.save(source);
+                        },
+                        onProgress: (detail) => stage("researching", detail),
+                        now: config.now,
+                        needsEvidence,
+                      })
+                    : undefined;
+                if (repaired) {
+                  lookupKeys = repaired.lookupKeys;
+                }
+                found = repaired
+                  ? {
+                      sources: repaired.sources,
+                      searched: repaired.searched,
+                      limitations: repaired.limitations,
+                      requestCount: repaired.requestCount,
+                      paidRequests: repaired.requestCount,
+                      cacheHits: 0,
+                      stoppedReason: undefined,
+                      sourceDirections: new Map(
+                        repaired.sources.map((source) => [
+                          source.id,
+                          disciplines.find((item) =>
+                            new RegExp(`\\b${item.code}\\d{0,2}\\b`).test(
+                              source.excerpt,
+                            ),
+                          )?.code ??
+                            disciplines[0]?.code ??
+                            "",
+                        ]),
+                      ),
+                    }
+                  : await searchResearchSources({
+                      web,
+                      cacheOwner: baseWeb,
+                      subjectId: input.subjectId,
+                      disciplines,
+                      regions,
+                      selectedSchool,
+                      targetYear: year,
+                      candidateLeads,
+                      schoolHints: new Map(
+                        plan.directions.map((item) => [
+                          item.disciplineCode,
+                          item.searchSchools ?? [],
+                        ]),
+                      ),
+                      maxRequests: B.initialSearches,
+                      includeFeeSearch: false,
+                      maxSources: B.candidates,
+                      onProgress: (detail) => stage("researching", detail),
+                    });
+                usage.searches.paid += repaired
+                  ? repaired.requestCount
+                  : (found.paidRequests ?? 0);
+                usage.searches.cacheHits += repaired
+                  ? 0
+                  : (found.cacheHits ?? 0);
+                live();
+                report.sources = repaired
+                  ? found.sources
+                  : [
+                      ...seeds,
+                      ...found.sources.filter(
+                        (source) =>
+                          !seeds.some((seed) => seed.url === source.url),
+                      ),
+                    ];
+                report.searched = found.searched;
+                report.limitations.push(...found.limitations);
+                report.candidateAudit = [
+                  ...new Set([
+                    ...candidateLeads.map((item) => item.school),
+                    ...(input.previousReport?.candidateAudit?.map(
+                      (item) => item.institutionName,
+                    ) ?? []),
+                    ...plan.directions.flatMap(
+                      (item) => item.searchSchools ?? [],
+                    ),
+                    ...report.sources.flatMap((source) =>
+                      [
+                        ...source.excerpt.matchAll(
+                          /(?:^|[\s:：。；|｜])([\p{Script=Han}]{2,20}(?:大学|学院|研究院|研究所))(?=\s|\d|年|硕士|研究生|招生|专业|学科|版权所有|$)/gu,
+                        ),
+                      ]
+                        .map((match) => match[1])
+                        .filter((name) =>
+                          sourceHasSchoolIdentity(source, name),
+                        ),
+                    ),
+                  ]),
+                ]
+                  .sort()
+                  .map((institutionName) => ({
+                    institutionName,
+                    status: "awaiting_evidence" as const,
+                    reasons: [
+                      "本次调查线索，尚待对应学校的硕士项目正文与具体条件核验；未读到不等于不适合。",
+                    ],
+                    sourceIds: report.sources
+                      .filter((source) =>
+                        sourceHasSchoolIdentity(source, institutionName),
+                      )
+                      .map((source) => source.id),
+                  }));
+                const sourceDirections = found.sourceDirections;
+                for (const source of seeds)
+                  sourceDirections.set(
+                    source.id,
+                    disciplines.find((item) =>
+                      new RegExp(`\\b${item.code}\\d{0,2}\\b`).test(
+                        source.excerpt,
+                      ),
+                    )?.code ??
+                      disciplines[0]?.code ??
+                      "",
+                  );
+                pageReads = repaired?.readCount ?? 0;
+                const {
+                  pages: readingOrder,
+                  firstRoundCount,
+                  priorityDomains,
+                } = researchReadingOrder(
+                  report.sources,
+                  sourceDirections,
+                  disciplines,
                   {
-                    task: `${promptVersion}-coverage`,
+                    cities: regions,
+                    selectedSchool,
+                    targetYear: year,
+                    schoolHints: [
+                      ...candidateLeads.map((item) => item.school),
+                      ...plan.directions.flatMap(
+                        (item) => item.searchSchools ?? [],
+                      ),
+                    ],
+                  },
+                );
+                const seenPages = new Set(
+                  readingOrder.map((source) => source.url),
+                );
+                const attachedIds = new Set<string>();
+                const attachmentDepth = new Map<string, number>();
+                let registryNavigationReads = 0;
+                const locationLinks = new Map<
+                  string,
+                  { url: string; title: string; parentSourceId: string }[]
+                >();
+                let attachmentCount = 0;
+                let cursor = 0;
+                while (cursor < readingOrder.length && pageReads < B.reads) {
+                  const wave: {
+                    source: WebSource;
+                    pageIndex: number;
+                    attemptStart: number;
+                    url: URL;
+                    domain: string;
+                  }[] = [];
+                  while (
+                    cursor < readingOrder.length &&
+                    wave.length < B.concurrency
+                  ) {
+                    const pageIndex = cursor++;
+                    const source = readingOrder[pageIndex];
+                    const attemptStart = attempts.length;
+                    if (
+                      isSchoolPage(source) &&
+                      source.library?.status !== "stale"
+                    )
+                      continue;
+                    if (
+                      repaired &&
+                      attempts.some(
+                        (attempt) =>
+                          attempt.url === source.url &&
+                          attempt.status === "failed" &&
+                          (config.now?.() ?? Date.now()) -
+                            Date.parse(attempt.attemptedAt) <
+                            5 * 60000,
+                      )
+                    )
+                      continue;
+                    const url = new URL(source.url);
+                    const academic =
+                      (config.allowAcademicHosts ?? true) &&
+                      /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
+                    if (!hosts.includes(url.hostname) && !academic) continue;
+                    const registryNavigation =
+                      source.retrievalNote?.startsWith("公开学校发现目录");
+                    // City recovery is reserved for observed programme evidence, not seeds.
+                    if (registryNavigation && pageReads >= B.initialReads)
+                      continue;
+                    if (pageReads >= B.initialReads) {
+                      if (
+                        !regions.length ||
+                        pageReads >= B.initialReads + B.cityReads ||
+                        hasPreferredCityProgramLead(
+                          report.sources,
+                          disciplines,
+                          regions,
+                          year,
+                          researchContext(run).profile,
+                        )
+                      )
+                        break;
+                      // A city preference must get recovery reads before outside-school fees.
+                      // Only already observed priority schools can borrow at most four slots.
+                      if (!priorityDomains.includes(academicDomain(source.url)))
+                        continue;
+                    }
+                    const domain = academicDomain(source.url);
+                    // Failed pages from one school cannot consume most of the 24-read budget.
+                    const schoolReadCount = schoolReads.get(domain) ?? 0;
+                    if (schoolReadCount >= B.schoolReads) continue;
+                    if (
+                      registryNavigation &&
+                      registryNavigationReads >= MAX_REGISTRY_NAVIGATION_READS
+                    )
+                      continue;
+                    if (registryNavigation) registryNavigationReads++;
+                    schoolReads.set(domain, schoolReadCount + 1);
+                    if (pageReads >= B.initialReads) cityRecoveryReads++;
+                    pageReads++;
+                    await stage(
+                      "researching",
+                      `正在读取学校官网及费用原文：第 ${pageReads}/${Math.min(readingOrder.length, B.reads)} 项`,
+                    );
+                    wave.push({ source, pageIndex, attemptStart, url, domain });
+                  }
+                  const outcomes = await Promise.allSettled(
+                    wave.map(({ source }) => fetchPage(source.url)),
+                  );
+                  for (
+                    let waveIndex = 0;
+                    waveIndex < wave.length;
+                    waveIndex++
+                  ) {
+                    const { source, pageIndex, attemptStart, url, domain } =
+                      wave[waveIndex];
+                    try {
+                      const allowedHosts = hosts.includes(url.hostname)
+                        ? hosts
+                        : [...hosts, url.hostname];
+                      const safe = validateOutboundUrl(
+                        source.url,
+                        allowedHosts,
+                        {
+                          allowHttp: true,
+                        },
+                      );
+                      const cachedPage = pageCache.get(safe.href);
+                      const cached =
+                        cachedPage &&
+                        cachedPage.expires > (config.now?.() ?? Date.now())
+                          ? cachedPage
+                          : undefined;
+                      const outcome = outcomes[waveIndex];
+                      if (outcome.status === "rejected") throw outcome.reason;
+                      const result = outcome.value;
+                      live();
+                      const readBody =
+                        /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
+                          result.contentType,
+                        )
+                          ? result.text.trim()
+                          : webPageText(result.text);
+                      const excerpt = readBody;
+                      if (!excerpt) throw new ModelError("WEB_EMPTY");
+                      if (excerpt.length > 200000)
+                        throw new ModelError("WEB_TEXT_TOO_LARGE");
+                      source.excerpt = excerpt;
+                      source.kind = "official_page";
+                      delete source.library;
+                      Object.assign(
+                        source,
+                        normalizeAttachedEvidence(
+                          source,
+                          report.sources.find(
+                            (parent) => parent.id === source.parentSourceId,
+                          ),
+                          readBody,
+                        ),
+                      );
+                      delete source.retrievalNote;
+                      delete source.finalUrl;
+                      delete source.transport;
+                      Object.assign(
+                        source,
+                        readSourceMetadata(result, source.url),
+                      );
+                      if (
+                        attachedIds.has(source.id) &&
+                        result.transport !== "http"
+                      )
+                        source.retrievalNote =
+                          "已从学校官网发现并成功读取本附件正文，使用独立附件网址引用。";
+                      source.retrievedAt =
+                        cached?.retrievedAt ??
+                        new Date(config.now?.() ?? Date.now()).toISOString();
+                      if (!cached) {
+                        if (pageCache.size >= 120)
+                          pageCache.delete(pageCache.keys().next().value!);
+                        pageCache.set(safe.href, {
+                          ...result,
+                          retrievedAt: source.retrievedAt,
+                          expires: (config.now?.() ?? Date.now()) + 15 * 60000,
+                        });
+                      }
+                      // Read attachment bodies under the same budget and transport guards.
+                      // Give every school its first turn before expanding an individual notice.
+                      if (
+                        (attachmentDepth.get(source.id) ?? 0) <
+                          B.attachmentDepth &&
+                        /html/i.test(result.contentType ?? "")
+                      ) {
+                        locationLinks.set(domain, [
+                          ...(locationLinks.get(domain) ?? []),
+                          ...researchLocationLinks(source, result.text).map(
+                            (link) => ({
+                              ...link,
+                              parentSourceId: source.id,
+                            }),
+                          ),
+                        ]);
+                        const documentLinks = researchAttachments(
+                          source,
+                          result.text,
+                          {
+                            targetYear: year,
+                            maxLinks: B.attachmentLinks,
+                          },
+                        );
+                        source.documentLinks = [
+                          ...researchAttachments(source, result.text, {
+                            targetYear: year,
+                            maxLinks: B.attachmentLinks,
+                          }),
+                          ...researchLocationLinks(source, result.text),
+                        ]
+                          .slice(0, B.attachments)
+                          .map(({ url, title }) => ({
+                            url,
+                            title,
+                          }));
+                        const children = documentLinks
+                          .filter((link) => !seenPages.has(link.url))
+                          .slice(
+                            0,
+                            Math.max(0, B.attachments - attachmentCount),
+                          )
+                          .map((link): WebSource => {
+                            seenPages.add(link.url);
+                            const child = {
+                              id: `research-attachment-${++attachmentCount}`,
+                              title: link.title,
+                              url: link.url,
+                              excerpt: "",
+                              retrievedAt: source.retrievedAt,
+                              kind: "search_snippet" as const,
+                              verified: false as const,
+                              parentSourceId: source.id,
+                              retrievalNote: `从已读取的学校官网页面“${source.title}”发现的目录或附件，正文尚待读取。`,
+                            };
+                            attachedIds.add(child.id);
+                            attachmentDepth.set(
+                              child.id,
+                              (attachmentDepth.get(source.id) ?? 0) + 1,
+                            );
+                            sourceDirections.set(
+                              child.id,
+                              sourceDirections.get(source.id)!,
+                            );
+                            return child;
+                          });
+                        report.sources.push(...children);
+                        readingOrder.splice(
+                          Math.max(cursor, firstRoundCount),
+                          0,
+                          ...children,
+                        );
+                      }
+                      library?.save(source);
+                    } catch (failure) {
+                      live();
+                      if (
+                        !attempts
+                          .slice(attemptStart)
+                          .some(
+                            (attempt) =>
+                              attempt.url === source.url &&
+                              attempt.status === "failed",
+                          )
+                      )
+                        recordAttempt({
+                          url: source.url,
+                          status: "failed",
+                          reason:
+                            failure instanceof ModelError
+                              ? failure.code
+                              : "WEB_UNAVAILABLE",
+                          attemptedAt: new Date(
+                            config.now?.() ?? Date.now(),
+                          ).toISOString(),
+                        });
+                      report.limitations.push(
+                        `未能读取一项学校网页正文：${researchReason(failure instanceof ModelError ? failure.code : "WEB_UNAVAILABLE")}已保留搜索摘要。`,
+                      );
+                    }
+                    await stage(
+                      "researching",
+                      `已读取 ${pageReads} 项学校网页，继续核对专业与费用`,
+                    );
+                  }
+                }
+                for (const source of report.sources.filter(isSchoolPage))
+                  library?.save(source);
+                // Campus geography is a separate bounded lookup, only after reading an
+                // actual coded programme and a current campus policy. Discovery metadata
+                // never establishes the candidate's city by itself.
+                let geographyReads = 0;
+                const observedCandidates = buildEvidenceCandidates({
+                  run,
+                  disciplines,
+                  sources: report.sources,
+                  targetYear: year,
+                  schoolNames: candidateLeads.map((lead) => lead.school),
+                }).recommendations;
+                const geographySchools = [
+                  ...new Set(
+                    observedCandidates.map((item) => item.institutionName),
+                  ),
+                ].map((school) => {
+                  const discovery = candidateLeads.find(
+                    (lead) => lead.school === school,
+                  );
+                  const owned = report.sources.find(
+                    (source) =>
+                      isSchoolPage(source) &&
+                      sourceHasSchoolIdentity(source, school),
+                  );
+                  return {
+                    school,
+                    officialDomain: owned
+                      ? academicDomain(owned.url)
+                      : discovery?.officialDomain,
+                    locationDiscoveryUrls: discovery?.locationDiscoveryUrls,
+                  };
+                });
+                for (const lead of geographySchools) {
+                  if (!regions.length) break;
+                  if (
+                    geographyReads >= B.geographyReads ||
+                    pageReads >= B.reads
+                  )
+                    break;
+                  const observed = observedCandidates.filter(
+                    (item) => item.institutionName === lead.school,
+                  );
+                  if (
+                    !observed.some(
+                      (item) =>
+                        item.collegeName &&
+                        item.majorCode &&
+                        !item.location &&
+                        (item.referenceBasis !== undefined ||
+                          item.admissionStatus === "current_evidence"),
+                    )
+                  )
+                    continue;
+                  if (
+                    !report.sources.some(
+                      (source) =>
+                        isSchoolPage(source) &&
+                        sourceHasSchoolIdentity(source, lead.school) &&
+                        researchSourceYear(source) !== undefined &&
+                        /所在校区|培养校区|就读校区|培养地点|教学地点|学习地点/.test(
+                          source.excerpt,
+                        ),
+                    )
+                  )
+                    continue;
+                  const linked = (
+                    locationLinks.get(lead.officialDomain ?? "") ?? []
+                  ).find(
+                    (link) =>
+                      !seenPages.has(link.url) &&
+                      report.sources.some(
+                        (parent) =>
+                          parent.id === link.parentSourceId &&
+                          isSchoolPage(parent) &&
+                          sourceHasSchoolIdentity(parent, lead.school),
+                      ),
+                  );
+                  const geographyUrl =
+                    linked?.url ??
+                    lead.locationDiscoveryUrls?.find(
+                      (value) => !seenPages.has(value),
+                    );
+                  if (!geographyUrl) continue;
+                  const url = new URL(geographyUrl);
+                  const domain = academicDomain(geographyUrl);
+                  if (
+                    domain !== lead.officialDomain ||
+                    (schoolReads.get(domain) ?? 0) >= B.schoolReads
+                  )
+                    continue;
+                  const academic =
+                    (config.allowAcademicHosts ?? true) &&
+                    /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
+                  if (!hosts.includes(url.hostname) && !academic) continue;
+                  geographyReads++;
+                  pageReads++;
+                  schoolReads.set(domain, (schoolReads.get(domain) ?? 0) + 1);
+                  seenPages.add(geographyUrl);
+                  await stage(
+                    "researching",
+                    `正在核对${lead.school}的培养校区所在地`,
+                  );
+                  try {
+                    const allowedHosts = hosts.includes(url.hostname)
+                      ? hosts
+                      : [...hosts, url.hostname];
+                    const safe = validateOutboundUrl(
+                      geographyUrl,
+                      allowedHosts,
+                      {
+                        allowHttp: true,
+                      },
+                    );
+                    const saved = pageCache.get(safe.href);
+                    const cached =
+                      saved && saved.expires > (config.now?.() ?? Date.now())
+                        ? saved
+                        : undefined;
+                    const page = cached ?? (await fetchPage(safe.href));
+                    live();
+                    const excerpt = compactEvidence(
+                      webPageText(page.text),
+                      disciplines,
+                      6000,
+                    );
+                    if (!excerpt) throw new ModelError("WEB_EMPTY");
+                    const retrievedAt =
+                      cached?.retrievedAt ??
+                      new Date(config.now?.() ?? Date.now()).toISOString();
+                    report.sources.push({
+                      id: `research-campus-${geographyReads}`,
+                      title: `${lead.school}校区所在地资料`,
+                      url: safe.href,
+                      ...readSourceMetadata(page, safe.href),
+                      excerpt,
+                      retrievedAt,
+                      kind: "official_page",
+                      verified: false,
+                    });
+                    if (!cached) {
+                      if (pageCache.size >= 120)
+                        pageCache.delete(pageCache.keys().next().value!);
+                      pageCache.set(safe.href, {
+                        ...page,
+                        retrievedAt,
+                        expires: (config.now?.() ?? Date.now()) + 15 * 60000,
+                      });
+                    }
+                  } catch (failure) {
+                    live();
+                    report.limitations.push(
+                      `尚未取得${lead.school}的一项校区所在地资料，城市证据仍按已读取正文核验。`,
+                    );
+                  }
+                }
+                refreshCoverage();
+                if (
+                  library &&
+                  !supplement &&
+                  report.evidenceCoverage!.gaps.some(
+                    (gap) => gap.priority === "high",
+                  ) &&
+                  pageReads < B.reads &&
+                  found.requestCount < B.searches
+                ) {
+                  const extra = await repairResearchEvidence({
+                    subjectId: input.subjectId,
+                    gaps: libraryMissingGaps(
+                      report.evidenceCoverage!.gaps.filter(
+                        (gap) => gap.priority === "high",
+                      ),
+                      library?.queryFacts({
+                        disciplineCodes: disciplines.map((d) => d.code),
+                        targetYear: year,
+                      }) ?? [],
+                      report.sources,
+                      schoolPreferences,
+                    ),
+                    sources: report.sources,
+                    targetYear: year,
+                    preferences: schoolPreferences,
+                    web,
+                    maxRequests: Math.min(
+                      B.repairSearches,
+                      B.searches - found.requestCount,
+                    ),
+                    maxReads: Math.min(B.cityReads, B.reads - pageReads),
+                    signal: scheduled.signal,
+                    lookupKeys,
+                    attempts,
+                    readPage: fetchPage,
+                    onSource: (source) => {
+                      live();
+                      library.save(source);
+                    },
+                    onProgress: (detail) => stage("researching", detail),
+                    now: config.now,
+                    needsEvidence,
+                  });
+                  report.sources = extra.sources;
+                  lookupKeys = extra.lookupKeys;
+                  pageReads += extra.readCount;
+                  usage.searches.paid += extra.requestCount;
+                  found.requestCount += extra.requestCount;
+                  report.searched ||= extra.searched;
+                  report.limitations.push(...extra.limitations);
+                  refreshCoverage();
+                }
+                if (
+                  (!report.sources.some(isSchoolPage) &&
+                    report.sources.every(
+                      (source) =>
+                        source.retrievalNote?.startsWith("公开学校发现目录") ||
+                        !source.excerpt.trim(),
+                    )) ||
+                  (!report.searched && !report.sources.some(isSchoolPage)) ||
+                  !report.sources.length
+                )
+                  return {
+                    ...report,
+                    status: "blocked",
+                    reason: "NO_WEB_EVIDENCE",
+                    summary:
+                      "已结合画像规划方向，但尚未取得可引用的学校专业资料，不能虚构具体推荐。",
+                  };
+                if (
+                  report.sources.some(isSchoolPage) &&
+                  !report.sources.some(
+                    (source) =>
+                      isSchoolPage(source) &&
+                      !admissionEvidence(source, year).excluded,
+                  )
+                )
+                  return {
+                    ...report,
+                    status: "partial",
+                    reason: "RESEARCH_EVIDENCE_EXCLUDED",
+                    summary:
+                      "已检索的资料含示例或停招信息，尚不足以支持具体学校专业建议。",
+                  };
+                if (!report.sources.some(isSchoolPage))
+                  return {
+                    ...report,
+                    status: "partial",
+                    reason: "SEARCH_SNIPPETS_ONLY",
+                    summary:
+                      "已检索到线索，但学校官网正文尚未读取成功，暂未形成可核对的院校推荐。",
+                    limitations: [
+                      ...report.limitations,
+                      "本次尚未读取学校官网正文，搜索摘要不足以支持最终学校专业分析，未继续调用最终报告模型。",
+                    ],
+                    coverage: {
+                      targetMin: 5,
+                      targetMax: 10,
+                      schoolCount: 0,
+                      preferredCount: 0,
+                      alternativeCount: 0,
+                      shortfallReasons: [
+                        `本次检索 ${found.requestCount} 项、尝试读取 ${scheduled.statistics.reads} 项官网资料，目前只有搜索摘要，尚未达到5–10校的目标。`,
+                        ...(found.stoppedReason
+                          ? [researchReason(found.stoppedReason)]
+                          : []),
+                        "无法读取资料不代表没有符合条件的学校；请稍后重新检索，已有来源已保留。",
+                      ],
+                    },
+                  };
+              }
+              checkpoint.evidenceReady = true;
+              await stage("analyzing");
+              // A search direction is a lead, not a restriction on evidence discovered later.
+              // Only currently allowed national categories can be added from actual school text.
+              const evidenceText = report.sources
+                .filter(isSchoolPage)
+                .map((source) => source.excerpt)
+                .join(" ");
+              const evidencedDirections = directory.allowed.filter(
+                (discipline) =>
+                  disciplines.some((item) => item.code === discipline.code) ||
+                  new RegExp(`\\b${discipline.code}\\d{0,2}\\b`).test(
+                    evidenceText,
+                  ) ||
+                  evidenceText.includes(discipline.name),
+              );
+              coveredDisciplines = evidencedDirections;
+              const inventory =
+                resumeEvidence && retained
+                  ? {
+                      recommendations: retained.recommendations,
+                      audit: retained.candidateAudit ?? [],
+                    }
+                  : buildEvidenceCandidates({
+                      run,
+                      disciplines: evidencedDirections,
+                      sources: report.sources,
+                      targetYear: year,
+                      schoolNames: [
+                        ...candidateLeads.map((item) => item.school),
+                        ...(input.previousReport?.candidateAudit?.map(
+                          (item) => item.institutionName,
+                        ) ?? []),
+                        ...plan.directions.flatMap(
+                          (item) => item.searchSchools ?? [],
+                        ),
+                      ],
+                    });
+              report.candidateAudit = inventory.audit;
+              report.recommendations = rankDemandCandidates(
+                inventory.recommendations,
+                run,
+                evidencedDirections,
+                report.sources,
+                year,
+              );
+              try {
+                const rememberValidation = (
+                  value: ReturnType<typeof validateReport>,
+                ) => {
+                  report.rejectedRecommendations = [
+                    ...(report.rejectedRecommendations ?? []),
+                    ...value.rejectedRecommendations,
+                  ];
+                  report.validationIssues = [
+                    ...new Map(
+                      [
+                        ...(report.validationIssues ?? []),
+                        ...value.validationIssues,
+                      ].map((issue) => [`${issue.path}:${issue.code}`, issue]),
+                    ).values(),
+                  ];
+                  return value;
+                };
+                const messages = reportMessages(
+                  run,
+                  plan,
+                  evidencedDirections,
+                  report.sources,
+                  year,
+                  [
+                    ...(library?.queryFacts({
+                      disciplineCodes: evidencedDirections.map((d) => d.code),
+                      targetYear: year,
+                    }) ?? []),
+                    ...report.sources
+                      .filter(isSchoolPage)
+                      .filter((source) => !source.library)
+                      .flatMap((source) =>
+                        extractProgramFacts(
+                          source,
+                          report.sources,
+                          report.generatedAt,
+                          report.recommendations,
+                        ),
+                      ),
+                  ],
+                  {
+                    recommendations: report.recommendations,
+                    audit: inventory.audit,
+                  },
+                );
+                const visibleIds = new Set<string>();
+                const modelInput = JSON.parse(messages[1].content);
+                for (const source of modelInput.sources)
+                  visibleIds.add(source.id);
+                for (const fact of modelInput.structuredFacts) {
+                  visibleIds.add(fact.sourceId);
+                  if ("supportingEvidence" in fact.value)
+                    for (const ref of fact.value.supportingEvidence ?? [])
+                      visibleIds.add(ref.sourceId);
+                }
+                const visibleSources = report.sources
+                  .filter((s) => visibleIds.has(s.id))
+                  .map((source) => ({
+                    ...source,
+                    excerpt: [
+                      ...modelInput.sources
+                        .filter((s: { id: string }) => s.id === source.id)
+                        .map((s: { excerpt: string }) => s.excerpt),
+                      ...modelInput.structuredFacts
+                        .filter((f: ProgramFact) => f.sourceId === source.id)
+                        .flatMap((f: ProgramFact) => [
+                          f.quote,
+                          "quote" in f.value ? f.value.quote : "",
+                        ]),
+                      ...modelInput.structuredFacts.flatMap((f: ProgramFact) =>
+                        "supportingEvidence" in f.value
+                          ? (f.value.supportingEvidence ?? [])
+                              .filter((r) => r.sourceId === source.id)
+                              .map((r) => r.quote)
+                          : [],
+                      ),
+                    ]
+                      .filter(
+                        (quote): quote is string =>
+                          typeof quote === "string" && !!quote,
+                      )
+                      .filter(
+                        (quote, index, all) =>
+                          !all.some(
+                            (other, otherIndex) =>
+                              (other.length > quote.length ||
+                                (other.length === quote.length &&
+                                  otherIndex < index)) &&
+                              other.includes(quote),
+                          ),
+                      )
+                      .join("\n"),
+                  }));
+                const result = await generateResearchValue({
+                  runtime: trackedRuntime,
+                  subjectId: input.subjectId,
+                  key: {
+                    task: promptVersion,
                     guidanceRunId: run.guidanceRunId,
                     versions: run.versions,
-                    evidenceHash: hash(supplemental),
+                    evidenceHash: hash(messages),
                   },
-                  supplemental,
-                  (raw) =>
-                    rememberValidation(
+                  messages,
+                  validate: (raw) => {
+                    const value = rememberValidation(
                       validateReport(
                         raw,
                         run,
@@ -2684,320 +2829,543 @@ export function createResearchReportModule(
                         evidencedDirections,
                         year,
                       ),
-                    ),
+                    );
+                    if (!value.recommendations.length && value.rejected.length)
+                      if (
+                        !new Set([
+                          "SEARCH_SNIPPETS_ONLY",
+                          "KNOWN_ADMISSION_CONFLICT",
+                          "RESEARCH_EVIDENCE_EXCLUDED",
+                        ]).has(value.rejected[0])
+                      )
+                        throw new ModelError(value.rejected[0]);
+                    return value;
+                  },
                   options,
-                );
+                  beforeRepair: () =>
+                    stage(
+                      "analyzing",
+                      "正在核对并修正学校专业建议，无需补填画像",
+                    ),
+                  beforeRetry: () => beforeRetry("analyzing"),
+                });
                 live();
-                const merged = [...value.recommendations];
-                for (const item of extra.value.recommendations) {
-                  const existing = merged.findIndex(
-                    (previous) =>
-                      previous.institutionName === item.institutionName,
-                  );
-                  if (existing >= 0) {
-                    if (
-                      !matchesPreferredCity(merged[existing]) &&
-                      matchesPreferredCity(item)
-                    )
-                      merged[existing] = item;
-                    continue;
-                  }
-                  if (merged.length < 10) merged.push(item);
-                  else if (
-                    matchesPreferredCity(item) &&
-                    !merged.some(matchesPreferredCity)
-                  ) {
-                    // A full outside list cannot occupy every seat during city recovery.
-                    const ordered = sortCityRecommendations(merged);
-                    merged.splice(merged.indexOf(ordered.at(-1)!), 1, item);
-                  }
-                }
-                const ranked = sortCityRecommendations(merged);
+                let value = result.value;
                 value = {
                   ...value,
-                  recommendations: ranked.slice(0, 10),
-                  rejected: [...value.rejected, ...extra.value.rejected],
-                  rejectedRecommendations: [
-                    ...value.rejectedRecommendations,
-                    ...extra.value.rejectedRecommendations,
-                  ],
-                  validationIssues: [
-                    ...value.validationIssues,
-                    ...extra.value.validationIssues,
-                  ],
-                  limitations: [
-                    ...value.limitations,
-                    ...extra.value.limitations,
-                  ],
+                  recommendations: rankDemandCandidates(
+                    [
+                      ...value.recommendations.map((item) => {
+                        const grounded = inventory.recommendations.filter(
+                          (candidate) =>
+                            candidate.institutionName ===
+                              item.institutionName &&
+                            candidate.disciplineCode === item.disciplineCode &&
+                            candidate.programName === item.programName,
+                        );
+                        return grounded.length === 1
+                          ? {
+                              ...grounded[0],
+                              ...item,
+                              collegeName:
+                                grounded[0].collegeName ?? item.collegeName,
+                              majorCode:
+                                grounded[0].majorCode ?? item.majorCode,
+                              location: grounded[0].location ?? item.location,
+                              constraintChecks: (
+                                item.constraintChecks ?? []
+                              ).map((check) =>
+                                check.field === "cities" && grounded[0].location
+                                  ? grounded[0].constraintChecks!.find(
+                                      (groundCheck) =>
+                                        groundCheck.field === "cities",
+                                    )!
+                                  : check,
+                              ),
+                              citations: [
+                                ...new Set([
+                                  ...item.citations,
+                                  ...grounded[0].citations,
+                                ]),
+                              ],
+                            }
+                          : item;
+                      }),
+                      ...inventory.recommendations,
+                    ],
+                    run,
+                    evidencedDirections,
+                    report.sources,
+                    year,
+                  ),
                 };
-                if (
-                  JSON.stringify(value.recommendations) !==
-                  JSON.stringify(result.value.recommendations)
-                )
-                  value.summary = `已保留通过官网专业与本人画像核对的${value.recommendations.length}所学校：${value.recommendations.map((item) => `${item.institutionName}的${item.programName}`).join("、")}。综合分层、准备成本及年度待核验事项见各项建议。`;
-              } catch (failure) {
-                live();
-                if (
-                  failure === progressFailure ||
-                  (failure instanceof ModelError &&
-                    failure.code === "DATA_DELETED")
-                )
-                  throw failure;
-                report.limitations.push(
-                  `学校覆盖补充未完成，已保留此前核对通过的建议：${researchReason(failure instanceof ModelError ? failure.code : "MODEL_UNAVAILABLE")}`,
+                const schoolPages = report.sources.filter(
+                  (source) =>
+                    isSchoolPage(source) && /硕士|研究生/.test(source.excerpt),
                 );
-              }
-            }
-          }
-          Object.assign(report, {
-            summary: value.summary,
-            facts: value.facts,
-            recommendations: value.recommendations,
-          });
-          report.limitations.push(...value.limitations);
-          const fees = await enrichResearchFees({
-            subjectId: input.subjectId,
-            recommendations: report.recommendations.map((item) => ({
-              ...item,
-              programName: item.programName!,
-            })),
-            sources: report.sources,
-            disciplines: evidencedDirections,
-            targetYear: year,
-            web,
-            remainingReads: B.reads - pageReads,
-            signal: scheduled.signal,
-            maxRequests: B.searches - found.requestCount,
-            onProgress: (detail) => stage("analyzing", detail),
-            now: config.now,
-            readPage: async (value) => {
-              live();
-              if (pageReads >= B.reads)
-                throw new ModelError("WEB_BUDGET_EXHAUSTED");
-              const url = new URL(value);
-              const academic =
-                (config.allowAcademicHosts ?? true) &&
-                /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
-              if (!hosts.includes(url.hostname) && !academic)
-                throw new ModelError("WEB_HOST_BLOCKED");
-              const domain = academicDomain(value);
-              // Initial catalogue reads reserve a separate, bounded opportunity
-              // for the same school's fee notice and its linked PDF.
-              if ((schoolReads.get(domain) ?? 0) >= B.schoolReads)
-                throw new ModelError("WEB_BUDGET_EXHAUSTED");
-              schoolReads.set(domain, (schoolReads.get(domain) ?? 0) + 1);
-              pageReads++;
-              const allowedHosts = hosts.includes(url.hostname)
-                ? hosts
-                : [...hosts, url.hostname];
-              const safe = validateOutboundUrl(value, allowedHosts, {
-                allowHttp: true,
-              });
-              const saved = pageCache.get(safe.href);
-              if (saved && saved.expires > (config.now?.() ?? Date.now()))
-                return saved;
-              const page = await fetchPage(safe.href);
-              live();
-              const body =
-                /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
-                  page.contentType,
-                )
-                  ? page.text.trim()
-                  : webPageText(page.text);
-              if (!compactEvidence(body, evidencedDirections, 12000))
-                throw new ModelError("WEB_EMPTY");
-              if (pageCache.size >= 120)
-                pageCache.delete(pageCache.keys().next().value!);
-              pageCache.set(safe.href, {
-                ...page,
-                retrievedAt: new Date(
-                  config.now?.() ?? Date.now(),
-                ).toISOString(),
-                expires: (config.now?.() ?? Date.now()) + 15 * 60000,
-              });
-              return page;
-            },
-          });
-          live();
-          report.sources.push(...fees.sources);
-          report.limitations.push(...fees.limitations);
-          report.recommendations = report.recommendations.map((item) =>
-            bindRecommendationEvidence(
-              item,
-              run,
-              evidencedDirections.find((d) => d.code === item.disciplineCode)!,
-              report.sources,
-              year,
-            ),
-          );
-          usage.searches.paid += fees.requestCount;
-          found.requestCount += fees.requestCount;
-          report.recommendations = rankDemandCandidates(
-            [...report.recommendations, ...inventory.recommendations].map(
-              (item) =>
-                bindRecommendationEvidence(
-                  item,
+                const observedNames = new Set(
+                  schoolPages.flatMap((source) =>
+                    (
+                      source.excerpt.match(
+                        /[\p{Script=Han}]{2,16}(?:大学|学院)/gu,
+                      ) ?? []
+                    ).filter((name) => sourceHasSchoolIdentity(source, name)),
+                  ),
+                );
+                const needsCityCoverage =
+                  regions.length > 0 &&
+                  !value.recommendations.some(matchesPreferredCity);
+                const canInvestigateCity = hasPreferredCityProgramLead(
+                  report.sources,
+                  evidencedDirections,
+                  regions,
+                  year,
+                  researchContext(run).profile,
+                );
+                if (
+                  (value.recommendations.length < 5 &&
+                    new Set(
+                      schoolPages.map((source) => academicDomain(source.url)),
+                    ).size >= 5 &&
+                    observedNames.size >= 5) ||
+                  (needsCityCoverage && canInvestigateCity)
+                ) {
+                  await stage(
+                    "analyzing",
+                    needsCityCoverage && canInvestigateCity
+                      ? "意向城市尚未形成建议，正在依据已读取官网补充比较"
+                      : "已有多所学校官网依据，正在补充尚未充分比较的学校建议",
+                  );
+                  const supplemental = [
+                    ...messages,
+                    {
+                      role: "user" as const,
+                      content: `${sourceCitationInstruction}已有${value.recommendations.length}所学校通过核验。${value.recommendations.length < 5 ? "仍未达到5–10校目标。" : "数量已达到目标，但不能代替意向城市覆盖。"}${needsCityCoverage && canInvestigateCity ? `本人意向城市是${regions.join("、")}，目前没有可核验符合意向城市的建议，已有官网原文包含本地项目线索；优先重新比较这些学校，逐项给出同校同专业的官网培养城市地址证据。不得把外地项目说成符合意向城市，不得推定接受跨城通勤。` : ""}请重新检查上述真实官网资料，补充其他有据且适合本人的学校及具体专业，优先给出此前遗漏的学校；不编造项目，不放宽已知资格冲突。仍返回完整同格式JSON。已保留：${value.recommendations
+                        .map((item) => item.institutionName)
+                        .join("、")
+                        .slice(0, 180)}。`,
+                    },
+                  ];
+                  if (JSON.stringify(supplemental).length <= B.thinkingChars) {
+                    try {
+                      const extra = await trackedRuntime.run(
+                        input.subjectId,
+                        {
+                          task: `${promptVersion}-coverage`,
+                          guidanceRunId: run.guidanceRunId,
+                          versions: run.versions,
+                          evidenceHash: hash(supplemental),
+                        },
+                        supplemental,
+                        (raw) =>
+                          rememberValidation(
+                            validateReport(
+                              raw,
+                              run,
+                              visibleSources,
+                              evidencedDirections,
+                              year,
+                            ),
+                          ),
+                        options,
+                      );
+                      live();
+                      const merged = [...value.recommendations];
+                      for (const item of extra.value.recommendations) {
+                        const existing = merged.findIndex(
+                          (previous) =>
+                            previous.institutionName === item.institutionName,
+                        );
+                        if (existing >= 0) {
+                          if (
+                            !matchesPreferredCity(merged[existing]) &&
+                            matchesPreferredCity(item)
+                          )
+                            merged[existing] = item;
+                          continue;
+                        }
+                        if (merged.length < 10) merged.push(item);
+                        else if (
+                          matchesPreferredCity(item) &&
+                          !merged.some(matchesPreferredCity)
+                        ) {
+                          // A full outside list cannot occupy every seat during city recovery.
+                          const ordered = sortCityRecommendations(merged);
+                          merged.splice(
+                            merged.indexOf(ordered.at(-1)!),
+                            1,
+                            item,
+                          );
+                        }
+                      }
+                      const ranked = sortCityRecommendations(merged);
+                      value = {
+                        ...value,
+                        recommendations: ranked.slice(0, 10),
+                        rejected: [...value.rejected, ...extra.value.rejected],
+                        rejectedRecommendations: [
+                          ...value.rejectedRecommendations,
+                          ...extra.value.rejectedRecommendations,
+                        ],
+                        validationIssues: [
+                          ...value.validationIssues,
+                          ...extra.value.validationIssues,
+                        ],
+                        limitations: [
+                          ...value.limitations,
+                          ...extra.value.limitations,
+                        ],
+                      };
+                      if (
+                        JSON.stringify(value.recommendations) !==
+                        JSON.stringify(result.value.recommendations)
+                      )
+                        value.summary = `已保留通过官网专业与本人画像核对的${value.recommendations.length}所学校：${value.recommendations.map((item) => `${item.institutionName}的${item.programName}`).join("、")}。综合分层、准备成本及年度待核验事项见各项建议。`;
+                    } catch (failure) {
+                      live();
+                      if (
+                        failure === progressFailure ||
+                        (failure instanceof ModelError &&
+                          failure.code === "DATA_DELETED")
+                      )
+                        throw failure;
+                      report.limitations.push(
+                        `学校覆盖补充未完成，已保留此前核对通过的建议：${researchReason(failure instanceof ModelError ? failure.code : "MODEL_UNAVAILABLE")}`,
+                      );
+                    }
+                  }
+                }
+                Object.assign(report, {
+                  summary: value.summary,
+                  facts: value.facts,
+                  recommendations: value.recommendations,
+                });
+                report.limitations.push(...value.limitations);
+                await persist();
+                const fees = resumeEvidence
+                  ? {
+                      recommendations: report.recommendations,
+                      sources: [],
+                      limitations: [],
+                      requestCount: 0,
+                    }
+                  : await enrichResearchFees({
+                      subjectId: input.subjectId,
+                      recommendations: report.recommendations.map((item) => ({
+                        ...item,
+                        programName: item.programName!,
+                      })),
+                      sources: report.sources,
+                      disciplines: evidencedDirections,
+                      targetYear: year,
+                      web,
+                      remainingReads: B.reads - pageReads,
+                      signal: scheduled.signal,
+                      maxRequests: B.searches - found.requestCount,
+                      onProgress: (detail) => stage("analyzing", detail),
+                      now: config.now,
+                      readPage: async (value) => {
+                        live();
+                        if (pageReads >= B.reads)
+                          throw new ModelError("WEB_BUDGET_EXHAUSTED");
+                        const url = new URL(value);
+                        const academic =
+                          (config.allowAcademicHosts ?? true) &&
+                          /^[a-z0-9.-]+\.edu\.cn$/.test(url.hostname);
+                        if (!hosts.includes(url.hostname) && !academic)
+                          throw new ModelError("WEB_HOST_BLOCKED");
+                        const domain = academicDomain(value);
+                        // Initial catalogue reads reserve a separate, bounded opportunity
+                        // for the same school's fee notice and its linked PDF.
+                        if ((schoolReads.get(domain) ?? 0) >= B.schoolReads)
+                          throw new ModelError("WEB_BUDGET_EXHAUSTED");
+                        schoolReads.set(
+                          domain,
+                          (schoolReads.get(domain) ?? 0) + 1,
+                        );
+                        pageReads++;
+                        const allowedHosts = hosts.includes(url.hostname)
+                          ? hosts
+                          : [...hosts, url.hostname];
+                        const safe = validateOutboundUrl(value, allowedHosts, {
+                          allowHttp: true,
+                        });
+                        const saved = pageCache.get(safe.href);
+                        if (
+                          saved &&
+                          saved.expires > (config.now?.() ?? Date.now())
+                        )
+                          return saved;
+                        const page = await fetchPage(safe.href);
+                        live();
+                        const body =
+                          /^(?:application\/pdf|application\/vnd\.(?:ms-excel|openxmlformats-officedocument\.spreadsheetml\.sheet))(?:;|$)/i.test(
+                            page.contentType,
+                          )
+                            ? page.text.trim()
+                            : webPageText(page.text);
+                        if (!compactEvidence(body, evidencedDirections, 12000))
+                          throw new ModelError("WEB_EMPTY");
+                        if (pageCache.size >= 120)
+                          pageCache.delete(pageCache.keys().next().value!);
+                        pageCache.set(safe.href, {
+                          ...page,
+                          retrievedAt: new Date(
+                            config.now?.() ?? Date.now(),
+                          ).toISOString(),
+                          expires: (config.now?.() ?? Date.now()) + 15 * 60000,
+                        });
+                        return page;
+                      },
+                    });
+                live();
+                report.sources.push(...fees.sources);
+                report.limitations.push(...fees.limitations);
+                report.recommendations = report.recommendations.map((item) =>
+                  bindRecommendationEvidence(
+                    item,
+                    run,
+                    evidencedDirections.find(
+                      (d) => d.code === item.disciplineCode,
+                    )!,
+                    report.sources,
+                    year,
+                  ),
+                );
+                usage.searches.paid += fees.requestCount;
+                found.requestCount += fees.requestCount;
+                report.recommendations = rankDemandCandidates(
+                  [...report.recommendations, ...inventory.recommendations].map(
+                    (item) =>
+                      bindRecommendationEvidence(
+                        item,
+                        run,
+                        evidencedDirections.find(
+                          (d) => d.code === item.disciplineCode,
+                        )!,
+                        report.sources,
+                        year,
+                      ),
+                  ),
                   run,
-                  evidencedDirections.find(
-                    (d) => d.code === item.disciplineCode,
-                  )!,
+                  evidencedDirections,
                   report.sources,
                   year,
-                ),
-            ),
-            run,
-            evidencedDirections,
-            report.sources,
-            year,
-          );
-          const allHaveSchoolPage = report.recommendations.every((item) =>
-            item.citations.some((id) =>
-              report.sources.some(
-                (source) =>
-                  source.id === id &&
-                  isSchoolPage(source) &&
-                  supportsProgram(
-                    source,
-                    item.institutionName,
-                    item.programName!,
-                    evidencedDirections.find(
-                      (discipline) => discipline.code === item.disciplineCode,
-                    )!,
+                );
+                const allHaveSchoolPage = report.recommendations.every((item) =>
+                  item.citations.some((id) =>
+                    report.sources.some(
+                      (source) =>
+                        source.id === id &&
+                        isSchoolPage(source) &&
+                        supportsProgram(
+                          source,
+                          item.institutionName,
+                          item.programName!,
+                          evidencedDirections.find(
+                            (discipline) =>
+                              discipline.code === item.disciplineCode,
+                          )!,
+                        ),
+                    ),
                   ),
-              ),
-            ),
-          );
-          if (value.rejected.length)
-            report.limitations.push(
-              "部分内容未通过来源与画像核对，已单独移除；其余通过核对的建议仍可查看。",
-            );
-          report.status =
-            report.recommendations.length >= 5 &&
-            allHaveSchoolPage &&
-            (!regions.length ||
-              report.recommendations.some(matchesPreferredCity)) &&
-            !value.rejected.length
-              ? "completed"
-              : "partial";
-          if (report.status === "partial")
-            report.reason = value.rejected.length
-              ? report.recommendations.length
-                ? "RESEARCH_PARTIAL_VALIDATION"
-                : value.rejected[0]
-              : !report.sources.some(isSchoolPage) || !allHaveSchoolPage
-                ? "SEARCH_SNIPPETS_ONLY"
-                : regions.length &&
-                    !report.recommendations.some(matchesPreferredCity)
-                  ? "PREFERRED_CITY_COVERAGE_INCOMPLETE"
-                  : "INSUFFICIENT_RESEARCH_EVIDENCE";
-        } catch (failure) {
-          live();
-          if (failure === progressFailure) throw failure;
-          if (failure instanceof ModelError && failure.code === "DATA_DELETED")
-            throw failure;
-          report.status = "partial";
-          report.failureStage = "analyzing";
-          report.reason =
-            failure instanceof ModelError ? failure.code : "MODEL_UNAVAILABLE";
-          report.summary = report.recommendations.length
-            ? "模型补充分析未完成，已保留从官网专业条目直接形成的需求比较；已核验候选不会因模型失败而消失。"
-            : "系统已检索学校资料，但本次结论未能完成生成或核对。你的画像和已取得的资料已保留，可重试生成学校专业建议。";
-        }
-        report.candidateAudit = inventory.audit.map((item) => {
-          if (
-            report.recommendations.some(
-              (recommendation) =>
-                recommendation.institutionName === item.institutionName,
-            )
-          )
-            return {
-              ...item,
-              status: "recommended" as const,
-              reasons: [
-                "已纳入当前需求比较；具体偏好、考试科目和待确认条件见学校卡片。",
-              ],
-            };
-          if (item.status === "recommended")
-            return {
-              ...item,
-              status: "not_selected" as const,
-              reasons: [
-                "存在可核验项目，本次优先展示需求匹配顺序靠前的10所学校；未展示不等于不适合。",
-              ],
-            };
-          return item;
-        });
-        if (report.recommendations.length)
-          report.summary = `按当前保存需求与已读取证据，优先比较以下${report.recommendations.length}所学校：${report.recommendations.map((item) => `${item.institutionName}的${item.programName}`).join("、")}。分层由需求规则生成，实际考试科目、测评准备观察与年度资格分别核对。`;
-        if (!report.failureStage) await stage("writing");
-        const schoolCount = new Set(
-          report.recommendations.map((item) => item.institutionName),
-        ).size;
-        const preferredCount = report.recommendations.filter(
-          (item) => item.tier === "preferred",
-        ).length;
-        const alternativeCount = report.recommendations.filter(
-          (item) => item.tier === "alternative",
-        ).length;
-        const exploratoryCount = report.recommendations.filter(
-          (item) => item.tier === "exploratory",
-        ).length;
-        const shortfallReasons: string[] = [];
-        const preferredCitySchoolCount =
-          report.recommendations.filter(matchesPreferredCity).length;
-        const unknownCitySchoolCount = report.recommendations.filter((item) =>
-          item.constraintChecks?.some(
-            (check) => check.field === "cities" && check.status === "unknown",
-          ),
-        ).length;
-        if (regions.length && !preferredCitySchoolCount) {
-          shortfallReasons.push(
-            `你的意向城市为${regions.join("、")}，本次尚未形成可核验符合意向城市的学校专业建议；已保留其他可核对候选。城市未知不会当作符合偏好，达到5校数量也不代表城市覆盖完成。`,
-          );
-          shortfallReasons.push(
-            `${cityRecoveryReads ? `本次为意向城市候选追加${cityRecoveryReads}次官网读取尝试` : "本次已优先检索意向城市，但没有取得足够的可核验城市证据"}；本次城市资料或适合建议覆盖仍有缺口，不代表${regions.join("、")}没有适合你的学校。`,
-          );
-        }
-        if (schoolCount < 5) {
-          shortfallReasons.push(
-            `本次形成 ${schoolCount} 所不同学校的有据建议，尚未达到5–10所的目标。已执行或复用 ${found.requestCount} 项检索、尝试读取 ${scheduled.statistics.reads} 项官网资料；搜索摘要和未通过学校专业核对的项目不计入推荐。`,
-          );
-          if (found.stoppedReason)
-            shortfallReasons.push(researchReason(found.stoppedReason));
-          if (report.failureStage && report.reason)
-            shortfallReasons.push(researchReason(report.reason));
-          shortfallReasons.push(
-            "这表示本次可核对资料覆盖不足，不能据此认定全国没有满足你条件的学校；已有候选仍可逐项比较。",
-          );
-        }
-        if (schoolCount && !preferredCount)
-          shortfallReasons.push(
-            "本次尚未形成同时有明确方向关联与已核验地域偏好的一级建议；请查看逐校需求比较和资料缺口。这不表示你的能力不足，也不表示不存在合适的首选学校。",
-          );
-        report.coverage = {
-          targetMin: 5,
-          targetMax: 10,
-          schoolCount,
-          preferredCount,
-          alternativeCount,
-          exploratoryCount,
-          shortfallReasons,
-          ...(regions.length
-            ? {
-                preferredCities: regions,
-                preferredCitySchoolCount,
-                unknownCitySchoolCount,
+                );
+                if (value.rejected.length)
+                  report.limitations.push(
+                    "部分内容未通过来源与画像核对，已单独移除；其余通过核对的建议仍可查看。",
+                  );
+                report.status =
+                  report.recommendations.length >= 5 &&
+                  allHaveSchoolPage &&
+                  (!regions.length ||
+                    report.recommendations.some(matchesPreferredCity)) &&
+                  !value.rejected.length
+                    ? "completed"
+                    : "partial";
+                if (report.status === "partial")
+                  report.reason = value.rejected.length
+                    ? report.recommendations.length
+                      ? "RESEARCH_PARTIAL_VALIDATION"
+                      : value.rejected[0]
+                    : !report.sources.some(isSchoolPage) || !allHaveSchoolPage
+                      ? "SEARCH_SNIPPETS_ONLY"
+                      : regions.length &&
+                          !report.recommendations.some(matchesPreferredCity)
+                        ? "PREFERRED_CITY_COVERAGE_INCOMPLETE"
+                        : "INSUFFICIENT_RESEARCH_EVIDENCE";
+              } catch (failure) {
+                live();
+                if (failure === progressFailure) throw failure;
+                if (
+                  failure instanceof ModelError &&
+                  failure.code === "DATA_DELETED"
+                )
+                  throw failure;
+                report.status = "partial";
+                report.failureStage = "analyzing";
+                report.reason =
+                  failure instanceof ModelError
+                    ? failure.code
+                    : "MODEL_UNAVAILABLE";
+                report.summary = report.recommendations.length
+                  ? "模型补充分析未完成，已保留从官网专业条目直接形成的需求比较；已核验候选不会因模型失败而消失。"
+                  : "系统已检索学校资料，但本次结论未能完成生成或核对。你的画像和已取得的资料已保留，可重试生成学校专业建议。";
               }
-            : {}),
+              report.candidateAudit = inventory.audit.map((item) => {
+                if (
+                  report.recommendations.some(
+                    (recommendation) =>
+                      recommendation.institutionName === item.institutionName,
+                  )
+                )
+                  return {
+                    ...item,
+                    status: "recommended" as const,
+                    reasons: [
+                      "已纳入当前需求比较；具体偏好、考试科目和待确认条件见学校卡片。",
+                    ],
+                  };
+                if (item.status === "recommended")
+                  return {
+                    ...item,
+                    status: "not_selected" as const,
+                    reasons: [
+                      "存在可核验项目，本次优先展示需求匹配顺序靠前的10所学校；未展示不等于不适合。",
+                    ],
+                  };
+                return item;
+              });
+              if (report.recommendations.length)
+                report.summary = `按当前保存需求与已读取证据，优先比较以下${report.recommendations.length}所学校：${report.recommendations.map((item) => `${item.institutionName}的${item.programName}`).join("、")}。分层由需求规则生成，实际考试科目、测评准备观察与年度资格分别核对。`;
+              if (!report.failureStage) await stage("writing");
+              const schoolCount = new Set(
+                report.recommendations.map((item) => item.institutionName),
+              ).size;
+              const preferredCount = report.recommendations.filter(
+                (item) => item.tier === "preferred",
+              ).length;
+              const alternativeCount = report.recommendations.filter(
+                (item) => item.tier === "alternative",
+              ).length;
+              const exploratoryCount = report.recommendations.filter(
+                (item) => item.tier === "exploratory",
+              ).length;
+              const shortfallReasons: string[] = [];
+              const preferredCitySchoolCount =
+                report.recommendations.filter(matchesPreferredCity).length;
+              const unknownCitySchoolCount = report.recommendations.filter(
+                (item) =>
+                  item.constraintChecks?.some(
+                    (check) =>
+                      check.field === "cities" && check.status === "unknown",
+                  ),
+              ).length;
+              if (regions.length && !preferredCitySchoolCount) {
+                shortfallReasons.push(
+                  `你的意向城市为${regions.join("、")}，本次尚未形成可核验符合意向城市的学校专业建议；已保留其他可核对候选。城市未知不会当作符合偏好，达到5校数量也不代表城市覆盖完成。`,
+                );
+                shortfallReasons.push(
+                  `${cityRecoveryReads ? `本次为意向城市候选追加${cityRecoveryReads}次官网读取尝试` : "本次已优先检索意向城市，但没有取得足够的可核验城市证据"}；本次城市资料或适合建议覆盖仍有缺口，不代表${regions.join("、")}没有适合你的学校。`,
+                );
+              }
+              if (schoolCount < 5) {
+                shortfallReasons.push(
+                  `本次形成 ${schoolCount} 所不同学校的有据建议，尚未达到5–10所的目标。已执行或复用 ${found.requestCount} 项检索、尝试读取 ${scheduled.statistics.reads} 项官网资料；搜索摘要和未通过学校专业核对的项目不计入推荐。`,
+                );
+                if (found.stoppedReason)
+                  shortfallReasons.push(researchReason(found.stoppedReason));
+                if (report.failureStage && report.reason)
+                  shortfallReasons.push(researchReason(report.reason));
+                shortfallReasons.push(
+                  "这表示本次可核对资料覆盖不足，不能据此认定全国没有满足你条件的学校；已有候选仍可逐项比较。",
+                );
+              }
+              if (schoolCount && !preferredCount)
+                shortfallReasons.push(
+                  "本次尚未形成同时有明确方向关联与已核验地域偏好的一级建议；请查看逐校需求比较和资料缺口。这不表示你的能力不足，也不表示不存在合适的首选学校。",
+                );
+              report.coverage = {
+                targetMin: 5,
+                targetMax: 10,
+                schoolCount,
+                preferredCount,
+                alternativeCount,
+                exploratoryCount,
+                shortfallReasons,
+                ...(regions.length
+                  ? {
+                      preferredCities: regions,
+                      preferredCitySchoolCount,
+                      unknownCitySchoolCount,
+                    }
+                  : {}),
+              };
+              report.limitations = [...new Set(report.limitations)];
+              for (const source of report.sources.filter(
+                (source) => !resumeEvidence && isSchoolPage(source),
+              ))
+                library?.save(source);
+              refreshCoverage();
+              usage.searches.paid = paidSearches;
+              usage.searches.cacheHits += checkpointSearchHits;
+              await persist();
+              return report;
+            } finally {
+              clearInterval(cancellationPoll);
+              scheduled.dispose();
+            }
+          })(),
+        );
+      } catch (error) {
+        originalInput.checkLive?.();
+        if (
+          !(error instanceof ModelError) ||
+          error.code !== "RESEARCH_TOTAL_TIMEOUT"
+        )
+          throw error;
+        const report = checkpoint.report;
+        const fallback: ResearchReport = report ?? {
+          schemaVersion: 1,
+          reportVersion: promptVersion,
+          status: "blocked",
+          generatedAt: new Date().toISOString(),
+          guidanceRunId: input.run.guidanceRunId,
+          versions: input.run.versions,
+          summary: "",
+          facts: [],
+          recommendations: [],
+          sources: [],
+          limitations: [...baseLimitations],
+          model,
+          searched: false,
         };
-        report.limitations = [...new Set(report.limitations)];
-        for (const source of report.sources.filter(isSchoolPage))
-          library?.save(source);
-        refreshCoverage();
-        return report;
+        fallback.status = "partial";
+        fallback.failureStage = lastStage;
+        fallback.reason = "RESEARCH_TOTAL_TIMEOUT";
+        fallback.summary = researchReason(fallback.reason);
+        if (
+          !fallback.recommendations.length &&
+          fallback.sources.some(isSchoolPage)
+        ) {
+          const disciplines = researchDirectory(input.run).allowed;
+          const inventory = buildEvidenceCandidates({
+            run: input.run,
+            disciplines,
+            sources: fallback.sources,
+            targetYear: String(input.run.inputSnapshot.profile.year),
+          });
+          fallback.recommendations = rankDemandCandidates(
+            inventory.recommendations,
+            input.run,
+            disciplines,
+            fallback.sources,
+            String(input.run.inputSnapshot.profile.year),
+          );
+        }
+        await originalInput.onCheckpoint?.(checkpoint);
+        return structuredClone(fallback);
       } finally {
-        clearInterval(cancellationPoll);
-        scheduled.dispose();
+        deadline.dispose();
       }
     },
   };

@@ -170,6 +170,7 @@ function diverseSources(
 export async function searchResearchSources(input: {
   web: ReturnType<typeof createWebAnswerModule>;
   subjectId: string;
+  cacheOwner?: object;
   disciplines: Discipline[];
   regions: string[];
   schoolHints?: ReadonlyMap<string, readonly string[]>;
@@ -192,10 +193,10 @@ export async function searchResearchSources(input: {
   );
   let cacheHits = 0,
     paidRequests = 0;
-  let cache = caches.get(input.web);
+  let cache = caches.get(input.cacheOwner ?? input.web);
   if (!cache) {
     cache = new Map();
-    caches.set(input.web, cache);
+    caches.set(input.cacheOwner ?? input.web, cache);
   }
   const directions = input.disciplines.slice(0, 6);
   const referenceYears = historicalReferenceYears(input.targetYear ?? "");

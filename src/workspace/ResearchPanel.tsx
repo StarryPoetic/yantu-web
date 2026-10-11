@@ -200,7 +200,7 @@ export function ResearchPanel({
                   ? "研究报告"
                   : outcome === "empty"
                     ? "尚未形成学校建议"
-                    : "部分研究报告"}
+                    : "部分可用报告"}
           </span>
         )}
       </div>
@@ -246,7 +246,7 @@ export function ResearchPanel({
             <p>{researchReason(job.message)}</p>
           )}
           <p>
-            你的个人画像仍已保存，无需重新填写。可点击下方“重新调研并生成报告”重试。
+            你的个人画像仍已保存，无需重新填写。可点击下方“一键重试（复用已完成阶段）”继续。
           </p>
         </section>
       )}
@@ -285,7 +285,11 @@ export function ResearchPanel({
           className={
             outcome === "recommendations" ? "ws-secondary" : "ws-primary"
           }
-          onClick={() => void generate()}
+          onClick={() =>
+            void generate(
+              job && (failed || report?.failureStage) ? "retry" : "generate",
+            )
+          }
           disabled={
             loading || starting || running || !readiness?.ready || outdated
           }
@@ -297,9 +301,11 @@ export function ResearchPanel({
               ? "补查进行中…"
               : running
                 ? "报告生成中…"
-                : report || failed
-                  ? "重新调研并生成报告"
-                  : "联网调研并生成报告"}
+                : job && (failed || report?.failureStage)
+                  ? "一键重试（复用已完成阶段）"
+                  : report
+                    ? "重新调研并生成报告"
+                    : "联网调研并生成报告"}
         </button>
         <button
           className="ws-secondary"

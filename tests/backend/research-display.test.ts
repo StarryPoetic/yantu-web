@@ -4,6 +4,7 @@ import type { ResearchReport } from "../../server/explanation/research.ts";
 import type { ResearchJob } from "../../server/routes/research.ts";
 import { researchReason } from "../../shared/research-status.ts";
 import {
+  reportAvailability,
   researchCoverage,
   researchOutcome,
   researchReportMarkdown,
@@ -26,6 +27,79 @@ import {
   withSupplementedTuition,
 } from "../helpers/research-coverage-fixture.ts";
 import { withPhase6Display } from "../helpers/research-phase6-fixture.ts";
+
+test("availability distinguishes confirmed, pending and explicit absence for recommended programmes without counting catalogue totals", () => {
+  const value = withEvidenceCoverage(report());
+  Object.assign(value.recommendations[0], {
+    programName: "机械工程",
+    majorCode: "080200",
+    collegeName: "机械工程学院",
+    studyMode: "full_time",
+  });
+  const available = reportAvailability(value);
+  assert.equal(available.title, "部分可用");
+  assert.ok(available.confirmed > 0);
+  assert.ok(available.pending > 0);
+  assert.equal(available.absent, 0);
+  assert.ok(available.missing.includes("学费"));
+  assert.ok(!available.message.includes("646"));
+  value.evidenceCoverage!.pendingProgramCount = 646;
+  assert.deepEqual(reportAvailability(value), available);
+  const programme = value.candidateAudit!.find(
+    (item) => item.coverage?.programs.length,
+  )?.coverage!.programs[0];
+  assert.ok(programme);
+  value.referencePolicy = {
+    strategy: "history-first-v1",
+    targetYear: "2027",
+    referenceYears: [2026, 2025, 2024],
+    summary: "年度分别核对",
+  };
+  value.sources.push({
+    id: "research-1",
+    title: "2027年专业调整",
+    url: "https://grs.hdu.edu.cn/stop",
+    kind: "official_page",
+    verified: false,
+    retrievedAt: value.generatedAt,
+    excerpt: `${programme.majorCode}机械工程2027年停止招生。`,
+  });
+  programme.fields.program = {
+    status: "excluded",
+    reason: "明确停招",
+    sourceIds: ["research-1"],
+    references: [
+      {
+        sourceId: "research-1",
+        year: 2027,
+        quote: `${programme.majorCode}机械工程2027年停止招生。`,
+      },
+    ],
+  };
+  assert.equal(reportAvailability(value).absent, 1);
+  programme.fields.program.references[0].year = 2026;
+  assert.equal(reportAvailability(value).absent, 0);
+  programme.fields.program.references[0].year = 2027;
+  programme.fields.program.references[0].quote = "没有查到目录。";
+  assert.equal(reportAvailability(value).absent, 0);
+  programme.fields.program.references[0].quote = `${programme.majorCode}2027年尚未确认是否停招。`;
+  value.sources[1].excerpt = programme.fields.program.references[0].quote;
+  assert.equal(reportAvailability(value).absent, 0);
+  value.recommendations = [value.recommendations[0]];
+  value.status = "completed";
+  for (const candidate of value.candidateAudit!)
+    for (const item of candidate.coverage?.programs ?? [])
+      for (const field of Object.values(item.fields))
+        field.status = "supported_current";
+  assert.equal(reportAvailability(value).title, "完整可用");
+  value.failureStage = "analyzing";
+  value.reason = "MODEL_TIMEOUT";
+  assert.equal(reportAvailability(value).title, "部分可用");
+  assert.match(reportAvailability(value).message, /模型分析超时.*一键重试/);
+  value.recommendations = [];
+  assert.equal(reportAvailability(value).title, "生成失败");
+  assert.match(reportAvailability(value).message, /可一键重试.*复用/);
+});
 
 test("library statistics preserve recorded zeroes, distinguish library totals and never invent legacy counts", () => {
   const value = withPhase6Display(report());
@@ -685,7 +759,7 @@ test("Markdown keeps programme-specific source coverage, missing fields, actual 
   const markdown = researchReportMarkdown(value, run, false);
   assert.match(
     markdown,
-    /本次调查 2 所学校、2 个专业；2 个专业已有项目原文，2 个专业仍有实质缺项/,
+    /调查记录包含 2 所学校、2 个候选专业，其中 2 个有项目原文/,
   );
   assert.match(markdown, /仅统计本次实际调查的学校与专业/);
   assert.match(

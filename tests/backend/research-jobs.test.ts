@@ -17,6 +17,71 @@ const model = {
   thinking: true,
   effort: "high",
 } as const;
+
+test("one-click retry persists owned checkpoints, reuses the previous report after restart and stays idempotent", async (t) => {
+  const done = deferred();
+  const inputs: ResearchInput[] = [];
+  const engine: ResearchReportModule = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    async generate(input) {
+      inputs.push(input);
+      if (input.mode !== "retry") {
+        await input.onCheckpoint?.({
+          version: 1,
+          contextHash: "saved-context",
+          models: { planning: { done: true } },
+          searches: {},
+          pages: {},
+        });
+        done.resolve();
+        return {
+          ...output(input),
+          status: "partial",
+          reason: "MODEL_TIMEOUT",
+          failureStage: "analyzing",
+        };
+      }
+      assert.equal(input.checkpoint?.contextHash, "saved-context");
+      assert.deepEqual(input.checkpoint?.models.planning, { done: true });
+      assert.equal(input.previousReport?.reason, "MODEL_TIMEOUT");
+      return output(input);
+    },
+  };
+  const { app, request, client, runId } = await fixture(t, engine);
+  const initial = await request(`/guidance/${runId}/research`, "POST", {});
+  await done.promise;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  // Route recreation marks interrupted work failed but keeps the owned checkpoint resource.
+  const restarted = createResearchRoutes(app.store, engine);
+  await restarted.close();
+  const key = randomUUID();
+  const next = await request(
+    `/guidance/${runId}/research/retry`,
+    "POST",
+    {},
+    { "Idempotency-Key": key },
+  );
+  assert.equal(next.status, 202);
+  assert.notEqual(next.body.jobId, initial.body.jobId);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const replay = await request(
+    `/guidance/${runId}/research/retry`,
+    "POST",
+    {},
+    { "Idempotency-Key": key },
+  );
+  assert.equal(replay.body.jobId, next.body.jobId);
+  assert.equal(inputs.length, 2);
+  assert.equal(replay.body.status, "completed");
+  assert.equal(replay.body.checkpoint, undefined);
+  const other = await client();
+  assert.equal(
+    (await other(`/guidance/${runId}/research/retry`, "POST", {})).status,
+    404,
+  );
+  assert.equal((await other(`/research-jobs/${next.body.jobId}`)).status, 404);
+});
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => {
