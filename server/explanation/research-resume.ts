@@ -37,6 +37,9 @@ export function researchDeadline(timeoutMs: number, parent?: AbortSignal) {
     check,
     remaining: () => Math.max(1, until - Date.now()),
     async wait<T>(promise: Promise<T>): Promise<T> {
+      // The caller evaluates the operation before entering wait. An already
+      // expired deadline must still observe its rejection (e.g. collector.check).
+      void promise.catch(() => {});
       check();
       return new Promise<T>((resolve, reject) => {
         const onAbort = () => reject(controller.signal.reason);

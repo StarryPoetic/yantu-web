@@ -42,6 +42,27 @@ export async function refineResearchSchools(
   // Reserve deterministic per-school shares before starting a wave. Completion
   // timing cannot let a fast school steal another school's search/read allowance.
   const selected = input.prefilter.selected;
+  // Rate-limit search dispatch only. Slow page reads must not serialize all
+  // schools behind the search limit and consume the final-analysis reserve.
+  const searchSlots = Array.from({ length: B.initialSearchConcurrency }, () =>
+    Promise.resolve(),
+  );
+  let nextSearch = 0;
+  const initialWeb: typeof input.web = {
+    ...input.web,
+    answer(request, options) {
+      const slot = nextSearch++ % searchSlots.length;
+      const result = searchSlots[slot].then(() => {
+        input.signal?.throwIfAborted();
+        return input.web.answer(request, options);
+      });
+      searchSlots[slot] = result.then(
+        () => {},
+        () => {},
+      );
+      return result;
+    },
+  };
   const groupSize = Math.max(
     1,
     Math.ceil(selected.length / (B.searches - B.prioritySearchReserve)),
@@ -54,13 +75,9 @@ export async function refineResearchSchools(
   const share = (total: number, index: number) =>
     Math.floor(total / Math.max(1, selected.length)) +
     Number(index < total % Math.max(1, selected.length));
-  for (
-    let offset = 0;
-    offset < selected.length;
-    offset += B.initialSearchConcurrency
-  ) {
+  for (let offset = 0; offset < selected.length; offset += B.concurrency) {
     input.signal?.throwIfAborted();
-    const wave = selected.slice(offset, offset + B.initialSearchConcurrency);
+    const wave = selected.slice(offset, offset + B.concurrency);
     const results = await Promise.allSettled(
       wave.map(async (school, localIndex) => {
         const index = offset + localIndex;
@@ -112,7 +129,7 @@ export async function refineResearchSchools(
           ],
           web:
             groupSize === 1
-              ? input.web
+              ? initialWeb
               : {
                   ...input.web,
                   answer(request, options) {
@@ -124,7 +141,7 @@ export async function refineResearchSchools(
                         (groupIndex + 1) * groupSize,
                       );
                       groupedRequests++;
-                      result = input.web.answer(
+                      result = initialWeb.answer(
                         {
                           ...request,
                           question:
@@ -183,6 +200,7 @@ export async function refineResearchSchools(
       sources,
       targetYear: input.targetYear,
       schoolNames: selected.map((s) => s.institutionName),
+      schoolNamesOnly: true,
     },
     input.signal,
   );
@@ -215,6 +233,7 @@ export async function refineResearchSchools(
         sources,
         targetYear: input.targetYear,
         schoolNames: selected.map((s) => s.institutionName),
+        schoolNamesOnly: true,
       },
       input.signal,
     );

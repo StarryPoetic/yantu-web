@@ -1,5 +1,5 @@
 /** Offline only: exports public evidence, never account rows or credentials. */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
@@ -47,6 +47,11 @@ type Event = {
   code?: string;
 };
 type Snapshot = {
+  report?: {
+    sources: WebSource[];
+    recommendations: Record<string, unknown>[];
+    priorityCoverage?: unknown;
+  };
   searches: Record<
     string,
     { sources: WebSource[]; reason?: string; searchDispatched?: boolean }
@@ -113,9 +118,10 @@ export function captureReplay(
     const cp: Snapshot = JSON.parse(
       readFileSync(resolve(directory, "checkpoint.json"), "utf8"),
     );
-    const report = JSON.parse(
-      readFileSync(resolve(directory, "report.json"), "utf8"),
-    );
+    const reportSaved = existsSync(resolve(directory, "report.json"));
+    const report = reportSaved
+      ? JSON.parse(readFileSync(resolve(directory, "report.json"), "utf8"))
+      : (cp.report ?? { sources: [], recommendations: [] });
     const events: Event[] = readFileSync(
       resolve(directory, "events.ndjson"),
       "utf8",
@@ -142,7 +148,11 @@ export function captureReplay(
         const key = createHash("sha256")
           .update(JSON.stringify({ request, options }))
           .digest("hex");
-        const result = cp.searches[key];
+        const result =
+          cp.searches[key] ??
+          (!reportSaved
+            ? { sources: [], reason: "INTERRUPTED_BEFORE_CHECKPOINT" }
+            : undefined);
         if (!result)
           throw new Error("Replay query is not joined to its saved result");
         for (const s of result.sources) add(s, id);
@@ -191,6 +201,7 @@ export function captureReplay(
       }));
     runs.push({
       id,
+      reportSaved,
       queries,
       reads,
       recommendations: report.recommendations.map(

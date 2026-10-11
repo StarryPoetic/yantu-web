@@ -1,4 +1,5 @@
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
+import { decodedResearchDocuments } from "./research-encoded-documents.ts";
 import { schoolRegistry } from "../schools/index.ts";
 import { researchSchoolPriorities } from "./research-school-priority.ts";
 import type { Discipline } from "../disciplines/types.ts";
@@ -264,7 +265,7 @@ export function researchAttachments(
         : [];
     })
     .join("");
-  const clean = (html + explicit)
+  const clean = (html + explicit + decodedResearchDocuments(html))
     .replace(/<!--[^]*?-->/g, " ")
     .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ");
   const links: {

@@ -816,10 +816,11 @@ export function buildEvidenceCandidates(input: {
   sources: WebSource[];
   targetYear: string;
   schoolNames?: string[];
+  schoolNamesOnly?: boolean;
 }): { recommendations: Recommendation[]; audit: ResearchCandidateAudit[] } {
   const profile = researchContext(input.run).profile;
   const discovered = new Set(input.schoolNames ?? []);
-  for (const source of input.sources) {
+  for (const source of input.schoolNamesOnly ? [] : input.sources) {
     for (const match of withoutSchoolLinks(source.excerpt).matchAll(
       /(?:^|[\s:：。；|｜])([\p{Script=Han}]{2,20}(?:大学|学院|研究院|研究所))(?=\s|\d|年|硕士|研究生|招生|专业|学科|版权所有|$)/gu,
     )) {

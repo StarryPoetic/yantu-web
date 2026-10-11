@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { deflateSync } from "node:zlib";
+import { decodedResearchDocuments } from "../../server/explanation/research-encoded-documents.ts";
+import { prefilterFixture } from "../helpers/research-prefilter-fixture.ts";
+import { setTimeout as pause } from "node:timers/promises";
 import {
   realReplayFixture,
   combinedRealReplayFixture,
@@ -17,7 +21,10 @@ import {
   searchConfigFromEnvironment,
 } from "../../server/explanation/search.ts";
 import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
-import { researchAttachments } from "../../server/explanation/research-pages.ts";
+import {
+  researchAttachments,
+  academicDomain,
+} from "../../server/explanation/research-pages.ts";
 import { runRealReportReplay } from "../helpers/research-real-report-replay.ts";
 import { programEntries } from "../../server/explanation/research-matching.ts";
 import { replayAcceptanceCriteria } from "../helpers/research-replay-live.ts";
@@ -27,6 +34,82 @@ import {
   priorityQueryCategory,
 } from "../../server/explanation/research-targeted.ts";
 const fixture = realReplayFixture();
+test("initial search throttling keeps page reads concurrent across schools", async () => {
+  const f = prefilterFixture();
+  const reader = f.config.reader!;
+  let activeSearches = 0,
+    peakSearches = 0,
+    peakInitialReads = 0,
+    targeted = false;
+  const activeDomains = new Map<string, number>();
+  f.config.reader = async (url, options) => {
+    if (new URL(url).hostname === "api.search.brave.com") {
+      const query = new URL(url).searchParams.get("q") ?? "";
+      targeted ||= !/硕士招生(?:专业)?目录/.test(query);
+      peakSearches = Math.max(peakSearches, ++activeSearches);
+      await pause(5);
+      activeSearches--;
+    } else {
+      const domain = academicDomain(url);
+      activeDomains.set(domain, (activeDomains.get(domain) ?? 0) + 1);
+      if (!targeted)
+        peakInitialReads = Math.max(peakInitialReads, activeDomains.size);
+      await pause(30);
+      const remaining = activeDomains.get(domain)! - 1;
+      if (remaining) activeDomains.set(domain, remaining);
+      else activeDomains.delete(domain);
+    }
+    return reader(url, options);
+  };
+  await f.create().generate({
+    subjectId: f.run.subjectId,
+    run: f.run,
+    strategy: "two-stage",
+  });
+  assert.equal(peakSearches, B.initialSearchConcurrency);
+  assert.ok(
+    peakInitialReads > 1,
+    "page reads were serialized behind the search gate",
+  );
+});
+test("saved employment article exposes its literal compressed PDF without executing scripts or accepting external links", () => {
+  const markup = readFileSync(
+    "tests/fixtures/research-encoded-employment.html",
+    "utf8",
+  );
+  const source = realReplayFixture("research-v3a6-run2.json").pages.find((p) =>
+    p.url.includes("aid/25530"),
+  )!.source!;
+  const links = researchAttachments(source, markup);
+  assert.equal(links.length, 1);
+  assert.match(
+    decodeURI(links[0].url),
+    /jyb\.zstu\.edu\.cn\/attachment\/zstu\/.*就业质量年度报告\.pdf$/,
+  );
+  const encode = (html: string) =>
+    `Base64.decode(unzip("${deflateSync(Buffer.from(Buffer.from(html).toString("base64"))).toString("base64")}").substr(0)).substr(0)`;
+  assert.equal(
+    researchAttachments(
+      source,
+      encode('<a href="http://127.0.0.1/report.pdf">就业质量报告</a>'),
+    ).length,
+    0,
+  );
+  assert.equal(
+    researchAttachments(
+      source,
+      encode('<a href="https://attacker.example/report.pdf">就业质量报告</a>'),
+    ).length,
+    0,
+  );
+  assert.equal(decodedResearchDocuments(encode("x".repeat(200000))), "");
+  assert.equal(
+    decodedResearchDocuments(
+      'Base64.decode(unzip("junk").substr(0)).substr(0)',
+    ),
+    "",
+  );
+});
 test("cumulative real corpus has an evidence audit for every unfilled recommended slot", async () => {
   const combined = combinedRealReplayFixture();
   const result = await runRealReportReplay(combined);
@@ -54,6 +137,7 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
   assert.equal(result.searches, B.searches);
   assert.equal(result.peakSearches, B.initialSearchConcurrency);
   assert.equal(result.finalCalls, 1);
+  assert.deepEqual(new Set(result.finalDirections), new Set(["0802", "0855"]));
   assert.ok(combined.pages.filter((p) => p.source).length >= 210);
   assert.ok(coverage.confirmed >= 8);
   for (const row of audit) {
@@ -65,6 +149,18 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
       ),
     );
   }
+});
+test("an interrupted real run retains its search and public page checkpoint, never a fabricated final report", () => {
+  const interrupted = realReplayFixture("research-v3a6-run2.json");
+  assert.equal(interrupted.pages.length, 254);
+  assert.equal(interrupted.pages.filter((p) => p.source).length, 102);
+  assert.equal(interrupted.runs[0].queries.length, 45);
+  const raw = JSON.parse(
+    readFileSync("tests/fixtures/research-v3a6-run2.json", "utf8"),
+  );
+  assert.equal(raw.runs[0].reportSaved, false);
+  assert.equal(raw.runs[0].metrics.acceptance.passed, false);
+  assert.equal(raw.runs[0].metrics.forensicReconstruction, true);
 });
 test("paid acceptance uses field mean, five schools, deadline and a completed final analysis", () => {
   const input = {

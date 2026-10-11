@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resilienceFixture } from "../helpers/research-resilience-fixture.ts";
 import { researchDeadline } from "../../server/explanation/research-resume.ts";
+import { ModelError } from "../../server/explanation/deepseek.ts";
 import type { ModelReply } from "../../server/explanation/deepseek.ts";
 
 for (const pageError of ["HTTP_404", "HTTP_410", "WEB_TIMEOUT"]) {
@@ -105,6 +106,21 @@ test("overall timeout during search returns a clear failure, and cancellation ca
     await assert.rejects(deadline.wait(new Promise(() => {})), {
       code: "RESEARCH_TOTAL_TIMEOUT",
     });
+  } finally {
+    deadline.dispose();
+  }
+});
+
+test("expired deadline observes an already-started rejecting operation without an unhandled rejection", async () => {
+  const parent = new AbortController();
+  const deadline = researchDeadline(1000, parent.signal);
+  parent.abort(new ModelError("RESEARCH_TOTAL_TIMEOUT"));
+  try {
+    await assert.rejects(
+      deadline.wait(Promise.reject(new ModelError("RESEARCH_TOTAL_TIMEOUT"))),
+      { code: "RESEARCH_TOTAL_TIMEOUT" },
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
   } finally {
     deadline.dispose();
   }

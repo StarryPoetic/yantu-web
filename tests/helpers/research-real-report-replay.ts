@@ -19,6 +19,7 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
     searches = 0,
     activeSearches = 0,
     peakSearches = 0;
+  let finalDirections: string[] = [];
   const run = generateGuidance({
     subjectId: "batch1-synthetic-hangzhou",
     guidanceRunId: "real-replay",
@@ -52,7 +53,12 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
       now: () => Date.parse(run.generatedAt),
       adapter: {
         async complete(_messages, options) {
-          if (options?.thinking) finalCalls++;
+          if (options?.thinking) {
+            finalCalls++;
+            finalDirections = JSON.parse(_messages[1].content).directions.map(
+              (d: { code: string }) => d.code,
+            );
+          }
           return {
             model: options?.model ?? "deepseek-flash",
             inputTokens: 0,
@@ -130,5 +136,5 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
     strategy: "two-stage",
     targetScore: { total: 350, maximum: 500 },
   });
-  return { report, finalCalls, reads, searches, peakSearches };
+  return { report, finalCalls, reads, searches, peakSearches, finalDirections };
 }

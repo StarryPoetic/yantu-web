@@ -3110,10 +3110,11 @@ export function createResearchReportModule(
               const evidencedDirections = directory.allowed.filter(
                 (discipline) =>
                   disciplines.some((item) => item.code === discipline.code) ||
-                  new RegExp(`\\b${discipline.code}\\d{0,2}\\b`).test(
-                    evidenceText,
-                  ) ||
-                  evidenceText.includes(discipline.name),
+                  (!prefilter &&
+                    (new RegExp(`\\b${discipline.code}\\d{0,2}\\b`).test(
+                      evidenceText,
+                    ) ||
+                      evidenceText.includes(discipline.name))),
               );
               coveredDisciplines = evidencedDirections;
               const inventory =
@@ -3129,15 +3130,18 @@ export function createResearchReportModule(
                         disciplines: evidencedDirections,
                         sources: report.sources,
                         targetYear: year,
-                        schoolNames: [
-                          ...candidateLeads.map((item) => item.school),
-                          ...(input.previousReport?.candidateAudit?.map(
-                            (item) => item.institutionName,
-                          ) ?? []),
-                          ...plan.directions.flatMap(
-                            (item) => item.searchSchools ?? [],
-                          ),
-                        ],
+                        schoolNamesOnly: !!prefilter,
+                        schoolNames: prefilter
+                          ? prefilter.selected.map((s) => s.institutionName)
+                          : [
+                              ...candidateLeads.map((item) => item.school),
+                              ...(input.previousReport?.candidateAudit?.map(
+                                (item) => item.institutionName,
+                              ) ?? []),
+                              ...plan.directions.flatMap(
+                                (item) => item.searchSchools ?? [],
+                              ),
+                            ],
                       },
                       input.signal,
                     );

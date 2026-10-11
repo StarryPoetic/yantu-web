@@ -21,3 +21,5 @@ research-real-replay.json 来自两次 acceptance-13324c3-run1/run2 保存记录
 缺失响应只说明此次没有保存正文；“已保存官网正文未见字段”只描述此语料，不能推断全网从未公开。官网拟录取公示撤回、专业排名来源未确认和原文省略推免列均须单独披露。
 
 本轮第1次真实运行另存 research-v3a6-run1.json：484 个URL、200 份正文、72 次搜索。累计夹具按URL合并为576/210，后续 research-v3a6-runN.json 自动加入；保留每次来源，不把后来正文冒充早期已读结果。完整报告使用 Bocha 协议模拟，按实际请求体 query 匹配保存的查询；不允许旧 Brave 包装附加的 site 过滤导致整轮回放意外全空。原始218页断言和累计完整报告断言并存。
+
+第2次运行异常退出：research-v3a6-run2.json（254 URL/102正文/45查询）使用持久化checkpoint.report，reportSaved=false，metrics明确取证重建；未落盘查询返回INTERRUPTED_BEFORE_CHECKPOINT，禁止伪造响应。research-encoded-employment.html是同轮理工25530原HTML的字面量片段，仅裁掉导航/其余脚本，不改压缩载荷或位移；载荷解码后只有就业报告PDF链接，没有名单。累计648/221。
