@@ -21,7 +21,7 @@ export function missingPriorityQueries(
   discipline: Discipline,
   year: string,
   facts: readonly ResearchPriorityFact[],
-  scope?: { majorCode?: string; collegeName?: string },
+  scope?: { majorCode?: string; collegeName?: string; programName?: string },
 ) {
   const own = facts.filter(
     (f) =>
@@ -83,7 +83,7 @@ export function missingPriorityQueries(
       tasks
         .filter((t) => t.fields.some((f) => !has(f, t.year)))
         .map((t) =>
-          `${school} ${t.fields.includes("disciplineAssessment") ? "" : `${t.year ?? years[0]}年`} ${scope?.collegeName ?? ""} ${scope?.majorCode ?? ""} ${discipline.name} ${t.terms}`.replace(
+          `${school} ${t.fields.includes("disciplineAssessment") ? "" : `${t.year ?? years[0]}年`} ${scope?.collegeName ?? ""} ${scope?.majorCode ?? ""} ${scope?.programName ?? discipline.name} ${t.terms}`.replace(
             /\s+/g,
             " ",
           ),
@@ -97,11 +97,13 @@ export async function collectMissingPriorityEvidence(
     selected: ResearchPrefilter["selected"];
     disciplines: Discipline[];
     usedReads?: Map<string, number>;
+    schoolSearchCounts?: Map<string, number>;
     priorityPrograms?: {
       institutionName: string;
       disciplineCode: string;
       majorCode?: string;
       collegeName?: string;
+      programName?: string;
     }[];
   },
 ) {
@@ -112,7 +114,7 @@ export async function collectMissingPriorityEvidence(
   const limitations: string[] = [];
   const reads = new Map(input.usedReads ?? []);
   const attempted = new Set<string>();
-  const schoolSearches = new Map<string, number>();
+  const schoolSearches = new Map(input.schoolSearchCounts ?? []);
   // Sources in this collection snapshot are immutable; new reads replace objects.
   const extracted = new WeakMap<WebSource, ResearchPriorityFact[]>();
   const factsFor = (source: WebSource) => {
@@ -203,8 +205,8 @@ export async function collectMissingPriorityEvidence(
               other.collegeName,
           ),
       );
-      const queries = programs.length
-        ? programs.flatMap((p) => {
+      const queryLists = programs.length
+        ? programs.map((p) => {
             const d = input.disciplines.find(
               (d) => d.code === p.disciplineCode,
             );
@@ -218,7 +220,7 @@ export async function collectMissingPriorityEvidence(
                 )
               : [];
           })
-        : input.disciplines.flatMap((d) =>
+        : input.disciplines.map((d) =>
             missingPriorityQueries(
               school.institutionName,
               d,
@@ -226,6 +228,11 @@ export async function collectMissingPriorityEvidence(
               facts,
             ),
           );
+      // Interleave the same category across programmes before advancing years.
+      const queries = Array.from(
+        { length: Math.max(0, ...queryLists.map((q) => q.length)) },
+        (_, i) => queryLists.flatMap((q) => (q[i] ? [q[i]] : [])),
+      ).flat();
       const query = [...queries, ...queries.map((q) => q + " 官网 附件")].find(
         (q) =>
           !attempted.has(q) &&
@@ -242,11 +249,18 @@ export async function collectMissingPriorityEvidence(
         (schoolSearches.get(school.domain) ?? 0) + 1,
       );
       advanced = true;
+      const queryProgram = programs.find(
+        (p) => p.majorCode && query.includes(p.majorCode),
+      );
+      const queryDiscipline =
+        input.disciplines.find(
+          (d) => d.code === queryProgram?.disciplineCode,
+        ) ?? input.disciplines.find((d) => query.includes(d.name));
       const gap: ResearchEvidenceGap = {
         id: `priority:${school.key}:${query}`,
         institutionName: school.institutionName,
-        programName: input.disciplines[0]?.name,
-        disciplineCode: input.disciplines[0]?.code,
+        programName: queryProgram?.programName ?? queryDiscipline?.name,
+        disciplineCode: queryDiscipline?.code,
         field: "program",
         targetYear: input.targetYear,
         referenceYears: historicalReferenceYears(input.targetYear),
@@ -300,87 +314,104 @@ export async function collectMissingPriorityEvidence(
       "有效账号/全站搜索额度已耗尽，不能将配置的72次上限当作剩余可用额度；已保存证据和缺项供续跑。",
     );
   // A spent search allowance does not discard already discovered useful links.
-  for (const school of input.selected) {
-    input.signal?.throwIfAborted();
-    const remaining = Math.min(
-      input.maxReads - readCount,
-      B.schoolReads - (reads.get(school.domain) ?? 0),
-    );
-    if (remaining <= 0) continue;
-    const own = sources.filter((s) => academicDomain(s.url) === school.domain);
-    const facts = own.flatMap(factsFor);
-    if (
-      !input.disciplines.some(
-        (d) =>
-          missingPriorityQueries(
-            school.institutionName,
-            d,
-            input.targetYear,
-            facts,
-          ).length,
+  for (
+    let round = 0;
+    round < B.schoolReads && readCount < input.maxReads;
+    round++
+  ) {
+    const before = readCount;
+    for (const school of input.selected) {
+      input.signal?.throwIfAborted();
+      const remaining = Math.min(
+        input.maxReads - readCount,
+        B.schoolReads - (reads.get(school.domain) ?? 0),
+      );
+      if (remaining <= 0) continue;
+      const own = sources.filter(
+        (s) => academicDomain(s.url) === school.domain,
+      );
+      const facts = own.flatMap(factsFor);
+      if (
+        !input.disciplines.some(
+          (d) =>
+            missingPriorityQueries(
+              school.institutionName,
+              d,
+              input.targetYear,
+              facts,
+            ).length,
+        )
       )
-    )
-      continue;
-    if (
-      !own.some((s) =>
-        s.documentLinks?.some((l) =>
-          /复试|拟录取|报录|学科评估|就业|生源|排名|推免|城市发展|产业/.test(
-            l.title,
-          ),
-        ),
+        continue;
+      if (
+        !own.some(
+          (s) =>
+            s.kind === "search_snippet" ||
+            s.documentLinks?.some((l) =>
+              /复试|拟录取|报录|报考上线录取|招生统计|学科评估|就业|生源|排名|推免|城市发展|产业/.test(
+                l.title,
+              ),
+            ),
+        )
       )
-    )
-      continue;
-    const gap: ResearchEvidenceGap = {
-      id: `priority-links:${school.key}`,
-      institutionName: school.institutionName,
-      programName: input.disciplines[0]?.name,
-      field: "program",
-      targetYear: input.targetYear,
-      referenceYears: historicalReferenceYears(input.targetYear),
-      purpose: "missing_evidence",
-      reason: "已有五类依据链接尚未读取",
-      nextAction: "读取已发现的五类材料",
-      sourceIds: [],
-      references: [],
-      priority: "high",
-      attempts: [],
-    };
-    const result = await repairResearchEvidence({
-      ...input,
-      sources: own.map((s) => ({
-        ...s,
-        documentLinks: s.documentLinks?.filter((l) =>
-          /复试|拟录取|报录|学科评估|就业|生源|排名|推免|城市发展|产业/.test(
-            l.title,
-          ),
-        ),
-      })),
-      gaps: [gap, { ...gap, id: gap.id + ":remaining" }],
-      maxRequests: 0,
-      maxReads: remaining,
-      priorityDocuments: true,
-      discoveryReadLimit: 0,
-      allowedDomains: [school.domain],
-      needsEvidence: undefined,
-      stop: undefined,
-    });
-    readCount += result.readCount;
-    limitations.push(...result.limitations);
-    sources = [
-      ...sources.filter((s) => academicDomain(s.url) !== school.domain),
-      ...result.sources.map((s) => ({
-        ...s,
-        documentLinks: [
-          ...new Map(
-            [
-              ...(own.find((old) => old.url === s.url)?.documentLinks ?? []),
-              ...(s.documentLinks ?? []),
-            ].map((l) => [l.url, l]),
-          ).values(),
-        ],
-      })),
-    ];
+        continue;
+      const gap: ResearchEvidenceGap = {
+        id: `priority-links:${school.key}`,
+        institutionName: school.institutionName,
+        programName: input.disciplines[0]?.name,
+        field: "program",
+        targetYear: input.targetYear,
+        referenceYears: historicalReferenceYears(input.targetYear),
+        purpose: "missing_evidence",
+        reason: "已有五类依据链接尚未读取",
+        nextAction: "读取已发现的五类材料",
+        sourceIds: [],
+        references: [],
+        priority: "high",
+        attempts: [],
+      };
+      const result = await repairResearchEvidence({
+        ...input,
+        sources: own,
+        gaps: [gap, { ...gap, id: gap.id + ":remaining" }],
+        maxRequests: 0,
+        maxReads: Math.min(remaining, B.priorityReadsPerTurn),
+        priorityDocuments: true,
+        discoveryReadLimit: 0,
+        allowedDomains: [school.domain],
+        needsEvidence: undefined,
+        stop: undefined,
+      });
+      readCount += result.readCount;
+      reads.set(
+        school.domain,
+        (reads.get(school.domain) ?? 0) + result.readCount,
+      );
+      limitations.push(...result.limitations);
+      sources = [
+        ...sources.filter((s) => academicDomain(s.url) !== school.domain),
+        ...result.sources.map((s) => ({
+          ...s,
+          documentLinks: [
+            ...new Map(
+              [
+                ...(own.find((old) => old.url === s.url)?.documentLinks ?? []),
+                ...(s.documentLinks ?? []),
+              ].map((l) => [l.url, l]),
+            ).values(),
+          ],
+        })),
+      ];
+    }
+    if (readCount === before) break;
   }
-  return { sources, lookupKeys, requestCount, readCount, limitations };
+  return {
+    sources,
+    lookupKeys,
+    requestCount,
+    readCount,
+    limitations,
+    usedReads: reads,
+    schoolSearchCounts: schoolSearches,
+  };
 }

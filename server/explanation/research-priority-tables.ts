@@ -12,6 +12,7 @@ import { sourceHasSchoolIdentity } from "./research-school.ts";
 import { isSchoolPage } from "./research-evidence.ts";
 import { safeSourceYear } from "./research-years.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
+import { pdfAdmissionRows } from "./research-pdf-statistics.ts";
 
 const cells = (line: string) =>
   line
@@ -81,7 +82,8 @@ export function tablePriorityFacts(
   targetYear: string,
   target?: ResearchTargetScore,
 ): ResearchPriorityFact[] {
-  if (!/专业代码|学科代码/.test(source.excerpt)) return [];
+  if (!/专业代码|学科代码|硕士研究生报考上线录取情况/.test(source.excerpt))
+    return [];
   if (!isSchoolPage(source)) return [];
   if (
     /(?:博士|本科)[^\n]{0,30}(?:招生|复试|录取|就业)/.test(
@@ -185,6 +187,56 @@ export function tablePriorityFacts(
       ...fact,
     });
   }
+  for (const row of pdfAdmissionRows(source.excerpt)) {
+    const discipline = disciplines.find((d) => row.code.startsWith(d.code));
+    if (!discipline) continue;
+    const evidence = [
+      row.header,
+      ...(row.collegeQuote ? [row.collegeQuote] : []),
+    ];
+    add(
+      "admissionScore",
+      discipline,
+      row.code,
+      row.college,
+      row.quote,
+      {
+        text: "官方录取最低分",
+        number: row.minimum,
+        population: row.population,
+      },
+      evidence,
+    );
+    if (row.admitted !== undefined)
+      add(
+        "admittedCount",
+        discipline,
+        row.code,
+        row.college,
+        row.quote,
+        {
+          text: "官方公布录取人数",
+          number: row.admitted,
+          applicants: row.applicants,
+          population: row.population,
+        },
+        evidence,
+      );
+    if (row.recommended !== undefined && row.admitted)
+      add(
+        "recommendationShare",
+        discipline,
+        row.code,
+        row.college,
+        row.quote,
+        {
+          text: "官方汇总明确推免列占录取人数比例",
+          number: (row.recommended / row.admitted) * 100,
+          population: row.population,
+        },
+        evidence,
+      );
+  }
   for (const entry of lines) {
     const line = entry.line;
     const row = entry.cells ?? cells(line);
@@ -217,7 +269,9 @@ export function tablePriorityFacts(
         !row[nameIndex].includes(discipline.name))
     )
       continue;
-    const collegeIndex = col(/学院|院系/);
+    const collegeIndex = header.findIndex(
+      (h) => /学院|院系/.test(h) && !/代码|编号/.test(h),
+    );
     const college = collegeIndex >= 0 ? row[collegeIndex] : undefined;
     const number = (pattern: RegExp) => {
       const i = col(pattern);
@@ -313,7 +367,10 @@ export function tablePriorityFacts(
       rateIndex >= 0 && /^\d+(?:\.\d+)?[%％]$/.test(row[rateIndex])
         ? Number(row[rateIndex].slice(0, -1))
         : undefined;
-    if ((rate !== undefined && rate <= 100) || destinationIndex >= 0)
+    if (
+      /硕士.*毕业|毕业.*硕士/.test(source.title + source.excerpt) &&
+      ((rate !== undefined && rate <= 100) || destinationIndex >= 0)
+    )
       add(
         "employment",
         discipline,

@@ -137,11 +137,29 @@ export async function repairResearchEvidence(input: {
     input.priorityDocuments
       ? researchDocumentPriority(title) > 0
       : titles[field].test(title);
+  let activeQuery = "";
+  const focusBonus = (title: string) => {
+    const pattern = /报录/.test(activeQuery)
+      ? /报录|报考上线录取|录取统计|拟录取/
+      : /生源|双非/.test(activeQuery)
+        ? /生源|跨考|录取/
+        : /学科评估/.test(activeQuery)
+          ? /学科|专业排名/
+          : /就业/.test(activeQuery)
+            ? /就业.*报告|就业质量|毕业.*去向/
+            : /初试成绩/.test(activeQuery)
+              ? /拟录取|录取统计|报考上线录取/
+              : /复试.*分数/.test(activeQuery)
+                ? /复试.*(?:分数|基本|办法|细则)/
+                : undefined;
+    return pattern?.test(title) ? 150 : 0;
+  };
   const documentOrder = (
     a: { title: string; url: string },
     b: { title: string; url: string },
     program?: string,
   ) =>
+    focusBonus(b.title) - focusBonus(a.title) ||
     researchDocumentPriority(b.title, program, b.url) -
       researchDocumentPriority(a.title, program, a.url) ||
     researchYearPriority(
@@ -287,11 +305,10 @@ export async function repairResearchEvidence(input: {
           !input.allowedDomains.includes(academicDomain(candidate.url)))
       )
         return;
-      const existing = sources.find(
-        (source) => source.url === candidate.url && isSchoolPage(source),
-      );
+      const existing = sources.find((source) => source.url === candidate.url);
       if (
         existing &&
+        isSchoolPage(existing) &&
         !(
           existing as WebSource & { library?: { status: string } }
         ).library?.status?.includes("stale")
@@ -343,8 +360,17 @@ export async function repairResearchEvidence(input: {
           retrievedAt: result.retrievedAt ?? at(),
           ...(candidate.parent ? { parentSourceId: candidate.parent.id } : {}),
         };
-        if (candidate.parent)
-          source = normalizeAttachedEvidence(source, candidate.parent, body);
+        const parent =
+          candidate.parent ??
+          sources.find(
+            (s) =>
+              isSchoolPage(s) &&
+              s.documentLinks?.some((l) => l.url === candidate.url),
+          );
+        if (parent) {
+          source.parentSourceId = parent.id;
+          source = normalizeAttachedEvidence(source, parent, body);
+        }
         if (/html/i.test(result.contentType))
           source.documentLinks = [
             ...researchAttachments(source, result.text, {
@@ -437,6 +463,7 @@ export async function repairResearchEvidence(input: {
       opening.length > 1 ? opening.map(({ gap }) => gap.id) : [],
     );
     for (const gap of gaps) {
+      activeQuery = gap.nextAction;
       if (input.stop?.(sources)) break;
       if (readCount >= maxReads) break;
       if (input.needsEvidence && !input.needsEvidence(gap, sources)) continue;
@@ -444,8 +471,11 @@ export async function repairResearchEvidence(input: {
         maxReads,
         readCount + readsPerGap - Number(openingAllowance.delete(gap.id)),
       );
-      const owned = sources.filter((source) =>
-        sourceHasSchoolIdentity(source, gap.institutionName),
+      const owned = sources.filter(
+        (source) =>
+          sourceHasSchoolIdentity(source, gap.institutionName) ||
+          // Domain ownership can route a discovery read, never establish a fact.
+          input.allowedDomains?.includes(academicDomain(source.url)),
       );
       const domains = input.allowedDomains
         ? [...input.allowedDomains]
@@ -480,7 +510,15 @@ export async function repairResearchEvidence(input: {
               ) ||
             a.url.localeCompare(b.url),
         );
-      await wave(links, gap);
+      await wave(
+        [
+          ...links,
+          ...(input.searchFirst ? [] : owned)
+            .filter((s) => s.kind === "search_snippet")
+            .map((s) => ({ url: s.url, title: s.title })),
+        ],
+        gap,
+      );
       if (
         readCount >= gapReadLimit ||
         requestCount >= maxRequests ||
@@ -549,6 +587,15 @@ export async function repairResearchEvidence(input: {
         limitations.push(`${gap.institutionName}定向检索：${found.reason}`);
       if (found.reason === "SEARCH_BUDGET_EXHAUSTED")
         stoppedReason = found.reason;
+      // Preserve all discovery leads even when this wave has no remaining read
+      // slots. The final gap pass can drain them without another paid search.
+      for (const source of found.sources)
+        if (
+          !sources.some((s) => s.url === source.url) &&
+          (!input.allowedDomains ||
+            input.allowedDomains.includes(academicDomain(source.url)))
+        )
+          sources.push({ ...source, id: publicEvidenceId(source.url) });
       const candidates = found.sources
         .filter(
           (source) =>
@@ -567,6 +614,13 @@ export async function repairResearchEvidence(input: {
         )
         .slice(0, B.concurrency);
       await wave(candidates, gap);
+      if (!found.sources.length)
+        await wave(
+          owned
+            .filter((s) => s.id.startsWith("seed:"))
+            .map((s) => ({ url: s.url, title: s.title })),
+          gap,
+        );
       for (const value of candidates) {
         if (
           readCount >= gapReadLimit ||
@@ -591,6 +645,28 @@ export async function repairResearchEvidence(input: {
             )
             .slice(0, B.concurrency) ?? [])
             await read({ ...child, parent }, gap);
+      }
+    }
+    // A search can expose a PDF before its official parent is read. Rebind only
+    // after the actual same-school parent link and owner text are available.
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i];
+      if (!isSchoolPage(source) || source.provenance) continue;
+      const parent = sources.find(
+        (p) =>
+          p !== source &&
+          isSchoolPage(p) &&
+          p.documentLinks?.some((l) => l.url === source.url),
+      );
+      if (!parent) continue;
+      const bound = normalizeAttachedEvidence(
+        { ...source, parentSourceId: parent.id },
+        parent,
+        source.excerpt,
+      );
+      if (bound.provenance) {
+        sources[i] = bound;
+        await input.onSource?.(bound);
       }
     }
     return {

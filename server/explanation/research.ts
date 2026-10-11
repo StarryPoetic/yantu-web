@@ -3831,6 +3831,11 @@ export function createResearchReportModule(
                   report.recommendations,
                   year,
                 );
+              if (report.priorityCoverage) {
+                report.limitations.push(
+                  `五类依据字段级部分覆盖率${(report.priorityCoverage.partialAverage * 100).toFixed(2)}%；整类完整覆盖率${(report.priorityCoverage.completeAverage * 100).toFixed(2)}%。两者均按推荐学校计算；有原文不等于字段齐全。`,
+                );
+              }
               if (prefilter && report.priorityCoverage?.pending) {
                 if (report.status === "completed") {
                   report.status = "partial";

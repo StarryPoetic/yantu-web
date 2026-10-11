@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { prefilterFixture } from "../helpers/research-prefilter-fixture.ts";
 import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import { researchReportMarkdown } from "../../src/workspace/research-report.ts";
+import { academicDomain } from "../../server/explanation/research-pages.ts";
 
 test("national discovery links cannot consume the main read budget across many schools", async () => {
   const f = prefilterFixture();
@@ -46,7 +47,7 @@ test("two-stage flow persists local scores before any paid call, reads only sele
                 f
                   .checkpoint()
                   .prefilter!.selected.some(
-                    (s) => new URL(saved.url).hostname === s.domain,
+                    (s) => academicDomain(saved.url) === s.domain,
                   ),
             ),
         ),
@@ -105,7 +106,7 @@ test("two-stage flow persists local scores before any paid call, reads only sele
   assert.ok(
     report.sources.every((s) =>
       report.prefilter!.selected.some(
-        (c) => new URL(s.url).hostname === c.domain,
+        (c) => academicDomain(s.url) === c.domain,
       ),
     ),
   );

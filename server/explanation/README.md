@@ -262,9 +262,9 @@ npx playwright test tests/tutor-chat.spec.ts
 | `searchDailyRequestsGlobal`  | 900      |
 | `collectionTargetMs`         | 300000   |
 | `reads`                      | 180      |
-| `schoolReads`                | 16       |
+| `schoolReads`                | 30       |
 | `platformReads`              | 4        |
-| `concurrency`                | 8        |
+| `concurrency`                | 12       |
 | `initialReads`               | 120      |
 | `cityReads`                  | 24       |
 | `geographyReads`             | 2        |
@@ -273,7 +273,7 @@ npx playwright test tests/tutor-chat.spec.ts
 | `feeSearches`                | 18       |
 | `repairSearches`             | 4        |
 | `candidates`                 | 240      |
-| `librarySourcesPerSchool`    | 8        |
+| `librarySourcesPerSchool`    | 16       |
 | `modelSources`               | 40       |
 | `attachments`                | 72       |
 | `attachmentLinks`            | 12       |
@@ -296,3 +296,9 @@ npx playwright test tests/tutor-chat.spec.ts
 | `globalDailyTokens`          | 12000000 |
 
 现行城市恢复最多120次读取、追加24次读取、全报告最多180次正文读取；补查沿用72 次搜索、180 次正文读取上限。
+
+本轮真实回放修复：环境配置中的正整数搜索日额度最低与单报告72次预算对齐（包括旧60次配置），0仍表示禁用，非法值仍拒绝；账本不重置，也不保证已用额度后的第二份报告有72次。默认180/900次及4000000/12000000 token不变，不修改.env。最终补查预留12次，按学校轮询，单校累计最多30次读取；全局12并发仍遵守同主机串行、公网DNS和TLS等边界。
+
+| 常量                    | 当前值 |
+| ----------------------- | ------ |
+| `finalGapSearchReserve` | 12     |

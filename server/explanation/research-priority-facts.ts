@@ -34,7 +34,7 @@ const labels: Record<ResearchPriorityField, RegExp> = {
   disciplineAssessment: /学科评估[^。\n]{0,30}(?:[ABC][+-]?|优秀)/,
   programRanking: /(?:专业|学科)(?:排名|排行)[^。\n]{0,20}(?:第\s*)?\d+/,
   employment:
-    /(?:硕士|研究生|毕业生)[^。\n]{0,80}(?:就业去向|就业单位|就业行业|就业率|进入[^。\n]{0,20}企业)/,
+    /(?:硕士|研究生|毕业生)[^。\n]{0,80}(?:就业去向|就业单位|就业行业|就业率|去向落实率|进入[^。\n]{0,20}企业)/,
   cityDevelopment:
     /(?:城市发展|产业发展|地区生产总值|产业布局|就业市场)[^。\n]{2,100}/,
 };
@@ -106,6 +106,25 @@ export function validatePriorityFacts(
     }
     const matched = quote.match(labels[key]);
     if (!matched) continue;
+    // A programme's training aspiration is not evidence of a city's economy.
+    if (
+      key === "cityDevelopment" &&
+      /培养目标|本专业|培养.*人才|产业发展需求/.test(quote)
+    )
+      continue;
+    if (
+      key === "employment" &&
+      (!/(?:硕士|研究生)[^。\n]{0,24}毕业生|毕业[^。\n]{0,12}硕士/.test(
+        quote,
+      ) ||
+        /博士|本科|定向|双向选择|就业方式|招聘|应当|须|应届.*报考/.test(
+          quote,
+        ) ||
+        !/就业率[^。\n]*\d|去向落实率[^。\n]*\d|主要去向[：:]|就业(?:去向|单位|行业)[：:]/.test(
+          quote,
+        ))
+    )
+      continue;
     const years = [
       ...new Set(
         [...quote.matchAll(/\b(20\d{2})\s*年/g)].map((m) => Number(m[1])),
@@ -339,7 +358,21 @@ export function priorityCoverage(
           .filter((y) => !own.some((f) => f.field === field && f.year === y))
           .map((year) => ({ field, year })),
     );
+    const partialGroups = Object.fromEntries(
+      Object.entries(RESEARCH_PRIORITY_GROUPS).map(([key, fields]) => {
+        const total =
+          fields.length *
+          (key === "scores" ? historicalReferenceYears(year).length : 1);
+        const confirmed =
+          key === "scores"
+            ? total - missingScoreYears.length
+            : fields.filter((field) => own.some((f) => f.field === field))
+                .length;
+        return [key, { confirmed, total, ratio: confirmed / total }];
+      }),
+    );
     return {
+      partialGroups,
       missingScoreYears,
       schoolName: r.institutionName,
       confirmed,
@@ -348,6 +381,34 @@ export function priorityCoverage(
     };
   });
   return {
+    partialGroups: Object.fromEntries(
+      Object.keys(RESEARCH_PRIORITY_GROUPS).map((key) => {
+        const confirmed = rows.reduce(
+          (n, r) => n + r.partialGroups[key].confirmed,
+          0,
+        );
+        const total = rows.reduce((n, r) => n + r.partialGroups[key].total, 0);
+        return [
+          key,
+          { confirmed, total, ratio: total ? confirmed / total : 0 },
+        ];
+      }),
+    ),
+    partialAverage: rows.length
+      ? rows.reduce(
+          (n, r) =>
+            n +
+            Object.values(r.partialGroups).reduce((s, g) => s + g.ratio, 0) / 5,
+          0,
+        ) / rows.length
+      : 0,
+    completeAverage: rows.length
+      ? rows.reduce(
+          (n, r) => n + Object.values(r.groups).filter(Boolean).length,
+          0,
+        ) /
+        (rows.length * 5)
+      : 0,
     schools: rows,
     confirmed: rows.reduce(
       (n, r) =>

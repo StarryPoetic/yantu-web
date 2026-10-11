@@ -7,6 +7,7 @@ import { repairResearchEvidence } from "./research-repair.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
 import { collectMissingPriorityEvidence } from "./research-targeted.ts";
+import { schoolRegistry } from "../schools/index.ts";
 import { researchCompute } from "./research-compute.ts";
 
 export function selectedResearchSource(
@@ -62,6 +63,19 @@ export async function refineResearchSchools(
         const own = sources.filter(
           (s) => academicDomain(s.url) === school.domain,
         );
+        const seed = schoolRegistry.byHost(
+          school.domain,
+        )?.graduateAdmissionsUrl;
+        if (seed && !own.some((s) => s.url === seed))
+          own.push({
+            id: `seed:${school.domain}`,
+            url: seed,
+            title: `${school.institutionName}研究生院招生入口`,
+            kind: "search_snippet",
+            verified: false,
+            excerpt: "官方入口线索，不证明招生事实。",
+            retrievedAt: new Date(input.now?.() ?? Date.now()).toISOString(),
+          });
         const gaps: ResearchEvidenceGap[] = (
           ["program", "exams", "location", "tuition"] as const
         ).map((field) => ({
@@ -84,6 +98,7 @@ export async function refineResearchSchools(
           ...input,
           sources: own,
           priorityDocuments: true,
+          searchFirst: true,
           discoveryReadLimit:
             index < B.discoveryReads ? B.schoolDiscoveryReads : 0,
           gaps,
@@ -174,7 +189,10 @@ export async function refineResearchSchools(
     lookupKeys,
     usedReads,
     priorityPrograms: inventory.recommendations,
-    maxRequests: B.searches - requestCount,
+    maxRequests: Math.max(
+      0,
+      B.searches - requestCount - B.finalGapSearchReserve,
+    ),
     maxReads: B.reads - readCount,
   });
   sources = targeted.sources;
@@ -182,6 +200,37 @@ export async function refineResearchSchools(
   requestCount += targeted.requestCount;
   readCount += targeted.readCount;
   limitations.push(...targeted.limitations);
+  // Rebuild the programme inventory after collection, then spend the reserved
+  // queries on remaining gaps before final analysis (with the same read ledger).
+  if (requestCount < B.searches && readCount < B.reads) {
+    const refreshed = await researchCompute(
+      "inventory",
+      {
+        run: input.run,
+        disciplines: input.disciplines,
+        sources,
+        targetYear: input.targetYear,
+        schoolNames: selected.map((s) => s.institutionName),
+      },
+      input.signal,
+    );
+    const extra = await collectMissingPriorityEvidence({
+      ...input,
+      selected,
+      sources,
+      lookupKeys,
+      usedReads: targeted.usedReads,
+      schoolSearchCounts: targeted.schoolSearchCounts,
+      priorityPrograms: refreshed.recommendations,
+      maxRequests: B.searches - requestCount,
+      maxReads: B.reads - readCount,
+    });
+    sources = extra.sources;
+    lookupKeys = extra.lookupKeys;
+    requestCount += extra.requestCount;
+    readCount += extra.readCount;
+    limitations.push(...extra.limitations);
+  }
   return {
     sources,
     requestCount,

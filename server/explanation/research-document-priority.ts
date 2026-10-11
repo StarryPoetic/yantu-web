@@ -11,7 +11,11 @@ export function researchDocumentPriority(
     /本科(?:专业|招生|录取)|普通类招生结果/.test(title)
   )
     return -100;
-  if (/博士|博后|博士后/.test(title) && !/硕士|硕博/.test(title)) return -100;
+  if (
+    /硕博连读|博士|博后|博士后/.test(title) &&
+    !/硕士招生专业目录/.test(title)
+  )
+    return -100;
   if (program && /学院/.test(title) && !title.includes(program)) {
     if (
       /机械/.test(program) &&
@@ -30,8 +34,11 @@ export function researchDocumentPriority(
   if (/复试.*(?:分数|基本要求)|分数线/.test(title)) return 95;
   if (/拟录取|录取名单/.test(title)) return 90;
   if (/报录|录取统计|招生统计|推免.*比例/.test(title)) return 85;
+  if (/报考上线录取|历年.*(?:招生|录取|数据)|复试.*(?:细则|办法)/.test(title))
+    return 85;
   if (/招生简章|招生章程/.test(title)) return 80;
   if (/学科评估|专业排名/.test(title)) return 75;
+  if (/学科概况|学科介绍|学科建设/.test(title)) return 65;
   if (/就业.*报告|就业质量|就业去向/.test(title)) return 70;
   if (/初试|考试科目|学费|收费|培养地点|校区|培养方案|生源|跨考/.test(title))
     return 50;

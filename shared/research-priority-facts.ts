@@ -51,6 +51,9 @@ export interface ResearchPriorityFact {
     grade?: string;
     employmentRate?: number;
     destinations?: string;
+    /** Statistical population/limits are preserved, never used as ordinary cutoff. */
+    population?: string;
+    applicants?: number;
     statistics?: {
       rows: number;
       examination: number;

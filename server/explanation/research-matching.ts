@@ -1,4 +1,5 @@
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
+import { researchTextRows } from "./research-table-text.ts";
 import signals from "../../knowledge/disciplines/signals.json" with { type: "json" };
 import {
   affirmativePreference,
@@ -182,6 +183,40 @@ function parseProgramEntries(
   disciplines: readonly Discipline[],
 ) {
   const body = withoutSchoolLinks(source.excerpt);
+  // Older saved HTML stores each cell on a separate physical line. Recognise
+  // only explicit header-aligned rows; do not join arbitrary adjacent prose.
+  const vertical: ({
+    discipline: Discipline;
+    programName: string;
+    majorCode: string;
+    catalogQuote: string;
+  } & ReturnType<typeof programRowScope>)[] = [];
+  let columns: string[] = [];
+  for (const row of researchTextRows(body)) {
+    if (!row.cells) continue;
+    if (row.cells.includes("专业代码") && row.cells.includes("专业名称")) {
+      columns = row.cells;
+      continue;
+    }
+    if (!columns.length || row.cells.length !== columns.length) continue;
+    const majorCode = row.cells[columns.indexOf("专业代码")];
+    const programName = row.cells[columns.indexOf("专业名称")];
+    const discipline = disciplines.find(
+      (d) => /^\d{6}$/.test(majorCode) && majorCode.startsWith(d.code),
+    );
+    const collegeIndex = columns.findIndex((c) =>
+      /学院名称|院系名称|^学院$|^院系$/.test(c),
+    );
+    if (discipline && isConcreteProgramName(programName))
+      vertical.push({
+        discipline,
+        programName,
+        majorCode,
+        catalogQuote: row.line,
+        studyMode: undefined,
+        collegeName: collegeIndex >= 0 ? row.cells[collegeIndex] : undefined,
+      });
+  }
   const rows = [
     ...body.matchAll(
       /\b((?:0[1-9]|1[0-4])\d{4})\b[ \t|:：()（）\[\]【】-]*([\p{Script=Han}]{2,30})/gu,
@@ -234,8 +269,10 @@ function parseProgramEntries(
   });
   return /招生(?:专业)?目录/.test(`${source.title}\n${body}`) ||
     entries.length >= 2
-    ? entries
-    : [];
+    ? [...entries, ...vertical]
+    : vertical.length >= 2
+      ? vertical
+      : [];
 }
 
 /** Referrals do not establish any examination subject. */

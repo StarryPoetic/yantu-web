@@ -41,13 +41,14 @@ test("different reports share the same global network and redirect-host limits",
   );
   await Promise.all(
     readers.flatMap((reader) =>
-      Array.from({ length: 10 }, (_, i) =>
+      Array.from({ length: B.concurrency + 2 }, (_, i) =>
         reader.read(`https://cross${i}.edu.cn/page`),
       ),
     ),
   );
   assert.equal(peak, B.concurrency);
-  for (const reader of readers) assert.equal(reader.statistics.reads, 10);
+  for (const reader of readers)
+    assert.equal(reader.statistics.reads, B.concurrency + 2);
 });
 
 test("final model input keeps facts ahead of excerpts, deduplicates source URLs and trims lower priorities within the JSON limit", () => {

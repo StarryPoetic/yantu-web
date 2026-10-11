@@ -80,13 +80,23 @@ export function searchConfigFromEnvironment(
         ? env.BOCHA_API_KEY
         : env.BRAVE_SEARCH_API_KEY
       )?.trim() || undefined,
-    searchDailyRequestsPerUser: Number(
-      env.YANTU_SEARCH_USER_DAILY_REQUESTS ?? B.searchDailyRequestsPerUser,
+    searchDailyRequestsPerUser: alignedSearchLimit(
+      Number(
+        env.YANTU_SEARCH_USER_DAILY_REQUESTS ?? B.searchDailyRequestsPerUser,
+      ),
     ),
-    searchDailyRequestsGlobal: Number(
-      env.YANTU_SEARCH_DAILY_REQUESTS ?? B.searchDailyRequestsGlobal,
+    searchDailyRequestsGlobal: alignedSearchLimit(
+      Number(env.YANTU_SEARCH_DAILY_REQUESTS ?? B.searchDailyRequestsGlobal),
     ),
   };
+}
+
+/** A positive deployment allowance must support one configured research run.
+ * Zero still disables spending; invalid values still fail validation. */
+export function alignedSearchLimit(value: number) {
+  return Number.isSafeInteger(value) && value > 0
+    ? Math.max(B.searches, value)
+    : value;
 }
 
 /** Reserve before sending; failed requests may still be billed and clearing chat does not refund them. */

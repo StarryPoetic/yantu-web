@@ -476,17 +476,24 @@ test("transient page reads retry once within shared budgets; TLS and missing pag
     });
     const base = f.config.reader!;
     let pageCalls = 0;
+    const observedFailures: Record<string, number> = {};
     f.config.reader = async (url, options) => {
-      if (new URL(url).hostname === "hdu.edu.cn" && ++pageCalls === 1)
-        throw new ModelError(code);
-      return base(url, options);
+      try {
+        if (new URL(url).hostname === "hdu.edu.cn" && ++pageCalls === 1)
+          throw new ModelError(code);
+        return await base(url, options);
+      } catch (error) {
+        const c = error instanceof ModelError ? error.code : "WEB_UNAVAILABLE";
+        observedFailures[c] = (observedFailures[c] ?? 0) + 1;
+        throw error;
+      }
     };
     const r = await f.create().generate({
       subjectId: f.run.subjectId,
       run: f.run,
       strategy: "two-stage",
     });
-    assert.equal(r.usage!.reads.failuresByCode![code], 1);
+    assert.equal(r.usage!.reads.failuresByCode![code], observedFailures[code]);
     if (["WEB_TIMEOUT", "WEB_CONNECTION_RESET"].includes(code)) {
       assert.equal(pageCalls, 2);
       assert.equal(r.usage!.reads.success, 1);

@@ -1,0 +1,119 @@
+import { realReplayFixture } from "./research-real-replay.ts";
+import { createResearchReportModule } from "../../server/explanation/research.ts";
+import { generateGuidance } from "../../server/disciplines/index.ts";
+import { blankProfile } from "../../server/profile.ts";
+import { extractProgramFacts } from "../../server/explanation/research-facts.ts";
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
+import { ModelError } from "../../server/explanation/deepseek.ts";
+
+/** Complete report path. The model contributes no invented admission facts. */
+export async function runRealReportReplay() {
+  const fixture = realReplayFixture();
+  const sources = fixture.pages.flatMap((p) => (p.source ? [p.source] : []));
+  const facts = sources.flatMap((s) =>
+    extractProgramFacts(s, [s], "2026-10-12T00:00:00Z"),
+  );
+  let finalCalls = 0,
+    reads = 0,
+    searches = 0;
+  const run = generateGuidance({
+    subjectId: "batch1-synthetic-hangzhou",
+    guidanceRunId: "real-replay",
+    generatedAt: "2026-10-12T00:00:00Z",
+    profile: {
+      ...blankProfile(),
+      university: "合成本科院校",
+      major: "机械工程",
+      targetMajor: "机械工程",
+      cities: ["杭州"],
+      budget: "1万元以内",
+      crossMajor: "不接受跨专业",
+      studyGoal: "专业实践与行业就业",
+      year: "2027",
+    },
+    profileVersion: 1,
+    selectionVersion: 1,
+    confirmedMajorId: "0802",
+    excludedMajorIds: [],
+    assessments: [],
+  });
+  const report = await createResearchReportModule(
+    {
+      enabled: true,
+      apiKey: "offline",
+      searchEnabled: true,
+      searchKey: "offline",
+      userDailyTokens: B.userDailyTokens,
+      globalDailyTokens: B.globalDailyTokens,
+      now: () => Date.parse(run.generatedAt),
+      adapter: {
+        async complete(_messages, options) {
+          if (options?.thinking) finalCalls++;
+          return {
+            model: options?.model ?? "deepseek-flash",
+            inputTokens: 0,
+            outputTokens: 0,
+            content: JSON.stringify(
+              options?.thinking
+                ? {
+                    summary: "离线真实响应回放，未提供模型招生事实。",
+                    facts: [],
+                    recommendations: [],
+                    limitations: [],
+                  }
+                : { focus: [0, 0, 0, 0, 0], facts: [], factIds: [] },
+            ),
+          };
+        },
+      },
+      reader: async (url) => {
+        if (new URL(url).hostname === "api.search.brave.com") {
+          searches++;
+          const q = new URL(url).searchParams.get("q") ?? "";
+          const saved = fixture.runs
+            .flatMap((r) => r.queries)
+            .find((r) => r.query === q);
+          return {
+            contentType: "application/json",
+            text: JSON.stringify({
+              web: {
+                results: (saved?.sources ?? []).map((s) => ({
+                  url: s.url,
+                  title: s.title,
+                  description: s.excerpt,
+                })),
+              },
+            }),
+          };
+        }
+        reads++;
+        const s = sources.find((s) => s.url === url);
+        if (!s) throw new ModelError("WEB_UNAVAILABLE");
+        return { contentType: "text/plain", text: s.excerpt };
+      },
+    },
+    {
+      library: {
+        load: () => structuredClone(sources),
+        queryFacts: () => facts,
+        coverageStats: () => ({
+          librarySchoolCount: 3,
+          libraryProgramCount: facts.filter((f) => f.field === "catalog")
+            .length,
+        }),
+        isFresh: (url) => sources.some((s) => s.url === url),
+        save: () => {},
+        saveIncremental: async () => {},
+        flush: async () => {},
+        recordAttempt: () => {},
+        attempts: () => [],
+      },
+    },
+  ).generate({
+    subjectId: run.subjectId,
+    run,
+    strategy: "two-stage",
+    targetScore: { total: 350, maximum: 500 },
+  });
+  return { report, finalCalls, reads, searches };
+}

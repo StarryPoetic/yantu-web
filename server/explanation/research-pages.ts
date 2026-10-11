@@ -254,7 +254,17 @@ export function researchAttachments(
 ) {
   const parentUrl = new URL(parent.finalUrl ?? parent.url);
   if (!parentUrl.hostname.endsWith(".edu.cn")) return [];
-  const clean = html
+  const explicit = [
+    ...parent.excerpt.matchAll(/https?\s*:\/\/[^\s<>"'，。；）)]+/g),
+  ]
+    .flatMap((m) => {
+      const context = parent.excerpt.slice(Math.max(0, m.index - 100), m.index);
+      return /历年|分数线|报考人数|录取人数|招生数据/.test(context)
+        ? [`<a href="${m[0].replace(/\s/g, "")}">历年招生数据 报考录取统计</a>`]
+        : [];
+    })
+    .join("");
+  const clean = (html + explicit)
     .replace(/<!--[^]*?-->/g, " ")
     .replace(/<(script|style|noscript|svg)\b[^>]*>[^]*?<\/\1\s*>/gi, " ");
   const links: {
@@ -288,14 +298,12 @@ export function researchAttachments(
         .replace(/&amp;/gi, "&")
         .replace(/\s+/g, " ")
         .trim();
-      if (
-        /本科|博士|录取名单|拟录取|导师|就业|招聘|推荐免试|推免|留学|国际学生|来华|港澳台/.test(
-          label,
-        )
-      )
+      if (/本科|博士|硕博连读|导师|招聘|留学|国际学生|来华|港澳台/.test(label))
         continue;
       if (
-        !/硕士|研究生|招生专业|培养方案|学费|收费标准|收费项目/.test(label) &&
+        !/硕士|研究生|招生专业|培养方案|学费|收费标准|收费项目|复试|拟录取|报录|报考录取|历年招生数据|学科评估|就业质量|就业.*报告|生源质量/.test(
+          label,
+        ) &&
         !(
           (!label || /附件|下载/.test(label)) &&
           /硕士|研究生|学费|收费/.test(parent.title)
@@ -311,6 +319,9 @@ export function researchAttachments(
       // Generic navigation, login routes and other list pages do not create a crawl.
       if (
         kind === "html" &&
+        !/历年招生数据|复试|拟录取|报录|学科评估|就业.*报告|生源质量/.test(
+          label,
+        ) &&
         (!/硕士[^。；]{0,35}(?:招生|专业目录)|招生专业目录|研究生[^。；]{0,25}(?:招生|培养方案|学费|收费)/.test(
           label,
         ) ||

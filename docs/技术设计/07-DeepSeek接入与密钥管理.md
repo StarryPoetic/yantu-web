@@ -295,11 +295,11 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `collectionTargetMs` | 300000 |
 | `finalReserveMs` | 150000 |
 | `reads` | 180 |
-| `schoolReads` | 16 |
+| `schoolReads` | 30 |
 | `schoolDiscoveryReads` | 1 |
 | `discoveryReads` | 8 |
 | `platformReads` | 4 |
-| `concurrency` | 8 |
+| `concurrency` | 12 |
 | `initialReads` | 120 |
 | `cityReads` | 24 |
 | `geographyReads` | 2 |
@@ -308,7 +308,7 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `feeSearches` | 18 |
 | `repairSearches` | 4 |
 | `candidates` | 240 |
-| `librarySourcesPerSchool` | 8 |
+| `librarySourcesPerSchool` | 16 |
 | `modelSources` | 40 |
 | `attachments` | 72 |
 | `attachmentLinks` | 12 |
@@ -347,10 +347,17 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 
 | 常量 | 值 |
 | --- | --- |
-| `priorityReadsPerTurn` | 3 |
+| `priorityReadsPerTurn` | 6 |
 | `prioritySchoolSearches` | 10 |
 | `prioritySearchReserve` | 48 |
 | `pageRetryTimeoutMs` | 10000 |
 | `pageRetries` | 8 |
 
 从72次查询中预留48次给五类缺项；每校每轮最多读3页，依然服从全报告180次/每校16次。仅超时或连接重置每URL最多重试一次，每报告最多8次；首次8秒、重试10秒且不突破读取器原硬上限，重试仍扣原预算。证书、私网、404/410不以重试或降级绕过。
+
+
+本轮真实回放修复：环境配置中的正整数搜索日额度最低与单报告72次预算对齐（包括旧60次配置），0仍表示禁用，非法值仍拒绝；账本不重置，也不保证已用额度后的第二份报告有72次。默认180/900次及4000000/12000000 token不变，不修改.env。最终补查预留12次，按学校轮询，单校累计最多30次读取；全局12并发仍遵守同主机串行、公网DNS和TLS等边界。
+
+| 常量 | 当前值 |
+| --- | --- |
+| `finalGapSearchReserve` | 12 |
