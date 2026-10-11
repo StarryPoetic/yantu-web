@@ -82,8 +82,14 @@ class ProductDocumentTests(unittest.TestCase):
 
     def test_phase_six_display_preserves_field_status_and_collapsed_raw_limits(self):
         section = self.content.split("### 3.5.", 1)[1].split("## 4.", 1)[0]
-        for phrase in ("阶段6已实现", "初试科目", "资料年度", "已绑定", "待确认", "未找到", "每字段默认最多2条", "优先目标年度", "默认收起", "城市已核验，具体校区待确认", "前600字", "6000字", "原获取时间", "研招网平台", "该报告生成时未记录资料覆盖统计", "键盘", "375px"):
+        for phrase in ("报告字段展示要求", "初试科目", "资料年度", "已绑定", "待确认", "未找到", "每字段默认最多2条", "优先目标年度", "默认收起", "城市已核验，具体校区待确认", "前600字", "6000字", "原获取时间", "研招网平台", "该报告生成时未记录资料覆盖统计", "键盘", "375px"):
             self.assertIn(phrase, section)
+
+    def test_acceptance_separates_library_reuse_and_binding_scope_without_implementation_narrative(self):
+        self.assertNotRegex(self.content, r"阶段[0-7]")
+        self.assertNotIn("## 参考资料\n\n\n", self.content)
+        for phrase in ("本次实时读取", "资料库复用", "专业级绑定", "学校级学费", "school_wide / school_degree_type", "城市级校区核验", "实施说明第13节"):
+            self.assertIn(phrase, self.content)
 
     def test_picker_review_target_and_research_requirements_are_explicit(self):
         for phrase in (

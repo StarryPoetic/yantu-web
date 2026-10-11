@@ -412,11 +412,33 @@ class TechnicalDesignTests(unittest.TestCase):
         for decision, status in ((13, "已确定"), (14, "已确定"), (15, "已确定")):
             self.assertIn(f"| D-{decision} | {status} |", decisions)
         implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
-        self.assertIn("## 13. 院校资料收集修复（2026-10-11，进行中）", implementation)
-        self.assertIn("后续阶段完成后更新本节", implementation)
+        self.assertIn("## 13. 院校资料收集修复（2026-10-11）", implementation)
+        self.assertNotIn("院校资料收集修复（2026-10-11，进行中）", implementation)
+        self.assertIn("阶段7真实验证记录", implementation)
         self.assertNotIn("固定六次总预算", implementation)
         for phase in range(1, 8):
             self.assertIn(f"阶段{phase}", implementation)
+
+    def test_live_verification_record_separates_costs_denominators_and_manual_scope(self):
+        implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
+        record = (ROOT / "docs" / "阶段7真实验证记录.md").read_text(encoding="utf-8")
+        for commit in ("54bc68f", "4017bef", "0a131f9", "a10d71e", "1bf14ba", "a797255", "bced20d", "bc44de3", "7e05b0f", "4fb461d", "8378e3f", "a086a8f", "32b7020", "8b690a1", "3e0e8fb", "d470fa1"):
+            self.assertIn(commit, implementation)
+        for phrase in ("免费预抓取", "零费用彩排", "真实运行", "前20次", "public-doh", "资料条件不同", "本次实时读取", "实时读取加资料库复用", "专业级绑定", "学校级学费", "城市级校区核验", "错误绑定", "样本分母", "逐推荐人工核对", "修复后未重新真实运行", "杭师大", "脚本模板", "robots禁止"):
+            self.assertIn(phrase, record)
+        for phrase in ("PROVIDER_NETWORK_ERROR", "失败也未自动重跑", "账单", "0/0", "888运筹学", "联系地址", "3e0e8fb", "d470fa1", "事务回滚", "同校跨子域", "旧规则事实残留0", "来源获取时间摘要前后一致", "871项"):
+            self.assertIn(phrase, record)
+        for row in ("| 学费（所有适用范围） | 1/4 | 0/4 | 3/4 |", "| 培养城市/校区 | 1/4 | 1/4 | 2/4 |", "| 初试科目 | 1/4 | 1/4 | 2/4 |"):
+            self.assertIn(row, record)
+        for phrase in ("系统待确认原文0条", "模型删句数未记录", "preferred 1、alternative 1、exploratory 2"):
+            self.assertIn(phrase, record)
+            self.assertIn(phrase, implementation)
+        for path in (README, INDEX, ROOT / "docs" / "实施说明.md"):
+            content = path.read_text(encoding="utf-8")
+            for name in ("阶段4事实质量冒烟.md", "阶段4robots冒烟.md", "阶段7真实验证记录.md"):
+                self.assertIn(name, content)
+        for command in ("--rehearsal --dns-mode public-doh", "--confirm-paid --dns-mode public-doh", "phase7-paid-run.lock"):
+            self.assertIn(command, README.read_text(encoding="utf-8"))
 
     def test_phase_four_public_facts_prefetch_and_platform_fallback_are_documented(self):
         for path in (README, ROOT / "knowledge" / "README.md", ROOT / "server" / "explanation" / "README.md",
@@ -539,7 +561,7 @@ class TechnicalDesignTests(unittest.TestCase):
                 with self.subTest(document=path.name, phrase=phrase):
                     self.assertIn(phrase, content)
         implementation = (ROOT / "docs" / "实施说明.md").read_text(encoding="utf-8")
-        for phrase in ("阶段1与阶段2已完成", "13.2. 阶段2完成", "保存证据的离线重放，不是新的联网结果", "4017bef", "15000毫秒", "删除4句", "修改前", "修改后"):
+        for phrase in ("各阶段实现提交", "13.2. 阶段2完成", "保存证据的离线重放，不是新的联网结果", "4017bef", "15000毫秒", "删除4句", "修改前", "修改后"):
             self.assertIn(phrase, implementation)
         for row in (
             "| 最终推荐数（每校一个主建议） | 10 | 6 |",
