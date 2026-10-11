@@ -465,6 +465,8 @@ export interface DeriveResearchCoverageInput {
   candidateAudit: ResearchCandidateAudit[];
   targetYear: string;
   attempts?: ResearchReadAttempt[];
+  /** A selected-school report must not invent schools from faculty headings. */
+  schoolNames?: readonly string[];
 }
 
 /** Pure derivation: no network, model, profile mutation or claims about unavailable documents. */
@@ -492,11 +494,13 @@ export function deriveResearchCoverage(input: DeriveResearchCoverageInput): {
       (item): item is typeof item & { programName: string } =>
         !!item.programName,
     );
-  const names = new Set([
-    ...input.candidateAudit.map((candidate) => candidate.institutionName),
-    ...suggestions.map((item) => item.institutionName),
-  ]);
-  for (const source of sources) {
+  const names = new Set(
+    input.schoolNames ?? [
+      ...input.candidateAudit.map((candidate) => candidate.institutionName),
+      ...suggestions.map((item) => item.institutionName),
+    ],
+  );
+  for (const source of input.schoolNames ? [] : sources) {
     if (!schoolPage(source)) continue;
     for (const match of withoutSchoolLinks(source.excerpt).matchAll(
       /(?:^|[\s:：。；|｜])([\p{Script=Han}]{2,20}(?:大学|学院|研究院|研究所))(?=\s|\d|年|硕士|研究生|招生|专业|学科|版权所有|$)/gu,
@@ -512,6 +516,8 @@ export function deriveResearchCoverage(input: DeriveResearchCoverageInput): {
   const gaps: ResearchEvidenceGap[] = [];
   const programs: ResearchProgramCoverage[] = [];
   for (const institutionName of [...names].sort()) {
+    if (input.schoolNames && !input.schoolNames.includes(institutionName))
+      continue;
     const original = input.candidateAudit.find(
       (item) => item.institutionName === institutionName,
     );

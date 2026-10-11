@@ -109,7 +109,10 @@ export function validatePriorityFacts(
     // A programme's training aspiration is not evidence of a city's economy.
     if (
       key === "cityDevelopment" &&
-      /培养目标|本专业|培养.*人才|产业发展需求/.test(quote)
+      (/培养目标|本专业|培养.*人才|产业发展需求|产业经济学|研究方向|第\d+行[：:]/.test(
+        quote,
+      ) ||
+        !quote.includes(school.city))
     )
       continue;
     if (

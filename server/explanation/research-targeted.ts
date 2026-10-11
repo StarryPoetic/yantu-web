@@ -43,7 +43,7 @@ export function missingPriorityQueries(
     {
       fields: ["cutoff"],
       year: years[0],
-      terms: "硕士研究生 复试基本分数线 总分 单科",
+      terms: "硕士研究生 复试基本分数线",
     },
     {
       fields: [
@@ -51,30 +51,30 @@ export function missingPriorityQueries(
         "recommendationShare",
         "applicationAdmissionRatio",
       ],
-      terms: "硕士研究生 拟录取名单 统考 推免 报录比 报录统计",
+      terms: "硕士研究生 报录统计 报考录取情况",
     },
     {
       fields: ["undergraduateAdmission", "crossMajorAdmission"],
-      terms: "硕士研究生 生源质量 双非 跨专业 录取情况",
+      terms: "研究生 生源质量报告",
     },
     {
       fields: ["disciplineAssessment", "programRanking"],
-      terms: "第四轮学科评估 等级 专业排名",
+      terms: "第四轮学科评估",
     },
     {
       fields: ["employment", "cityDevelopment"],
-      terms: "毕业生就业质量报告 就业率 主要去向 城市产业发展",
+      terms: "硕士 毕业生就业质量报告",
     },
     ...years.flatMap((y) => [
       {
         fields: ["cutoff"] as ResearchPriorityField[],
         year: y,
-        terms: "硕士研究生 复试基本分数线 总分 单科",
+        terms: "硕士研究生 复试基本分数线",
       },
       {
         fields: ["admissionScore"] as ResearchPriorityField[],
         year: y,
-        terms: "硕士研究生 拟录取名单 初试成绩 统考 推免",
+        terms: "硕士研究生 拟录取名单 初试成绩",
       },
     ]),
   ];
@@ -82,14 +82,51 @@ export function missingPriorityQueries(
     ...new Set(
       tasks
         .filter((t) => t.fields.some((f) => !has(f, t.year)))
-        .map((t) =>
-          `${school} ${t.fields.includes("disciplineAssessment") ? "" : `${t.year ?? years[0]}年`} ${scope?.collegeName ?? ""} ${scope?.majorCode ?? ""} ${scope?.programName ?? discipline.name} ${t.terms}`.replace(
+        .map((t) => {
+          // Whole-school reports rarely put a six-digit major code in their
+          // title. Do not make that code, a faculty and a recent year mandatory.
+          if (
+            t.fields.includes("employment") ||
+            t.fields.includes("undergraduateAdmission")
+          )
+            return `${school} ${t.terms}`;
+          if (t.fields.includes("disciplineAssessment"))
+            return `${school} ${scope?.programName ?? discipline.name} ${t.terms}`;
+          if (t.fields.includes("admittedCount"))
+            return `${school} ${scope?.programName ?? discipline.name} ${t.terms}`;
+          return `${school} ${t.year ?? years[0]}年 ${scope?.majorCode ?? ""} ${scope?.programName ?? discipline.name} ${t.terms}`.replace(
             /\s+/g,
             " ",
-          ),
-        ),
+          );
+        }),
     ),
   ];
+}
+
+export function priorityQueryCategory(query: string) {
+  if (/复试基本分数线/.test(query)) return "scores";
+  if (/报录|报考录取/.test(query)) return "competition";
+  if (/生源|双非/.test(query)) return "background";
+  if (/学科评估|专业排名/.test(query)) return "academic";
+  if (/就业/.test(query)) return "employment";
+  return "admission";
+}
+
+/** Visit every missing category before a second programme consumes that share. */
+export function fairPriorityQueries(lists: string[][]) {
+  const all = [...new Set(lists.flat())];
+  const groups = [
+    "scores",
+    "competition",
+    "background",
+    "academic",
+    "employment",
+    "admission",
+  ].map((category) => all.filter((q) => priorityQueryCategory(q) === category));
+  return Array.from(
+    { length: Math.max(0, ...groups.map((g) => g.length)) },
+    (_, i) => groups.flatMap((g) => (g[i] ? [g[i]] : [])),
+  ).flat();
 }
 
 export async function collectMissingPriorityEvidence(
@@ -229,10 +266,7 @@ export async function collectMissingPriorityEvidence(
             ),
           );
       // Interleave the same category across programmes before advancing years.
-      const queries = Array.from(
-        { length: Math.max(0, ...queryLists.map((q) => q.length)) },
-        (_, i) => queryLists.flatMap((q) => (q[i] ? [q[i]] : [])),
-      ).flat();
+      const queries = fairPriorityQueries(queryLists);
       const query = [...queries, ...queries.map((q) => q + " 官网 附件")].find(
         (q) =>
           !attempted.has(q) &&

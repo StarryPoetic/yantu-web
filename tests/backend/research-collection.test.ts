@@ -92,6 +92,7 @@ test("full collection flow retains three years and all five categories, with com
       .map((year) =>
         source.excerpt
           .replaceAll("杭州电子科技大学", school.name)
+          .replaceAll("服务杭州", `服务${school.city}`)
           .replaceAll("2026", String(year)),
       )
       .join("\n");

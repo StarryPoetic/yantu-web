@@ -5,17 +5,20 @@ import { blankProfile } from "../../server/profile.ts";
 import { extractProgramFacts } from "../../server/explanation/research-facts.ts";
 import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import { ModelError } from "../../server/explanation/deepseek.ts";
+import { schoolRegistry } from "../../server/schools/index.ts";
+import { setImmediate } from "node:timers/promises";
 
 /** Complete report path. The model contributes no invented admission facts. */
-export async function runRealReportReplay() {
-  const fixture = realReplayFixture();
+export async function runRealReportReplay(fixture = realReplayFixture()) {
   const sources = fixture.pages.flatMap((p) => (p.source ? [p.source] : []));
   const facts = sources.flatMap((s) =>
     extractProgramFacts(s, [s], "2026-10-12T00:00:00Z"),
   );
   let finalCalls = 0,
     reads = 0,
-    searches = 0;
+    searches = 0,
+    activeSearches = 0,
+    peakSearches = 0;
   const run = generateGuidance({
     subjectId: "batch1-synthetic-hangzhou",
     guidanceRunId: "real-replay",
@@ -42,6 +45,7 @@ export async function runRealReportReplay() {
       enabled: true,
       apiKey: "offline",
       searchEnabled: true,
+      searchProvider: "bocha",
       searchKey: "offline",
       userDailyTokens: B.userDailyTokens,
       globalDailyTokens: B.globalDailyTokens,
@@ -66,22 +70,29 @@ export async function runRealReportReplay() {
           };
         },
       },
-      reader: async (url) => {
-        if (new URL(url).hostname === "api.search.brave.com") {
+      reader: async (url, options) => {
+        if (new URL(url).hostname === "api.bocha.cn") {
           searches++;
-          const q = new URL(url).searchParams.get("q") ?? "";
+          activeSearches++;
+          peakSearches = Math.max(peakSearches, activeSearches);
+          await setImmediate();
+          activeSearches--;
+          const q = JSON.parse(options.body ?? "{}").query ?? "";
           const saved = fixture.runs
             .flatMap((r) => r.queries)
             .find((r) => r.query === q);
           return {
             contentType: "application/json",
             text: JSON.stringify({
-              web: {
-                results: (saved?.sources ?? []).map((s) => ({
-                  url: s.url,
-                  title: s.title,
-                  description: s.excerpt,
-                })),
+              code: 200,
+              data: {
+                webPages: {
+                  value: (saved?.sources ?? []).map((s) => ({
+                    url: s.url,
+                    name: s.title,
+                    snippet: s.excerpt,
+                  })),
+                },
               },
             }),
           };
@@ -97,7 +108,11 @@ export async function runRealReportReplay() {
         load: () => structuredClone(sources),
         queryFacts: () => facts,
         coverageStats: () => ({
-          librarySchoolCount: 3,
+          librarySchoolCount: new Set(
+            sources
+              .map((s) => schoolRegistry.byHost(new URL(s.url).hostname)?.name)
+              .filter(Boolean),
+          ).size,
           libraryProgramCount: facts.filter((f) => f.field === "catalog")
             .length,
         }),
@@ -115,5 +130,5 @@ export async function runRealReportReplay() {
     strategy: "two-stage",
     targetScore: { total: 350, maximum: 500 },
   });
-  return { report, finalCalls, reads, searches };
+  return { report, finalCalls, reads, searches, peakSearches };
 }

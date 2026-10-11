@@ -20,9 +20,19 @@ export function programRowScope(body: string, start: number, end?: number) {
       : body.slice(body.lastIndexOf("\n", lineStart - 1) + 1, lineStart).trim();
   const collegePattern =
     /(?:^|[|\s:：。；])\d{0,3}([\p{Script=Han}]{1,24}(?:学院|研究院|研究所|学部|中心))\s*\|?\s*$/u;
+  const wholeFaculty = (value: string) =>
+    value
+      .match(
+        /^\s*\d{0,3}\s*([\p{Script=Han}][\p{Script=Han}\t ]{0,40}(?:学院|研究院|研究所|学部|中心))\s*\|?\s*$/u,
+      )?.[1]
+      .replace(/\s/g, "");
   const collegeName =
+    wholeFaculty(prefix) ??
     prefix.match(collegePattern)?.[1] ??
-    (prefix.trim() ? undefined : precedingLine.match(collegePattern)?.[1]);
+    (prefix.trim()
+      ? undefined
+      : (wholeFaculty(precedingLine) ??
+        precedingLine.match(collegePattern)?.[1]));
   const row = body
     .slice(start, end)
     .split(/\n|复试|参考课程|参考书目|培养内容|课程设置/)[0];

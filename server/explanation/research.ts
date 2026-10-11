@@ -2169,6 +2169,9 @@ export function createResearchReportModule(
                     sources: report.sources,
                     recommendations: report.recommendations,
                     candidateAudit: report.candidateAudit ?? [],
+                    schoolNames: prefilter?.selected.map(
+                      (s) => s.institutionName,
+                    ),
                     targetYear: year,
                     attempts,
                   },

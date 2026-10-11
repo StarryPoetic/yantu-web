@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getDisciplineCatalog } from "../../server/disciplines/index.ts";
@@ -45,15 +45,32 @@ export interface ReplayFixture {
     }[];
   }[];
 }
-export const realReplayFixture = () =>
+export const realReplayFixture = (name = "research-real-replay.json") =>
   JSON.parse(
-    readFileSync(
-      new URL("../fixtures/research-real-replay.json", import.meta.url),
-      "utf8",
-    ),
+    readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8"),
   ) as ReplayFixture;
 export const replayDisciplines = () =>
   getDisciplineCatalog().items.filter((d) => ["0802", "0855"].includes(d.code));
+/** Preserve older successful originals when a later run never visited their URL. */
+export function combinedRealReplayFixture() {
+  const names = readdirSync(new URL("../fixtures/", import.meta.url))
+    .filter((name) => /^research-v3a6-run\d+\.json$/.test(name))
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
+  const fixtures = [realReplayFixture(), ...names.map(realReplayFixture)];
+  const pages = new Map<string, ReplayFixture["pages"][number]>();
+  for (const fixture of fixtures)
+    for (const page of fixture.pages) {
+      const old = pages.get(page.url);
+      pages.set(page.url, {
+        ...page,
+        source: page.source ?? old?.source,
+        capturedIn: [
+          ...new Set([...(old?.capturedIn ?? []), ...page.capturedIn]),
+        ],
+      });
+    }
+  return { pages: [...pages.values()], runs: fixtures.flatMap((f) => f.runs) };
+}
 export function replayCategory(q: string) {
   return /专业目录/.test(q)
     ? "catalog"

@@ -21,6 +21,7 @@ export const RESEARCH_BUDGET = {
   discoveryReads: 8,
   platformReads: 4,
   concurrency: 12,
+  initialSearchConcurrency: 1,
   initialReads: 120,
   cityReads: 24,
   geographyReads: 2,

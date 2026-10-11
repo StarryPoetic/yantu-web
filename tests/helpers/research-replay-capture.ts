@@ -14,7 +14,7 @@ export function replayPublicText(text: string) {
     .split("\n")
     .filter(
       (line) =>
-        !/联系人|联系电话|咨询电话|电子邮|邮箱|编辑[：:]|审核[：:]|作者[：:]|撰稿|通讯员|负责人|联系人姓名/.test(
+        !/联系人|联系电话|咨询电话|电子邮|邮箱|编辑[：:]|审核[：:]|作者[：:]|撰稿|通讯员|负责人|联系人姓名|(?:组\s*长|副组长|成\s*员|秘\s*书)\s*[：:]|^\s*\d{3,4}-\d{7,8}\s*$/.test(
           line,
         ),
     )
@@ -28,6 +28,16 @@ export function replayPublicText(text: string) {
         .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "【邮箱已删除】"),
     )
     .join("\n");
+}
+
+function publicSearchExcerpt(source: WebSource) {
+  // Roster snippets often lose the column headings needed for safe redaction.
+  // Keep the actual title/URL, but do not export their possible personal rows.
+  if (
+    /名单|公示|姓名|考生编号|准考证|身份证/.test(source.title + source.excerpt)
+  )
+    return "名单或公示摘要已省略个人信息；以脱敏官方正文为准。";
+  return replayPublicText(source.excerpt);
 }
 type Event = {
   event: string;
@@ -148,8 +158,8 @@ export function captureReplay(
               title: /联系方式|电话/.test(s.title)
                 ? "官方联系方式页"
                 : replayPublicText(s.title),
-              // Search summaries are discovery leads only; do not export personal snippets.
-              excerpt: "检索摘要未作为正文；以保存页面为准。",
+              // Preserve discovery context without upgrading it to a page fact.
+              excerpt: publicSearchExcerpt(s),
             })),
         };
       });
@@ -201,7 +211,7 @@ export function captureReplay(
     if (!pages.has(url))
       pages.set(url, { url, title: "官方入口（未保存正文）", capturedIn: [] });
   const result = {
-    version: 1,
+    version: 2,
     policy:
       "saved-public-text-only; missing responses remain missing; no synthetic answers",
     pages: [...pages.values()].sort((a, b) => a.url.localeCompare(b.url)),

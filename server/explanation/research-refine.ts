@@ -54,9 +54,13 @@ export async function refineResearchSchools(
   const share = (total: number, index: number) =>
     Math.floor(total / Math.max(1, selected.length)) +
     Number(index < total % Math.max(1, selected.length));
-  for (let offset = 0; offset < selected.length; offset += B.concurrency) {
+  for (
+    let offset = 0;
+    offset < selected.length;
+    offset += B.initialSearchConcurrency
+  ) {
     input.signal?.throwIfAborted();
-    const wave = selected.slice(offset, offset + B.concurrency);
+    const wave = selected.slice(offset, offset + B.initialSearchConcurrency);
     const results = await Promise.allSettled(
       wave.map(async (school, localIndex) => {
         const index = offset + localIndex;

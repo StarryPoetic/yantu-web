@@ -1348,6 +1348,7 @@ export function rankDemandCandidates(
       (factor) =>
         factor.status === "match" && !factor.field.startsWith("assessment-"),
     ).length;
+  const targetProgramName = researchContext(run).profile.targetMajor;
   ranked.sort(
     (a, b) =>
       tierOrder[a.tier] - tierOrder[b.tier] ||
@@ -1362,6 +1363,8 @@ export function rankDemandCandidates(
           ),
         ) ||
       preferenceScore(b.match) - preferenceScore(a.match) ||
+      Number(b.programName === targetProgramName) -
+        Number(a.programName === targetProgramName) ||
       a.institutionName.localeCompare(b.institutionName, "zh-CN") ||
       a.disciplineCode.localeCompare(b.disciplineCode) ||
       a.programName!.localeCompare(b.programName!, "zh-CN") ||

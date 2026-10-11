@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   realReplayFixture,
+  combinedRealReplayFixture,
   replayDisciplines,
   runRealReplay,
 } from "../helpers/research-real-replay.ts";
@@ -20,8 +21,51 @@ import { researchAttachments } from "../../server/explanation/research-pages.ts"
 import { runRealReportReplay } from "../helpers/research-real-report-replay.ts";
 import { programEntries } from "../../server/explanation/research-matching.ts";
 import { replayAcceptanceCriteria } from "../helpers/research-replay-live.ts";
-import { missingPriorityQueries } from "../../server/explanation/research-targeted.ts";
+import {
+  missingPriorityQueries,
+  fairPriorityQueries,
+  priorityQueryCategory,
+} from "../../server/explanation/research-targeted.ts";
 const fixture = realReplayFixture();
+test("cumulative real corpus has an evidence audit for every unfilled recommended slot", async () => {
+  const combined = combinedRealReplayFixture();
+  const result = await runRealReportReplay(combined);
+  const coverage = result.report.priorityCoverage!;
+  const audit = JSON.parse(
+    readFileSync("tests/fixtures/research-v3a6-audit.json", "utf8"),
+  );
+  const missing = coverage.schools.flatMap((school) => [
+    ...school.missingScoreYears.map(
+      (x) => `${school.schoolName}:${x.field}:${x.year}`,
+    ),
+    ...school.pending
+      .filter((x) => x !== "cutoff" && x !== "admissionScore")
+      .map((x) => `${school.schoolName}:${x}:`),
+  ]);
+  assert.deepEqual(
+    new Set(
+      audit.map(
+        (x: { school: string; field: string; year?: number }) =>
+          `${x.school}:${x.field}:${x.year ?? ""}`,
+      ),
+    ),
+    new Set(missing),
+  );
+  assert.equal(result.searches, B.searches);
+  assert.equal(result.peakSearches, B.initialSearchConcurrency);
+  assert.equal(result.finalCalls, 1);
+  assert.ok(combined.pages.filter((p) => p.source).length >= 210);
+  assert.ok(coverage.confirmed >= 8);
+  for (const row of audit) {
+    assert.ok(row.evidence.length > 20);
+    assert.ok(row.reviewedUrls.length > 0);
+    assert.ok(
+      row.reviewedUrls.every((url: string) =>
+        combined.pages.some((p) => p.url === url && p.source),
+      ),
+    );
+  }
+});
 test("paid acceptance uses field mean, five schools, deadline and a completed final analysis", () => {
   const input = {
     elapsedMs: 500000,
@@ -52,8 +96,16 @@ test("queries keep official concrete major name and code rather than another sel
     [],
     { majorCode: "085500", programName: "机械", collegeName: "机械工程学院" },
   );
+  assert.ok(queries.every((q) => !q.includes("080200")));
   assert.ok(
-    queries.every((q) => q.includes("085500 机械 ") && !q.includes("080200")),
+    queries
+      .filter((q) => /复试|初试成绩/.test(q))
+      .every((q) => q.includes("085500 机械 ")),
+  );
+  assert.ok(
+    queries
+      .filter((q) => /就业|生源/.test(q))
+      .every((q) => !/085500|2026|机械工程学院/.test(q)),
   );
   for (const term of [
     "复试基本分数线",
@@ -63,6 +115,44 @@ test("queries keep official concrete major name and code rather than another sel
     "就业质量报告",
   ])
     assert.ok(queries.some((q) => q.includes(term)));
+});
+test("many faculty variants cannot consume the allowance before every missing category gets a query", () => {
+  const lists = Array.from({ length: 5 }, (_, i) =>
+    missingPriorityQueries("浙江科技大学", replayDisciplines()[0], "2027", [], {
+      majorCode: `08020${i}`,
+      programName: "机械工程",
+      collegeName: `学院${i}`,
+    }),
+  );
+  assert.deepEqual(
+    new Set(fairPriorityQueries(lists).slice(0, 5).map(priorityQueryCategory)),
+    new Set(["scores", "competition", "background", "academic", "employment"]),
+  );
+  assert.ok(fairPriorityQueries(lists).every((q) => q.length < 60));
+});
+test("first new live corpus is retained and curriculum rows cannot count as city development", () => {
+  const live = realReplayFixture("research-v3a6-run1.json");
+  assert.equal(live.pages.length, 484);
+  assert.equal(live.pages.filter((p) => p.source).length, 200);
+  for (const p of live.pages.filter((p) =>
+    /20250922001|20240930001|202309210001|0FDE6D936/.test(p.url),
+  )) {
+    assert.ok(p.source);
+    assert.ok(
+      !extractPriorityFacts(p.source!, replayDisciplines(), "2027").some(
+        (f) => f.field === "cityDevelopment",
+      ),
+    );
+  }
+  const spaced = live.pages.find(
+    (p) => p.url === "https://yzw.zust.edu.cn/info/1035/1986.htm",
+  )!.source!;
+  assert.ok(
+    programEntries(spaced, replayDisciplines()).some(
+      (p) =>
+        p.majorCode === "080200" && p.collegeName === "智能制造与能源工程学院",
+    ),
+  );
 });
 test("real replay keeps 218 observed URLs; missing responses are not synthetic answers", () => {
   assert.equal(fixture.pages.length, 218);
@@ -158,9 +248,22 @@ test("real college-code header and employment policy negatives", () => {
   assert.equal(accepted[0]?.value.employmentRate, 95);
 });
 test("full generation on the real public corpus calls final analysis and exports both coverage definitions", async () => {
-  const { report, finalCalls, searches } = await runRealReportReplay();
+  const { report, finalCalls, searches, peakSearches } =
+    await runRealReportReplay();
   assert.equal(finalCalls, 1);
   assert.ok(report.recommendations.length > 0);
+  assert.equal(
+    report.recommendations.find((r) => r.institutionName === "浙江理工大学")
+      ?.majorCode,
+    "085501",
+  );
+  assert.ok(
+    report.candidateAudit?.every((candidate) =>
+      report.prefilter?.selected.some(
+        (s) => s.institutionName === candidate.institutionName,
+      ),
+    ),
+  );
   assert.ok(
     report.priorityFacts?.some(
       (f) => f.schoolName === "杭州电子科技大学" && f.field === "admittedCount",
@@ -175,6 +278,7 @@ test("full generation on the real public corpus calls final analysis and exports
     /字段级部分覆盖率.*整类完整覆盖率/,
   );
   assert.ok(searches <= B.searches);
+  assert.equal(peakSearches, B.initialSearchConcurrency);
   const audited = JSON.parse(
     readFileSync(
       new URL("../fixtures/research-real-replay-audit.json", import.meta.url),
