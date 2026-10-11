@@ -136,6 +136,20 @@ test("final model input keeps facts ahead of excerpts, deduplicates source URLs 
     1,
   );
   assert.ok(input.sources.length <= B.modelSources);
+  assert.ok(input.sources.length > 0);
+  const retainedIds = new Set(input.sources.map((s: { id: string }) => s.id));
+  const references = (value: unknown): string[] => {
+    if (Array.isArray(value)) return value.flatMap(references);
+    if (!value || typeof value !== "object") return [];
+    return Object.entries(value).flatMap(([key, item]) =>
+      key === "sourceId" && typeof item === "string"
+        ? [item]
+        : references(item),
+    );
+  };
+  assert.ok(
+    references(input.structuredFacts).every((id) => retainedIds.has(id)),
+  );
   assert.equal(
     new Set(input.sources.map((s: { id: string }) => s.id)).size,
     input.sources.length,

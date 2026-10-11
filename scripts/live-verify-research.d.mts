@@ -7,6 +7,10 @@ export function main(
       typeof import("../server/disciplines/index.ts").generateGuidance
     >;
     http?: import("../server/explanation/web.ts").WebReader;
+    onModelMessages?: (
+      messages: import("../server/explanation/deepseek.ts").ModelMessage[],
+      options?: import("../server/explanation/deepseek.ts").ModelRequestOptions,
+    ) => void | Promise<void>;
     log?: (event: { event: string; simulated?: boolean }) => void;
   },
 ): Promise<

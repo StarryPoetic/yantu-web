@@ -111,6 +111,11 @@ test("a rejected structure is repaired once using original evidence, bounded int
     /directions\[0\]\.disciplineCode/,
   );
   assert.deepEqual(requests[1].options, options);
+  assert.ok(
+    requests[1].messages
+      .at(-1)!
+      .content.includes("本次sources列表中给出的id，不得自造或改写"),
+  );
   const cachedRepair = await input.runtime.run(
     "owner",
     { ...input.key, repair: 1, validation: "INVALID_RESEARCH_REPORT" },

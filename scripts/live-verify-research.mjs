@@ -237,6 +237,10 @@ export async function main(args = process.argv.slice(2), dependencies = {}) {
           throw controller.signal.reason;
         }
         totals.inputChars += chars;
+        await dependencies.onModelMessages?.(
+          structuredClone(messages),
+          options,
+        );
         log({
           event: "model-request",
           n,

@@ -329,6 +329,7 @@ test("zero-fee completion uses the production assembly and writes a report witho
     assessments: [],
   });
   const events: Array<{ event: string; simulated?: boolean }> = [];
+  let capturedRequests = 0;
   try {
     const summary = await main(
       [
@@ -343,6 +344,10 @@ test("zero-fee completion uses the production assembly and writes a report witho
         databasePath: join(directory, "test.sqlite"),
         run,
         log: (event: (typeof events)[number]) => events.push(event),
+        onModelMessages: (messages) => {
+          capturedRequests++;
+          assert.ok(messages.length > 0);
+        },
         http: async (url: string) => {
           assert.notEqual(new URL(url).hostname, "api.bocha.cn");
           throw new ModelError("WEB_UNAVAILABLE");
@@ -352,6 +357,7 @@ test("zero-fee completion uses the production assembly and writes a report witho
     assert.ok(summary, JSON.stringify(events));
     assert.equal(summary.totals.searches, 0);
     assert.ok(summary.totals.modelCalls <= 2);
+    assert.equal(capturedRequests, summary.totals.modelCalls);
     assert.ok(
       events
         .filter((event) => event.event === "search-request")

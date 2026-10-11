@@ -1,0 +1,35 @@
+{
+  "summary": "固定结构样例：核对引用有效性。",
+  "facts": [
+    { "text": "学校公开原文占位", "citations": ["research-1"] },
+    { "text": "学校公开原文占位", "citations": ["research-1"] },
+    { "text": "学校公开原文占位", "citations": ["research-1"] }
+  ],
+  "recommendations": [
+    {
+      "institutionName": "杭州电子科技大学",
+      "programName": "机械工程",
+      "disciplineCode": "0802",
+      "citations": ["research-1"]
+    },
+    {
+      "institutionName": "浙江师范大学",
+      "programName": "机械工程",
+      "disciplineCode": "0802",
+      "citations": ["research-1"]
+    },
+    {
+      "institutionName": "西北大学",
+      "programName": "哲学",
+      "disciplineCode": "0101",
+      "citations": ["research-1"]
+    },
+    {
+      "institutionName": "南京医科大学",
+      "programName": "中共党史党建学",
+      "disciplineCode": "0307",
+      "citations": ["research-1"]
+    }
+  ],
+  "limitations": []
+}
