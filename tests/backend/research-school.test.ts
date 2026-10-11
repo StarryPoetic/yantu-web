@@ -173,6 +173,43 @@ test("a different explicit copyright school wins over a quoted school heading", 
   assert.equal(sourceHasSchoolIdentity(page, "乙大学"), false);
 });
 
+test("admissions office copyright identifies its school without accepting partners or independent college prefixes", () => {
+  for (const [name, owner] of [
+    ["浙江科技大学", "版权所有 © 浙江科技大学研究生招生办公室"],
+    ["浙江传媒学院", "版权所有：浙江传媒学院招生工作办公室"],
+  ]) {
+    const page = source(
+      `${"网站导航 ".repeat(80)}专业目录：085400电子信息。${owner}`,
+      {
+        title: "硕士招生专业目录",
+      },
+    );
+    assert.equal(sourceHasSchoolIdentity(page, name), true, owner);
+    assert.equal(sourceHasSchoolIdentity(page, "甲大学"), false, owner);
+    assert.equal(
+      sourceHasSchoolIdentity(
+        { ...page, excerpt: `${name}硕士招生目录。版权所有：乙大学招生办公室` },
+        name,
+      ),
+      false,
+    );
+  }
+  assert.equal(
+    sourceHasSchoolIdentity(
+      source("版权所有：浙江大学城市学院招生办公室"),
+      "浙江大学",
+    ),
+    false,
+  );
+  assert.equal(
+    sourceHasSchoolIdentity(
+      source("招生办公室。专业目录：085400电子信息。"),
+      "甲大学",
+    ),
+    false,
+  );
+});
+
 test("school-name boundaries reject independent college prefixes while retaining the actual department", () => {
   const cityCollege = source("浙江大学城市学院硕士培养方案。", {
     title: "浙江大学城市学院硕士培养方案",

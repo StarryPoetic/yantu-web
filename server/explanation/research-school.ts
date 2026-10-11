@@ -58,7 +58,7 @@ function uncachedSchoolIdentity(source: WebSource, school: string) {
   if (school.length < 2) return false;
   const escaped = school.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const department =
-    "[\\p{Script=Han}A-Za-z]{0,24}(?:学院|研究生院|研究院|研究所|中心|处)";
+    "[\\p{Script=Han}A-Za-z]{0,24}(?:学院|研究生院|研究院|研究所|中心|处|招生(?:工作)?办公室)";
   const suffix = `(?!(?:\\s*(?:博士生导师|硕士生导师|博士导师|硕士导师|教授|教师|校友|等|城市学院)))(?=$|[\\s\\d年级:：,，.。;；()（）\\[\\]【】|｜—-]|硕士|博士|研究生|本科|招生|培养|专业|学科|学位|教育|简介|概况|官网|官方网站|网站|导航|学校|于|现有|拥有|开设|设|附属|目录|地址|校区|收费|学费|联系|电话|邮政|${department})`;
   if (
     source.kind !== "official_page" &&
