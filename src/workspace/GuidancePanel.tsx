@@ -7,6 +7,7 @@ import type { ProfileResource, Selections } from "./contracts";
 import { request } from "./api";
 import { ErrorNotice, safeUrl } from "./ui";
 import { ResearchPanel } from "./ResearchPanel";
+import { ResearchHistory } from "./ResearchHistory";
 
 type Guidance = GuidanceRun & { needsRefresh?: boolean };
 const statusNames = {
@@ -168,6 +169,7 @@ export function GuidancePanel({
         <Compass size={34} />
       </div>
       <ErrorNotice error={error} />
+      <ResearchHistory />
       {!saved ? (
         <section className="ws-panel">
           <h2>先保存你的个人画像</h2>

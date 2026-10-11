@@ -18,6 +18,188 @@ const model = {
   effort: "high",
 } as const;
 
+test("T3-01 private research interests retain provenance, prepare tasks, isolate owners and leave old rows/catalogues unchanged", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "yantu-interest-"));
+  const calls: ResearchInput[] = [];
+  const { app, request, client, runId } = await fixture(
+    t,
+    {
+      getReadiness: () => ({ ready: true, reasons: [], model }),
+      clearSubject() {},
+      async generate(input) {
+        calls.push(input);
+        return {
+          ...output(input),
+          recommendations: [
+            {
+              institutionName: "研究大学",
+              disciplineCode: "0301",
+              programName: "法学",
+              rationale: "核对资料",
+              preparation: ["复习基础课程"],
+              uncertainties: ["待核验"],
+              citations: ["source"],
+              referenceBasis: {
+                year: 2026,
+                reason: "历史资料",
+                sourceIds: ["source"],
+              },
+            },
+          ],
+          sources: [
+            {
+              id: "source",
+              title: "2026年官方资料",
+              url: "https://yz.chsi.com.cn/",
+              excerpt: "2026年目录",
+              retrievedAt: "2026-10-11T00:00:00Z",
+              kind: "official_page",
+              verified: false,
+            },
+          ],
+        };
+      },
+    },
+    join(directory, "legacy.sqlite"),
+  );
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const selections = await request("/me/selections");
+  const before = app.store.db
+    .prepare("SELECT * FROM resources WHERE owner='public' ORDER BY kind,id")
+    .all();
+  const created = await request(`/guidance/${runId}/research`, "POST", {});
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const body = {
+    jobId: created.body.jobId,
+    recommendationIndex: 0,
+    target: true,
+  };
+  const result = await request("/me/research-interests", "POST", body);
+  assert.equal(result.status, 201);
+  assert.equal(result.body.jobId, body.jobId);
+  assert.equal(result.body.referenceYear, 2026);
+  assert.equal(result.body.targetYear, 2027);
+  assert.equal(result.body.status, "pending_verification");
+  assert.equal(result.body.reviewStatus, "unreviewed");
+  assert.equal(result.body.verified, false);
+  assert.equal(result.body.linkedProgram, null);
+  assert.equal(result.body.sources[0].url, "https://yz.chsi.com.cn/");
+  assert.equal(result.body.tasks[1].title, "复习基础课程");
+  assert.equal(
+    (await request("/me/research-interests", "POST", body)).body.interestId,
+    result.body.interestId,
+  );
+  assert.equal((await request("/me/research-interests")).body.items.length, 1);
+  const other = await client();
+  assert.deepEqual((await other("/me/research-interests")).body.items, []);
+  assert.equal(
+    (await other("/me/research-interests", "POST", body)).status,
+    404,
+  );
+  const path = `/me/research-interests/${encodeURIComponent(result.body.interestId)}`;
+  assert.equal(
+    (await other(path, "PATCH", { target: true }, { "If-Match": result.etag }))
+      .status,
+    404,
+  );
+  const current = (await request("/me/research-interests")).body.items[0];
+  const changed = await request(
+    path,
+    "PATCH",
+    { completedTasks: [false, true], favorite: false },
+    { "If-Match": current.etag },
+  );
+  assert.equal(changed.status, 200);
+  assert.equal(changed.body.tasks[1].completed, true);
+  assert.equal(changed.body.target, true);
+  assert.equal((await request("/me/selections")).etag, selections.etag);
+  assert.deepEqual(
+    app.store.db
+      .prepare("SELECT * FROM resources WHERE owner='public' ORDER BY kind,id")
+      .all(),
+    before,
+  );
+  const { Store } = await import("../../server/store.ts");
+  const reopened = new Store(join(directory, "legacy.sqlite"));
+  try {
+    const row = reopened.db
+      .prepare("SELECT value FROM resources WHERE kind='research-interest'")
+      .get()!;
+    assert.equal(JSON.parse(String(row.value)).tasks[1].completed, true);
+    assert.deepEqual(
+      reopened.db
+        .prepare(
+          "SELECT * FROM resources WHERE owner='public' ORDER BY kind,id",
+        )
+        .all(),
+      before,
+    );
+  } finally {
+    reopened.close();
+  }
+  assert.equal(calls.length, 1);
+});
+
+test("T3-02 history remains owned, read-only and available after input changes and regeneration", async (t) => {
+  let calls = 0;
+  const { app, request, client, runId } = await fixture(t, {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject() {},
+    async generate(input) {
+      calls++;
+      return output(input);
+    },
+  });
+  const created = await request(`/guidance/${runId}/research`, "POST", {});
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const profile = await request("/me/profile");
+  await request(
+    "/me/profile",
+    "PUT",
+    { ...profile.body.profile, major: "经济学" },
+    { "If-Match": profile.etag },
+  );
+  const snapshot = app.store.db
+    .prepare("SELECT * FROM resources ORDER BY owner,kind,id")
+    .all();
+  const list = await request("/research/history");
+  assert.equal(list.status, 200);
+  assert.equal(list.body.items.length, 1);
+  assert.equal(list.body.items[0].needsRefresh, true);
+  assert.equal(list.body.items[0].jobId, created.body.jobId);
+  const history = await request(`/research/history/${created.body.jobId}`);
+  assert.equal(history.status, 200);
+  assert.equal(history.body.run.inputSnapshot.profile.major, "法学");
+  assert.equal(history.body.job.needsRefresh, true);
+  assert.equal(
+    history.body.job.report.summary,
+    "模拟研究完成，等待核实招生条件。",
+  );
+  const other = await client();
+  assert.deepEqual((await other("/research/history")).body.items, []);
+  assert.equal(
+    (await other(`/research/history/${created.body.jobId}`)).status,
+    404,
+  );
+  assert.equal(
+    (await other(`/research-jobs/${created.body.jobId}`)).status,
+    404,
+  );
+  assert.equal(
+    (await request(`/research/history/${created.body.jobId}`, "POST", {}))
+      .status,
+    404,
+  );
+  // The empty history read must not initialise resources for another account either.
+  assert.deepEqual(
+    app.store.db
+      .prepare("SELECT * FROM resources ORDER BY owner,kind,id")
+      .all(),
+    snapshot,
+  );
+  assert.equal(calls, 1);
+});
+
 test("one-click retry persists owned checkpoints, reuses the previous report after restart and stays idempotent", async (t) => {
   const done = deferred();
   const inputs: ResearchInput[] = [];

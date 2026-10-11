@@ -1,4 +1,5 @@
 import { useResearch } from "./ResearchContext";
+import { ResearchInterestsPanel } from "./ResearchInterests";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -309,6 +310,7 @@ export function CatalogPanel({
         </div>
       </div>
       <ErrorNotice error={error} />
+      <ResearchInterestsPanel mode={favorites ? "favorites" : "catalog"} />
       {!favorites && (
         <DisciplineExplorer
           confirmedMajorId={selections.confirmedMajorId}

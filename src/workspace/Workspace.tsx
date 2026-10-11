@@ -31,6 +31,10 @@ import { Dialog, ErrorNotice } from "./ui";
 import "./workspace.css";
 import "./journey.css";
 import { clearProfileDraft } from "./profile-draft";
+import {
+  ResearchInterestsProvider,
+  useResearchInterests,
+} from "./ResearchInterests";
 
 const ProfilePanel = lazy(() =>
   import("./ProfilePanel").then((module) => ({ default: module.ProfilePanel })),
@@ -158,12 +162,14 @@ export default function Workspace() {
     );
   return (
     <ResearchProvider key={session.user.accountId}>
-      <SignedInWorkspace
-        key={session.user.accountId}
-        session={session}
-        onLogout={() => void logout()}
-        globalError={error}
-      />
+      <ResearchInterestsProvider>
+        <SignedInWorkspace
+          key={session.user.accountId}
+          session={session}
+          onLogout={() => void logout()}
+          globalError={error}
+        />
+      </ResearchInterestsProvider>
     </ResearchProvider>
   );
 }
@@ -178,6 +184,7 @@ function SignedInWorkspace({
   globalError?: unknown;
 }) {
   const research = useResearch();
+  const interests = useResearchInterests();
   const [page, setPage] = useState<Page>(currentPage),
     [profile, setProfile] = useState<Resource<ProfileResource> | null>(null),
     [selections, setSelections] = useState<Resource<Selections> | null>(null),
@@ -326,6 +333,7 @@ function SignedInWorkspace({
         `/me/jobs/${result.data.jobId}`,
       );
       research.reset();
+      interests.clear();
       clearProfileDraft(session.user!.accountId);
       setProfile(null);
       setSelections(null);
@@ -387,7 +395,10 @@ function SignedInWorkspace({
                 </small>
               )}
               {id === "favorites" && (
-                <small>{selections?.data.savedProgramIds.length ?? 0}</small>
+                <small>
+                  {(selections?.data.savedProgramIds.length ?? 0) +
+                    interests.items.filter((item) => item.favorite).length}
+                </small>
               )}
             </button>
           ))}

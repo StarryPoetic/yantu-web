@@ -13,11 +13,18 @@ import { profileResource, selectionsResource } from "./profile.ts";
 
 export function guidanceFreshness(c: Context, run: GuidanceRun) {
   const refreshReasons: string[] = [];
-  if (run.versions.profileVersion !== profileResource(c).value.profileVersion)
+  if (
+    run.versions.profileVersion !==
+    (c.store.get<{ profileVersion: number }>(c.session.subjectId, "profile")
+      ?.value.profileVersion ?? 0)
+  )
     refreshReasons.push("个人画像已更新");
   if (
     run.versions.selectionVersion !==
-    selectionsResource(c).value.selectionVersion
+    (c.store.get<{ selectionVersion: number }>(
+      c.session.subjectId,
+      "selections",
+    )?.value.selectionVersion ?? 0)
   )
     refreshReasons.push("确认专业或屏蔽选择已更新");
   if (run.versions.catalogVersion !== getDisciplineCatalog().catalogVersion)

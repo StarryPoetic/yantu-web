@@ -1,4 +1,5 @@
 import { useResearch } from "./ResearchContext";
+import { ResearchInterestsPanel } from "./ResearchInterests";
 import { useEffect, useState } from "react";
 import { Download, Flag } from "lucide-react";
 import { request } from "./api";
@@ -146,6 +147,13 @@ export function PlanPanel({
         <Flag size={34} />
       </div>
       <ErrorNotice error={error} onReload={() => void act(() => load())} />
+      <ResearchInterestsPanel
+        mode="plan"
+        onLinkedTarget={async (id) => {
+          const linked = programs.find((program) => program.programId === id);
+          if (linked) await act(() => onTargetChange(linked));
+        }}
+      />
       {program && (
         <section className="ws-panel ws-stack" aria-label="当前已选目标">
           <span className="ws-eyebrow">已保存的院校与专业目标</span>
@@ -359,7 +367,7 @@ export function PlanPanel({
       <section className="ws-panel">
         <div className="ws-between">
           <div>
-            <h2>择校与备考报告</h2>
+            <h2>固定项目规划报告</h2>
             <p className="ws-muted">
               报告固定本次依据版本，保留缺失与待核验说明。
             </p>
@@ -391,7 +399,7 @@ export function PlanPanel({
         </div>
         {!recommendation && (
           <p className="ws-muted">
-            先在择校探索页生成一次联合推荐，即可生成相应报告。
+            此处是基于正式目录或交互示例的固定项目规划报告。研究报告请到“推荐结论”查看；研究关注目标可直接使用上方待核验准备计划，无需生成联合推荐。
           </p>
         )}
         {reports.map((item) => (

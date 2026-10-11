@@ -23,6 +23,7 @@ import type { CatalogState } from "./catalog/types.ts";
 import { loadQuestionBank } from "./assessment/index.ts";
 import type { AssessmentAttempt } from "./assessment/types.ts";
 import { profileRoutes } from "./routes/profile.ts";
+import { researchInterestRoutes } from "./routes/research-interests.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { assessmentRoutes } from "./routes/assessment.ts";
 import { workRoutes } from "./routes/work.ts";
@@ -474,6 +475,7 @@ export async function createApplication(
             catalogRoutes(context) ??
             guidanceRoutes(context) ??
             profileRoutes(context) ??
+            researchInterestRoutes(context) ??
             assessmentRoutes(context) ??
             workRoutes(context));
         if (!result)

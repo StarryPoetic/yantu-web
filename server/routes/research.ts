@@ -262,6 +262,39 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
   }
   return {
     handle(c: Context): Reply | undefined {
+      if (c.path === "/research/history" && c.method === "GET") {
+        const items = store
+          .list<ResearchJob>(c.session.subjectId, "research-job")
+          .map((row) => row.value)
+          .filter((job) => job.report && !activeStatus(job))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .map((job) => ({
+            jobId: job.jobId,
+            generatedAt: job.report!.generatedAt,
+            status: job.report!.status,
+            versions: job.report!.versions,
+            needsRefresh: view(c, job).needsRefresh,
+          }));
+        return { body: { items } };
+      }
+      const history = /^\/research\/history\/([^/]+)$/.exec(c.path);
+      if (history && c.method === "GET") {
+        const job = required(
+          store.get<ResearchJob>(
+            c.session.subjectId,
+            "research-job",
+            history[1],
+          ),
+        ).value;
+        if (!job.report || activeStatus(job))
+          throw new HttpError(404, "report_missing", "没有已保存的历史报告。");
+        return {
+          body: {
+            job: view(c, job),
+            run: currentRun(c, job.guidanceRunId, false),
+          },
+        };
+      }
       if (c.path === "/research/status" && c.method === "GET")
         return { body: engine.getReadiness() };
       if (c.path === "/research/latest" && c.method === "GET") {

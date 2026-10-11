@@ -27,11 +27,15 @@ export function ResearchReportView({
   run,
   onProfile,
   outcome,
+  jobId,
+  readOnly = false,
 }: {
   report: ResearchReport;
   run: GuidanceRun;
   onProfile: () => void;
   outcome: ReturnType<typeof researchOutcome>;
+  jobId?: string;
+  readOnly?: boolean;
 }) {
   const hasRecommendations = report.recommendations.length > 0;
   const coverage = researchCoverage(report);
@@ -121,6 +125,11 @@ export function ResearchReportView({
               <div className="research-school-grid">
                 {group.items.map((item, index) => (
                   <ResearchSchoolCard
+                    interest={
+                      !readOnly && jobId
+                        ? { jobId, index: report.recommendations.indexOf(item) }
+                        : undefined
+                    }
                     item={item}
                     run={run}
                     sources={report.sources}
@@ -174,7 +183,7 @@ export function ResearchReportView({
               ))}
             </ul>
           )}
-          {outcome === "profile" ? (
+          {outcome === "profile" && !readOnly ? (
             <div className="ws-actions">
               <button className="ws-secondary" onClick={onProfile}>
                 补充个人情况

@@ -14,17 +14,20 @@ import {
 } from "./ResearchProgramEvidence";
 import type { ResearchEvidenceGap } from "../../shared/research-coverage.ts";
 import { ResearchRecommendationFields } from "./ResearchRecommendationFields";
+import { ResearchInterestActions } from "./ResearchInterests";
 
 export function ResearchSchoolCard({
   item,
   run,
   sources,
   gaps,
+  interest,
 }: {
   item: SchoolRecommendation;
   run: GuidanceRun;
   sources: ResearchReport["sources"];
   gaps: ResearchEvidenceGap[];
+  interest?: { jobId: string; index: number };
 }) {
   return (
     <article
@@ -54,6 +57,7 @@ export function ResearchSchoolCard({
           <small>旧报告仅记录专业类别，具体招生专业待补充</small>
         )}
       </header>
+      {interest && <ResearchInterestActions {...interest} />}
       <p
         className={
           "research-admission " +

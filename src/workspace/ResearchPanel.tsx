@@ -143,6 +143,7 @@ export function ResearchPanel({
           run={run}
           onProfile={onProfile}
           outcome={outcome}
+          jobId={job?.report === report ? job.jobId : undefined}
         />
       )}
       {!report && serviceNotice}
