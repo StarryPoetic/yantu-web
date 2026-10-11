@@ -22,6 +22,10 @@ import type {
 import { validStem } from "../../server/assessment/presentation.ts";
 
 const bank = await loadQuestionBank();
+// The original twenty-question fixture exercises legacy coverage/fallback paths.
+bank.questions = bank.questions.filter((question) =>
+  question.id.startsWith("v2-"),
+);
 test("T3-06 reasoning saves at 1000, rejects 1001 and lets legacy drafts be shortened without truncation", () => {
   const original = createAttempt(bank, {
     subjectId: "reasoning-owner",

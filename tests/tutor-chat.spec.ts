@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { registerAccount } from "./helpers/account";
+import { installAssessmentFixture } from "./helpers/assessment-fixture";
+import { loadQuestionBank } from "../server/assessment/index";
 
 test("悬浮咨询支持任意问题、多轮记录、收起恢复、清空和手机视口", async ({
   page,
@@ -59,6 +61,11 @@ test("逐题提示不提前给答案，交卷后显示行列式公式、图示�
 }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await registerAccount(page);
+  const bank = await loadQuestionBank();
+  bank.questions = bank.questions.filter((question) =>
+    question.id.startsWith("v2-"),
+  );
+  await installAssessmentFixture(page, bank);
   await page.goto("/#assessment");
   await page.getByLabel("英语 · 5 题", { exact: true }).uncheck();
   await page.getByLabel("政治 · 5 题", { exact: true }).uncheck();

@@ -1,4 +1,8 @@
 import { REASONING_MAX_LENGTH } from "../../shared/input-contracts.ts";
+import {
+  knowledgeArea,
+  SCREENING_AREAS,
+} from "../../shared/assessment-knowledge.ts";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import {
@@ -41,7 +45,7 @@ export class AssessmentError extends Error {
   }
 }
 
-export const ASSEMBLY_VERSION = "screening-five-v1";
+export const ASSEMBLY_VERSION = "screening-five-domains-v2";
 export const SCORING_VERSION = "single-choice-v1";
 const modules: AssessmentModule[] = ["math", "english", "politics", "major"];
 export const QUESTION_REVIEW_CHECKS = [
@@ -391,14 +395,30 @@ export function createAttempt(
       ),
     );
     const selectedQuestions: QuestionRevision[] = [];
-    for (const preferred of pattern) {
+    // Cross-scope screening samples all route-distinguishing domains when the
+    // bank supplies them. Scope-specific and legacy pools keep their coverage.
+    const areas =
+      scope[module] === "common-foundation" &&
+      (module === "math" || module === "english")
+        ? SCREENING_AREAS[module].filter((area) =>
+            candidates.some((q) => knowledgeArea(module, q.point) === area),
+          )
+        : [];
+    for (const [index, preferred] of pattern.entries()) {
       const remaining = ranked.filter(
         (q) => !selectedQuestions.some((item) => item.id === q.id),
       );
       const newPoint = remaining.filter(
         (q) => !selectedQuestions.some((item) => item.point === q.point),
       );
-      const pool = newPoint.length ? newPoint : remaining;
+      const areaPool = newPoint.filter(
+        (q) => knowledgeArea(module, q.point) === areas[index],
+      );
+      const pool = areaPool.length
+        ? areaPool
+        : newPoint.length
+          ? newPoint
+          : remaining;
       const question = pool.find((q) => q.difficulty === preferred) ?? pool[0];
       selectedQuestions.push(question);
     }

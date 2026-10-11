@@ -5,6 +5,7 @@ import { createApplication } from "../../server/app.ts";
 import { createGeneralChatModule } from "../../server/explanation/chat.ts";
 import { validPresentation } from "../../server/assessment/presentation.ts";
 import { blankProfile } from "../../server/profile.ts";
+import { loadQuestionBank } from "../../server/assessment/index.ts";
 import type { ModelMessage } from "../../server/explanation/index.ts";
 
 async function fixture() {
@@ -124,6 +125,11 @@ test("reviewed question visuals allow bounded structured math and local images, 
 test("every question offers a safe pre-submit hint and only submitted owners receive solutions and tutor history", async (t) => {
   const f = await fixture();
   t.after(() => f.app.close());
+  const bank = await loadQuestionBank();
+  bank.questions = bank.questions.filter((question) =>
+    question.id.startsWith("v2-"),
+  );
+  f.app.store.put("public", "question-bank", "current", bank);
   const created = await f.user.request("/assessment-attempts", "POST", {
     modules: ["math"],
   });
