@@ -284,6 +284,18 @@ class TechnicalDesignTests(unittest.TestCase):
                 self.assertNotIn("两层比较", content)
                 self.assertNotIn("代码只允许本次探索方向", content)
 
+    def test_streaming_idle_and_total_deadlines_match_current_configuration(self):
+        for path in (
+            DESIGN_DIR / "07-DeepSeek接入与密钥管理.md",
+            ROOT / "server" / "explanation" / "README.md",
+        ):
+            content = path.read_text(encoding="utf-8")
+            with self.subTest(document=path.name):
+                for phrase in (f"{B['thinkingIdleTimeoutMs'] // 1000}秒", f"默认{B['thinkingTimeoutMs'] // 1000}秒", "YANTU_RESEARCH_TIMEOUT_MS", "1–1800000", "整份报告剩余", "非思考", f"{B['normalTimeoutMs'] // 1000}秒", "不自动重试超时", "预留额度", "未完整成帧"):
+                    self.assertIn(phrase, content)
+                for obsolete in ("总超时仍最多120秒", "默认及上限120000", "研究没有独立的整份报告总超时"):
+                    self.assertNotIn(obsolete, content)
+
     def test_current_profile_references_do_not_reconstruct_cleared_values(self):
         for path in (
             DESIGN_DIR / "02-数据模型与可信数据.md",

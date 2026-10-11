@@ -1268,14 +1268,14 @@ export function createResearchReportModule(
     config.researchTotalTimeoutMs !== undefined &&
     (!Number.isSafeInteger(config.researchTotalTimeoutMs) ||
       config.researchTotalTimeoutMs < 1 ||
-      config.researchTotalTimeoutMs > 30 * 60000)
+      config.researchTotalTimeoutMs > B.researchTotalTimeoutMs)
   )
     throw new ModelError("INVALID_RESEARCH_CONFIG");
   const options: ModelRequestOptions = {
     model: config.researchModel ?? "deepseek-v4-pro",
     thinking: true,
     reasoningEffort: config.researchEffort ?? "high",
-    timeoutMs: config.researchTimeoutMs ?? 120000,
+    timeoutMs: config.researchTimeoutMs ?? B.thinkingTimeoutMs,
     maxOutputTokens: config.researchMaxOutputTokens ?? B.finalOutputTokens,
     format: "json",
   };
@@ -1283,7 +1283,7 @@ export function createResearchReportModule(
   const planningOptions: ModelRequestOptions = {
     model: options.model,
     thinking: false,
-    timeoutMs: 30000,
+    timeoutMs: B.normalTimeoutMs,
     maxOutputTokens: B.planningOutputTokens,
     format: "json",
   };
@@ -1344,7 +1344,7 @@ export function createResearchReportModule(
           ? structuredClone(input.checkpoint)
           : { version: 1, contextHash, models: {}, searches: {}, pages: {} };
       const deadline = researchDeadline(
-        config.researchTotalTimeoutMs ?? 30 * 60000,
+        config.researchTotalTimeoutMs ?? B.researchTotalTimeoutMs,
         input.signal,
       );
       const originalInput = input;
@@ -1474,7 +1474,10 @@ export function createResearchReportModule(
                 checkpointRuntime.run(subject, key, messages, validate, {
                   ...options,
                   timeoutMs: Math.min(
-                    options.timeoutMs ?? 120000,
+                    options.timeoutMs ??
+                      (options.thinking
+                        ? B.thinkingTimeoutMs
+                        : B.normalTimeoutMs),
                     deadline.remaining(),
                   ),
                   onCall: () => {

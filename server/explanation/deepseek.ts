@@ -27,6 +27,7 @@ export interface ModelRequestOptions {
   model?: "deepseek-flash" | "deepseek-v4-pro";
   thinking?: boolean;
   reasoningEffort?: "low" | "high" | "max";
+  /** Total request deadline; thinking also has a separate byte-idle timeout. */
   timeoutMs?: number;
 }
 export class ModelError extends Error {
@@ -87,6 +88,7 @@ async function* responseChunks(
   response: Response,
   maxBytes: number,
   signal: AbortSignal,
+  onBytes?: () => void,
 ) {
   if (Number(response.headers.get("content-length")) > maxBytes) {
     void response.body?.cancel().catch(() => {});
@@ -109,6 +111,7 @@ async function* responseChunks(
       const part = await Promise.race([reader.read(), aborted]);
       if (signal.aborted) throw new ModelError("MODEL_TIMEOUT");
       if (part.done) break;
+      if (part.value.byteLength) onBytes?.();
       bytes += part.value.byteLength;
       if (bytes > maxBytes) throw new ModelError("RESPONSE_TOO_LARGE");
       yield part.value;
@@ -125,6 +128,7 @@ async function readThinkingStream(
   response: Response,
   model: string,
   signal: AbortSignal,
+  onBytes: () => void,
 ): Promise<ModelReply> {
   if (
     !/^text\/event-stream(?:;|$)/i.test(
@@ -243,7 +247,12 @@ async function readThinkingStream(
       throw new ModelError("INVALID_RESPONSE");
     }
   };
-  for await (const bytes of responseChunks(response, 8388608, signal)) {
+  for await (const bytes of responseChunks(
+    response,
+    8388608,
+    signal,
+    onBytes,
+  )) {
     // Bound text retained for an unfinished event even if a transport yields a large chunk.
     for (let offset = 0; offset < bytes.length; offset += 16384)
       consume(decode(bytes.subarray(offset, offset + 16384)));
@@ -278,7 +287,7 @@ export function resolveModelRequest(options: ModelRequestOptions = {}) {
     (options.timeoutMs !== undefined &&
       (!Number.isSafeInteger(options.timeoutMs) ||
         options.timeoutMs < 1 ||
-        options.timeoutMs > 120000))
+        options.timeoutMs > B.researchTotalTimeoutMs))
   )
     throw new ModelError("INVALID_MODEL_OPTIONS");
   return {
@@ -347,10 +356,23 @@ export function createDeepSeekAdapter(
       const timeout = setTimeout(
         () => controller.abort(),
         Math.min(
-          selected.timeoutMs ?? config.timeoutMs ?? 30000,
-          selected.thinking ? 120000 : 30000,
+          selected.timeoutMs ??
+            config.timeoutMs ??
+            (selected.thinking ? B.thinkingTimeoutMs : B.normalTimeoutMs),
+          selected.thinking ? B.researchTotalTimeoutMs : B.normalTimeoutMs,
         ),
       );
+      let idleTimeout: ReturnType<typeof setTimeout> | undefined;
+      const receivedBytes = () => {
+        clearTimeout(idleTimeout);
+        idleTimeout = setTimeout(
+          () => controller.abort(),
+          B.thinkingIdleTimeoutMs,
+        );
+      };
+      // Count time to the first byte too. Reasoning, SSE framing and partial
+      // events reset only the idle timer; they never extend the total deadline.
+      if (selected.thinking) receivedBytes();
       try {
         const response = await request(endpoint, {
           method: "POST",
@@ -388,6 +410,7 @@ export function createDeepSeekAdapter(
             response,
             selected.model,
             controller.signal,
+            receivedBytes,
           );
         let raw = "";
         const decoder = new TextDecoder();
@@ -422,6 +445,7 @@ export function createDeepSeekAdapter(
         throw new ModelError("PROVIDER_NETWORK_ERROR");
       } finally {
         clearTimeout(timeout);
+        clearTimeout(idleTimeout);
       }
     },
   };

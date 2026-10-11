@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { setImmediate as flush } from "node:timers/promises";
 import { createDeepSeekAdapter } from "../../server/explanation/deepseek.ts";
 import { createModelRuntime } from "../../server/explanation/index.ts";
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 
 const model = "deepseek-v4-pro";
 const options = { model, thinking: true, maxOutputTokens: 100 } as const;
@@ -55,6 +57,167 @@ function completeStream(extra: Record<string, unknown> = { usage }) {
     event(chunk({ content: "最终结果" }, "stop", extra)) + "data: [DONE]\n\n"
   );
 }
+
+function controlledResponse(thinking = true) {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  let cancelled = 0;
+  let signal!: AbortSignal;
+  const adapter = createDeepSeekAdapter({
+    enabled: true,
+    apiKey: "mock",
+    fetch: async (_url, init) => {
+      signal = init!.signal!;
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(value) {
+            controller = value;
+          },
+          cancel() {
+            cancelled++;
+          },
+        }),
+        {
+          headers: {
+            "Content-Type": thinking ? "text/event-stream" : "application/json",
+          },
+        },
+      );
+    },
+  });
+  return {
+    adapter,
+    send: (text: string) => controller.enqueue(encoder.encode(text)),
+    cancelled: () => cancelled,
+    aborted: () => signal.aborted,
+  };
+}
+
+test("continuous reasoning and raw SSE bytes survive 180 seconds and clean up both timers", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const stream = controlledResponse();
+  const reply = stream.adapter.complete([], options);
+  await flush();
+  // No final content for the first 150 seconds. Even incomplete SSE frames
+  // count as activity; waiting for a parsed event would incorrectly time out.
+  for (const text of [
+    event(chunk({ reasoning_content: "private thought" })),
+    ": heart",
+    "beat",
+    "\n\n",
+    event(chunk({ reasoning_content: "more thought" })),
+    completeStream(),
+  ]) {
+    t.mock.timers.tick(30000);
+    assert.equal(stream.aborted(), false);
+    stream.send(text);
+    await flush();
+  }
+  assert.equal((await reply).content, "最终结果");
+  assert.equal(stream.cancelled(), 1);
+  t.mock.timers.tick(B.thinkingTimeoutMs);
+  assert.equal(
+    stream.aborted(),
+    false,
+    "success disposes idle and total timers",
+  );
+});
+
+test("45 seconds without bytes times out before or after reasoning; empty chunks do not refresh idle time", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  for (const midstream of [false, true]) {
+    const stream = controlledResponse();
+    const failed = assert.rejects(stream.adapter.complete([], options), {
+      code: "MODEL_TIMEOUT",
+    });
+    await flush();
+    if (midstream) {
+      t.mock.timers.tick(20000);
+      stream.send(event(chunk({ reasoning_content: "private thought" })));
+      await flush();
+    }
+    t.mock.timers.tick(B.thinkingIdleTimeoutMs - 1);
+    stream.send("");
+    await flush();
+    assert.equal(stream.aborted(), false);
+    t.mock.timers.tick(1);
+    await failed;
+    assert.equal(stream.cancelled(), 1);
+  }
+});
+
+test("continuous bytes cannot extend the default or configured total thinking deadline", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  for (const total of [undefined, 90000, 360000]) {
+    const limit = total ?? B.thinkingTimeoutMs;
+    const stream = controlledResponse();
+    const failed = assert.rejects(
+      stream.adapter.complete([], { ...options, timeoutMs: total }),
+      { code: "MODEL_TIMEOUT" },
+    );
+    await flush();
+    for (let elapsed = 30000; elapsed < limit; elapsed += 30000) {
+      t.mock.timers.tick(30000);
+      stream.send(": heartbeat\n\n");
+      await flush();
+      assert.equal(stream.aborted(), false);
+    }
+    t.mock.timers.tick(29999);
+    assert.equal(stream.aborted(), false);
+    t.mock.timers.tick(1);
+    await failed;
+    assert.equal(stream.cancelled(), 1);
+  }
+});
+
+test("non-streaming calls retain the 30 second cap even with a longer configured timeout and incoming bytes", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  for (const timeoutMs of [undefined, B.thinkingTimeoutMs]) {
+    const stream = controlledResponse(false);
+    const failed = assert.rejects(stream.adapter.complete([], { timeoutMs }), {
+      code: "MODEL_TIMEOUT",
+    });
+    await flush();
+    t.mock.timers.tick(20000);
+    stream.send('{"model":');
+    await flush();
+    t.mock.timers.tick(B.normalTimeoutMs - 20001);
+    assert.equal(stream.aborted(), false);
+    t.mock.timers.tick(1);
+    await failed;
+    assert.equal(stream.cancelled(), 1);
+  }
+});
+
+test("idle timeout includes waiting for response headers and retains the full quota reservation", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  let requests = 0;
+  const adapter = createDeepSeekAdapter({
+    enabled: true,
+    apiKey: "mock",
+    fetch: async (_url, init) => {
+      requests++;
+      return new Promise<Response>((_resolve, reject) => {
+        init!.signal!.addEventListener(
+          "abort",
+          () => reject(new Error("aborted")),
+          { once: true },
+        );
+      });
+    },
+  });
+  const runtime = createModelRuntime({ adapter, userDailyTokens: 150 });
+  const failed = assert.rejects(
+    runtime.run("a", "first", [], (content) => content, options),
+    { code: "MODEL_TIMEOUT" },
+  );
+  t.mock.timers.tick(B.thinkingIdleTimeoutMs);
+  await failed;
+  await assert.rejects(
+    runtime.run("a", "retry", [], (content) => content, options),
+    { code: "BUDGET_EXHAUSTED" },
+  );
+  assert.equal(requests, 1);
+});
 
 test("thinking requests consume split UTF-8 SSE, discard reasoning and preserve total completion usage", async () => {
   let calls = 0;

@@ -2807,7 +2807,7 @@ test("DeepSeek research uses official pro thinking controls, counts total comple
     { maxOutputTokens: Number.NaN },
     { maxOutputTokens: -1 },
     { maxOutputTokens: 20000 },
-    { timeoutMs: 120001 },
+    { timeoutMs: 1800001 },
     { model: "untrusted" },
   ])
     await assert.rejects(

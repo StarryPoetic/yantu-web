@@ -90,7 +90,7 @@ XLS/XLSX显式启用`allowSpreadsheet`，同样遵守研究HTTP/同校有限跳�
 
 模型先收到全国184条基础目录及完整任务画像：本科专业与院校、兴趣、职业目标、城市、预算、跨专业意愿、学位偏好、七项优先级、可投入时间、课程与备考情况，以及适用公共课诊断统计、薄弱点和局限。`notes` 自由补充最多前3000字符；姓名、原始题库和未交卷答案不发送。本科院校只作用户自述背景，不推断学校层次或录取率。方向规划不能被本科专业或旧结论高亮项锁定，尊重明确拒绝与未知项。公开检索词只含年度、规划后的公开专业方向、城市偏好及可选目标学校，不含姓名、本科院校、原始补充或完整画像。
 
-研究分两个模型阶段：规划使用所选模型非思考模式（默认Pro，4096输出token/30秒），最终以Pro/high分析（默认16384输出token/120秒，含思考）。规划保留184目录、当前profileEvidence及结构化偏好，长notes/courses按需裁剪使输入不超过15000字符。模型阶段、修复与临时HTTP重试均使用同一runtime；搜索以sourcesOnly取证据，不额外调用摘录模型。官网读取权限与SSRF限制不变，普通HTML/文本仍限8秒、512000字节，PDF另有受控限制。
+研究分两个模型阶段：规划使用所选模型非思考模式（默认Pro，4096输出token/30秒），最终以Pro/high分析（默认16384输出token、45秒空闲超时/默认300秒总上限，含思考）。规划保留184目录、当前profileEvidence及结构化偏好，长notes/courses按需裁剪使输入不超过15000字符。模型阶段、修复与临时HTTP重试均使用同一runtime；搜索以sourcesOnly取证据，不额外调用摘录模型。官网读取权限与SSRF限制不变，普通HTML/文本仍限8秒、512000字节，PDF另有受控限制。
 
 研究内部可显式传 `options.upgradeAcademicHttp:true`，仅在 `sourcesOnly:true` 时保留实际搜索结果中的 `http://*.edu.cn` 原始地址作为读取候选；该历史选项名现在表示允许保留教育网HTTP链接。`WebSource.retrievalNote` 记录待核验线索说明。普通聊天与用户直接提供的URL不启用，客户端不能传此内部选项；凭据、显式端口（包括80）、IP、非教育网域名和歧义URL拒绝。研究会按原始HTTP地址读取，允许同校升级到HTTPS；搜索摘要仍不是官网正文。明文成功读取保存 `transport:"http"`，并展示“明文传输（HTTP）读取，内容可能被网络中间环节篡改，仅作待核验线索”。原始url继续保留，有跳转另存finalUrl；资料库复用与报告导出保留传输方式及提示。
 
@@ -132,19 +132,19 @@ v6规划与最终报告均以字段引用生成匹配理由：模型输出 `prof
 
 ## 提供商、预算与故障
 
-`deepseek.ts` 仅使用 DeepSeek 官方 HTTPS 接口。普通聊天默认 `deepseek-flash`、关闭 thinking、非流式响应和最多 30 秒超时；独立研究默认 `deepseek-v4-pro`、`thinking.type=enabled`、`reasoning_effort=high`，最多 120 秒。模型和思考强度由服务端任务选择，不接受浏览器覆盖。官方模型名和参数见 [Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/)；模型供应及别名以[官方模型说明](https://api-docs.deepseek.com/quick_start/pricing/)为准，不能仅凭 Pro 名称保证质量更高。
+`deepseek.ts` 仅使用 DeepSeek 官方 HTTPS 接口。普通聊天默认 `deepseek-flash`、关闭 thinking、非流式响应和最多 30 秒超时；独立研究默认 `deepseek-v4-pro`、`thinking.type=enabled`、`reasoning_effort=high`，45秒空闲超时及默认300秒总上限。模型和思考强度由服务端任务选择，不接受浏览器覆盖。官方模型名和参数见 [Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/)；模型供应及别名以[官方模型说明](https://api-docs.deepseek.com/quick_start/pricing/)为准，不能仅凭 Pro 名称保证质量更高。
 
-| 请求用途                                 | 格式              | 当前最大输出 token                 |
-| ---------------------------------------- | ----------------- | ---------------------------------- |
-| 旧测评解释、旧网页摘录、专业结论依据整理 | JSON              | 800                                |
-| 自由对话是否需要搜索的判断               | JSON              | 400                                |
-| 自由对话与交卷后的逐题追问               | 自然语言文本      | 2000                               |
-| 研究方向规划                             | JSON + 非思考模式 | 4096，最多30秒                     |
-| 最终联网研究报告                         | JSON + 思考模式   | 默认16384（含思考输出），最多120秒 |
+| 请求用途                                 | 格式              | 当前最大输出 token                                |
+| ---------------------------------------- | ----------------- | ------------------------------------------------- |
+| 旧测评解释、旧网页摘录、专业结论依据整理 | JSON              | 800                                               |
+| 自由对话是否需要搜索的判断               | JSON              | 400                                               |
+| 自由对话与交卷后的逐题追问               | 自然语言文本      | 2000                                              |
+| 研究方向规划                             | JSON + 非思考模式 | 4096，最多30秒                                    |
+| 最终联网研究报告                         | JSON + 思考模式   | 默认16384（含思考输出），45秒空闲/默认300秒总上限 |
 
 800 是默认值，不是所有调用的统一上限。服务端输出配置须为 1–16384 的整数；输入上限为普通请求 16000、思考请求 40000 个 JSON 字符，非流式响应字节上限为65536，思考流式响应采用下述分层上限。超大响应、非正常结束、未知 token 用量和未经请求的工具调用均拒绝；适配器不自动重试、不在失败时自动换模型、禁止重定向。响应只返回最终正文及总用量，不暴露或保存供应商的隐藏思考内容。模型启用需 `YANTU_MODEL_ENABLED=true` 和服务端 `DEEPSEEK_API_KEY`，不能使用 `VITE_` 环境变量或前端请求体传递密钥。
 
-研究最终分析配置为 `YANTU_RESEARCH_MODEL`（默认 `deepseek-v4-pro`，也支持 `deepseek-flash`）、`YANTU_RESEARCH_EFFORT`（默认 `high`，允许 `low/high/max`）、`YANTU_RESEARCH_TIMEOUT_MS`（默认及上限120000）、`YANTU_RESEARCH_MAX_OUTPUT_TOKENS`（默认及上限16384）。规划复用所选模型，固定非思考4096输出token/30秒。应用每账号100000token日额度仍可能因已有消费或重试不足以预留完整流程，应设置可承担预算；不足时返回原因，不跳过规划冒充完成。
+研究最终分析配置为 `YANTU_RESEARCH_MODEL`（默认 `deepseek-v4-pro`，也支持 `deepseek-flash`）、`YANTU_RESEARCH_EFFORT`（默认 `high`，允许 `low/high/max`）、`YANTU_RESEARCH_TIMEOUT_MS`（总上限默认300000毫秒，允许1–1800000整数，实际不超过整份报告剩余时限）、`YANTU_RESEARCH_MAX_OUTPUT_TOKENS`（默认及上限16384）。规划复用所选模型，固定非思考4096输出token/30秒。应用每账号100000token日额度仍可能因已有消费或重试不足以预留完整流程，应设置可承担预算；不足时返回原因，不跳过规划冒充完成。
 
 `research-generation.ts` 通过同一 `ModelRuntime` 运行规划与最终报告。每阶段结构、引用或画像校验失败且取得模型正文时最多修复一次；确认收到HTTP 500/502/503/504时，整份报告的规划与最终调用共用最多一次临时重试，退避250毫秒后通过 `beforeRetry` 再查会话、画像版本和取消状态，并以新retry键重新预留同一额度。规划与初次报告每阶段最多3次模型请求；少于5校且已有至少5个学校官网根域和5个校名线索时，最多再用一次同账本分析补充遗漏候选，不修复、不重试，不超过10校且保留已有建议。整份报告最多6次模型请求，预算不足保留已有建议并说明原因；不是保证会调用到上限。适配器自身不重试，不切换模型或供应商。网络错误、超时、认证、余额不足、限流、输出截断和取消不自动重试。校验修复只携带原始画像、目录、证据与最多六条内部字段问题；近上限时去掉无效旧回答，不裁掉原始证据。未知上游用量保留预留额度，超时不等于免费。
 
@@ -152,7 +152,7 @@ v6规划与最终报告均以字段引用生成匹配理由：模型输出 `prof
 
 `failureStage` 可选值为 `preparing/researching/analyzing/writing`，表示失败发生的真实阶段；阶段失败、模型输出校验失败和用户信息不足分别解释。已保存画像充分但模型格式错误时，不提示用户必须先选学校或重新填写画像；只有实际画像不足或有效规划中的明确追问才请求补充。
 
-研究思考请求使用 `stream:true` 与 `stream_options.include_usage:true`，非思考请求保持非流式JSON。`deepseek.ts` 在服务端增量解析SSE，只累计最终 `delta.content`，不累计、展示或记录 `reasoning_content`；支持字节/中文分片、多行data、CR/LF及独立或随stop返回的用量。必须取得 `[DONE]`、`finish_reason:stop`、匹配模型和完整usage，拒绝工具调用、截断、未知用量及异常结构；完整completion_tokens包含思考。总超时仍最多120秒、全部SSE响应（含思考和协议帧）最多8388608字节（8MiB），单事件或未结束行最多65536字节（64KiB），最终content累计最多131072字节（128KiB），心跳不延长截止时间，DONE后取消剩余连接。失败仍保留预留额度，不因网络结局不明自动重试。依据[DeepSeek流式接口](https://api-docs.deepseek.com/api/create-chat-completion/)与[思考模式](https://api-docs.deepseek.com/guides/thinking_mode/)。流式传输可减少长时间静默等待，不保证解决DNS或连接故障。
+研究思考请求使用 `stream:true` 与 `stream_options.include_usage:true`，非思考请求保持非流式JSON。`deepseek.ts` 在服务端增量解析SSE，只累计最终 `delta.content`，不累计、展示或记录 `reasoning_content`；支持字节/中文分片、多行data、CR/LF及独立或随stop返回的用量。必须取得 `[DONE]`、`finish_reason:stop`、匹配模型和完整usage，拒绝工具调用、截断、未知用量及异常结构；完整completion_tokens包含思考。空闲超时为45秒，从请求发出开始计时，每批非空字节（包括推理、心跳和未完整成帧的数据）重置；默认总上限300秒，可通过 `YANTU_RESEARCH_TIMEOUT_MS` 调整为1–1800000毫秒，但实际不超过整份报告剩余时限。持续有数据只延长空闲计时，心跳不延长总截止时间。全部SSE响应（含思考和协议帧）最多8388608字节（8MiB），单事件或未结束行最多65536字节（64KiB），最终content累计最多131072字节（128KiB），心跳不延长截止时间，DONE后取消剩余连接。失败仍保留预留额度，不因网络结局不明自动重试。依据[DeepSeek流式接口](https://api-docs.deepseek.com/api/create-chat-completion/)与[思考模式](https://api-docs.deepseek.com/guides/thinking_mode/)。流式传输可减少长时间静默等待，不保证解决DNS或连接故障。
 
 应用默认每账号每日300000、全站900000模型token，并发分别1和4；直接创建 `ModelRuntime` 时采用同一组默认值。调用前按输入字符和最大输出预留，实际输入及总输出（含思考）结算。研究、解释、咨询和修复共用账本，不能绕过额度；搜索另由共享 `createSearchBudget` 计量，应用默认每账号每日60次、全站300次，发送前计数且失败不退还。环境变量为 `YANTU_MODEL_USER_DAILY_TOKENS`、`YANTU_MODEL_DAILY_TOKENS`、`YANTU_SEARCH_USER_DAILY_REQUESTS`、`YANTU_SEARCH_DAILY_REQUESTS`；搜索次数不等于报告份数。这些数值是应用本地token上限，不是供应商账户余额或充值。账本是单进程内存、重启重置，不构成长久或跨实例账单硬上限。
 
@@ -246,4 +246,4 @@ npx playwright test tests/tutor-chat.spec.ts
 
 额度按输入 JSON 字符数加最大输出预留：规划每次 16000 + 4096 = 20096，最终每次 40000 + 16384 = 56384。规划与最终各一次修复，加一次整份报告共享的临时故障重试，最坏 2 × 20096 + 3 × 56384 = 209344；可选覆盖补充再加 56384，完整上界 265728。整份报告最多6次模型请求，规划与初次报告每阶段最多3次，但二者共享一次临时故障重试。默认每账号每日300000、全站900000模型 token，应用和直接创建运行时一致。研究、咨询和解释使用同一额度；这是本地账本，不是供应商账户余额或充值。
 
-研究没有独立的整份报告总超时：120秒是单次最终模型请求上限，非思考规划30秒。单页下载8秒，PDF/XLS解析另有5秒上限；60次、4并发的理想下载上界约120秒，叠加附件解析约195秒，同主机串行及搜索/模型耗时另计。预算扩容不把120秒误设为整份报告期限，取消检查贯穿所有阶段。
+整份报告默认30分钟总超时，最终模型流式思考默认45秒空闲超时与300秒总上限；最终请求还会取整份报告剩余时间的较小值。非思考规划保持30秒，单页下载8秒，PDF/XLS解析另有5秒上限。超时保留MODEL_TIMEOUT或RESEARCH_TOTAL_TIMEOUT失败原因、可用建议和断点，允许用户手动续跑；不自动重试超时，未知用量仍保留预留额度。所有超时常量集中在research-budget.ts，取消检查贯穿所有阶段。

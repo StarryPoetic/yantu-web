@@ -68,7 +68,7 @@ export function createAssistantRoutes(
         | "high"
         | "max",
       researchTimeoutMs: Number(
-        process.env.YANTU_RESEARCH_TIMEOUT_MS ?? 120000,
+        process.env.YANTU_RESEARCH_TIMEOUT_MS ?? B.thinkingTimeoutMs,
       ),
       researchMaxOutputTokens: Number(
         process.env.YANTU_RESEARCH_MAX_OUTPUT_TOKENS ?? 16384,
