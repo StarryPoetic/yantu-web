@@ -492,3 +492,66 @@ test("a worst-case report including repairs, one retry and optional coverage fit
     { code: "EVIDENCE_TOO_LARGE" },
   );
 });
+
+test("hundreds of programme rows do not overflow city metadata or erase the original catalogue", () => {
+  const run = generateGuidance({
+    subjectId: "owner",
+    guidanceRunId: "large-city-metadata",
+    generatedAt: "2026-10-11T00:00:00Z",
+    profile: {
+      ...blankProfile(),
+      year: "2027",
+      major: "管理科学与工程",
+      targetMajor: "管理科学与工程",
+      studyGoal: "专业实践与行业就业",
+      cities: ["杭州"],
+    },
+    profileVersion: 1,
+    selectionVersion: 1,
+    confirmedMajorId: "1201",
+    excludedMajorIds: [],
+    assessments: [],
+  });
+  const discipline = getDisciplineCatalog().items.find(
+    (item) => item.code === "1201",
+  )!;
+  const excerpt =
+    "示例管理大学2026年硕士研究生招生专业目录。\n" +
+    Array.from(
+      { length: 300 },
+      (_, i) =>
+        `${String.fromCodePoint(0x4e00 + i)}管理学院 | 120100 管理科学与工程 学术学位 全日制 ①101思想政治理论②201英语一③303数学三④811管理学`,
+    ).join("\n");
+  const sources: WebSource[] = [
+    {
+      id: "large-directory",
+      url: "https://yz.management.edu.cn/catalogue",
+      title: "示例管理大学2026年硕士招生专业目录",
+      excerpt,
+      kind: "official_page",
+      verified: false,
+      retrievedAt: run.generatedAt,
+    },
+  ];
+  const messages = reportMessages(
+    run,
+    { directions: [], followUpQuestions: [] },
+    [discipline],
+    sources,
+    "2027",
+  );
+  assert.ok(
+    JSON.stringify(messages).length <= B.thinkingChars - B.repairHeadroom,
+  );
+  const input = JSON.parse(messages[1].content);
+  assert.equal(input.candidateCities.length, 1);
+  assert.equal(input.candidateCities[0].institutionName, "示例管理大学");
+  assert.ok(input.candidateCities[0].collegeName);
+  assert.equal(input.candidateCities[0].cityVerification.status, "unknown");
+  assert.equal(sources[0].excerpt, excerpt);
+  assert.ok(
+    input.sources.some(
+      (source: { id: string }) => source.id === "large-directory",
+    ),
+  );
+});

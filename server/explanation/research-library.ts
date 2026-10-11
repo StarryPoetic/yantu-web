@@ -337,6 +337,7 @@ export function createResearchEvidenceLibrary(
       retrieved_at TEXT NOT NULL, stored_at TEXT NOT NULL, version INTEGER NOT NULL,
       evidence_year INTEGER
     ) STRICT;
+    CREATE INDEX IF NOT EXISTS research_public_source_id_idx ON research_public_sources(json_extract(payload,'$.id')) WHERE json_valid(payload);
     CREATE TABLE IF NOT EXISTS research_program_facts (
       identity TEXT NOT NULL, field TEXT NOT NULL, source_key TEXT NOT NULL REFERENCES research_public_sources(url) ON DELETE CASCADE,
       school TEXT NOT NULL, domain TEXT NOT NULL, code TEXT NOT NULL, year INTEGER, payload TEXT NOT NULL,
@@ -503,6 +504,13 @@ export function createResearchEvidenceLibrary(
         for (const { school } of schoolRegistry.byCity(city))
           names.add(school.name);
       const domains = new Set(input.registrableDomains ?? []);
+      const supportQuery = db.prepare(
+        "SELECT retrieved_at,evidence_year FROM research_public_sources WHERE json_valid(payload) AND json_extract(payload,'$.id')=?",
+      );
+      const supportRows = new Map<
+        string,
+        { retrieved_at: string; evidence_year: number | null } | undefined
+      >();
       return (
         db.prepare("SELECT payload FROM research_program_facts").all() as {
           payload: string;
@@ -532,13 +540,14 @@ export function createResearchEvidenceLibrary(
         const supportFresh =
           !("supportingEvidence" in fact.value) ||
           (fact.value.supportingEvidence ?? []).every((ref) => {
-            const support = db
-              .prepare(
-                "SELECT retrieved_at,evidence_year FROM research_public_sources WHERE json_extract(payload,'$.id')=?",
-              )
-              .get(ref.sourceId) as
-              | { retrieved_at: string; evidence_year: number | null }
-              | undefined;
+            if (!supportRows.has(ref.sourceId))
+              supportRows.set(
+                ref.sourceId,
+                supportQuery.get(ref.sourceId) as
+                  | { retrieved_at: string; evidence_year: number | null }
+                  | undefined,
+              );
+            const support = supportRows.get(ref.sourceId);
             return (
               !!support &&
               fresh(

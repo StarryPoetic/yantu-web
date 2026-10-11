@@ -655,3 +655,50 @@ test("metadata-only refresh rebinds the changed page but retains dependent polic
     store.close();
   }
 });
+
+test("support freshness uses the public ID index and a refresh cannot reuse a stale lookup across calls", () => {
+  const { store, library } = memory();
+  try {
+    const current = source({
+      excerpt: `${school}2027年硕士研究生招生专业目录\n第4行：010机械工程学院 | 080200机械工程 | 学术学位 | 201英语（一）301数学（一）`,
+    });
+    library.save(current);
+    library.save(
+      source({
+        url: "https://grs.hdu.edu.cn/campus-policy",
+        title: "2027年硕士招生章程",
+        excerpt: `${school}2027年硕士研究生招生章程\n十四、培养所在校区\n录取在电子信息学院、集成电路科学与工程学院的新生所在校区：根据研究生导师团队和学科方向在杭州电子科技大学下沙校区或绍兴校区。\n其他学院的新生所在校区为杭州电子科技大学下沙校区或文一校区。\n联系方式\n研究生招生办公室（下沙校区行政楼207）\n地址：杭州市钱塘区2号大街1158号`,
+      }),
+    );
+    const plan = store.db
+      .prepare(
+        "EXPLAIN QUERY PLAN SELECT retrieved_at,evidence_year FROM research_public_sources WHERE json_valid(payload) AND json_extract(payload,'$.id')=?",
+      )
+      .all("lookup-only") as { detail: string }[];
+    assert.ok(
+      plan.some(
+        (step) =>
+          step.detail.includes("SEARCH") &&
+          step.detail.includes("research_public_source_id_idx"),
+      ),
+    );
+    const campus = () =>
+      library
+        .queryFacts({ targetYear: "2027" })
+        .find((fact) => fact.field === "campus" && fact.status === "bound");
+    assert.ok(campus()?.targetYearApplicable);
+    const catalogId = library
+      .load(request)
+      .find((page) => page.url === current.url)!.id;
+    store.db
+      .prepare(
+        "UPDATE research_public_sources SET retrieved_at=? WHERE json_extract(payload,'$.id')=?",
+      )
+      .run(new Date(time - 2 * 86400000).toISOString(), catalogId);
+    assert.equal(campus()?.targetYearApplicable, false);
+    library.save({ ...current, retrievedAt: new Date(time).toISOString() });
+    assert.equal(campus()?.targetYearApplicable, true);
+  } finally {
+    store.close();
+  }
+});
