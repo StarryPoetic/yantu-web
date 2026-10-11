@@ -1,3 +1,71 @@
+/* Shared visual tokens: the workspace, reports and popovers use one scale. */
+:root {
+  --color-canvas: #f4f6f4;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f7f9f7;
+  --color-ink: #243b32;
+  --color-muted: #53665b;
+  --color-accent: #285747;
+  --color-accent-hover: #204737;
+  --color-accent-soft: #e8f0ea;
+  --color-border: #d4ded7;
+  --color-control-border: #819389;
+  --color-success: #285747;
+  --color-success-soft: #e8f0ea;
+  --color-warning: #755018;
+  --color-warning-soft: #fff5df;
+  --color-danger: #933b32;
+  --color-danger-soft: #fff0ed;
+  --color-info: #36586b;
+  --color-info-soft: #edf3f7;
+  --color-focus: #285747;
+  --color-overlay: #243b3266;
+  --font-ui: "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-editorial: "Noto Serif SC", "SimSun", serif;
+  --font-caption: 12px;
+  --font-small: 14px;
+  --font-body: 16px;
+  --font-subheading: 18px;
+  --font-heading: 20px;
+  --font-title: 28px;
+  --font-display: 32px;
+  --font-hero: clamp(38px, 4vw, 62px);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  --weight-bold: 700;
+  --leading-tight: 1.35;
+  --leading-label: 1.5;
+  --leading-body: 1.75;
+  --leading-reading: 1.9;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 40px;
+  --space-10: 48px;
+  --space-11: 64px;
+  --space-12: 80px;
+  --radius-small: 4px;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --radius-dialog: 16px;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+  --shadow-subtle: 0 2px 8px #243b320a;
+  --shadow-popover: 0 12px 32px #243b3224;
+  --shadow-dialog: 0 20px 64px #243b3230;
+  --shadow-focus: 0 0 0 3px #28574733;
+  --control-min: 40px;
+  --control-height: 44px;
+  --toolbar-height: 64px;
+  --assistant-rail: 96px;
+  --motion-fast: 150ms;
+}
 :root {
   font-family:
     "Noto Sans SC",

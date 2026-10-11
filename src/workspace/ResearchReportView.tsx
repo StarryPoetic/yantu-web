@@ -50,6 +50,7 @@ export function ResearchReportView({
         className="research-availability"
         aria-label="报告可用性"
         role="status"
+        data-report-state={availability.title}
       >
         <strong>{availability.title}</strong>
         <p>{availability.message}</p>

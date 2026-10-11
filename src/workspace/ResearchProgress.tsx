@@ -123,7 +123,15 @@ export function ResearchProgress({
                   key={step.stage}
                   style={{ left: `${step.floor}%` }}
                 >
-                  {step.name}
+                  {step.stage === "researching" ? (
+                    <>
+                      检索与
+                      <wbr />
+                      读取
+                    </>
+                  ) : (
+                    step.name
+                  )}
                 </span>
               ))}
             </div>

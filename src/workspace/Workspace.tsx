@@ -395,7 +395,11 @@ function SignedInWorkspace({
               <Icon size={19} />
               <span>{name}</span>
               {id === "guidance" && research.badge && (
-                <small className="research-nav-badge" aria-label="报告状态">
+                <small
+                  className="research-nav-badge"
+                  aria-label="报告状态"
+                  data-report-state={research.badge}
+                >
                   {research.badge}
                 </small>
               )}
@@ -441,8 +445,12 @@ function SignedInWorkspace({
         </header>
         <main id="workspace-content" className="ws-main" tabIndex={-1}>
           <ErrorNotice error={globalError} />
-          {research.badge && (
-            <div className="ws-notice research-global-notice" role="status">
+          {research.badge && page !== "guidance" && (
+            <div
+              className="ws-notice research-global-notice"
+              role="status"
+              data-report-state={research.badge}
+            >
               <span>
                 {research.running || research.startingMode
                   ? "报告生成中，可切换栏目，进度会保留。"

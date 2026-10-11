@@ -3578,13 +3578,15 @@ test("T3-13 global status matches partial and stale report availability", async 
   service.finish("partial");
   const badge = page.getByLabel("报告状态", { exact: true });
   await expect(badge).toHaveText("部分可用");
-  await expect(page.locator(".research-global-notice")).toContainText(
+  await expect(page.getByLabel("报告可用性", { exact: true })).toContainText(
     "部分可用",
   );
   service.stale();
   await page.getByRole("button", { name: "重新检查服务", exact: true }).click();
   await expect(badge).toHaveText("需更新");
-  await expect(page.locator(".research-global-notice")).toContainText("需更新");
+  await expect(page.getByLabel("报告可用性", { exact: true })).toContainText(
+    "需更新",
+  );
   await expect(page.getByLabel("报告可用性", { exact: true })).toContainText(
     "需更新",
   );

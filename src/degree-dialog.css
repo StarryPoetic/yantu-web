@@ -16,20 +16,20 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: var(--space-6);
   margin: 0;
-  padding: 22px 28px;
-  border-bottom: 1px solid #e0e7d5;
-  background: #fafbf7;
+  padding: var(--space-6) var(--space-7);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-subtle);
 }
 
 .degree-dialog > .modal-heading h2,
 .degree-dialog > .degree-dialog-heading h2 {
   margin: 0;
-  font-size: 24px;
-  line-height: 1.5;
-  font-weight: 550;
-  color: #416236;
+  font-size: var(--font-heading);
+  line-height: var(--leading-label);
+  font-weight: var(--weight-strong);
+  color: var(--color-accent);
 }
 
 .degree-dialog > .modal-heading > button,
@@ -38,10 +38,10 @@
   flex: 0 0 40px;
   width: 40px;
   height: 40px;
-  color: #637756;
-  border: 1px solid #e0e7d5;
-  border-radius: 8px;
-  background: white;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
 }
 
 .degree-dialog > .degree-dialog-body {
@@ -49,29 +49,29 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-  scroll-padding-block: 20px;
-  padding: 8px 28px 28px;
+  scroll-padding-block: var(--space-6);
+  padding: var(--space-3) var(--space-7) var(--space-7);
 }
 
 .degree-dialog > .degree-dialog-body:focus-visible {
-  outline: 2px solid #7f9b64;
+  outline: 2px solid var(--color-focus);
   outline-offset: -3px;
 }
 
 .degree-dialog .degree-columns {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
+  gap: var(--space-6);
 }
 
 .degree-dialog .degree-columns section {
   min-width: 0;
-  padding: 24px;
+  padding: var(--space-7);
 }
 
 .degree-dialog .degree-explanation > .notice {
-  margin-top: 22px;
-  font-size: 14px;
-  line-height: 1.9;
+  margin-top: var(--space-6);
+  font-size: var(--font-small);
+  line-height: var(--leading-reading);
 }
 
 @media (max-width: 640px) {
@@ -83,26 +83,26 @@
   .degree-dialog > .modal-heading,
   .degree-dialog > .degree-dialog-heading {
     align-items: flex-start;
-    padding: 18px;
-    gap: 12px;
+    padding: var(--space-5);
+    gap: var(--space-4);
   }
 
   .degree-dialog > .modal-heading h2,
   .degree-dialog > .degree-dialog-heading h2 {
-    font-size: 20px;
-    padding-top: 4px;
+    font-size: var(--font-heading);
+    padding-top: var(--space-2);
   }
 
   .degree-dialog > .degree-dialog-body {
-    padding: 4px 18px 22px;
+    padding: var(--space-2) var(--space-5) var(--space-6);
   }
 
   .degree-dialog .degree-columns {
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
+    gap: var(--space-5);
   }
 
   .degree-dialog .degree-columns section {
-    padding: 20px;
+    padding: var(--space-6);
   }
 }

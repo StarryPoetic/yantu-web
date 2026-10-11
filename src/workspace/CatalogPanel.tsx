@@ -622,10 +622,7 @@ export function CatalogPanel({
             key={program.programId}
           >
             <div className="ws-school-top">
-              <span
-                className="ws-school-mark"
-                style={{ background: program.display.color || "#315b4b" }}
-              >
+              <span className="ws-school-mark">
                 {program.display.shortName ||
                   program.display.institutionName.slice(0, 2)}
               </span>

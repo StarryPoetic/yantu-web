@@ -75,7 +75,7 @@ export function ResearchPanel({
       <div className="research-panel-heading">
         <h2>
           {report?.recommendations.length
-            ? "你的院校与专业建议"
+            ? "本次研究报告"
             : "生成学校与专业建议"}
         </h2>
         {(report || failed) && (
@@ -106,7 +106,10 @@ export function ResearchPanel({
       {loading && <p role="status">正在读取报告和服务状态…</p>}
       {outdated && (
         <p className="research-stale" role="status">
-          画像、测评、目标或资料已更新。已有报告仅供回顾，请先重新生成基础结论，再进行联网调研。
+          {stale
+            ? "个人条件或确认专业已变化。"
+            : "画像、测评、目标或资料已更新。"}
+          已有报告仅供回顾，请先重新生成基础结论，再进行联网调研。
         </p>
       )}
       {supplementing && (

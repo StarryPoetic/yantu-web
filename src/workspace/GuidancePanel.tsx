@@ -185,11 +185,6 @@ export function GuidancePanel({
           {busy && <p role="status">正在综合已保存的个人画像与测评记录…</p>}
           {run && (
             <>
-              {stale && (
-                <p role="status" className="ws-notice">
-                  个人条件或确认专业已变化，以下为此前结论。请点击“重新生成结论”后查看当前建议。
-                </p>
-              )}
               <ResearchPanel
                 key={run.guidanceRunId}
                 run={run}
