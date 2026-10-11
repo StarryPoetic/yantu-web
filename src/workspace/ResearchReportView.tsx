@@ -11,6 +11,7 @@ import { ResearchUnstructuredSources } from "./ResearchUnstructuredSources";
 import { ResearchDecisionBasisView } from "./ResearchDecisionBasisView";
 import { ResearchCandidateAudit } from "./ResearchCandidateAudit";
 import { ResearchEvidenceCoverage } from "./ResearchEvidenceCoverage";
+import { ResearchPrefilterView } from "./ResearchPrefilterView";
 import {
   recommendationGroups,
   researchCoverage,
@@ -71,6 +72,7 @@ export function ResearchReportView({
         </p>
       )}
       <ResearchEvidenceCoverage report={report} />
+      <ResearchPrefilterView value={report.prefilter} />
       {report.referencePolicy && (
         <section
           className="research-exam-policy"
@@ -89,7 +91,10 @@ export function ResearchReportView({
             <h3>建议优先比较的学校与专业</h3>
             <span>
               本次建议 {coverage.schoolCount} 所不同学校，目标比较{" "}
-              {coverage.targetMin}–{coverage.targetMax} 所
+              {coverage.targetMin === coverage.targetMax
+                ? coverage.targetMax
+                : `${coverage.targetMin}–${coverage.targetMax}`}{" "}
+              所
             </span>
             <p className="ws-muted">{suitabilityNotice}</p>
           </div>

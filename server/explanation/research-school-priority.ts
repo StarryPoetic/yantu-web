@@ -14,7 +14,9 @@ export function researchSchoolPriorities(
   const cities = [
     ...new Set((preferences.cities ?? []).map(normalizeDiscoveryCity)),
   ].filter(
-    (city) => city.length >= 2 && !/^(?:不确定|不限|无偏好|未确定)$/.test(city),
+    (city) =>
+      city.length >= 2 &&
+      !/^(?:全国|不确定|不限(?:城市)?|无偏好|未确定)$/.test(city),
   );
   const citySchools = [
     ...new Set(

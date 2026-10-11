@@ -151,6 +151,7 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
         try {
           live(c, run, job);
           const report = await engine.generate({
+            strategy: "two-stage",
             subjectId: owner,
             run,
             selectedProgram,

@@ -89,7 +89,9 @@ export function validateCityPreferenceClaim(
             (city): city is string =>
               typeof city === "string" &&
               !!city.trim() &&
-              !/^(?:不确定|不限|无偏好|未确定)$/.test(city.trim()),
+              !/^(?:全国|不确定|不限(?:城市)?|无偏好|未确定)$/.test(
+                city.trim(),
+              ),
           )
           .map(normalizeCityName)
       : [],

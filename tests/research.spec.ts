@@ -13,6 +13,7 @@ import type {
 import { registerAccount } from "./helpers/account";
 import { decisionDisplayFixture } from "./helpers/research-decision-fixture";
 import { withPhase6Display } from "./helpers/research-phase6-fixture";
+import { prefilterResearchSchools } from "../server/explanation/research-prefilter";
 import {
   withEvidenceCoverage,
   withSupplementedTuition,
@@ -3383,3 +3384,70 @@ test("任务一：创建请求尚未返回时切换栏目仍保留状态且不�
     release();
   }
 });
+for (const width of [1280, 375]) {
+  test(`two-stage screening reasons expand, collapse and fit at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    await expect(
+      panel.getByText("已接收请求，即将开始整理依据", { exact: true }),
+    ).toBeVisible();
+    const prefilter = prefilterResearchSchools(
+      {
+        cities: ["杭州", "上海"],
+        university: "本科大学",
+        year: 2027,
+        disciplineCodes: ["0802"],
+      },
+      Array.from({ length: 32 }, (_, index) => ({
+        key: String(index).padStart(3, "0"),
+        name: `筛选学校${index}`,
+        domain: `s${index}.edu.cn`,
+        city: index < 16 ? "杭州" : "上海",
+        tags: [],
+        programs: [],
+      })),
+    );
+    service.finish("partial", (report) => ({ ...report, prefilter }));
+    const heading = panel.getByText("筛选依据：从 32 所中选出 20 所精查", {
+      exact: true,
+    });
+    await expect(heading).toBeVisible();
+    const explanation = panel.getByText(
+      "以下分数只决定调查顺序，不是录取概率。缺少证据的维度记 0。",
+      { exact: true },
+    );
+    await expect(explanation).toBeHidden();
+    await heading.click();
+    await expect(explanation).toBeVisible();
+    await expect(
+      panel.getByText("城市名额上限", { exact: true }),
+    ).toBeVisible();
+    await panel.getByText("筛选学校0的分项分与依据", { exact: true }).click();
+    await expect(
+      panel
+        .getByText(
+          "没有适用本科优势政策证据，记0；同校、同省或同系统不自动加分。",
+          { exact: true },
+        )
+        .first(),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await heading.focus();
+    await page.keyboard.press("Enter");
+    await expect(explanation).toBeHidden();
+  });
+}

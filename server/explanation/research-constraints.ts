@@ -1266,7 +1266,8 @@ function cityCheck(
   const cities = input.profile.cities
     .filter(
       (city) =>
-        city.trim() && !/^(?:不确定|不限|无偏好|未确定)$/.test(city.trim()),
+        city.trim() &&
+        !/^(?:全国|不确定|不限(?:城市)?|无偏好|未确定)$/.test(city.trim()),
     )
     .map(cityName);
   const check: RecommendationConstraintCheck = {

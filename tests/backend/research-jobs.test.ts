@@ -25,6 +25,7 @@ test("one-click retry persists owned checkpoints, reuses the previous report aft
     getReadiness: () => ({ ready: true, reasons: [], model }),
     clearSubject() {},
     async generate(input) {
+      assert.equal(input.strategy, "two-stage");
       inputs.push(input);
       if (input.mode !== "retry") {
         await input.onCheckpoint?.({

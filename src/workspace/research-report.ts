@@ -753,7 +753,30 @@ export function researchReportMarkdown(
     suitabilityNotice,
     ...(isLegacyResearchReport(report) ? [legacyResearchNotice] : []),
     ...(outdated ? ["历史报告：个人情况或依据已更新，仅供回顾。"] : []),
-    `本次建议 ${coverage.schoolCount} 所不同学校，目标比较 ${coverage.targetMin}–${coverage.targetMax} 所。`,
+    `本次建议 ${coverage.schoolCount} 所不同学校，目标比较 ${coverage.targetMin === coverage.targetMax ? coverage.targetMax : `${coverage.targetMin}–${coverage.targetMax}`} 所。`,
+    ...(report.prefilter
+      ? [
+          "",
+          "## 筛选依据",
+          `从 ${report.prefilter.candidateCount} 所中选出 ${report.prefilter.selected.length} 所精查。分数仅用于调查顺序。`,
+          ...report.prefilter.selected.flatMap((s) => [
+            `- ${s.institutionName}：${s.score} 分`,
+            ...s.scores.map(
+              (score) =>
+                `  - ${score.dimension}：${score.points}；${score.reasons.join("；")}`,
+            ),
+          ]),
+          ...[
+            ...new Set(
+              report.prefilter.omitted.map(
+                (s) => s.excludedReasons.join("；") || s.reason,
+              ),
+            ),
+          ]
+            .slice(0, 5)
+            .map((reason) => `- 未入选/剔除：${reason}`),
+        ]
+      : []),
     ...coverage.reasons.map((text) => "- 覆盖说明：" + text),
     "",
     ...decisionBasisMarkdown(report.decisionBasis),

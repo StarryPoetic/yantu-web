@@ -120,6 +120,9 @@ export async function repairResearchEvidence(input: {
   onAttempt?: (attempt: ResearchReadAttempt) => void;
   onProgress: (detail: string) => Promise<void>;
   now?: () => number;
+  /** Two-stage runs never follow search results outside the selected school. */
+  allowedDomains?: readonly string[];
+  stop?: (sources: readonly WebSource[]) => boolean;
   needsEvidence?: (
     gap: ResearchEvidenceGap,
     sources: readonly WebSource[],
@@ -200,9 +203,21 @@ export async function repairResearchEvidence(input: {
       gap: ResearchEvidenceGap,
     ) {
       const values = candidates
+        .filter(
+          (c) =>
+            !input.allowedDomains ||
+            input.allowedDomains.includes(academicDomain(c.url)),
+        )
         .filter((c) => unread(c.url))
         .filter((c, i, all) => all.findIndex((a) => a.url === c.url) === i)
         .slice(0, Math.min(B.concurrency, gapReadLimit - readCount));
+      if (input.stop) {
+        for (const candidate of values) {
+          if (input.stop(sources)) break;
+          await read(candidate, gap);
+        }
+        return;
+      }
       const results = await Promise.allSettled(
         values.map((c) => scheduler.read(c.url)),
       );
@@ -215,7 +230,14 @@ export async function repairResearchEvidence(input: {
       candidate: { url: string; title: string; parent?: WebSource },
       gap: ResearchEvidenceGap,
     ) {
-      if (readCount >= gapReadLimit || !mayRead(candidate.url)) return;
+      if (
+        readCount >= gapReadLimit ||
+        !mayRead(candidate.url) ||
+        input.stop?.(sources) ||
+        (input.allowedDomains &&
+          !input.allowedDomains.includes(academicDomain(candidate.url)))
+      )
+        return;
       const existing = sources.find(
         (source) => source.url === candidate.url && isSchoolPage(source),
       );
@@ -348,6 +370,7 @@ export async function repairResearchEvidence(input: {
       opening.length > 1 ? opening.map(({ gap }) => gap.id) : [],
     );
     for (const gap of gaps) {
+      if (input.stop?.(sources)) break;
       if (readCount >= maxReads) break;
       if (input.needsEvidence && !input.needsEvidence(gap, sources)) continue;
       gapReadLimit = Math.min(
@@ -357,9 +380,12 @@ export async function repairResearchEvidence(input: {
       const owned = sources.filter((source) =>
         sourceHasSchoolIdentity(source, gap.institutionName),
       );
-      const domains = [
-        ...new Set(owned.map((source) => academicDomain(source.url))),
-      ].slice(0, 2);
+      const domains = input.allowedDomains
+        ? [...input.allowedDomains]
+        : [...new Set(owned.map((source) => academicDomain(source.url)))].slice(
+            0,
+            2,
+          );
       const links = owned
         .filter(isSchoolPage)
         .flatMap((parent) =>

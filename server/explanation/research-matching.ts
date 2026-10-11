@@ -1,3 +1,4 @@
+import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import signals from "../../knowledge/disciplines/signals.json" with { type: "json" };
 import {
   affirmativePreference,
@@ -578,7 +579,13 @@ export function evaluateDemandMatch(
     goal.has(discipline.code) ||
     (!target.size && !goal.size && background.has(discipline.code));
   const citiesRequested =
-    Array.isArray(profile.cities) && profile.cities.length > 0;
+    Array.isArray(profile.cities) &&
+    profile.cities.some(
+      (city) =>
+        typeof city === "string" &&
+        city.trim() &&
+        !/^(?:全国|不确定|不限(?:城市)?|无偏好|未确定)$/.test(city.trim()),
+    );
   const preferenceConflict =
     (target.size > 0 && !target.has(discipline.code)) ||
     (requestedDegree !== null && requestedDegree !== discipline.degreeType);
@@ -1262,7 +1269,7 @@ export function rankDemandCandidates(
           (other) => other.institutionName === item.institutionName,
         ) === index,
     )
-    .slice(0, 10)
+    .slice(0, B.finalSchools)
     .map((item) => ({
       ...item,
       programAlternatives: ranked

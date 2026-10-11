@@ -1,5 +1,8 @@
 /** Phase 5 single source of truth; docs/tests verify these exported values. */
 export const RESEARCH_BUDGET = {
+  prefilterSchools: 25,
+  prefilterCitySchools: 10,
+  finalSchools: 10,
   reads: 60,
   schoolReads: 8,
   platformReads: 4,

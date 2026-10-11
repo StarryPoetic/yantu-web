@@ -2,6 +2,7 @@ import { ModelError } from "./deepseek.ts";
 import type { ModelRuntime } from "./index.ts";
 import type { WebAnswerResult, WebReadResult } from "./web.ts";
 import type { ResearchReport } from "./research.ts";
+import type { ResearchPrefilter } from "../../shared/research-prefilter.ts";
 
 /** Owned job data, never a cross-account cache or part of the public job response. */
 export interface ResearchCheckpoint {
@@ -12,6 +13,7 @@ export interface ResearchCheckpoint {
   pages: Record<string, WebReadResult>;
   report?: ResearchReport;
   evidenceReady?: boolean;
+  prefilter?: ResearchPrefilter;
 }
 
 /** A deadline also bounds adapters which ignore cancellation. Late results cannot be saved. */

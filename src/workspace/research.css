@@ -824,3 +824,22 @@
     animation: none;
   }
 }
+.research-prefilter {
+  padding: 16px;
+  border: 1px solid #ddd8cc;
+  border-radius: 12px;
+  margin-block: 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.research-prefilter summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.research-prefilter li {
+  margin-block: 8px;
+}
+.research-prefilter ul,
+.research-prefilter ol {
+  padding-inline-start: 22px;
+}
