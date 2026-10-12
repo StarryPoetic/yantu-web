@@ -117,6 +117,10 @@ test("sparse evidence cannot let one school monopolize targeted searches and ini
       initial.every((q) => q.length < 100 && !q.includes("报录比")),
   );
   assert.ok(
+    initial.some((q) => q.includes(`${f.run.inputSnapshot.profile.year}年`)),
+    "the first catalogue query must include the target year; recovery retains historical years",
+  );
+  assert.ok(
     f.questions.some(
       (q) =>
         !q.startsWith("杭州电子科技大学") &&

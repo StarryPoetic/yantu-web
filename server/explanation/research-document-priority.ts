@@ -8,7 +8,9 @@ export function researchDocumentPriority(
 ) {
   if (
     /\/bszs\//i.test(url) ||
-    /本科(?:专业|招生|录取)|普通类招生结果/.test(title)
+    /本科(?:专业|招生|录取)|[（(]本科[)）]|普通类招生结果|强基计划|三位一体/.test(
+      title,
+    )
   )
     return -100;
   if (
@@ -19,7 +21,9 @@ export function researchDocumentPriority(
   if (program && /学院/.test(title) && !title.includes(program)) {
     if (
       /机械/.test(program) &&
-      /生物与化学|法学院|外国语|会计学院|财税学院/.test(title)
+      /生物与化学|法学院|外国语|会计学院|财税学院|集成电路学院|人工智能学院/.test(
+        title,
+      )
     )
       return -50;
     const other = getDisciplineCatalog().items.some(

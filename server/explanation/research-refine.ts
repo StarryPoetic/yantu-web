@@ -79,7 +79,6 @@ export async function refineResearchSchools(
   const grouped = new Map<number, ReturnType<typeof input.web.answer>>();
   let groupedRequests = 0;
   const names = input.disciplines.map((d) => d.name).join(" ");
-  const years = historicalReferenceYears(input.targetYear);
 
   const share = (total: number, index: number) =>
     Math.floor(total / Math.max(1, selected.length)) +
@@ -134,7 +133,7 @@ export async function refineResearchSchools(
           gaps,
           maxRequests: 1,
           queryForGap: (gap) => [
-            `${school.institutionName} ${years[0]}年 ${names} 硕士招生专业目录`,
+            `${school.institutionName} ${input.targetYear}年 ${names} 硕士招生专业目录`,
           ],
           web:
             groupSize === 1
@@ -154,7 +153,7 @@ export async function refineResearchSchools(
                         {
                           ...request,
                           question:
-                            `${group.map((s) => s.institutionName).join(" OR ")} ${names} ${years[0]}年 硕士招生目录`.slice(
+                            `${group.map((s) => s.institutionName).join(" OR ")} ${names} ${input.targetYear}年 硕士招生目录`.slice(
                               0,
                               600,
                             ),

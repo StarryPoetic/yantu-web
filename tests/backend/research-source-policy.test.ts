@@ -23,6 +23,7 @@ import {
 } from "../../server/explanation/research-external-ranking.ts";
 import { publicExternalText } from "../../server/explanation/research-external-text.ts";
 import { realReplayFixture } from "../helpers/research-real-replay.ts";
+import { researchDocumentPriority } from "../../server/explanation/research-document-priority.ts";
 
 const ds = replayDisciplines();
 const program = {
@@ -400,4 +401,93 @@ test("sixth real run rejects stale years without 年 and unrelated catalogues ac
       "2027",
     ) >= 0,
   );
+});
+
+test("seventh replay excludes undergraduate routes and wrong assessment disciplines before reading", () => {
+  const seventh = realReplayFixture("research-v3a6-run7.json");
+  assert.equal(seventh.runs[0].queries.length, 72);
+  const hits = seventh.runs[0].queries.flatMap((q) => q.sources);
+  for (const text of [
+    "机械电子工程专业(本科)",
+    "强基计划",
+    "三位一体",
+    "集成电路学院",
+  ]) {
+    const hit = hits.find((s) => s.title.includes(text));
+    assert.ok(hit, text);
+    assert.ok(
+      researchDocumentPriority(hit.title, "机械工程", hit.url) < -10,
+      hit.title,
+    );
+  }
+  for (const text of ["0826", "0711", "副主任"]) {
+    const hit = hits.find((s) => s.title.includes(text));
+    assert.ok(hit, text);
+    assert.equal(
+      externalPagePriority(
+        hit,
+        program.institutionName,
+        [{ disciplineCode: "0802", programName: "机械工程" }],
+        ["disciplineAssessment"],
+        "2027",
+      ),
+      -1,
+    );
+  }
+  assert.ok(
+    externalPagePriority(
+      {
+        ...source("authority", "全国学科表"),
+        title: "0802 机械工程-全国第四轮学科评估结果公布",
+      },
+      program.institutionName,
+      [{ disciplineCode: "0802", programName: "机械工程" }],
+      ["disciplineAssessment"],
+      "2027",
+    ) >= 0,
+  );
+});
+
+test("one nationwide assessment query serves both schools and leaves room for employment references", async () => {
+  const questions: string[] = [];
+  const result = await collectExternalEvidence({
+    sources: [],
+    subjectId: "offline",
+    targetYear: "2027",
+    disciplines: ds,
+    programs: [program, { ...program, institutionName: "浙江理工大学" }],
+    usedReads: new Map(),
+    maxRequests: 20,
+    maxReads: 20,
+    onProgress: async () => {},
+    readPage: async () => {
+      throw new Error("no saved results");
+    },
+    web: {
+      clearSubject: () => {},
+      answer: async (request) => {
+        questions.push(request.question);
+        return {
+          status: "sources_only",
+          points: [],
+          notices: [],
+          searched: true,
+          needsSearch: false,
+          answer: "",
+          sources: [],
+        };
+      },
+    } as Parameters<typeof collectExternalEvidence>[0]["web"],
+  });
+  assert.equal(result.requestCount, 13);
+  assert.deepEqual(
+    questions.filter((q) => q.includes("第四轮")),
+    ["0802 机械工程 第四轮学科评估 结果"],
+  );
+  for (const school of ["杭州电子科技大学", "浙江理工大学"])
+    assert.ok(
+      questions.some(
+        (q) => q.startsWith(school) && q.includes("硕士毕业生 就业去向"),
+      ),
+    );
 });

@@ -126,6 +126,10 @@ export async function collectExternalEvidence(
       )
         continue;
       const hosts = externalSearchHosts(task.tier, task.fields);
+      const assessmentDiscipline = task.fields.includes("disciplineAssessment")
+        ? (input.disciplines.find((d) => d.degreeType === "academic") ??
+          input.disciplines.find((d) => d.code === program.disciplineCode))
+        : undefined;
       const subject = task.fields.includes("disciplineAssessment")
         ? (input.disciplines.find((d) => d.degreeType === "academic")?.name ??
           program.programName)
@@ -142,7 +146,11 @@ export async function collectExternalEvidence(
               .join(" OR ")
               .slice(0, 200)
           : "";
-      const question = `${program.institutionName} ${subject ?? ""} ${task.terms}`;
+      // The evaluator publishes one nationwide matrix per discipline. Search it
+      // once and share its literal rows; do not repeat a school-filtered query.
+      const question = assessmentDiscipline
+        ? `${assessmentDiscipline.code} ${assessmentDiscipline.name} ${task.terms}`
+        : `${program.institutionName} ${subject ?? ""} ${task.terms}`;
       const key = createHash("sha256")
         .update(JSON.stringify([question, hosts]))
         .digest("hex");
@@ -177,7 +185,14 @@ export async function collectExternalEvidence(
           score: externalPagePriority(
             source,
             program.institutionName,
-            sameSchool,
+            assessmentDiscipline
+              ? [
+                  {
+                    disciplineCode: assessmentDiscipline.code,
+                    programName: assessmentDiscipline.name,
+                  },
+                ]
+              : sameSchool,
             task.fields,
             input.targetYear,
           ),

@@ -32,6 +32,17 @@ export function externalPagePriority(
 ): number {
   const title = source.title;
   const assessment = fields.includes("disciplineAssessment");
+  if (assessment) {
+    const codes = [...title.matchAll(/(?<!\d)(0[1-9]\d{2})(?!\d)/g)].map(
+      (m) => m[1],
+    );
+    if (
+      codes.length &&
+      !codes.some((code) => subjects.some((s) => s.disciplineCode === code))
+    )
+      return -1;
+    if (/主任|校长|访谈|讲话|评估方案|评估指标/.test(title)) return -1;
+  }
   const named = schoolRegistry.schools.filter((s) => title.includes(s.name));
   if (named.length && !title.includes(school)) return -1;
   const publicMatrix = assessment && /第四轮|学科评估结果/.test(title);
