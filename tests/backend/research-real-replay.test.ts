@@ -28,6 +28,7 @@ import {
 } from "../../server/explanation/research-pages.ts";
 import { runRealReportReplay } from "../helpers/research-real-report-replay.ts";
 import { programEntries } from "../../server/explanation/research-matching.ts";
+import { replayPublicText } from "../helpers/research-replay-capture.ts";
 import {
   replayAcceptanceCriteria,
   replayVerifiedCoverage,
@@ -38,6 +39,74 @@ import {
   priorityQueryCategory,
 } from "../../server/explanation/research-targeted.ts";
 const fixture = realReplayFixture();
+test("fourth real corpus retains the employment PDF and removes contact table personal cells", () => {
+  const fourth = realReplayFixture("research-v3a6-run4.json");
+  assert.equal(fourth.pages.length, 598);
+  assert.equal(fourth.pages.filter((p) => p.source).length, 223);
+  assert.equal(fourth.runs[0].queries.length, 72);
+  assert.equal(fourth.runs[0].reads.length, 180);
+  const pdf = fourth.pages.find((p) => p.url.includes("6278_"))!.source!;
+  assert.match(pdf.excerpt, /毕业研究生分学院毕业去向落实率/);
+  assert.match(pdf.excerpt, /机械工程学院 317 310 97\.79%/);
+  const audit = JSON.parse(
+    readFileSync("tests/fixtures/research-v3a6-audit.json", "utf8"),
+  );
+  const employment = audit.find(
+    (row: { school: string; field: string }) =>
+      row.school === "浙江理工大学" && row.field === "employment",
+  );
+  assert.equal(employment.status, "extraction_or_scope_gap");
+  assert.ok(employment.reviewedUrls.includes(pdf.url));
+  const retained = "机械工程学院 317 310 97.79%";
+  assert.equal(
+    replayPublicText(
+      `数学 | 测试老师 0571-12345678 | 工作日\n作者 : 测试人员\n${retained}`,
+    ),
+    retained,
+  );
+  for (const page of fourth.pages) {
+    if (!page.source) continue;
+    assert.doesNotMatch(
+      page.source.excerpt,
+      /(?<!\d)\d{14,18}(?!\d)|老师[^\n]*\d{3,4}-\d{7,8}/,
+    );
+  }
+});
+test("missing ranking, city, recommendation and background fields receive their own queries", () => {
+  const mechanical = replayDisciplines().find((d) => d.code === "0855")!;
+  const filled = (["employment", "disciplineAssessment"] as const).map(
+    (field): Parameters<typeof missingPriorityQueries>[3][number] => ({
+      id: `query-only:${field}`,
+      schoolName: "杭州电子科技大学",
+      disciplineCode: "0855",
+      field,
+      scope: "school",
+      year: 2026,
+      quote: "仅用于检索规划测试的已确认字段占位",
+      sourceId: "query-only",
+      sourceUrl: "https://hdu.edu.cn/query-only",
+      value: { text: "仅测试查询去重，不作为回放证据" },
+      status: "bound",
+      verified: false,
+    }),
+  );
+  const queries = missingPriorityQueries(
+    "杭州电子科技大学",
+    mechanical,
+    "2027",
+    filled,
+    { majorCode: "085500", programName: "机械" },
+  );
+  assert.ok(queries.some((q) => q.includes("专业排名")));
+  assert.ok(queries.some((q) => q.includes("杭州 城市发展")));
+  assert.ok(queries.some((q) => q.includes("推免人数")));
+  assert.ok(queries.some((q) => q.includes("跨专业")));
+  assert.ok(
+    queries.every(
+      (q) => !q.includes("第四轮学科评估") && !q.includes("毕业生就业质量报告"),
+    ),
+  );
+});
 test("progress comparison cannot retain an old unquoted false-positive coverage ceiling", () => {
   const source = fixture.pages.find((p) => p.source)!.source!;
   const report = {
@@ -193,6 +262,11 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
   assert.ok(
     result.searchQueries.some((q) => /硕士招生专业目录 site:/.test(q)),
     "unknown programmes need graduate-site catalogue recovery before score queries",
+  );
+  assert.ok(
+    result.searchQueries.some((q) =>
+      /^浙江工业大学 .*硕士招生专业目录 site:zjut.edu.cn$/.test(q),
+    ),
   );
   assert.ok(
     result.report.recommendations.every(

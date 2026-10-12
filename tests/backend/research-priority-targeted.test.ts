@@ -24,6 +24,7 @@ import { createResilientPublicDohResolver } from "../../server/explanation/dns.t
 import { resolvePublicAddress } from "../../server/explanation/public-address.ts";
 import { researchDocumentPriority } from "../../server/explanation/research-document-priority.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 const discipline = getDisciplineCatalog().items.find((d) => d.code === "0802")!;
 const school = schoolRegistry.schools.find(
   (s) => s.name === "杭州电子科技大学",
@@ -37,6 +38,110 @@ const source = (p: (typeof pages)[number]): WebSource => ({
   kind: "official_page",
   verified: false,
   retrievedAt: "2026-10-11T00:00:00Z",
+});
+test("catalog recovery shares turns, uses older years only after other work, and resumes within budgets", async () => {
+  const selected = ["杭州电子科技大学", "浙江工业大学"].map((name) => {
+    const s = schoolRegistry.byName(name)!;
+    return {
+      institutionName: name,
+      key: name,
+      domain: s.registrableDomain,
+      city: s.city,
+      score: 0,
+      scores: [],
+      excludedReasons: [],
+    };
+  });
+  const queries: string[] = [];
+  const input: Parameters<typeof collectMissingPriorityEvidence>[0] = {
+    subjectId: "offline-catalog-recovery",
+    sources: [],
+    selected,
+    disciplines: [discipline],
+    targetYear: "2027",
+    maxRequests: B.searches,
+    maxReads: B.reads,
+    priorityPrograms: [
+      {
+        institutionName: school.name,
+        disciplineCode: "0802",
+        majorCode: "080200",
+        programName: "机械工程",
+      },
+    ],
+    web: {
+      answer: async ({ question }: { question: string }) => {
+        queries.push(question);
+        return { sources: [], searched: true, reason: "NO_WEB_EVIDENCE" };
+      },
+    } as never,
+    readPage: async () =>
+      assert.fail("Empty search results must not invent pages"),
+    onProgress: async () => {},
+  };
+  const result = await collectMissingPriorityEvidence(input);
+  const known = queries.filter((q) => q.startsWith(school.name));
+  const unknown = queries.filter((q) => q.startsWith("浙江工业大学"));
+  assert.equal(known.length, B.prioritySchoolSearches);
+  assert.deepEqual(
+    unknown,
+    [2026, 2025, 2024].map(
+      (year) =>
+        `浙江工业大学 ${year} 机械工程 硕士招生专业目录 site:zjut.edu.cn`,
+    ),
+  );
+  assert.equal(
+    queries.indexOf(unknown[0]),
+    6,
+    "recover unknown school after the first five known-school category turns",
+  );
+  assert.ok(queries.indexOf(unknown[1]) > queries.indexOf(known.at(-1)!));
+  assert.equal(result.requestCount, known.length + unknown.length);
+  assert.equal(result.readCount, 0);
+  const again = await collectMissingPriorityEvidence(input);
+  assert.deepEqual(
+    queries.slice(result.requestCount),
+    queries.slice(0, result.requestCount),
+  );
+  assert.deepEqual(again.lookupKeys, result.lookupKeys);
+  queries.length = 0;
+  const first = await collectMissingPriorityEvidence({
+    ...input,
+    maxRequests: 7,
+  });
+  assert.equal(first.requestCount, 7);
+  queries.length = 0;
+  const resumed = await collectMissingPriorityEvidence({
+    ...input,
+    maxRequests: 1,
+    lookupKeys: first.lookupKeys,
+    schoolSearchCounts: first.schoolSearchCounts,
+  });
+  assert.equal(resumed.requestCount, 1);
+  assert.ok(
+    queries.every((q) => q.startsWith(school.name)),
+    "second catalog year cannot displace unfinished known-school work",
+  );
+  queries.length = 0;
+  await collectMissingPriorityEvidence({
+    ...input,
+    lookupKeys: result.lookupKeys,
+    schoolSearchCounts: result.schoolSearchCounts,
+  });
+  assert.equal(
+    queries.length,
+    0,
+    "spent per-school and catalog limits persist across phases",
+  );
+  await collectMissingPriorityEvidence({
+    ...input,
+    usedReads: new Map(selected.map((s) => [s.domain, B.schoolReads])),
+  });
+  assert.equal(
+    queries.length,
+    0,
+    "schools without read allowance cannot spend search quota",
+  );
 });
 test("table cutoffs, anonymous roster statistics, assessment grades and employment retain literal provenance", () => {
   const facts = pages.flatMap((p) =>

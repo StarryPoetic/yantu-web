@@ -59,13 +59,22 @@ export function missingPriorityQueries(
       terms: "研究生 生源质量报告",
     },
     {
-      fields: ["disciplineAssessment", "programRanking"],
+      fields: ["disciplineAssessment"],
       terms: "第四轮学科评估",
     },
     {
-      fields: ["employment", "cityDevelopment"],
+      fields: ["employment"],
       terms: "硕士 毕业生就业质量报告",
     },
+    { fields: ["programRanking"], terms: "专业排名 评价结果" },
+    {
+      fields: ["cityDevelopment"],
+      terms: `${schoolRegistry.byName(school)?.city ?? ""} 城市发展 产业 就业`,
+    },
+    { fields: ["applicationAdmissionRatio"], terms: "硕士研究生 报录比" },
+    { fields: ["recommendationShare"], terms: "硕士研究生 实际录取 推免人数" },
+    { fields: ["crossMajorAdmission"], terms: "硕士研究生 跨专业 录取情况" },
+    { fields: ["undergraduateAdmission"], terms: "硕士研究生 双非 录取 生源" },
     ...years.flatMap((y) => [
       {
         fields: ["cutoff"] as ResearchPriorityField[],
@@ -88,14 +97,18 @@ export function missingPriorityQueries(
           // title. Do not make that code, a faculty and a recent year mandatory.
           if (
             t.fields.includes("employment") ||
-            t.fields.includes("undergraduateAdmission")
+            t.fields.includes("undergraduateAdmission") ||
+            t.fields.includes("cityDevelopment") ||
+            t.fields.includes("crossMajorAdmission")
           )
             return `${school} ${t.terms}`;
           if (t.fields.includes("disciplineAssessment"))
             return `${school} ${scope?.programName ?? discipline.name} ${t.terms}`;
           if (t.fields.includes("admittedCount"))
             return `${school} ${scope?.programName ?? discipline.name} ${t.terms}`;
-          return `${school} ${t.year ?? years[0]}年 ${scope?.majorCode ?? ""} ${scope?.programName ?? discipline.name} ${t.terms}`.replace(
+          if (t.year === undefined)
+            return `${school} ${scope?.programName ?? discipline.name} ${t.terms}`;
+          return `${school} ${t.year}年 ${scope?.majorCode ?? ""} ${scope?.programName ?? discipline.name} ${t.terms}`.replace(
             /\s+/g,
             " ",
           );
@@ -106,8 +119,8 @@ export function missingPriorityQueries(
 
 export function priorityQueryCategory(query: string) {
   if (/复试基本分数线/.test(query)) return "scores";
-  if (/报录|报考录取/.test(query)) return "competition";
-  if (/生源|双非/.test(query)) return "background";
+  if (/报录|报考录取|推免人数/.test(query)) return "competition";
+  if (/生源|双非|跨专业/.test(query)) return "background";
   if (/学科评估|专业排名/.test(query)) return "academic";
   if (/就业/.test(query)) return "employment";
   return "admission";
@@ -195,7 +208,11 @@ export async function collectMissingPriorityEvidence(
     }
   };
   discover();
-  let candidatesFinished = known.size === 0;
+  let candidatesFinished =
+    known.size === 0 ||
+    [...known].every((domain) => (schoolSearches.get(domain) ?? 0) >= 5);
+  let categoryRounds = 0;
+  let catalogRecoveryRound = 1;
   let exhausted = false;
   // One school gets one query per turn; unused shares return to the next round.
   // Empty/failed results advance to another missing category, never end all work.
@@ -211,6 +228,13 @@ export async function collectMissingPriorityEvidence(
       (s) => candidatesFinished || known.has(s.domain),
     )) {
       input.signal?.throwIfAborted();
+      // Unknown schools get a catalogue recovery turn, not repeated score
+      // queries for a programme whose existence is still unconfirmed.
+      if (
+        !known.has(school.domain) &&
+        (schoolSearches.get(school.domain) ?? 0) >= catalogRecoveryRound
+      )
+        continue;
       if ((schoolSearches.get(school.domain) ?? 0) >= B.prioritySchoolSearches)
         continue;
       if (
@@ -276,12 +300,11 @@ export async function collectMissingPriorityEvidence(
       const catalogHost =
         seedHost === `www.${school.domain}` ? school.domain : seedHost;
       const catalogRecovery = !known.has(school.domain)
-        ? `${school.institutionName} ${historicalReferenceYears(input.targetYear)[0]} ${input.disciplines[0]?.name ?? ""} 硕士招生专业目录 site:${catalogHost}`
+        ? `${school.institutionName} ${historicalReferenceYears(input.targetYear)[schoolSearches.get(school.domain) ?? 0]} ${input.disciplines[0]?.name ?? ""} 硕士招生专业目录 site:${catalogHost}`
         : undefined;
-      const queries = [
-        ...(catalogRecovery ? [catalogRecovery] : []),
-        ...fairPriorityQueries(queryLists),
-      ];
+      const queries = catalogRecovery
+        ? [catalogRecovery]
+        : fairPriorityQueries(queryLists);
       const query = [...queries, ...queries.map((q) => q + " 官网 附件")].find(
         (q) =>
           !attempted.has(q) &&
@@ -355,8 +378,16 @@ export async function collectMissingPriorityEvidence(
         candidatesFinished = true;
         continue;
       }
+      if (
+        catalogRecoveryRound < historicalReferenceYears(input.targetYear).length
+      ) {
+        catalogRecoveryRound++;
+        continue;
+      }
       break;
     }
+    categoryRounds++;
+    if (categoryRounds >= 5) candidatesFinished = true;
   }
   if (exhausted)
     limitations.push(

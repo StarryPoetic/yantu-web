@@ -25,3 +25,5 @@ research-real-replay.json 来自两次 acceptance-13324c3-run1/run2 保存记录
 第2次运行异常退出：research-v3a6-run2.json（254 URL/102正文/45查询）使用持久化checkpoint.report，reportSaved=false，metrics明确取证重建；未落盘查询返回INTERRUPTED_BEFORE_CHECKPOINT，禁止伪造响应。research-encoded-employment.html是同轮理工25530原HTML的字面量片段，仅裁掉导航/其余脚本，不改压缩载荷或位移；载荷解码后只有就业报告PDF链接，没有名单。累计648/221。
 
 第3次：research-v3a6-run3.json保存641 URL/220正文/72搜索。累计839/276；原始metrics保留历史progress口径，不能据其含旧误抽的比较值判断是否连续无进展。停招1993.htm、就业过期页和PDF解析失败均保留，不将正文缺失换成理想答案。
+
+第4次（此前已运行，本次仅离线归档）：research-v3a6-run4.json保存598 URL/223正文/72搜索，读取记录180条。累计871 URL/283正文。补充删除含老师称呼及电话号码的联系表行、带空格的作者署名行，保留招生和就业汇总数字；未按目标字段裁剪正文。浙理工2023就业PDF此次已有55502字正文，含机械工程学院毕业研究生317/310/97.79%的表格，不能沿用第3次“PDF读取失败”的当前结论。实际报告仍未绑定就业字段，audit将其标记为extraction_or_scope_gap，明确待办，不声称官网无原文。当前主回放仍使用全部累计语料；本轮不联网或执行付费入口。

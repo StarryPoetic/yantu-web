@@ -12,6 +12,7 @@ import {
   researchTextRows,
 } from "../../server/explanation/research-table-text.ts";
 import { prefilterFixture } from "../helpers/research-prefilter-fixture.ts";
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 
 test("low daily quota stops Flash before spending the final Pro token headroom, including concurrent calls", async () => {
   let flash = 0,
@@ -98,7 +99,8 @@ test("sparse evidence cannot let one school monopolize targeted searches and ini
   const targeted = f.questions.filter(
     (q) => q.startsWith("杭州电子科技大学") && !q.includes("招生专业目录"),
   );
-  assert.ok(targeted.length > 0 && targeted.length <= 10);
+  assert.ok(targeted.length > 0 && targeted.length <= B.prioritySchoolSearches);
+  assert.ok(f.questions.length <= B.searches);
   const initial = f.questions.filter((q) => q.includes("招生专业目录"));
   assert.ok(
     initial.length > 0 &&
@@ -106,8 +108,16 @@ test("sparse evidence cannot let one school monopolize targeted searches and ini
   );
   assert.ok(
     f.questions.some(
-      (q) => !q.startsWith("杭州电子科技大学") && q.includes("复试基本分数线"),
+      (q) =>
+        !q.startsWith("杭州电子科技大学") &&
+        q.includes("硕士招生专业目录 site:"),
     ),
+  );
+  assert.ok(
+    f.questions.every(
+      (q) => q.startsWith("杭州电子科技大学") || !q.includes("复试基本分数线"),
+    ),
+    "unknown programmes must recover a catalog instead of assuming score evidence exists",
   );
   assert.equal(report.recommendations.length, 1);
 });

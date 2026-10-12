@@ -908,8 +908,8 @@
     "school": "浙江理工大学",
     "majorCode": "085501",
     "field": "employment",
-    "status": "absent-in-saved-official-text",
-    "evidence": "理工简章的“定向/非定向/双向选择”是政策；杭电373854是招聘指南；师大577822的95%/98%属于本科培养宣传。保存原文没有目标硕士毕业群体就业统计或实际去向。 新25530是官方2023就业报告发布页，正文PDF通过编码链接提供，保存的归一化正文没有报告内容；该PDF未读，不能说官网不公开。 第3次最新就业报告发布页实际返回“数据不存在或已过期”，无可核对统计；理工旧PDF读取失败，不能断言官网从未公开。",
+    "status": "extraction_or_scope_gap",
+    "evidence": "第4次已保存2023届就业报告PDF正文55502字，表1-1-6明确为毕业研究生分学院毕业去向落实率，机械工程学院317人、落实310人、97.79%；全校毕业研究生98.07%。现流程未形成已绑定就业事实，不能再称原文无就业统计。待办：解析多级表头和跨页学院行，区分本科/研究生、学院/六位专业，并明确研究生是否包含博士；在不冒充085501专业专属硕士统计的前提下保留学院层次参考及原文绑定。当前覆盖仍按实际报告计0，不以待办充当已修复。",
     "reviewedUrls": [
       "http://jyb.zstu.edu.cn/news/view/aid/25530/tag/tzgg",
       "https://gradadmission.zstu.edu.cn/202309210001.xlsx",
@@ -976,7 +976,8 @@
       "https://mechanical.zstu.edu.cn/info/1069/1799.htm",
       "https://mechanical.zstu.edu.cn/info/1069/1885.htm",
       "https://mechanical.zstu.edu.cn/info/1071/1819.htm",
-      "https://www.zstu.edu.cn/info/1059/6300.htm"
+      "https://www.zstu.edu.cn/info/1059/6300.htm",
+      "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf"
     ]
   },
   {
