@@ -13,6 +13,7 @@ import { isSchoolPage } from "./research-evidence.ts";
 import { safeSourceYear } from "./research-years.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
 import { pdfAdmissionRows } from "./research-pdf-statistics.ts";
+import { graduateEmploymentTableFacts } from "./research-employment-tables.ts";
 
 const cells = (line: string) =>
   line
@@ -77,6 +78,17 @@ export function redactAdmissionsText(text: string): string {
 }
 
 export function tablePriorityFacts(
+  source: WebSource,
+  disciplines: readonly Discipline[],
+  targetYear: string,
+  target?: ResearchTargetScore,
+): ResearchPriorityFact[] {
+  return [
+    ...graduateEmploymentTableFacts(source, targetYear),
+    ...admissionTableFacts(source, disciplines, targetYear, target),
+  ];
+}
+function admissionTableFacts(
   source: WebSource,
   disciplines: readonly Discipline[],
   targetYear: string,
@@ -163,6 +175,7 @@ export function tablePriorityFacts(
     )
       return;
     const fact = {
+      sourceTier: "school" as const,
       schoolName: school!.name,
       disciplineCode: discipline.code,
       programName: discipline.name,

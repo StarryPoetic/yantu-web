@@ -15,6 +15,12 @@ export function ResearchSourceMetadata({
     "明文传输（HTTP）读取，内容可能被网络中间环节篡改，仅作待核验线索。";
   return (
     <>
+      {source.kind === "authority_page" && (
+        <span className="research-source-badge">权威官方</span>
+      )}
+      {source.kind === "reference_page" && (
+        <span className="research-source-badge">非官方，仅供参考</span>
+      )}
       {badges.plaintext &&
         (full ? (
           <p>{plaintextNote}</p>

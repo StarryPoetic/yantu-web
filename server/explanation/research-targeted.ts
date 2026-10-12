@@ -27,6 +27,7 @@ export function missingPriorityQueries(
   const own = facts.filter(
     (f) =>
       f.schoolName === school &&
+      f.sourceTier !== "reference" &&
       (!f.disciplineCode || f.disciplineCode === discipline.code) &&
       (!f.majorCode || !scope?.majorCode || f.majorCode === scope.majorCode) &&
       (!f.collegeName ||
@@ -148,6 +149,8 @@ export async function collectMissingPriorityEvidence(
     selected: ResearchPrefilter["selected"];
     disciplines: Discipline[];
     usedReads?: Map<string, number>;
+    schoolReadLimit?: number;
+    recoverMissingCatalogs?: boolean;
     schoolSearchCounts?: Map<string, number>;
     priorityPrograms?: {
       institutionName: string;
@@ -209,6 +212,7 @@ export async function collectMissingPriorityEvidence(
   };
   discover();
   let candidatesFinished =
+    input.recoverMissingCatalogs ||
     known.size === 0 ||
     [...known].every((domain) => (schoolSearches.get(domain) ?? 0) >= 5);
   let categoryRounds = 0;
@@ -224,9 +228,14 @@ export async function collectMissingPriorityEvidence(
     input.signal?.throwIfAborted();
     discover();
     let advanced = false;
-    for (const school of input.selected.filter(
+    const turnSchools = input.selected.filter(
       (s) => candidatesFinished || known.has(s.domain),
-    )) {
+    );
+    if (input.recoverMissingCatalogs)
+      turnSchools.sort(
+        (a, b) => Number(known.has(a.domain)) - Number(known.has(b.domain)),
+      );
+    for (const school of turnSchools) {
       input.signal?.throwIfAborted();
       // Unknown schools get a catalogue recovery turn, not repeated score
       // queries for a programme whose existence is still unconfirmed.
@@ -244,7 +253,8 @@ export async function collectMissingPriorityEvidence(
       )
         break;
       const remaining = Math.min(
-        B.schoolReads - (reads.get(school.domain) ?? 0),
+        (input.schoolReadLimit ?? B.schoolReads) -
+          (reads.get(school.domain) ?? 0),
         input.maxReads - readCount,
       );
       if (remaining <= 0) continue;
@@ -404,7 +414,8 @@ export async function collectMissingPriorityEvidence(
       input.signal?.throwIfAborted();
       const remaining = Math.min(
         input.maxReads - readCount,
-        B.schoolReads - (reads.get(school.domain) ?? 0),
+        (input.schoolReadLimit ?? B.schoolReads) -
+          (reads.get(school.domain) ?? 0),
       );
       if (remaining <= 0) continue;
       const own = sources.filter(

@@ -99,7 +99,17 @@ test("sparse evidence cannot let one school monopolize targeted searches and ini
   const targeted = f.questions.filter(
     (q) => q.startsWith("杭州电子科技大学") && !q.includes("招生专业目录"),
   );
-  assert.ok(targeted.length > 0 && targeted.length <= B.prioritySchoolSearches);
+  const officialTargeted = targeted.filter((q) =>
+    q.includes("site:hdu.edu.cn"),
+  );
+  const externalTargeted = targeted.filter(
+    (q) => !q.includes("site:hdu.edu.cn"),
+  );
+  assert.ok(
+    officialTargeted.length > 0 &&
+      officialTargeted.length <= B.prioritySchoolSearches,
+  );
+  assert.ok(externalTargeted.length > 0 && externalTargeted.length <= 7);
   assert.ok(f.questions.length <= B.searches);
   const initial = f.questions.filter((q) => q.includes("招生专业目录"));
   assert.ok(

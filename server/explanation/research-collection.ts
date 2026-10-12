@@ -25,6 +25,7 @@ import {
 } from "./research-priority-facts.ts";
 import { isSchoolPage } from "./research-evidence.ts";
 import { academicDomain } from "./research-pages.ts";
+import { researchExternalPolicy } from "./research-source-policy.ts";
 
 export function collectionModelOptions(
   useFlash = RESEARCH_FLASH_ENABLED,
@@ -178,7 +179,12 @@ export function createResearchCollector(input: {
       year: string,
       target?: ResearchTargetScore,
     ) {
-      const official = sources.filter(isSchoolPage);
+      const official = sources.filter(
+        (s) =>
+          isSchoolPage(s) ||
+          ((s.kind === "authority_page" || s.kind === "reference_page") &&
+            researchExternalPolicy(s.url)),
+      );
       const groups = new Map<string, WebSource[]>();
       for (const source of official
         .filter(hasPriorityEvidence)
@@ -211,6 +217,7 @@ export function createResearchCollector(input: {
             .map(async (source) => {
               const data = {
                 sourceId: source.id,
+                sourceTier: source.sourceTier ?? "school",
                 title: source.title.slice(0, 150),
                 targetYear: year,
                 disciplines: disciplines.map((d) => ({

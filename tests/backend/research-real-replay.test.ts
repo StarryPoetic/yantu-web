@@ -55,8 +55,43 @@ test("fourth real corpus retains the employment PDF and removes contact table pe
     (row: { school: string; field: string }) =>
       row.school === "浙江理工大学" && row.field === "employment",
   );
-  assert.equal(employment.status, "extraction_or_scope_gap");
-  assert.ok(employment.reviewedUrls.includes(pdf.url));
+  assert.equal(
+    employment,
+    undefined,
+    "the repaired employment slot is no longer pending",
+  );
+  const graduate = extractPriorityFacts(pdf, replayDisciplines(), "2027").find(
+    (f) => f.field === "employment" && f.collegeName === "机械工程学院",
+  )!;
+  assert.equal(graduate.value.employmentRate, 97.79);
+  assert.equal(graduate.majorCode, undefined);
+  assert.equal(graduate.year, 2023);
+  assert.match(graduate.value.population!, /学院毕业研究生/);
+  assert.ok(graduate.evidenceQuotes!.every((q) => pdf.excerpt.includes(q)));
+  assert.equal(
+    priorityCoverage(
+      [graduate],
+      [{ institutionName: "浙江理工大学", disciplineCode: "0855" }],
+      "2027",
+    ).confirmed,
+    0,
+  );
+  assert.deepEqual(
+    extractPriorityFacts(
+      {
+        ...pdf,
+        excerpt: pdf.excerpt.replace(
+          "2023 届毕业研究生分学院毕业去向落实率",
+          "2023 届本科毕业生分学院毕业去向落实率",
+        ),
+      },
+      replayDisciplines(),
+      "2027",
+    ).filter(
+      (f) => f.collegeName === "机械工程学院" && f.field === "employment",
+    ),
+    [],
+  );
   const retained = "机械工程学院 317 310 97.79%";
   assert.equal(
     replayPublicText(
@@ -309,11 +344,15 @@ test("paid acceptance uses field mean, five schools, deadline and a completed fi
     status: "partial",
     finalCompleted: true,
     partialAverage: 0.6,
+    confirmedCutoff: 0.6,
+    confirmedAssessment: 0.6,
   };
   assert.equal(replayAcceptanceCriteria(input).passed, true);
   for (const delta of [
     { recommendations: 4 },
     { partialAverage: 0.599 },
+    { confirmedCutoff: 0.599 },
+    { confirmedAssessment: 0.599 },
     { elapsedMs: 600001 },
     { finalCompleted: false },
     { reason: "BUDGET_EXHAUSTED" },

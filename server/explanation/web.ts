@@ -35,7 +35,12 @@ export interface WebSource {
   url: string;
   retrievedAt: string;
   excerpt: string;
-  kind: "official_page" | "search_snippet";
+  kind:
+    | "official_page"
+    | "search_snippet"
+    | "authority_page"
+    | "reference_page";
+  sourceTier?: import("../../shared/research-source-tier.ts").ResearchSourceTier;
   verified: false;
   finalUrl?: string;
   transport?: "https" | "http";

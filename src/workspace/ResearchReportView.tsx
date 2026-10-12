@@ -257,8 +257,14 @@ export function ResearchReportView({
                 {source.title}
               </a>
               <small>
-                {source.kind === "official_page" ? "官网原文" : "搜索摘要"} ·{" "}
-                {new Date(source.retrievedAt).toLocaleString("zh-CN")}
+                {source.kind === "official_page"
+                  ? "学校官网原文"
+                  : source.kind === "authority_page"
+                    ? "权威官方原文"
+                    : source.kind === "reference_page"
+                      ? "非官方，仅供参考"
+                      : "搜索摘要"}{" "}
+                · {new Date(source.retrievedAt).toLocaleString("zh-CN")}
               </small>
               <ResearchSourceMetadata source={source} full />
               <p>{source.excerpt}</p>

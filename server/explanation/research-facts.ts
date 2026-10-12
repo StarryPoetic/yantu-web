@@ -22,6 +22,7 @@ import type {
 import type { ResearchExamEvidence } from "../../shared/research-matching.ts";
 
 export interface ProgramFact {
+  sourceTier?: "school";
   schoolName: string;
   registrableDomain: string;
   collegeName?: string;
@@ -201,6 +202,7 @@ export function extractProgramFacts(
     ) => {
       if (!quote || !source.excerpt.includes(quote)) return;
       facts.push({
+        sourceTier: "school",
         schoolName,
         registrableDomain: domain,
         ...identity,

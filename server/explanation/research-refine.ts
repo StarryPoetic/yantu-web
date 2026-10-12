@@ -9,11 +9,20 @@ import { historicalReferenceYears } from "../../shared/research-years.ts";
 import { collectMissingPriorityEvidence } from "./research-targeted.ts";
 import { schoolRegistry } from "../schools/index.ts";
 import { researchCompute } from "./research-compute.ts";
+import { collectExternalEvidence } from "./research-external-collection.ts";
+import { researchExternalPolicy } from "./research-source-policy.ts";
 
 export function selectedResearchSource(
   prefilter: ResearchPrefilter,
   source: WebSource,
 ) {
+  if (
+    (source.kind === "authority_page" || source.kind === "reference_page") &&
+    researchExternalPolicy(source.url)
+  )
+    return prefilter.selected.some((s) =>
+      source.excerpt.includes(s.institutionName),
+    );
   return prefilter.selected.some(
     (s) => s.domain === academicDomain(source.url),
   );
@@ -211,17 +220,38 @@ export async function refineResearchSchools(
     lookupKeys,
     usedReads,
     priorityPrograms: inventory.recommendations,
+    schoolReadLimit: B.schoolReads - B.externalSchoolReadReserve,
     maxRequests: Math.max(
       0,
-      B.searches - requestCount - B.finalGapSearchReserve,
+      B.searches -
+        requestCount -
+        B.finalGapSearchReserve -
+        B.externalSearchReserve,
     ),
-    maxReads: B.reads - readCount,
+    maxReads: Math.max(0, B.reads - readCount - B.externalReadReserve),
   });
   sources = targeted.sources;
   lookupKeys = targeted.lookupKeys;
   requestCount += targeted.requestCount;
   readCount += targeted.readCount;
   limitations.push(...targeted.limitations);
+  const external = await collectExternalEvidence({
+    ...input,
+    sources,
+    lookupKeys,
+    programs: inventory.recommendations,
+    usedReads: targeted.usedReads,
+    maxRequests: Math.min(
+      B.externalSearchReserve,
+      B.searches - requestCount - B.finalGapSearchReserve,
+    ),
+    maxReads: B.reads - readCount,
+  });
+  sources = external.sources;
+  lookupKeys = external.lookupKeys;
+  requestCount += external.requestCount;
+  readCount += external.readCount;
+  limitations.push(...external.limitations);
   // Rebuild the programme inventory after collection, then spend the reserved
   // queries on remaining gaps before final analysis (with the same read ledger).
   if (requestCount < B.searches && readCount < B.reads) {
@@ -242,8 +272,10 @@ export async function refineResearchSchools(
       selected,
       sources,
       lookupKeys,
-      usedReads: targeted.usedReads,
+      usedReads: external.usedReads,
       schoolSearchCounts: targeted.schoolSearchCounts,
+      recoverMissingCatalogs:
+        input.prefilter.cities.length > 0 && input.prefilter.cities.length <= 3,
       priorityPrograms: refreshed.recommendations,
       maxRequests: B.searches - requestCount,
       maxReads: B.reads - readCount,

@@ -1014,6 +1014,11 @@ export function researchReportMarkdown(
         source.id +
         "] " +
         source.title +
+        (source.kind === "reference_page"
+          ? "（非官方，仅供参考）"
+          : source.kind === "authority_page"
+            ? "（权威官方）"
+            : "") +
         "\n  " +
         source.url +
         "\n  获取时间：" +

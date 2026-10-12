@@ -174,7 +174,7 @@ export function captureReplay(
         };
       });
     for (const s of report.sources as WebSource[])
-      add(s, id, s.kind === "official_page");
+      add(s, id, s.kind !== "search_snippet");
     const database = resolve(directory.replace(/-live[\\/]?$/, "-copy.sqlite"));
     const db = new DatabaseSync(database, { readOnly: true });
     try {

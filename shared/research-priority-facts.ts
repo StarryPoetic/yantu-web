@@ -28,6 +28,8 @@ export interface ResearchTargetScore {
   maximum: number;
 }
 export interface ResearchPriorityFact {
+  /** Missing only in reports saved before source-policy-v1. */
+  sourceTier?: import("./research-source-tier.ts").ResearchSourceTier;
   id: string;
   schoolName: string;
   disciplineCode?: string;

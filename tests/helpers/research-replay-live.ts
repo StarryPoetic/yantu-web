@@ -47,6 +47,8 @@ export function replayAcceptanceCriteria(input: {
   failureStage?: string;
   finalCompleted: boolean;
   partialAverage?: number;
+  confirmedCutoff?: number;
+  confirmedAssessment?: number;
 }) {
   const noTechnicalInterruption =
     input.finalCompleted &&
@@ -60,6 +62,8 @@ export function replayAcceptanceCriteria(input: {
     passed:
       input.recommendations >= 5 &&
       (input.partialAverage ?? 0) >= 0.6 &&
+      (input.confirmedCutoff ?? 0) >= 0.6 &&
+      (input.confirmedAssessment ?? 0) >= 0.6 &&
       input.elapsedMs <= 600000 &&
       noTechnicalInterruption,
   };
@@ -112,6 +116,26 @@ export function acquireBatchPaidLock(path: string) {
     closeSync(fd);
   }
 }
+type ProgressSnapshot = {
+  recommendations: number;
+  priorityCoverage?: ReturnType<typeof priorityCoverage>;
+};
+export function replayHasProgress(
+  current: ProgressSnapshot,
+  previous: ProgressSnapshot[],
+) {
+  const dimensions = (m: ProgressSnapshot) => [
+    m.recommendations,
+    m.priorityCoverage?.combined.partialAverage ?? 0,
+    m.priorityCoverage?.confirmedCutoff.ratio ?? 0,
+    m.priorityCoverage?.confirmedAssessment.ratio ?? 0,
+  ];
+  const before = previous.map(dimensions);
+  return dimensions(current).some(
+    (value, i) =>
+      value > Math.max(i === 0 ? 3 : 0, ...before.map((row) => row[i])),
+  );
+}
 /** Old extraction false positives must not become a fabricated progress ceiling. */
 export function replayVerifiedCoverage(report: ResearchReport) {
   const disciplines = getDisciplineCatalog().items.filter((d) =>
@@ -153,16 +177,7 @@ export async function runBatchLive(args: string[]) {
     return metrics;
   });
   previous.forEach((m, i) => {
-    m.progress =
-      (m.priorityCoverage?.partialAverage ?? 0) >
-        Math.max(
-          0,
-          ...previous
-            .slice(0, i)
-            .map((p) => p.priorityCoverage?.partialAverage ?? 0),
-        ) ||
-      m.recommendations >
-        Math.max(3, ...previous.slice(0, i).map((p) => p.recommendations));
+    m.progress = replayHasProgress(m, previous.slice(0, i));
   });
   if (previous.some((m) => m.acceptance?.passed))
     throw new Error("Already accepted");
@@ -389,15 +404,15 @@ export async function runBatchLive(args: string[]) {
     models,
     costs: researchCostEstimate(models, searches),
     gitHead,
-    progress: priorities
-      ? priorities.partialAverage >
-          Math.max(
-            0,
-            ...previous.map((m) => m.priorityCoverage?.partialAverage ?? 0),
-          ) ||
-        (report?.recommendations.length ?? 0) >
-          Math.max(3, ...previous.map((m) => m.recommendations))
-      : false,
+    progress: replayHasProgress(
+      {
+        recommendations: new Set(
+          report?.recommendations.map((r) => r.institutionName),
+        ).size,
+        priorityCoverage: priorities,
+      },
+      previous,
+    ),
     acceptance: replayAcceptanceCriteria({
       elapsedMs: Date.now() - started,
       recommendations: new Set(
@@ -407,7 +422,9 @@ export async function runBatchLive(args: string[]) {
       reason: failure ?? report?.reason,
       failureStage: report?.failureStage,
       finalCompleted,
-      partialAverage: priorities?.partialAverage,
+      partialAverage: priorities?.combined.partialAverage,
+      confirmedCutoff: priorities?.confirmedCutoff.ratio,
+      confirmedAssessment: priorities?.confirmedAssessment.ratio,
     }),
     recommendations: report?.recommendations.length ?? 0,
     confirmed: availability?.confirmed ?? 0,

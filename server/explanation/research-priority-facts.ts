@@ -13,6 +13,11 @@ import { sourceHasSchoolIdentity } from "./research-school.ts";
 import { isSchoolPage } from "./research-evidence.ts";
 import { safeSourceYear } from "./research-years.ts";
 import { historicalReferenceYears } from "../../shared/research-years.ts";
+import { externalPriorityFacts } from "./research-external-facts.ts";
+import {
+  researchSourceTier,
+  externalFieldAllowed,
+} from "./research-source-policy.ts";
 import {
   tablePriorityFacts,
   redactAdmissionsText,
@@ -75,6 +80,20 @@ export function validatePriorityFacts(
   targetYear: string,
   target?: ResearchTargetScore,
 ): ResearchPriorityFact[] {
+  if (source.kind === "authority_page" || source.kind === "reference_page") {
+    if (!Array.isArray(proposals)) return [];
+    const candidates = externalPriorityFacts(source, disciplines, targetYear);
+    return candidates.filter((fact) =>
+      proposals.some(
+        (p) =>
+          p &&
+          typeof p === "object" &&
+          p.sourceId === source.id &&
+          p.field === fact.field &&
+          p.quote === fact.quote,
+      ),
+    );
+  }
   if (!Array.isArray(proposals) || !isSchoolPage(source)) return [];
   const school = schoolRegistry.byHost(new URL(source.url).hostname);
   if (!school || !sourceHasSchoolIdentity(source, school.name)) return [];
@@ -211,6 +230,7 @@ export function validatePriorityFacts(
       : undefined;
     if (maximum && number !== undefined && number > maximum) continue;
     const fact = {
+      sourceTier: "school" as const,
       schoolName: school.name,
       disciplineCode: discipline?.code,
       programName: discipline?.name,
@@ -265,6 +285,8 @@ export function extractPriorityFacts(
   year: string,
   target?: ResearchTargetScore,
 ) {
+  if (source.kind === "authority_page" || source.kind === "reference_page")
+    return externalPriorityFacts(source, disciplines, year);
   const proposals = redactAdmissionsText(source.excerpt)
     .split(/[\n。]/)
     .flatMap((quote) =>
@@ -319,7 +341,7 @@ export function deduplicatePriorityFacts(
   }
   return [...unique.values()];
 }
-export function priorityCoverage(
+function basePriorityCoverage(
   facts: readonly ResearchPriorityFact[],
   recommendations: readonly {
     institutionName: string;
@@ -333,13 +355,7 @@ export function priorityCoverage(
     ...new Map(recommendations.map((r) => [r.institutionName, r])).values(),
   ];
   const rows = schools.map((r) => {
-    const own = facts.filter(
-      (f) =>
-        f.schoolName === r.institutionName &&
-        (!f.disciplineCode || f.disciplineCode === r.disciplineCode) &&
-        (!f.majorCode || !r.majorCode || f.majorCode === r.majorCode) &&
-        (!f.collegeName || !r.collegeName || f.collegeName === r.collegeName),
-    );
+    const own = facts.filter((f) => priorityFactMatches(f, r));
     const confirmed = RESEARCH_PRIORITY_FIELDS.filter((field) =>
       own.some((f) => f.field === field),
     );
@@ -441,5 +457,106 @@ export function priorityCoverage(
         },
       ]),
     ),
+  };
+}
+
+type PriorityRecommendation = Parameters<
+  typeof basePriorityCoverage
+>[1][number];
+export function priorityFactMatches(
+  f: ResearchPriorityFact,
+  r: PriorityRecommendation,
+) {
+  return (
+    f.schoolName === r.institutionName &&
+    (!f.disciplineCode || f.disciplineCode === r.disciplineCode) &&
+    (!f.majorCode || !r.majorCode || f.majorCode === r.majorCode) &&
+    (!f.collegeName || !r.collegeName || f.collegeName === r.collegeName) &&
+    (!f.value.population?.startsWith("学院毕业研究生") ||
+      f.collegeName === r.collegeName)
+  );
+}
+/** Missing old source labels are recovered from the URL; arbitrary hosts cannot self-certify. */
+export const factSourceTier = (f: ResearchPriorityFact) =>
+  researchSourceTier(f.sourceUrl);
+
+/** Official evidence wins each field/year slot. Keep reference separate from confirmed. */
+export function preferredPriorityFacts(
+  facts: readonly ResearchPriorityFact[],
+  r: PriorityRecommendation,
+) {
+  const own = facts.filter(
+    (f) =>
+      priorityFactMatches(f, r) &&
+      factSourceTier(f) &&
+      externalFieldAllowed(factSourceTier(f)!, f.field),
+  );
+  const rank = { school: 0, authority: 1, reference: 2 };
+  const slots = new Map<string, ResearchPriorityFact[]>();
+  for (const f of own) {
+    const key = `${f.field}:${["cutoff", "admissionScore"].includes(f.field) ? f.year : ""}`;
+    const existing = slots.get(key);
+    if (
+      !existing ||
+      rank[factSourceTier(f)!] < rank[factSourceTier(existing[0])!]
+    )
+      slots.set(key, [f]);
+    else if (rank[factSourceTier(f)!] === rank[factSourceTier(existing[0])!])
+      existing.push(f);
+  }
+  return [...slots.values()].flat();
+}
+
+export function priorityCoverage(
+  facts: readonly ResearchPriorityFact[],
+  recommendations: readonly PriorityRecommendation[],
+  year: string,
+) {
+  recommendations = [
+    ...new Map(recommendations.map((r) => [r.institutionName, r])).values(),
+  ];
+  const preferred = recommendations.flatMap((r) =>
+    preferredPriorityFacts(facts, r),
+  );
+  const byTier = (tier: "school" | "authority" | "reference") =>
+    basePriorityCoverage(
+      preferred.filter((f) => factSourceTier(f) === tier),
+      recommendations,
+      year,
+    );
+  const confirmed = basePriorityCoverage(
+    preferred.filter((f) => factSourceTier(f) !== "reference"),
+    recommendations,
+    year,
+  );
+  const combined = basePriorityCoverage(preferred, recommendations, year);
+  const years = historicalReferenceYears(year);
+  const specialConfirmed = (field: "cutoff" | "disciplineAssessment") => {
+    const total =
+      recommendations.length * (field === "cutoff" ? years.length : 1);
+    const filled = recommendations.reduce((n, r) => {
+      const own = preferredPriorityFacts(facts, r).filter(
+        (f) => f.field === field && factSourceTier(f) !== "reference",
+      );
+      return (
+        n +
+        (field === "cutoff"
+          ? years.filter((y) => own.some((f) => f.year === y)).length
+          : Number(own.length > 0))
+      );
+    }, 0);
+    return { confirmed: filled, total, ratio: total ? filled / total : 0 };
+  };
+  return {
+    ...confirmed,
+    sourcePolicy: "source-policy-v1" as const,
+    byTier: {
+      school: byTier("school"),
+      authority: byTier("authority"),
+      reference: byTier("reference"),
+    },
+    combined,
+    confirmedCutoff: specialConfirmed("cutoff"),
+    confirmedAssessment: specialConfirmed("disciplineAssessment"),
   };
 }

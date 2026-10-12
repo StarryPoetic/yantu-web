@@ -1,0 +1,13 @@
+{
+  "policy": "2026-10-12 public page inspection; retain only the programme name and approximate ratio cell (no personal data, no article prose). Negative real replay, not a source of confirmed or reference coverage. Positive policy tests are explicitly synthetic and excluded from real metrics.",
+  "pages": [{
+    "id": "public-koolearn-negative",
+    "title": "杭州电子科技大学考研热门专业报考难度对比表",
+    "url": "https://kaoyan.koolearn.com/20260422/1942829.html",
+    "kind": "reference_page",
+    "sourceTier": "reference",
+    "excerpt": "杭州电子科技大学\n机械工程\n约4:1-6:1",
+    "retrievedAt": "2026-10-12T00:00:00Z",
+    "verified": false
+  }]
+}

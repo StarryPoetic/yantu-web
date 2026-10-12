@@ -367,3 +367,13 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | 常量 | 当前值 |
 | --- | --- |
 | `initialSearchConcurrency` | 1 |
+
+### 三级来源补查预留（2026-10-12）
+
+仍共享72次检索、180次读取与单校30次读取，以下是预留份额，不增加总额度；学校官网收集、权威补查、非官方参考、最终缺口复算依次执行。外部记录只进入报告，不进入正式目录；模型输入逐条保留来源级别，参考不得计入确认。
+
+| 参数 | 当前值 |
+| --- | --- |
+| `externalSearchReserve` | 20 |
+| `externalReadReserve` | 48 |
+| `externalSchoolReadReserve` | 8 |
