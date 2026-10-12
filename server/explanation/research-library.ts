@@ -115,6 +115,7 @@ const diagnosticCodes = new Set([
   "NETWORK_ERROR",
   "BUDGET_EXHAUSTED",
   "WEB_EMPTY",
+  "WEB_CONTENT_REMOVED",
   "WEB_TEXT_TOO_LARGE",
   "WEB_TOO_LARGE",
   "WEB_TIMEOUT",

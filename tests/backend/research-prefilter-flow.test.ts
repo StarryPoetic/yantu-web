@@ -5,6 +5,35 @@ import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.t
 import { researchReportMarkdown } from "../../src/workspace/research-report.ts";
 import { academicDomain } from "../../server/explanation/research-pages.ts";
 
+test("missing-content responses are diagnosed and never cached as usable official evidence", async () => {
+  const f = prefilterFixture({
+    cities: ["杭州"],
+    schoolNames: ["杭州电子科技大学"],
+  });
+  const reader = f.config.reader!;
+  f.config.reader = async (url, options) =>
+    new URL(url).hostname === "api.search.brave.com"
+      ? reader(url, options)
+      : {
+          contentType: "text/html",
+          text: "<p>杭州电子科技大学</p><p>数据不存在或已过期</p>",
+        };
+  const report = await f.create().generate({
+    strategy: "two-stage",
+    subjectId: f.run.subjectId,
+    run: f.run,
+    onCheckpoint: f.save,
+  });
+  assert.ok((report.usage?.reads.failuresByCode?.WEB_CONTENT_REMOVED ?? 0) > 0);
+  assert.ok(
+    !report.sources.some(
+      (s) =>
+        s.kind === "official_page" && s.excerpt.includes("数据不存在或已过期"),
+    ),
+  );
+  assert.equal(Object.keys(f.checkpoint().pages).length, 0);
+});
+
 test("national discovery links cannot consume the main read budget across many schools", async () => {
   const f = prefilterFixture();
   const reader = f.config.reader!;
@@ -81,7 +110,7 @@ test("two-stage flow persists local scores before any paid call, reads only sele
   assert.ok(
     report.coverage!.shortfallReasons.every((s) => !s.includes("尚未达到")),
   );
-  assert.equal(f.counts.searches, 72);
+  assert.equal(f.counts.searches, B.searches);
   for (const school of report.prefilter!.selected) {
     assert.ok(
       f.questions.some((query) => query.includes(school.institutionName)),
@@ -141,15 +170,15 @@ test("all schools retain collection opportunities even when basic fields are com
     subjectId: partial.run.subjectId,
     run: partial.run,
   });
-  // Eight-school discovery groups request ten results. With three duplicate
-  // pages per school, this provider fixture exposes four schools per group.
-  assert.equal(full.recommendations.length, 8);
+  // Discovery initially exposes eight schools; the larger targeted budget
+  // recovers the remaining four catalogues and fills the ten-school display.
+  assert.equal(full.recommendations.length, B.finalSchools);
   assert.ok(
     full.recommendations.every((r) => r.tuition && r.location && r.exams),
   );
-  assert.equal(complete.counts.reads, 24);
-  assert.equal(partial.counts.reads, 24);
-  assert.equal(limited.recommendations.length, 8);
+  assert.equal(complete.counts.reads, 36);
+  assert.equal(partial.counts.reads, 36);
+  assert.equal(limited.recommendations.length, B.finalSchools);
   for (const school of full.prefilter!.selected)
     assert.ok(
       complete.questions.some((q) => q.includes(school.institutionName)),
@@ -267,7 +296,7 @@ for (const useFlash of [true, false])
     });
     assert.equal(resumed.recommendations.length, 10);
     assert.equal(f.counts.reads, 12);
-    assert.equal(f.counts.searches, 72);
-    assert.equal(resumed.usage!.searches.paid, 71);
+    assert.equal(f.counts.searches, B.searches);
+    assert.equal(resumed.usage!.searches.paid, B.searches - 1);
     assert.equal(resumed.usage!.reads.reads, 4);
   });

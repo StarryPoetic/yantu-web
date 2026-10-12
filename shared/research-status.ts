@@ -88,6 +88,8 @@ const messages: Record<string, string> = {
   MODEL_TIMEOUT: "本次模型分析超时，已保留可查看的网页资料。",
   WEB_TIMEOUT: "网页读取超时。",
   WEB_EMPTY: "网页未返回可用正文。",
+  WEB_CONTENT_REMOVED:
+    "网页只返回内容不存在、已删除或已过期的提示，未取得正文。",
   WEB_PDF_INVALID: "PDF 格式损坏、加密或暂不能解析，已保留搜索摘要。",
   WEB_PDF_TIMEOUT: "PDF 文本解析超时，已保留搜索摘要。",
   WEB_PDF_TOO_MANY_PAGES: "PDF 页数超过本次读取上限，尚未取得完整正文。",

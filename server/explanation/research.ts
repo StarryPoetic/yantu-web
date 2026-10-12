@@ -25,6 +25,7 @@ import {
   type ResearchCheckpoint,
 } from "./research-resume.ts";
 import { createResearchReader, sharedResearchRead } from "./research-reader.ts";
+import { researchContentRemoved } from "./research-page-status.ts";
 import { extractProgramFacts, type ProgramFact } from "./research-facts.ts";
 import { selectModelFacts } from "./research-model-facts.ts";
 import { sourceCitationInstruction } from "./source-citations.ts";
@@ -2062,6 +2063,8 @@ export function createResearchReportModule(
                   ? result.text.trim()
                   : webPageText(result.text);
                 if (!body) throw new ModelError("WEB_EMPTY");
+                if (researchContentRemoved(body))
+                  throw new ModelError("WEB_CONTENT_REMOVED");
                 if (body.length > 200000)
                   throw new ModelError("WEB_TEXT_TOO_LARGE");
                 live();

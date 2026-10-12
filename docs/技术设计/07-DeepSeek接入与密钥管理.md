@@ -293,7 +293,7 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `searchDailyRequestsPerUser` | 180 |
 | `searchDailyRequestsGlobal` | 900 |
 | `collectionTargetMs` | 300000 |
-| `finalReserveMs` | 150000 |
+| `finalReserveMs` | 180000 |
 | `reads` | 180 |
 | `schoolReads` | 30 |
 | `schoolDiscoveryReads` | 1 |
@@ -303,7 +303,7 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `initialReads` | 120 |
 | `cityReads` | 24 |
 | `geographyReads` | 2 |
-| `searches` | 72 |
+| `searches` | 120 |
 | `initialSearches` | 54 |
 | `feeSearches` | 18 |
 | `repairSearches` | 4 |
@@ -349,7 +349,7 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | --- | --- |
 | `priorityReadsPerTurn` | 6 |
 | `prioritySchoolSearches` | 16 |
-| `prioritySearchReserve` | 48 |
+| `prioritySearchReserve` | 96 |
 | `pageRetryTimeoutMs` | 10000 |
 | `pageRetries` | 8 |
 
@@ -374,7 +374,7 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 
 | 参数 | 当前值 |
 | --- | --- |
-| `externalSearchReserve` | 20 |
+| `externalSearchReserve` | 36 |
 | `externalReadReserve` | 48 |
 | `finalGapReadReserve` | 24 |
 | `externalSchoolReadReserve` | 8 |
@@ -384,3 +384,5 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | 参数 | 当前值 |
 | --- | --- |
 | `finalEvidenceChars` | 28000 |
+
+第8次真实验证后，检索上限调至120、定向预留96、外部预留36；页面读取仍180、单校30、最终输入28k、总时限600秒，最终分析预留180秒。默认每账号每日180次检索足够一份完整报告；正的旧部署额度仍与本次上限对齐，0仍表示禁用。不修改.env，不扩大DNS、robots、体积或单请求超时。搜索费用上限按0.036元/次由2.592元变为4.32元，另计模型费用。历史验证节的72次保持原值。

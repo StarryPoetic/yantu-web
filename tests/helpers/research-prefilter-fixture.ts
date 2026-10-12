@@ -11,6 +11,7 @@ import type {
   ProgramFact,
 } from "../../server/explanation/research-library.ts";
 import { schoolRegistry } from "../../server/schools/index.ts";
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 
 /** All admissions claims below are synthetic test evidence, never saved to a real library. */
 export function prefilterFixture(
@@ -98,7 +99,7 @@ export function prefilterFixture(
     now: () => Date.parse("2026-10-11T00:00:00Z"),
     userDailyTokens: 1000000,
     globalDailyTokens: 2000000,
-    searchDailyRequestsPerUser: 100,
+    searchDailyRequestsPerUser: B.searchDailyRequestsPerUser,
     searchDailyRequestsGlobal: 500,
     reader: async (url) => {
       if (new URL(url).hostname === "api.search.brave.com") {

@@ -268,7 +268,7 @@ npx playwright test tests/tutor-chat.spec.ts
 | `initialReads`               | 120      |
 | `cityReads`                  | 24       |
 | `geographyReads`             | 2        |
-| `searches`                   | 72       |
+| `searches`                   | 120      |
 | `initialSearches`            | 54       |
 | `feeSearches`                | 18       |
 | `repairSearches`             | 4        |

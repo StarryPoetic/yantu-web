@@ -364,7 +364,8 @@ export async function collectMissingPriorityEvidence(
         allowedDomains: [school.domain],
         priorityDocuments: true,
         searchFirst: true,
-        discoveryReadLimit: query === catalogRecovery ? 1 : 0,
+        discoveryReadLimit:
+          query === catalogRecovery && input.recoverMissingCatalogs ? 1 : 0,
         queryForGap: () => [query],
         needsEvidence: undefined,
         stop: undefined,

@@ -210,6 +210,22 @@ export function validatePriorityFacts(
       continue;
     if (codes.length && discipline && !codes[0].startsWith(discipline.code))
       continue;
+    const assessmentClause = discipline
+      ? quote
+          .slice(Math.max(0, quote.indexOf(discipline.name)))
+          .split(/[，,；;]/)[0]
+      : "";
+    const assessmentGrade =
+      key === "disciplineAssessment"
+        ? assessmentClause.match(
+            /(?:获得|为|等级|结果|：|:)\s*([ABC][+-]?)(?=$|\s|等级|[，。；])/u,
+          )?.[1]
+        : undefined;
+    if (
+      key === "disciplineAssessment" &&
+      (!assessmentGrade || /未公布|预测|推测/.test(assessmentClause))
+    )
+      continue;
     // Reject literal passages about a different school embedded in the owner's page.
     if (
       schoolRegistry.schools.some(
@@ -245,9 +261,7 @@ export function validatePriorityFacts(
         text: quote,
         ...(number !== undefined ? { number } : {}),
         ...(maximum ? { maximum } : {}),
-        ...(key === "disciplineAssessment"
-          ? { grade: quote.match(/(?:为|等级|结果|：|:)\s*([ABC][+-]?)/)?.[1] }
-          : {}),
+        ...(key === "disciplineAssessment" ? { grade: assessmentGrade } : {}),
         ...(key === "employment"
           ? {
               employmentRate:

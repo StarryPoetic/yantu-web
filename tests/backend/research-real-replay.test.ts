@@ -300,8 +300,9 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
   );
   assert.ok(
     result.searchQueries.some((q) =>
-      /^浙江工业大学 .*硕士招生专业目录 site:zjut.edu.cn$/.test(q),
+      /^浙江工业大学 .*085500.*复试基本分数线/.test(q),
     ),
+    "the newly captured mechanical programme receives a code-specific score query",
   );
   assert.ok(
     result.report.recommendations.every(
@@ -606,7 +607,7 @@ test("official historical-data URL in prose becomes a bounded same-school lead",
     ).length,
   );
 });
-test("deployment legacy allowance supports all 72 requests without resetting ledger; zero remains disabled", () => {
+test("deployment legacy allowance supports the complete configured run without resetting ledger; zero remains disabled", () => {
   const config = searchConfigFromEnvironment({
     YANTU_SEARCH_USER_DAILY_REQUESTS: "60",
     YANTU_SEARCH_DAILY_REQUESTS: "300",

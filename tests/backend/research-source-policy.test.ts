@@ -24,6 +24,8 @@ import {
 import { publicExternalText } from "../../server/explanation/research-external-text.ts";
 import { realReplayFixture } from "../helpers/research-real-replay.ts";
 import { researchDocumentPriority } from "../../server/explanation/research-document-priority.ts";
+import { researchContentRemoved } from "../../server/explanation/research-page-status.ts";
+import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 
 const ds = replayDisciplines();
 const program = {
@@ -448,16 +450,24 @@ test("seventh replay excludes undergraduate routes and wrong assessment discipli
   );
 });
 
-test("one nationwide assessment query serves both schools and leaves room for employment references", async () => {
+test("one nationwide assessment query leaves all six observed schools room for employment and background references", async () => {
   const questions: string[] = [];
+  const names = [
+    "杭州电子科技大学",
+    "浙江理工大学",
+    "浙江师范大学",
+    "浙江科技大学",
+    "浙江农林大学",
+    "浙江工业大学",
+  ];
   const result = await collectExternalEvidence({
     sources: [],
     subjectId: "offline",
     targetYear: "2027",
     disciplines: ds,
-    programs: [program, { ...program, institutionName: "浙江理工大学" }],
+    programs: names.map((institutionName) => ({ ...program, institutionName })),
     usedReads: new Map(),
-    maxRequests: 20,
+    maxRequests: B.externalSearchReserve,
     maxReads: 20,
     onProgress: async () => {},
     readPage: async () => {
@@ -479,15 +489,65 @@ test("one nationwide assessment query serves both schools and leaves room for em
       },
     } as Parameters<typeof collectExternalEvidence>[0]["web"],
   });
-  assert.equal(result.requestCount, 13);
+  assert.equal(result.requestCount, B.externalSearchReserve);
   assert.deepEqual(
     questions.filter((q) => q.includes("第四轮")),
     ["0802 机械工程 第四轮学科评估 结果"],
   );
-  for (const school of ["杭州电子科技大学", "浙江理工大学"])
+  for (const school of names) {
     assert.ok(
       questions.some(
         (q) => q.startsWith(school) && q.includes("硕士毕业生 就业去向"),
       ),
     );
+    assert.ok(
+      questions.some((q) => q.startsWith(school) && q.includes("双非 跨专业")),
+    );
+  }
+});
+
+test("eighth replay identifies a successful HTTP missing-content notice without rejecting quotations in reports", () => {
+  const eighth = realReplayFixture("research-v3a6-run8.json");
+  const page = eighth.pages.find((p) =>
+    p.source?.url.includes("aid/26002"),
+  )!.source!;
+  assert.equal(researchContentRemoved(page.excerpt), true);
+  assert.equal(
+    researchContentRemoved("操作说明：如出现数据不存在或已过期，请核对年度。"),
+    false,
+  );
+  assert.equal(researchContentRemoved("研究生就业质量报告\n就业率95%"), false);
+  assert.equal(
+    researchContentRemoved("正文".repeat(4000) + "\n数据不存在或已过期"),
+    false,
+  );
+});
+
+test("a saved multi-discipline evaluation binds the mechanical B+ clause, never the preceding chemical A-", () => {
+  const p = realReplayFixture("research-v3a6-run8.json").pages.find((p) =>
+    p.url.includes("c4269a205294"),
+  )!.source!;
+  const facts = extractPriorityFacts(p, ds, "2027").filter(
+    (f) => f.field === "disciplineAssessment",
+  );
+  assert.equal(facts.length, 1);
+  assert.equal(facts[0].value.grade, "B+");
+  assert.equal(facts[0].disciplineCode, "0802");
+  assert.equal(
+    priorityCoverage(
+      facts,
+      [{ ...program, institutionName: "浙江工业大学" }],
+      "2027",
+    ).confirmedAssessment.confirmed,
+    0,
+  );
+  const pending = {
+    ...p,
+    excerpt: "浙江工业大学硕士研究生招生。2026年机械工程学科评估结果尚未公布。",
+  };
+  assert.ok(
+    !extractPriorityFacts(pending, ds, "2027").some(
+      (f) => f.field === "disciplineAssessment",
+    ),
+  );
 });

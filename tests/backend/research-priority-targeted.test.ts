@@ -524,7 +524,7 @@ test("whole flow keeps collecting missing categories with spare budget and never
     report.usage!.searches.paid > 17,
     "continues after the initial school pass",
   );
-  assert.ok(report.usage!.searches.paid <= 72);
+  assert.ok(report.usage!.searches.paid <= B.searches);
   assert.doesNotMatch(
     JSON.stringify(fixture.checkpoint()),
     /模拟[甲乙丙]|123456789/,
