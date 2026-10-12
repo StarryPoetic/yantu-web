@@ -32,6 +32,14 @@ export function externalPagePriority(
 ): number {
   const title = source.title;
   const assessment = fields.includes("disciplineAssessment");
+  // School landing pages match every category through menus and old forum feeds.
+  // They are discovery navigation, not a category-specific public article.
+  const url = new URL(source.url);
+  if (
+    title.trim() === school ||
+    (url.hostname === "yz.kaoyan.com" && /^\/[^/]+\/?$/.test(url.pathname))
+  )
+    return -1;
   if (assessment) {
     const codes = [...title.matchAll(/(?<!\d)(0[1-9]\d{2})(?!\d)/g)].map(
       (m) => m[1],

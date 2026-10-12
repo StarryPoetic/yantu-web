@@ -551,3 +551,36 @@ test("a saved multi-discipline evaluation binds the mechanical B+ clause, never 
     ),
   );
 });
+
+test("tenth real run rejects school portals whose category hits come only from menus", () => {
+  const run = realReplayFixture("research-v3a6-run10.json");
+  const page = run.pages.find((p) =>
+    p.url.includes("yz.kaoyan.com/hdu/?"),
+  )!.source!;
+  assert.equal(
+    externalPagePriority(
+      { ...page, title: "杭州电子科技大学" },
+      "杭州电子科技大学",
+      [program],
+      ["applicationAdmissionRatio"],
+      "2027",
+    ),
+    -1,
+  );
+  assert.equal(
+    externalPagePriority(
+      { ...page, title: "杭州电子科技大学报录比" },
+      "杭州电子科技大学",
+      [program],
+      ["applicationAdmissionRatio"],
+      "2027",
+    ),
+    -1,
+  );
+  assert.equal(
+    publicExternalText("公开统计\n2021考研论坛\n用户帖子"),
+    "公开统计",
+  );
+  assert.equal(publicExternalText("公开统计\n考研论坛\n用户帖子"), "公开统计");
+  assert.ok(!page.excerpt.includes("一战成硕"));
+});

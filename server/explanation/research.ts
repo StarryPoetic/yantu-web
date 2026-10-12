@@ -3947,7 +3947,10 @@ export function createResearchReportModule(
               }
               if (collectionStopped) {
                 report.status = "partial";
-                report.reason = "RESEARCH_COLLECTION_TIMEOUT";
+                // A completed collection deadline must not hide a later model
+                // failure (for example a byte-idle timeout during final analysis).
+                if (!report.failureStage)
+                  report.reason = "RESEARCH_COLLECTION_TIMEOUT";
                 checkpoint.evidenceReady = false;
               }
               report.limitations = [...new Set(report.limitations)];

@@ -4,6 +4,7 @@ import { prefilterFixture } from "../helpers/research-prefilter-fixture.ts";
 import { RESEARCH_BUDGET as B } from "../../server/explanation/research-budget.ts";
 import { researchReportMarkdown } from "../../src/workspace/research-report.ts";
 import { academicDomain } from "../../server/explanation/research-pages.ts";
+import { ModelError } from "../../server/explanation/deepseek.ts";
 
 test("missing-content responses are diagnosed and never cached as usable official evidence", async () => {
   const f = prefilterFixture({
@@ -300,3 +301,38 @@ for (const useFlash of [true, false])
     assert.equal(resumed.usage!.searches.paid, B.searches - 1);
     assert.equal(resumed.usage!.reads.reads, 4);
   });
+
+test("collection deadline retains a later final-analysis timeout and never silently retries it", async () => {
+  const f = prefilterFixture();
+  const reader = f.config.reader!;
+  const adapter = f.config.adapter!;
+  let searches = 0,
+    finalCalls = 0;
+  f.config.researchTotalTimeoutMs = 9000;
+  f.config.reader = async (url, options) => {
+    if (new URL(url).hostname === "api.search.brave.com" && ++searches === 2)
+      return new Promise(() => {});
+    return reader(url, options);
+  };
+  f.config.adapter = {
+    complete: async (messages, options) => {
+      if (options?.thinking) {
+        finalCalls++;
+        throw new ModelError("MODEL_TIMEOUT");
+      }
+      return adapter.complete(messages, options);
+    },
+  };
+  const report = await f.create().generate({
+    strategy: "two-stage",
+    subjectId: f.run.subjectId,
+    run: f.run,
+    onCheckpoint: f.save,
+  });
+  assert.equal(finalCalls, 1);
+  assert.equal(report.reason, "MODEL_TIMEOUT");
+  assert.equal(report.failureStage, "analyzing");
+  assert.equal(report.status, "partial");
+  assert.ok(report.recommendations.length > 0);
+  assert.notEqual(f.checkpoint().evidenceReady, true);
+});
