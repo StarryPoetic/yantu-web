@@ -20,6 +20,7 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
     activeSearches = 0,
     peakSearches = 0;
   let finalDirections: string[] = [];
+  let finalInputChars = 0;
   const searchQueries: string[] = [];
   const run = generateGuidance({
     subjectId: "batch1-synthetic-hangzhou",
@@ -56,6 +57,7 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
         async complete(_messages, options) {
           if (options?.thinking) {
             finalCalls++;
+            finalInputChars = JSON.stringify(_messages).length;
             finalDirections = JSON.parse(_messages[1].content).directions.map(
               (d: { code: string }) => d.code,
             );
@@ -88,7 +90,13 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
           searchQueries.push(q);
           const saved = fixture.runs
             .flatMap((r) => r.queries)
-            .find((r) => r.query === q);
+            .find(
+              (r) =>
+                r.query === q &&
+                (!r.includeDomains ||
+                  r.includeDomains.join("|") ===
+                    JSON.parse(options.body ?? "{}").include),
+            );
           return {
             contentType: "application/json",
             text: JSON.stringify({
@@ -145,6 +153,7 @@ export async function runRealReportReplay(fixture = realReplayFixture()) {
     searches,
     peakSearches,
     finalDirections,
+    finalInputChars,
     searchQueries,
   };
 }

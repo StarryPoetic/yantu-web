@@ -45,6 +45,7 @@ export const RESEARCH_BUDGET = {
   cityCandidates: 12,
   pendingPerField: 2,
   thinkingChars: 40000,
+  finalEvidenceChars: 28000,
   normalChars: 16000,
   repairHeadroom: 2000,
   requestBytes: 131072,

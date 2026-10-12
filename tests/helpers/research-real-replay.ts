@@ -33,6 +33,7 @@ export interface ReplayFixture {
     queries: {
       query: string;
       domain: string;
+      includeDomains?: string[];
       sources: WebSource[];
       reason?: string;
     }[];

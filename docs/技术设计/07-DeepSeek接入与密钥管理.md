@@ -377,3 +377,9 @@ ProgramFact 只接收阶段2确定性绑定结果，模型 facts/解释/推荐�
 | `externalSearchReserve` | 20 |
 | `externalReadReserve` | 48 |
 | `externalSchoolReadReserve` | 8 |
+
+第5次真实运行后的输入收敛：最终结构化事实使用较小的装箱上限，继续保留原文引用链和跨校轮询；不修改模型总体deadline、45秒字节空闲超时或网页读取时间边界。
+
+| 参数 | 当前值 |
+| --- | --- |
+| `finalEvidenceChars` | 28000 |

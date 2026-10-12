@@ -6,6 +6,9 @@ import { DatabaseSync } from "node:sqlite";
 import { createHash } from "node:crypto";
 import { redactAdmissionsText } from "../../server/explanation/research-priority-tables.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
+import { RESEARCH_EXTERNAL_SOURCES } from "../../server/explanation/research-source-policy.ts";
+import { externalSearchHosts } from "../../server/explanation/research-external-ranking.ts";
+import { publicExternalText } from "../../server/explanation/research-external-text.ts";
 
 export function replayPublicText(text: string) {
   // Unknown personal table layouts are removed by the production redactor.
@@ -97,7 +100,11 @@ export function captureReplay(
               }
             : undefined,
           title: safeTitle,
-          excerpt: replayPublicText(s.excerpt),
+          excerpt: replayPublicText(
+            s.kind === "reference_page" || s.kind === "authority_page"
+              ? publicExternalText(s.excerpt)
+              : s.excerpt,
+          ),
           documentLinks: s.documentLinks?.map((l) => ({
             url: l.url,
             title: /联系方式|联系人|电话/.test(l.title)
@@ -145,11 +152,30 @@ export function captureReplay(
           question: e.query,
           search: true,
         };
-        const key = createHash("sha256")
-          .update(JSON.stringify({ request, options }))
-          .digest("hex");
+        const externalDomains = [
+          ...(["authority", "reference"] as const).map((tier) =>
+            RESEARCH_EXTERNAL_SOURCES.filter((p) => p.tier === tier).map(
+              (p) => p.host,
+            ),
+          ),
+          externalSearchHosts("authority", ["disciplineAssessment"]),
+          externalSearchHosts("authority", ["cutoff"]),
+        ];
+        const optionVariants = [
+          options,
+          ...externalDomains.map((includeDomains) => ({
+            sourcesOnly: true,
+            search: { count: 10, includeDomains },
+          })),
+        ];
+        const keys = optionVariants.map((options) =>
+          createHash("sha256")
+            .update(JSON.stringify({ request, options }))
+            .digest("hex"),
+        );
+        const matchedIndex = keys.findIndex((key) => !!cp.searches[key]);
         const result =
-          cp.searches[key] ??
+          keys.map((key) => cp.searches[key]).find(Boolean) ??
           (!reportSaved
             ? { sources: [], reason: "INTERRUPTED_BEFORE_CHECKPOINT" }
             : undefined);
@@ -160,6 +186,10 @@ export function captureReplay(
           n: e.n,
           query: e.query,
           domain: school?.domain,
+          includeDomains:
+            matchedIndex >= 0
+              ? optionVariants[matchedIndex].search.includeDomains
+              : undefined,
           reason: result.reason,
           sources: result.sources
             .filter((s) => !include || include.has(s.url))

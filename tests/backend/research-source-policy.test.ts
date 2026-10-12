@@ -17,6 +17,12 @@ import { extractProgramFacts } from "../../server/explanation/research-facts.ts"
 import { collectExternalEvidence } from "../../server/explanation/research-external-collection.ts";
 import { replayDisciplines } from "../helpers/research-real-replay.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
+import {
+  externalPagePriority,
+  externalSearchHosts,
+} from "../../server/explanation/research-external-ranking.ts";
+import { publicExternalText } from "../../server/explanation/research-external-text.ts";
+import { realReplayFixture } from "../helpers/research-real-replay.ts";
 
 const ds = replayDisciplines();
 const program = {
@@ -282,4 +288,71 @@ test("real commercial replay excerpt is a negative fixture, not synthetic eviden
   );
   for (const page of fixture.pages)
     assert.deepEqual(extractPriorityFacts(page, ds, "2027"), []);
+});
+
+test("fifth real run rejects stale and wrong-school external results before spending reads", () => {
+  const fifth = realReplayFixture("research-v3a6-run5.json");
+  assert.equal(fifth.runs[0].queries.length, 68);
+  assert.equal(fifth.runs[0].reads.length, 180);
+  const pages = fifth.pages.flatMap((p) => (p.source ? [p.source] : []));
+  const old = pages.find((s) => s.url.includes("546313019400c"))!;
+  assert.equal(
+    externalPagePriority(
+      old,
+      "浙江理工大学",
+      [program],
+      ["applicationAdmissionRatio"],
+      "2027",
+    ),
+    -1,
+  );
+  const stale = pages.find((s) => s.url.includes("5ee89bb9c9ad7"))!;
+  assert.equal(
+    externalPagePriority(
+      stale,
+      "浙江师范大学",
+      [
+        {
+          disciplineCode: "0802",
+          majorCode: "080200",
+          programName: "机械工程",
+        },
+      ],
+      ["cutoff"],
+      "2027",
+    ),
+    -1,
+  );
+  const wrong = pages.find((s) => s.url.includes("1874486"))!;
+  assert.equal(
+    externalPagePriority(
+      wrong,
+      "浙江师范大学",
+      [program],
+      ["applicationAdmissionRatio"],
+      "2027",
+    ),
+    -1,
+  );
+  const countsOnly = pages.find((s) => s.url.includes("1874506"))!;
+  assert.match(countsOnly.excerpt, /总录取人数：90人/);
+  assert.deepEqual(
+    extractPriorityFacts(countsOnly, ds, "2027"),
+    [],
+    "title says ratio but body has no applicant denominator; do not invent it",
+  );
+  assert.deepEqual(externalSearchHosts("authority", ["disciplineAssessment"]), [
+    "www.cdgdc.edu.cn",
+    "cdgdc.edu.cn",
+    "www.moe.gov.cn",
+  ]);
+});
+
+test("external article snapshots discard forum feeds and contact cells but preserve statistical evidence", () => {
+  assert.equal(
+    publicExternalText(
+      "统计原文\n学院 | 联系人 | 电话\n机械工程学院 | 马 老师 | 86843366\n作者\n测试姓名\n报录比：4:1\n浙江师范大学论坛新帖：更多\n个人经历和姓名",
+    ),
+    "统计原文\n报录比：4:1",
+  );
 });

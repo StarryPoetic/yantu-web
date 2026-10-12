@@ -3,18 +3,19 @@ import type { repairResearchEvidence } from "./research-repair.ts";
 import { publicEvidenceId } from "./research-repair.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import type { ResearchPriorityField } from "../../shared/research-priority-facts.ts";
-import {
-  RESEARCH_EXTERNAL_SOURCES,
-  researchExternalPolicy,
-} from "./research-source-policy.ts";
+import { researchExternalPolicy } from "./research-source-policy.ts";
 import {
   extractPriorityFacts,
   preferredPriorityFacts,
 } from "./research-priority-facts.ts";
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { webPageText, type WebSource } from "./web.ts";
-import { redactAdmissionsText } from "./research-priority-tables.ts";
 import { schoolRegistry } from "../schools/index.ts";
+import {
+  externalPagePriority,
+  externalSearchHosts,
+} from "./research-external-ranking.ts";
+import { publicExternalText } from "./research-external-text.ts";
 
 type Program = {
   institutionName: string;
@@ -40,12 +41,6 @@ export async function collectExternalEvidence(
   const schools = [
     ...new Map(input.programs.map((r) => [r.institutionName, r])).values(),
   ];
-  const authorityHosts = RESEARCH_EXTERNAL_SOURCES.filter(
-    (p) => p.tier === "authority",
-  ).map((p) => p.host);
-  const referenceHosts = RESEARCH_EXTERNAL_SOURCES.filter(
-    (p) => p.tier === "reference",
-  ).map((p) => p.host);
   const tasks: {
     tier: "authority" | "reference";
     fields: ResearchPriorityField[];
@@ -130,7 +125,7 @@ export async function collectExternalEvidence(
         )
       )
         continue;
-      const hosts = task.tier === "authority" ? authorityHosts : referenceHosts;
+      const hosts = externalSearchHosts(task.tier, task.fields);
       const subject = task.fields.includes("disciplineAssessment")
         ? (input.disciplines.find((d) => d.degreeType === "academic")?.name ??
           program.programName)
@@ -175,7 +170,21 @@ export async function collectExternalEvidence(
           limitations,
         };
       let turnReads = 0;
-      for (const foundSource of found.sources) {
+      const candidates = found.sources
+        .map((source, index) => ({
+          source,
+          index,
+          score: externalPagePriority(
+            source,
+            program.institutionName,
+            sameSchool,
+            task.fields,
+            input.targetYear,
+          ),
+        }))
+        .filter((v) => v.score >= 0)
+        .sort((a, b) => b.score - a.score || a.index - b.index);
+      for (const { source: foundSource } of candidates) {
         const candidate = {
           ...foundSource,
           id: publicEvidenceId(foundSource.url),
@@ -209,7 +218,7 @@ export async function collectExternalEvidence(
           );
           if (finalPolicy?.tier !== task.tier)
             throw new Error("SOURCE_POLICY_REDIRECT");
-          const text = redactAdmissionsText(webPageText(page.text));
+          const text = publicExternalText(webPageText(page.text));
           const source: WebSource = {
             ...candidate,
             sourceTier: policy.tier,

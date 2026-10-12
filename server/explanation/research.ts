@@ -1347,15 +1347,14 @@ export function reportMessages(
     ];
   };
   let messages = build();
-  while (
-    JSON.stringify(messages).length > B.thinkingChars - B.repairHeadroom &&
-    maxExcerpt > 100
-  ) {
+  const messageLimit =
+    (collection ? B.finalEvidenceChars : B.thinkingChars) - B.repairHeadroom;
+  while (JSON.stringify(messages).length > messageLimit && maxExcerpt > 100) {
     maxExcerpt -= 100;
     messages = build();
   }
   while (
-    JSON.stringify(messages).length > B.thinkingChars - B.repairHeadroom &&
+    JSON.stringify(messages).length > messageLimit &&
     candidateCities.length
   ) {
     candidateCities.pop();
@@ -1363,7 +1362,7 @@ export function reportMessages(
   }
   // Prune source/fact pairs together. Keep the highest-priority bound facts and
   // their complete reference chain before spending the remaining space on other pages.
-  while (JSON.stringify(messages).length > B.thinkingChars - B.repairHeadroom) {
+  while (JSON.stringify(messages).length > messageLimit) {
     const protectedIds = new Set(
       structuredFacts.slice(0, 8).flatMap(factReferences),
     );

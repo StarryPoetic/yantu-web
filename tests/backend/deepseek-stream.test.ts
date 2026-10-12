@@ -128,6 +128,7 @@ test("45 seconds without bytes times out before or after reasoning; empty chunks
     const stream = controlledResponse();
     const failed = assert.rejects(stream.adapter.complete([], options), {
       code: "MODEL_TIMEOUT",
+      timeoutCause: "byte_idle",
     });
     await flush();
     if (midstream) {
@@ -152,7 +153,7 @@ test("continuous bytes cannot extend the default or configured total thinking de
     const stream = controlledResponse();
     const failed = assert.rejects(
       stream.adapter.complete([], { ...options, timeoutMs: total }),
-      { code: "MODEL_TIMEOUT" },
+      { code: "MODEL_TIMEOUT", timeoutCause: "request_deadline" },
     );
     await flush();
     for (let elapsed = 30000; elapsed < limit; elapsed += 30000) {

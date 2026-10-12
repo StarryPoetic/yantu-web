@@ -11,7 +11,7 @@ import {
   researchExternalPolicy,
   externalFieldAllowed,
 } from "./research-source-policy.ts";
-import { redactAdmissionsText } from "./research-priority-tables.ts";
+import { publicExternalText } from "./research-external-text.ts";
 
 /** Public external text is evidence, never a new school identity or a catalogue publication. */
 export function externalPriorityFacts(
@@ -26,7 +26,7 @@ export function externalPriorityFacts(
     !["authority_page", "reference_page"].includes(source.kind)
   )
     return [];
-  const body = redactAdmissionsText(source.excerpt);
+  const body = publicExternalText(source.excerpt);
   if (/请先登录|登录后(?:查看|可见)|验证码|访问过于频繁|人机验证/.test(body))
     return [];
   const schoolNames = [...schoolRegistry.schools].sort(

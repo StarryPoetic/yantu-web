@@ -38,6 +38,7 @@ export interface ModelRequestOptions {
 }
 export class ModelError extends Error {
   code: string;
+  timeoutCause?: "request_deadline" | "byte_idle" | "cancelled";
   constructor(code: string) {
     super("辅助模型暂不可用。");
     this.name = "ModelError";
@@ -366,10 +367,17 @@ export function createDeepSeekAdapter(
       )
         throw new ModelError("INVALID_MODEL_OPTIONS");
       const controller = new AbortController();
-      const abort = () => controller.abort(options.signal?.reason);
+      let timeoutCause: ModelError["timeoutCause"];
+      const abort = () => {
+        timeoutCause ??= "cancelled";
+        controller.abort(options.signal?.reason);
+      };
       options.signal?.addEventListener("abort", abort, { once: true });
       const timeout = setTimeout(
-        () => controller.abort(),
+        () => {
+          timeoutCause ??= "request_deadline";
+          controller.abort();
+        },
         Math.min(
           selected.timeoutMs ??
             config.timeoutMs ??
@@ -380,10 +388,10 @@ export function createDeepSeekAdapter(
       let idleTimeout: ReturnType<typeof setTimeout> | undefined;
       const receivedBytes = () => {
         clearTimeout(idleTimeout);
-        idleTimeout = setTimeout(
-          () => controller.abort(),
-          B.thinkingIdleTimeoutMs,
-        );
+        idleTimeout = setTimeout(() => {
+          timeoutCause ??= "byte_idle";
+          controller.abort();
+        }, B.thinkingIdleTimeoutMs);
       };
       // Count time to the first byte too. Reasoning, SSE framing and partial
       // events reset only the idle timer; they never extend the total deadline.
@@ -455,7 +463,11 @@ export function createDeepSeekAdapter(
           model: result.model,
         };
       } catch (error) {
-        if (controller.signal.aborted) throw new ModelError("MODEL_TIMEOUT");
+        if (controller.signal.aborted) {
+          const failure = new ModelError("MODEL_TIMEOUT");
+          failure.timeoutCause = timeoutCause;
+          throw failure;
+        }
         if (error instanceof ModelError) throw error;
         throw new ModelError("PROVIDER_NETWORK_ERROR");
       } finally {

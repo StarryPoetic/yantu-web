@@ -288,6 +288,8 @@ export async function runBatchLive(args: string[]) {
           log({
             event: "model-failed",
             model: name,
+            timeoutCause:
+              error instanceof ModelError ? error.timeoutCause : undefined,
             code:
               error instanceof ModelError ? error.code : "PROVIDER_UNAVAILABLE",
           });

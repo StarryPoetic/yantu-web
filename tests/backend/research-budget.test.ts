@@ -157,6 +157,27 @@ test("final model input keeps facts ahead of excerpts, deduplicates source URLs 
   );
   assert.ok(!input.sources.some((s: { id: string }) => s.id === "duplicate"));
   assert.equal(facts.length, 203, "input pruning does not remove public facts");
+  const compact = reportMessages(
+    run,
+    { directions: [], followUpQuestions: [] },
+    [discipline],
+    sources,
+    "2027",
+    facts,
+    undefined,
+    { facts: [] },
+  );
+  assert.ok(
+    JSON.stringify(compact).length <= B.finalEvidenceChars - B.repairHeadroom,
+  );
+  const compactInput = JSON.parse(compact[1].content);
+  assert.equal(compactInput.structuredFacts[0].status, "bound");
+  const compactIds = new Set(
+    compactInput.sources.map((s: { id: string }) => s.id),
+  );
+  assert.ok(
+    references(compactInput.structuredFacts).every((id) => compactIds.has(id)),
+  );
 });
 
 test("shared scheduler bounds concurrency and serialises hosts; outcome merging is stable", async () => {
