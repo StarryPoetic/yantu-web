@@ -5,7 +5,10 @@ import {
   repairResearchEvidence,
   reusableResearchSources,
 } from "../../server/explanation/research-repair.ts";
-import type { ResearchEvidenceGap } from "../../shared/research-coverage.ts";
+import type {
+  ResearchEvidenceGap,
+  ResearchReadAttempt,
+} from "../../shared/research-coverage.ts";
 import type {
   WebSource,
   createWebAnswerModule,
@@ -69,6 +72,88 @@ const base = () => ({
     text: "示例研究大学2026年硕士招生专业目录\n030101 法学理论 初试：101思想政治理论 201英语一 611法学基础 811法学综合",
     contentType: "text/plain",
   }),
+});
+
+test("prefetch reserves failed reads before the outer reader records its cooldown", async () => {
+  const attempts: ResearchReadAttempt[] = [];
+  const urls: string[] = [];
+  const candidates = Array.from({ length: 8 }, (_, i) => ({
+    ...page(),
+    url: `https://example.edu.cn/p${i}`,
+    kind: "search_snippet" as const,
+  }));
+  const result = await repairResearchEvidence({
+    ...base(),
+    sources: [],
+    attempts,
+    maxReads: 3,
+    maxRequests: 1,
+    priorityDocuments: true,
+    searchFirst: true,
+    web: web(candidates),
+    readPage: async (url) => {
+      urls.push(url);
+      // This is what the report's fetchPage does while a parallel wave runs.
+      attempts.push({
+        url,
+        status: "failed",
+        reason: "HTTP_404",
+        attemptedAt: new Date(now()).toISOString(),
+      });
+      throw Object.assign(new Error("not found"), { code: "HTTP_404" });
+    },
+  });
+  assert.equal(urls.length, 3);
+  assert.equal(result.readCount, urls.length);
+  assert.equal(result.attempts.length, urls.length);
+  assert.ok(result.attempts.every((a) => a.reason === "HTTP_404"));
+});
+
+test("one failed prefetch cannot discard other reserved successes or overread their attachments", async () => {
+  const attempts: ResearchReadAttempt[] = [];
+  const saved: string[] = [],
+    reads: string[] = [];
+  const candidates = Array.from({ length: 5 }, (_, i) => ({
+    ...page(),
+    url: `https://example.edu.cn/p${i}`,
+    kind: "search_snippet" as const,
+  }));
+  const result = await repairResearchEvidence({
+    ...base(),
+    sources: [],
+    attempts,
+    maxReads: 3,
+    maxRequests: 1,
+    priorityDocuments: true,
+    searchFirst: true,
+    web: web(candidates),
+    onSource: (s) => {
+      saved.push(s.url);
+    },
+    readPage: async (url) => {
+      reads.push(url);
+      if (url.endsWith("p0")) {
+        attempts.push({
+          url,
+          status: "failed",
+          reason: "HTTP_404",
+          attemptedAt: new Date(now()).toISOString(),
+        });
+        throw Object.assign(new Error("missing"), { code: "HTTP_404" });
+      }
+      return {
+        text: `<h1>${page().excerpt}</h1><a href="/more.pdf">硕士招生专业目录附件</a>`,
+        contentType: "text/html",
+      };
+    },
+  });
+  assert.equal(reads.length, 3);
+  assert.equal(result.readCount, 3);
+  assert.deepEqual(
+    saved,
+    candidates.slice(1, 3).map((c) => c.url),
+  );
+  assert.equal(result.attempts.length, 3);
 });
 
 test("priority collection spends at most one discovery read per school and never reads doctoral materials", async () => {

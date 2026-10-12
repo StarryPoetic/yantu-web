@@ -243,14 +243,8 @@ export async function repairResearchEvidence(input: {
           isSchoolPage(source) &&
           source.library?.status !== "stale",
       );
-    const prefetched = new Map<
-      string,
-      PromiseSettledResult<Awaited<ReturnType<typeof input.readPage>>>
-    >();
-    async function wave(
-      candidates: { url: string; title: string; parent?: WebSource }[],
-      gap: ResearchEvidenceGap,
-    ) {
+    type Candidate = { url: string; title: string; parent?: WebSource };
+    async function wave(candidates: Candidate[], gap: ResearchEvidenceGap) {
       let discoverySlots = Math.max(
         0,
         discoveryLimit - (discoveryReads.get(gap.institutionName) ?? 0),
@@ -285,18 +279,17 @@ export async function repairResearchEvidence(input: {
         }
         return;
       }
+      const reserved = values.filter((candidate) => reserve(candidate, gap));
       const results = await Promise.allSettled(
-        values.map((c) => scheduler.read(c.url)),
+        reserved.map((c) => scheduler.read(c.url)),
       );
-      for (let i = 0; i < values.length; i++) {
-        prefetched.set(values[i].url, results[i]);
-        await read(values[i], gap);
-      }
+      for (let i = 0; i < reserved.length; i++)
+        await read(reserved[i], gap, results[i]);
     }
-    async function read(
-      candidate: { url: string; title: string; parent?: WebSource },
-      gap: ResearchEvidenceGap,
-    ) {
+    // The outer reader records failed attempts before a prefetched wave settles.
+    // Reserve first: rechecking mayRead on consumption would mistake this wave's
+    // own failures for cooldowns and silently erase their budget/attempt entries.
+    function reserve(candidate: Candidate, gap: ResearchEvidenceGap) {
       if (
         readCount >= gapReadLimit ||
         !mayRead(candidate.url) ||
@@ -304,7 +297,7 @@ export async function repairResearchEvidence(input: {
         (input.allowedDomains &&
           !input.allowedDomains.includes(academicDomain(candidate.url)))
       )
-        return;
+        return false;
       const existing = sources.find((source) => source.url === candidate.url);
       if (
         existing &&
@@ -313,28 +306,37 @@ export async function repairResearchEvidence(input: {
           existing as WebSource & { library?: { status: string } }
         ).library?.status?.includes("stale")
       )
-        return;
+        return false;
       if (input.priorityDocuments) {
         const priority = researchDocumentPriority(
           candidate.title,
           gap.programName,
           candidate.url,
         );
-        if (priority < -10) return;
+        if (priority < -10) return false;
         if (priority <= 0) {
           const count = discoveryReads.get(gap.institutionName) ?? 0;
-          if (count >= discoveryLimit) return;
+          if (count >= discoveryLimit) return false;
           discoveryReads.set(gap.institutionName, count + 1);
         }
       }
       touched.add(candidate.url);
       readCount++;
+      return true;
+    }
+    async function read(
+      candidate: Candidate,
+      gap: ResearchEvidenceGap,
+      outcome?: PromiseSettledResult<
+        Awaited<ReturnType<typeof input.readPage>>
+      >,
+    ) {
+      if (!outcome && !reserve(candidate, gap)) return;
+      const existing = sources.find((source) => source.url === candidate.url);
       await input.onProgress(
         `正在补查${gap.institutionName}${gap.programName ?? ""}：${gap.nextAction}`,
       );
       try {
-        const outcome = prefetched.get(candidate.url);
-        prefetched.delete(candidate.url);
         if (outcome?.status === "rejected") throw outcome.reason;
         const result =
           outcome?.status === "fulfilled"
@@ -451,13 +453,14 @@ export async function repairResearchEvidence(input: {
       )
       .slice(0, Math.min(B.concurrency, maxReads));
     if (opening.length > 1) {
-      const results = await Promise.allSettled(
-        opening.map(({ candidate }) => scheduler.read(candidate.url)),
+      const reserved = opening.filter(({ candidate, gap }) =>
+        reserve(candidate, gap),
       );
-      for (const [index, { candidate, gap }] of opening.entries()) {
-        prefetched.set(candidate.url, results[index]);
-        await read(candidate, gap);
-      }
+      const results = await Promise.allSettled(
+        reserved.map(({ candidate }) => scheduler.read(candidate.url)),
+      );
+      for (const [index, { candidate, gap }] of reserved.entries())
+        await read(candidate, gap, results[index]);
     }
     const openingAllowance = new Set(
       opening.length > 1 ? opening.map(({ gap }) => gap.id) : [],
