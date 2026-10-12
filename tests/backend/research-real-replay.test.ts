@@ -31,6 +31,7 @@ import { programEntries } from "../../server/explanation/research-matching.ts";
 import { replayPublicText } from "../helpers/research-replay-capture.ts";
 import {
   replayAcceptanceCriteria,
+  replayHasProgress,
   replayVerifiedCoverage,
 } from "../helpers/research-replay-live.ts";
 import {
@@ -39,6 +40,40 @@ import {
   priorityQueryCategory,
 } from "../../server/explanation/research-targeted.ts";
 const fixture = realReplayFixture();
+
+test("archived source-policy runs stop after three attempts without a new coverage or school-count high", () => {
+  const snapshots = [5, 6, 7, 8, 9, 10, 11].map(
+    (index) =>
+      JSON.parse(
+        readFileSync(`tests/fixtures/research-v3a6-run${index}.json`, "utf8"),
+      ).runs[0].metrics,
+  );
+  const progress = snapshots.map((snapshot, index) =>
+    replayHasProgress(snapshot, snapshots.slice(0, index)),
+  );
+  assert.deepEqual(progress, [true, false, false, true, false, false, false]);
+  const last = snapshots.at(-1)!;
+  assert.equal(last.acceptance.passed, false);
+  assert.equal(last.acceptance.noTechnicalInterruption, true);
+  assert.equal(last.models["deepseek-v4-pro"].calls, 1);
+  assert.equal(last.costs.unknownModelCalls, 0);
+  assert.equal(last.successfulReads + last.failedReads, last.reads);
+  const recorded = realReplayFixture("research-v3a6-run11.json");
+  assert.equal(recorded.runs[0].queries.length, last.searches);
+  assert.equal(recorded.runs[0].reads.length, last.reads);
+  const references = recorded.pages.flatMap((p) =>
+    p.source?.kind === "reference_page" ? [p.source] : [],
+  );
+  assert.ok(references.length > 0);
+  assert.ok(references.every((p) => p.url.startsWith("https://")));
+  assert.equal(
+    references.flatMap((p) =>
+      extractPriorityFacts(p, replayDisciplines(), "2027"),
+    ).length,
+    0,
+    "unusable original evidence cannot become progress merely by reading it",
+  );
+});
 test("fourth real corpus retains the employment PDF and removes contact table personal cells", () => {
   const fourth = realReplayFixture("research-v3a6-run4.json");
   assert.equal(fourth.pages.length, 598);
