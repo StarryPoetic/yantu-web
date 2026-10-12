@@ -356,3 +356,48 @@ test("external article snapshots discard forum feeds and contact cells but prese
     "统计原文\n报录比：4:1",
   );
 });
+
+test("sixth real run rejects stale years without 年 and unrelated catalogues across every fallback category", () => {
+  const sixth = realReplayFixture("research-v3a6-run6.json");
+  assert.equal(sixth.runs[0].queries.length, 72);
+  assert.equal(sixth.runs[0].reads.length, 180);
+  for (const [needle, school] of [
+    ["1403991.html", "浙江师范大学"],
+    ["1664577.html", "杭州电子科技大学"],
+    ["1641286.html", "杭州电子科技大学"],
+    ["1085055", "杭州电子科技大学"],
+  ]) {
+    const page = sixth.pages.find((p) => p.url.includes(needle))?.source;
+    assert.ok(page, needle);
+    for (const fields of [
+      ["cutoff"],
+      ["employment"],
+      ["undergraduateAdmission"],
+      ["applicationAdmissionRatio"],
+    ] as const)
+      assert.equal(
+        externalPagePriority(page, school, [program], fields, "2027"),
+        -1,
+        page.title,
+      );
+  }
+  assert.equal(
+    externalPagePriority(
+      source("reference", "杭州电子科技大学公开目录"),
+      program.institutionName,
+      [program],
+      ["employment"],
+      "2027",
+    ),
+    -1,
+  );
+  assert.ok(
+    externalPagePriority(
+      source("reference", "杭州电子科技大学2025届硕士毕业生就业率95%"),
+      program.institutionName,
+      [program],
+      ["employment"],
+      "2027",
+    ) >= 0,
+  );
+});

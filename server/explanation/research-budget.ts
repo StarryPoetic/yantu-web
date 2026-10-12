@@ -28,6 +28,7 @@ export const RESEARCH_BUDGET = {
   searches: 72,
   prioritySearchReserve: 48,
   finalGapSearchReserve: 12,
+  finalGapReadReserve: 24,
   externalSearchReserve: 20,
   externalReadReserve: 48,
   externalSchoolReadReserve: 8,

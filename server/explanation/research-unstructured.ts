@@ -21,6 +21,8 @@ export function unstructuredResearchSources(
   generatedAt: string,
 ): ResearchUnstructuredSource[] {
   const seen = new Set<string>();
+  const locationCache: NonNullable<Parameters<typeof extractProgramFacts>[4]> =
+    new Map();
   return sources.flatMap((source) => {
     if (
       source.kind !== "official_page" ||
@@ -38,9 +40,13 @@ export function unstructuredResearchSources(
     )
       return [];
     if (
-      extractProgramFacts(source, sources, generatedAt).some(
-        (fact) => fact.status === "bound",
-      )
+      extractProgramFacts(
+        source,
+        sources,
+        generatedAt,
+        undefined,
+        locationCache,
+      ).some((fact) => fact.status === "bound")
     )
       return [];
     return [

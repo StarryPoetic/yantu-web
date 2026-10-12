@@ -245,7 +245,7 @@ export async function refineResearchSchools(
       B.externalSearchReserve,
       B.searches - requestCount - B.finalGapSearchReserve,
     ),
-    maxReads: B.reads - readCount,
+    maxReads: Math.max(0, B.reads - readCount - B.finalGapReadReserve),
   });
   sources = external.sources;
   lookupKeys = external.lookupKeys;

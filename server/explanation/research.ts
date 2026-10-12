@@ -28,10 +28,7 @@ import { createResearchReader, sharedResearchRead } from "./research-reader.ts";
 import { extractProgramFacts, type ProgramFact } from "./research-facts.ts";
 import { selectModelFacts } from "./research-model-facts.ts";
 import { sourceCitationInstruction } from "./source-citations.ts";
-import {
-  unstructuredResearchSources,
-  type ResearchUnstructuredSource,
-} from "./research-unstructured.ts";
+import type { ResearchUnstructuredSource } from "./research-unstructured.ts";
 import {
   RESEARCH_BUDGET as B,
   RESEARCH_FLASH_ENABLED,
@@ -2242,10 +2239,10 @@ export function createResearchReportModule(
                   lookupKeys,
                   attempts: attempts.slice(-240),
                 };
-                report.unstructuredSources = unstructuredResearchSources(
-                  report.sources,
-                  newlyReadUrls,
-                  report.generatedAt,
+                report.unstructuredSources = await researchCompute(
+                  "unstructured",
+                  [report.sources, newlyReadUrls, report.generatedAt],
+                  input.signal,
                 );
               };
               const priorInventory =

@@ -2,10 +2,15 @@ import { Worker } from "node:worker_threads";
 import type { extractProgramFacts } from "./research-facts.ts";
 import type { buildEvidenceCandidates } from "./research-matching.ts";
 import type { deriveResearchCoverage } from "./research-coverage.ts";
+import type { unstructuredResearchSources } from "./research-unstructured.ts";
 import type { WebSource } from "./web.ts";
 import { setImmediate } from "node:timers/promises";
 
 export interface ResearchComputations {
+  unstructured: {
+    input: Parameters<typeof unstructuredResearchSources>;
+    output: ReturnType<typeof unstructuredResearchSources>;
+  };
   reportFacts: {
     input: {
       sources: WebSource[];
@@ -42,15 +47,28 @@ export async function researchCompute<K extends keyof ResearchComputations>(
   signal?.throwIfAborted();
   // Tiny reports cost less than worker startup. Bound their entire input and
   // yield first; school rebinding and page ingestion always stay in workers.
-  if (kind === "inventory" || kind === "coverage" || kind === "reportFacts") {
-    const sources = (input as ResearchComputations["reportFacts"]["input"])
-      .sources;
+  if (
+    kind === "inventory" ||
+    kind === "coverage" ||
+    kind === "reportFacts" ||
+    kind === "unstructured"
+  ) {
+    const sources =
+      kind === "unstructured"
+        ? (input as ResearchComputations["unstructured"]["input"])[0]
+        : (input as ResearchComputations["reportFacts"]["input"]).sources;
     if (
       sources.length <= 8 &&
       sources.reduce((n, s) => n + s.excerpt.length, 0) <= 6000
     ) {
       await setImmediate(undefined, { signal });
       signal?.throwIfAborted();
+      if (kind === "unstructured")
+        return (
+          await import("./research-unstructured.ts")
+        ).unstructuredResearchSources(
+          ...(input as ResearchComputations["unstructured"]["input"]),
+        ) as ResearchComputations[K]["output"];
       if (kind === "inventory")
         return (await import("./research-matching.ts")).buildEvidenceCandidates(
           input as ResearchComputations["inventory"]["input"],

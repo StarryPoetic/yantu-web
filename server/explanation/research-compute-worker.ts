@@ -2,9 +2,16 @@ import { parentPort, workerData } from "node:worker_threads";
 import { extractProgramFacts } from "./research-facts.ts";
 import { buildEvidenceCandidates } from "./research-matching.ts";
 import { deriveResearchCoverage } from "./research-coverage.ts";
+import { unstructuredResearchSources } from "./research-unstructured.ts";
 import type { ResearchComputations } from "./research-compute.ts";
 
-if (workerData.kind === "reportFacts") {
+if (workerData.kind === "unstructured") {
+  parentPort!.postMessage(
+    unstructuredResearchSources(
+      ...(workerData.input as ResearchComputations["unstructured"]["input"]),
+    ),
+  );
+} else if (workerData.kind === "reportFacts") {
   const { sources, at, focus } =
     workerData.input as ResearchComputations["reportFacts"]["input"];
   parentPort!.postMessage(
