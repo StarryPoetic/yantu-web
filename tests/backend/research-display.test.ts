@@ -30,8 +30,8 @@ import { withPhase6Display } from "../helpers/research-phase6-fixture.ts";
 import { RESEARCH_TARGET_SCHOOLS } from "../../shared/research-policy.ts";
 import { RESEARCH_BUDGET } from "../../server/explanation/research-budget.ts";
 
-test("T3-12 new strategy shares the ten-school target without rewriting historical coverage", () => {
-  assert.equal(RESEARCH_TARGET_SCHOOLS, 10);
+test("T3-12 new strategy shares the five-school target without rewriting historical coverage", () => {
+  assert.equal(RESEARCH_TARGET_SCHOOLS, 5);
   assert.equal(RESEARCH_BUDGET.finalSchools, RESEARCH_TARGET_SCHOOLS);
   assert.equal(researchCoverage(report()).targetMin, 5);
   assert.equal(researchCoverage(report()).targetMax, 10);

@@ -427,8 +427,10 @@ export function researchCoverage(report: ResearchReport) {
   const schoolCount = new Set(
     report.recommendations.map((item) => item.institutionName.trim()),
   ).size;
-  const targetMin = report.coverage?.targetMin ?? 5;
-  const targetMax = report.coverage?.targetMax ?? 10;
+  const targetMin =
+    report.coverage?.targetMin ?? report.schoolPolicy?.minimum ?? 5;
+  const targetMax =
+    report.coverage?.targetMax ?? report.schoolPolicy?.maximum ?? 10;
   const reasons = report.coverage?.shortfallReasons ?? [];
   const countShortfall = schoolCount < targetMin;
   const cityShortfall =

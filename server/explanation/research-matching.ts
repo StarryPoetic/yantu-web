@@ -1227,6 +1227,7 @@ export function rankDemandCandidates(
   disciplines: Discipline[],
   sources: WebSource[],
   year: string,
+  maximumSchools: number = B.finalSchools,
 ) {
   const observations = deriveResearchDecision(run).assessments;
   const ranked = consolidatePrograms(
@@ -1380,7 +1381,7 @@ export function rankDemandCandidates(
           (other) => other.institutionName === item.institutionName,
         ) === index,
     )
-    .slice(0, B.finalSchools)
+    .slice(0, maximumSchools)
     .map((item) => ({
       ...item,
       programAlternatives: ranked

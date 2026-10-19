@@ -1,5 +1,11 @@
 import { researchCompute } from "./research-compute.ts";
 import {
+  RESEARCH_SCHOOL_POLICY,
+  savedResearchSchoolPolicy,
+  researchSchoolRange,
+  type ResearchSchoolPolicy,
+} from "../../shared/research-policy.ts";
+import {
   researchExternalPolicy,
   researchSourceTier,
 } from "./research-source-policy.ts";
@@ -172,6 +178,7 @@ export interface ResearchConfig extends WebAnswerConfig {
   allowAcademicHosts?: boolean;
 }
 export interface ResearchReport {
+  schoolPolicy?: ResearchSchoolPolicy;
   priorityFacts?: ResearchPriorityFact[];
   priorityCoverage?: ReturnType<typeof priorityCoverage>;
   targetScore?: ResearchTargetScore;
@@ -228,8 +235,8 @@ export interface ResearchReport {
     summary: string;
   };
   coverage?: {
-    targetMin: 5 | 10;
-    targetMax: 10;
+    targetMin: 4 | 5 | 10;
+    targetMax: 5 | 10;
     schoolCount: number;
     preferredCount: number;
     alternativeCount: number;
@@ -606,6 +613,7 @@ export function validateReport(
   sources: WebSource[],
   disciplines: Discipline[],
   targetYear: string,
+  maximumSchools: number = B.finalSchools,
 ) {
   const body = record(parseResearchJson(raw), [
     "summary",
@@ -677,7 +685,7 @@ export function validateReport(
     }),
   );
   const candidates = isolate(
-    list(body.recommendations, B.finalSchools),
+    list(body.recommendations, maximumSchools),
     (item) => {
       const entry = record(item, [
         "institutionName",
@@ -1487,6 +1495,28 @@ export function createResearchReportModule(
         input.checkpoint?.contextHash === contextHash
           ? structuredClone(input.checkpoint)
           : { version: 1, contextHash, models: {}, searches: {}, pages: {} };
+      const previousCheckpoint =
+        input.checkpoint?.contextHash === contextHash
+          ? input.checkpoint
+          : undefined;
+      const schoolPolicy = previousCheckpoint
+        ? savedResearchSchoolPolicy({
+            ...previousCheckpoint.report,
+            prefilter:
+              previousCheckpoint.prefilter ??
+              previousCheckpoint.report?.prefilter,
+            schoolPolicy:
+              previousCheckpoint.schoolPolicy ??
+              previousCheckpoint.report?.schoolPolicy,
+          })
+        : input.previousReport && input.mode !== "generate"
+          ? savedResearchSchoolPolicy(input.previousReport)
+          : { ...RESEARCH_SCHOOL_POLICY };
+      checkpoint.schoolPolicy = schoolPolicy;
+      const schoolRange = researchSchoolRange(schoolPolicy);
+      const reportLimitations = baseLimitations.map((line) =>
+        line.replace("5–10所", `${schoolRange}所`),
+      );
       const deadline = researchDeadline(
         config.researchTotalTimeoutMs ??
           (input.strategy === "two-stage"
@@ -1572,6 +1602,7 @@ export function createResearchReportModule(
             const targetYear = String(run.inputSnapshot.profile.year ?? "");
             const referenceYears = historicalReferenceYears(targetYear);
             const report: ResearchReport = {
+              schoolPolicy,
               schemaVersion: 1,
               reportVersion: promptVersion,
               status: "blocked",
@@ -1582,7 +1613,7 @@ export function createResearchReportModule(
               facts: [],
               recommendations: [],
               sources: [],
-              limitations: [...baseLimitations],
+              limitations: [...reportLimitations],
               model: { ...model },
               searched: false,
               decisionBasis: deriveResearchDecision(run),
@@ -1776,16 +1807,17 @@ export function createResearchReportModule(
                 );
               }
               report.prefilter = checkpoint.prefilter;
-              report.limitations = report.limitations.map((line) =>
-                line.replace("5–10所", `${B.finalSchools}所`),
-              );
               await persist();
             }
             const prefilter = report.prefilter;
-            const targetSchools = prefilter ? B.finalSchools : 5;
+            const targetSchools = schoolPolicy.minimum;
             let plan: ResearchPlan;
             try {
               const messages = planningMessages(run);
+              messages[0].content = messages[0].content.replace(
+                /最终推荐5至10所/g,
+                `最终推荐${schoolRange}所`,
+              );
               const result =
                 prefilter && demandPlan.directions.length
                   ? { value: demandPlan }
@@ -3104,13 +3136,13 @@ export function createResearchReportModule(
                       "本次尚未读取学校官网正文，搜索摘要不足以支持最终学校专业分析，未继续调用最终报告模型。",
                     ],
                     coverage: {
-                      targetMin: 5,
-                      targetMax: B.finalSchools,
+                      targetMin: schoolPolicy.minimum,
+                      targetMax: schoolPolicy.maximum,
                       schoolCount: 0,
                       preferredCount: 0,
                       alternativeCount: 0,
                       shortfallReasons: [
-                        `本次检索 ${found.requestCount} 项、尝试读取 ${scheduled.statistics.reads} 项官网资料，目前只有搜索摘要，尚未达到5–10校的目标。`,
+                        `本次检索 ${found.requestCount} 项、尝试读取 ${scheduled.statistics.reads} 项官网资料，目前只有搜索摘要，尚未达到${schoolRange}校的目标。`,
                         ...(found.stoppedReason
                           ? [researchReason(found.stoppedReason)]
                           : []),
@@ -3128,11 +3160,10 @@ export function createResearchReportModule(
                     ...report,
                     status: "partial",
                     reason: "NO_WEB_EVIDENCE",
-                    summary:
-                      "粗筛已完成，但入选学校的官网专业证据不足，无法形成10所有据建议。",
+                    summary: `粗筛已完成，但入选学校的官网专业证据不足，无法形成${schoolRange}所有据建议。`,
                     coverage: {
-                      targetMin: B.finalSchools,
-                      targetMax: B.finalSchools,
+                      targetMin: schoolPolicy.minimum,
+                      targetMax: schoolPolicy.maximum,
                       schoolCount: 0,
                       preferredCount: 0,
                       alternativeCount: 0,
@@ -3216,6 +3247,7 @@ export function createResearchReportModule(
                 evidencedDirections,
                 report.sources,
                 year,
+                schoolPolicy.maximum,
               );
               if (prefilter) {
                 let collected;
@@ -3303,12 +3335,12 @@ export function createResearchReportModule(
                     ? { facts: report.priorityFacts ?? [], targetScore }
                     : undefined,
                 );
+                messages[0].content = messages[0].content
+                  .replace(/5至10所/g, `${schoolRange}所`)
+                  .replace(/5–10所/g, `${schoolRange}所`);
                 if (prefilter)
-                  messages[0].content =
-                    messages[0].content
-                      .replace(/5至10所/g, `${B.finalSchools}所`)
-                      .replace(/5–10所/g, `${B.finalSchools}所`) +
-                    ` 本次只分析已由本地粗筛入选并出现在候选证据中的学校，不得新增其他院校。`;
+                  messages[0].content +=
+                    " 本次只分析已由本地粗筛入选并出现在候选证据中的学校，不得新增其他院校。";
                 const visibleIds = new Set<string>();
                 const modelInput = JSON.parse(messages[1].content);
                 for (const source of modelInput.sources)
@@ -3380,6 +3412,7 @@ export function createResearchReportModule(
                         visibleSources,
                         evidencedDirections,
                         year,
+                        schoolPolicy.maximum,
                       ),
                     );
                     if (!value.recommendations.length && value.rejected.length)
@@ -3449,6 +3482,7 @@ export function createResearchReportModule(
                     evidencedDirections,
                     report.sources,
                     year,
+                    schoolPolicy.maximum,
                   ),
                 };
                 const schoolPages = report.sources.filter(
@@ -3476,7 +3510,7 @@ export function createResearchReportModule(
                 );
                 if (
                   !prefilter &&
-                  ((value.recommendations.length < 5 &&
+                  ((value.recommendations.length < schoolPolicy.target &&
                     new Set(
                       schoolPages.map((source) => academicDomain(source.url)),
                     ).size >= 5 &&
@@ -3493,7 +3527,7 @@ export function createResearchReportModule(
                     ...messages,
                     {
                       role: "user" as const,
-                      content: `${sourceCitationInstruction}已有${value.recommendations.length}所学校通过核验。${value.recommendations.length < 5 ? "仍未达到5–10校目标。" : "数量已达到目标，但不能代替意向城市覆盖。"}${needsCityCoverage && canInvestigateCity ? `本人意向城市是${regions.join("、")}，目前没有可核验符合意向城市的建议，已有官网原文包含本地项目线索；优先重新比较这些学校，逐项给出同校同专业的官网培养城市地址证据。不得把外地项目说成符合意向城市，不得推定接受跨城通勤。` : ""}请重新检查上述真实官网资料，补充其他有据且适合本人的学校及具体专业，优先给出此前遗漏的学校；不编造项目，不放宽已知资格冲突。仍返回完整同格式JSON。已保留：${value.recommendations
+                      content: `${sourceCitationInstruction}已有${value.recommendations.length}所学校通过核验。${value.recommendations.length < schoolPolicy.minimum ? `仍未达到${schoolRange}校目标。` : "数量已达到目标，但不能代替意向城市覆盖。"}${needsCityCoverage && canInvestigateCity ? `本人意向城市是${regions.join("、")}，目前没有可核验符合意向城市的建议，已有官网原文包含本地项目线索；优先重新比较这些学校，逐项给出同校同专业的官网培养城市地址证据。不得把外地项目说成符合意向城市，不得推定接受跨城通勤。` : ""}请重新检查上述真实官网资料，补充其他有据且适合本人的学校及具体专业，优先给出此前遗漏的学校；不编造项目，不放宽已知资格冲突。仍返回完整同格式JSON。已保留：${value.recommendations
                         .map((item) => item.institutionName)
                         .join("、")
                         .slice(0, 180)}。`,
@@ -3518,6 +3552,7 @@ export function createResearchReportModule(
                               visibleSources,
                               evidencedDirections,
                               year,
+                              schoolPolicy.maximum,
                             ),
                           ),
                         options,
@@ -3537,7 +3572,8 @@ export function createResearchReportModule(
                             merged[existing] = item;
                           continue;
                         }
-                        if (merged.length < B.finalSchools) merged.push(item);
+                        if (merged.length < schoolPolicy.maximum)
+                          merged.push(item);
                         else if (
                           matchesPreferredCity(item) &&
                           !merged.some(matchesPreferredCity)
@@ -3554,7 +3590,7 @@ export function createResearchReportModule(
                       const ranked = sortCityRecommendations(merged);
                       value = {
                         ...value,
-                        recommendations: ranked.slice(0, B.finalSchools),
+                        recommendations: ranked.slice(0, schoolPolicy.maximum),
                         rejected: [...value.rejected, ...extra.value.rejected],
                         rejectedRecommendations: [
                           ...value.rejectedRecommendations,
@@ -3712,6 +3748,7 @@ export function createResearchReportModule(
                   evidencedDirections,
                   report.sources,
                   year,
+                  schoolPolicy.maximum,
                 );
                 if (prefilter)
                   report.recommendations = report.recommendations
@@ -3728,7 +3765,7 @@ export function createResearchReportModule(
                           )
                         ),
                     )
-                    .slice(0, B.finalSchools);
+                    .slice(0, schoolPolicy.maximum);
                 const allHaveSchoolPage = report.recommendations.every((item) =>
                   item.citations.some((id) =>
                     report.sources.some(
@@ -3807,7 +3844,7 @@ export function createResearchReportModule(
                     ...item,
                     status: "not_selected" as const,
                     reasons: [
-                      "存在可核验项目，本次优先展示需求匹配顺序靠前的10所学校；未展示不等于不适合。",
+                      `存在可核验项目，本次优先展示需求匹配顺序靠前的${schoolPolicy.maximum}所学校；未展示不等于不适合。`,
                     ],
                   };
                 return item;
@@ -3839,7 +3876,7 @@ export function createResearchReportModule(
               ).length;
               if (regions.length && !preferredCitySchoolCount) {
                 shortfallReasons.push(
-                  `你的意向城市为${regions.join("、")}，本次尚未形成可核验符合意向城市的学校专业建议；已保留其他可核对候选。城市未知不会当作符合偏好，达到5校数量也不代表城市覆盖完成。`,
+                  `你的意向城市为${regions.join("、")}，本次尚未形成可核验符合意向城市的学校专业建议；已保留其他可核对候选。城市未知不会当作符合偏好，达到学校数量目标也不代表城市覆盖完成。`,
                 );
                 shortfallReasons.push(
                   `${cityRecoveryReads ? `本次为意向城市候选追加${cityRecoveryReads}次官网读取尝试` : "本次已优先检索意向城市，但没有取得足够的可核验城市证据"}；本次城市资料或适合建议覆盖仍有缺口，不代表${regions.join("、")}没有适合你的学校。`,
@@ -3847,7 +3884,7 @@ export function createResearchReportModule(
               }
               if (schoolCount < targetSchools) {
                 shortfallReasons.push(
-                  `本次形成 ${schoolCount} 所不同学校的有据建议，尚未达到${prefilter ? B.finalSchools : "5–10"}所的目标。已执行或复用 ${found.requestCount} 项检索、尝试读取 ${scheduled.statistics.reads} 项官网资料；搜索摘要和未通过学校专业核对的项目不计入推荐。`,
+                  `本次形成 ${schoolCount} 所不同学校的有据建议，尚未达到${schoolRange}所的目标。已执行或复用 ${found.requestCount} 项检索、尝试读取 ${scheduled.statistics.reads} 项官网资料；搜索摘要和未通过学校专业核对的项目不计入推荐。`,
                 );
                 if (found.stoppedReason)
                   shortfallReasons.push(researchReason(found.stoppedReason));
@@ -3863,7 +3900,7 @@ export function createResearchReportModule(
                 );
               report.coverage = {
                 targetMin: targetSchools,
-                targetMax: B.finalSchools,
+                targetMax: schoolPolicy.maximum,
                 schoolCount,
                 preferredCount,
                 alternativeCount,
@@ -3975,6 +4012,7 @@ export function createResearchReportModule(
           throw error;
         const report = checkpoint.report;
         const fallback: ResearchReport = report ?? {
+          schoolPolicy,
           schemaVersion: 1,
           reportVersion: promptVersion,
           status: "blocked",
@@ -3985,7 +4023,7 @@ export function createResearchReportModule(
           facts: [],
           recommendations: [],
           sources: [],
-          limitations: [...baseLimitations],
+          limitations: [...reportLimitations],
           model,
           searched: false,
         };
@@ -4010,6 +4048,7 @@ export function createResearchReportModule(
             disciplines,
             fallback.sources,
             String(input.run.inputSnapshot.profile.year),
+            schoolPolicy.maximum,
           );
         }
         if (fallback.prefilter) {
@@ -4022,8 +4061,8 @@ export function createResearchReportModule(
             fallback.recommendations.map((item) => item.institutionName),
           ).size;
           fallback.coverage = {
-            targetMin: B.finalSchools,
-            targetMax: B.finalSchools,
+            targetMin: schoolPolicy.minimum,
+            targetMax: schoolPolicy.maximum,
             schoolCount: count,
             preferredCount: fallback.recommendations.filter(
               (item) => item.tier === "preferred",
@@ -4032,9 +4071,9 @@ export function createResearchReportModule(
               (item) => item.tier === "alternative",
             ).length,
             shortfallReasons:
-              count < B.finalSchools
+              count < schoolPolicy.minimum
                 ? [
-                    `研究达到总时限，保留${count}所有据建议，尚未达到${B.finalSchools}所；可从保存的筛选和证据断点续跑。`,
+                    `研究达到总时限，保留${count}所有据建议，尚未达到${schoolRange}所；可从保存的筛选和证据断点续跑。`,
                   ]
                 : [],
           };

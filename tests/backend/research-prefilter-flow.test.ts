@@ -57,13 +57,13 @@ test("national discovery links cannot consume the main read budget across many s
   assert.equal(new Set(f.readDomains).size, B.discoveryReads);
 });
 
-test("two-stage flow persists local scores before any paid call, reads only selected schools and continues collecting after ten", async () => {
+test("two-stage flow persists local scores before any paid call, reads only selected schools and continues collecting after five", async () => {
   const f = prefilterFixture();
   const complete = f.config.adapter!.complete;
   f.config.adapter = {
     async complete(messages, options) {
       if (!options?.thinking) return complete(messages, options);
-      assert.ok(messages[0].content.includes("目标为10所不同学校"));
+      assert.ok(messages[0].content.includes("目标为4–5所不同学校"));
       const sources = JSON.parse(messages[1].content).sources as {
         id: string;
       }[];
@@ -105,9 +105,9 @@ test("two-stage flow persists local scores before any paid call, reads only sele
   });
   assert.equal(first, false);
   assert.equal(report.prefilter!.selected.length, 179);
-  assert.equal(report.recommendations.length, 10);
-  assert.equal(report.coverage!.targetMin, 10);
-  assert.equal(report.coverage!.targetMax, 10);
+  assert.equal(report.recommendations.length, 5);
+  assert.equal(report.coverage!.targetMin, 4);
+  assert.equal(report.coverage!.targetMax, 5);
   assert.ok(
     report.coverage!.shortfallReasons.every((s) => !s.includes("尚未达到")),
   );
@@ -142,7 +142,7 @@ test("two-stage flow persists local scores before any paid call, reads only sele
   );
   assert.match(researchReportMarkdown(report, f.run, false), /筛选依据/);
 });
-test("fewer than ten grounded schools remains partial with explicit shortfall and unchanged budgets", async () => {
+test("fewer than four grounded schools remains partial with explicit shortfall and unchanged budgets", async () => {
   const f = prefilterFixture({ available: 3 });
   const report = await f.create().generate({
     strategy: "two-stage",
@@ -151,7 +151,7 @@ test("fewer than ten grounded schools remains partial with explicit shortfall an
   });
   assert.equal(report.recommendations.length, 3);
   assert.equal(report.status, "partial");
-  assert.ok(report.coverage!.shortfallReasons.some((s) => s.includes("10所")));
+  assert.ok(report.coverage!.shortfallReasons.some((s) => s.includes("4–5所")));
   assert.ok(f.counts.searches <= B.searches && f.counts.reads <= B.reads);
 });
 
@@ -172,7 +172,7 @@ test("all schools retain collection opportunities even when basic fields are com
     run: partial.run,
   });
   // Discovery initially exposes eight schools; the larger targeted budget
-  // recovers the remaining four catalogues and fills the ten-school display.
+  // recovers the remaining four catalogues and fills the five-school display.
   assert.equal(full.recommendations.length, B.finalSchools);
   assert.ok(
     full.recommendations.every((r) => r.tuition && r.location && r.exams),
@@ -185,7 +185,7 @@ test("all schools retain collection opportunities even when basic fields are com
       complete.questions.some((q) => q.includes(school.institutionName)),
     );
 });
-test("zero evidence still exposes the saved prefilter and explains the ten-school shortfall without a model call", async () => {
+test("zero evidence still exposes the saved prefilter and explains the four-school shortfall without a model call", async () => {
   const f = prefilterFixture({ available: 0 });
   const report = await f.create().generate({
     strategy: "two-stage",
@@ -194,7 +194,7 @@ test("zero evidence still exposes the saved prefilter and explains the ten-schoo
   });
   assert.equal(report.recommendations.length, 0);
   assert.ok(report.prefilter);
-  assert.equal(report.coverage!.targetMin, 10);
+  assert.equal(report.coverage!.targetMin, 4);
   assert.ok(report.coverage!.shortfallReasons.length);
   assert.equal(f.counts.models, 1);
 });
@@ -208,7 +208,7 @@ test("national mode is not treated as an unmatched city in the final report", as
   });
   assert.deepEqual(report.prefilter!.cities, []);
   assert.equal(report.status, "partial");
-  assert.equal(report.recommendations.length, 10);
+  assert.equal(report.recommendations.length, 5);
   assert.equal(report.coverage!.preferredCities, undefined);
   assert.ok(
     report.recommendations.every((r) =>
@@ -245,7 +245,7 @@ test("retry reuses exact shortlist and evidence despite changed local facts, wit
   });
   f.library.queryFacts = original;
   assert.deepEqual(report.prefilter, first.prefilter);
-  assert.equal(report.recommendations.length, 10);
+  assert.equal(report.recommendations.length, 5);
   assert.equal(f.counts.searches, before.searches);
   assert.equal(f.counts.reads, before.reads);
   assert.equal(report.usage!.searches.paid, 0);
@@ -276,16 +276,21 @@ for (const useFlash of [true, false])
       useFlash ? 1 : 2,
     );
     assert.ok(report.prefilter);
-    assert.equal(report.recommendations.length, 8);
+    assert.equal(report.recommendations.length, 5);
     assert.equal(report.usage!.searches.paid, 2);
-    assert.equal(report.coverage!.targetMin, 10);
+    assert.equal(report.coverage!.targetMin, 4);
     assert.ok(
-      report.coverage!.shortfallReasons.some((s) => s.includes("尚未达到10所")),
+      !report.coverage!.shortfallReasons.some((s) =>
+        s.includes("尚未达到4–5所"),
+      ),
     );
     assert.ok(f.checkpoint().prefilter);
     assert.notEqual(f.checkpoint().evidenceReady, true);
     f.config.reader = reader;
-    f.config.researchTotalTimeoutMs = 10000;
+    // The resumed success path uses the production default. Its assertion is
+    // complete budget accounting, not a ten-second CPU benchmark under load.
+    // The first run above still exercises the explicit nine-second deadline.
+    delete f.config.researchTotalTimeoutMs;
     const resumed = await f.create().generate({
       strategy: "two-stage",
       subjectId: f.run.subjectId,
@@ -295,7 +300,7 @@ for (const useFlash of [true, false])
       previousReport: report,
       onCheckpoint: f.save,
     });
-    assert.equal(resumed.recommendations.length, 10);
+    assert.equal(resumed.recommendations.length, 5);
     assert.equal(f.counts.reads, 12);
     assert.equal(f.counts.searches, B.searches);
     assert.equal(resumed.usage!.searches.paid, B.searches - 1);

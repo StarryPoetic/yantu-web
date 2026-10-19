@@ -3,11 +3,13 @@ import type { ModelRuntime } from "./index.ts";
 import type { WebAnswerResult, WebReadResult } from "./web.ts";
 import type { ResearchReport } from "./research.ts";
 import type { ResearchPrefilter } from "../../shared/research-prefilter.ts";
+import type { ResearchSchoolPolicy } from "../../shared/research-policy.ts";
 
 /** Owned job data, never a cross-account cache or part of the public job response. */
 export interface ResearchCheckpoint {
   version: 1;
   contextHash: string;
+  schoolPolicy?: ResearchSchoolPolicy;
   models: Record<string, unknown>;
   searches: Record<string, WebAnswerResult>;
   pages: Record<string, WebReadResult>;

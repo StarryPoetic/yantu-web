@@ -3,7 +3,10 @@ import { useResearch } from "./ResearchContext";
 import { Download, RefreshCw, Sparkles } from "lucide-react";
 import type { GuidanceRun } from "../../server/disciplines/types";
 import { researchReason } from "../../shared/research-status";
-import { RESEARCH_TARGET_SCHOOLS } from "../../shared/research-policy";
+import {
+  RESEARCH_SCHOOL_POLICY,
+  researchSchoolRange,
+} from "../../shared/research-policy";
 import { ErrorNotice } from "./ui";
 import { ResearchReportView } from "./ResearchReportView";
 import { ResearchProgress, researchStageName } from "./ResearchProgress";
@@ -98,7 +101,7 @@ export function ResearchPanel({
       {!report && !failed && (
         <p>
           结合你的本科背景、跨专业意愿、学习目标和现实条件，目标比较{" "}
-          {RESEARCH_TARGET_SCHOOLS}{" "}
+          {researchSchoolRange(RESEARCH_SCHOOL_POLICY)}{" "}
           所不同学校及对应专业，说明匹配理由、预算与城市差异、准备成本。
         </p>
       )}
