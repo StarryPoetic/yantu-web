@@ -239,13 +239,13 @@ test("a short report gets one shared-runtime supplement, preserves accepted card
   );
 });
 
-test("the ten-school cap retains old accepted cards even when all new suggestions have a higher tier", async () => {
+test("the five-school cap retains old accepted cards even when all new suggestions have a higher tier", async () => {
   const setupResult = setup({
     count: 11,
     initial: [0],
     supplement: (messages) =>
       body(
-        Array.from({ length: 10 }, (_, index) => ({
+        Array.from({ length: 5 }, (_, index) => ({
           ...card(index + 1, messages),
           suitabilityTier: "preferred",
         })),
@@ -255,13 +255,13 @@ test("the ten-school cap retains old accepted cards even when all new suggestion
     subjectId: setupResult.run.subjectId,
     run: setupResult.run,
   });
-  assert.equal(report.recommendations.length, 10);
+  assert.equal(report.recommendations.length, 5);
   assert.ok(
     report.recommendations.some((item) => item.institutionName === schools[0]),
   );
   assert.equal(
     new Set(report.recommendations.map((item) => item.institutionName)).size,
-    10,
+    5,
   );
   assert.equal(
     setupResult.requests.filter((request) => request.supplemental).length,
@@ -334,12 +334,28 @@ test("coded official programme inventory covers model omissions without needing 
   const setupResult = setup({ coded: true });
   const input = { subjectId: setupResult.run.subjectId, run: setupResult.run };
   const report = await setupResult.module.generate(input);
-  assert.equal(report.recommendations.length, 6);
-  assert.equal(report.coverage?.schoolCount, 6);
-  assert.deepEqual(
-    new Set(report.recommendations.map((item) => item.institutionName)),
-    new Set(schools.slice(0, 6)),
+  assert.equal(report.recommendations.length, 5);
+  assert.equal(report.coverage?.schoolCount, 5);
+  const selected = new Set(
+    report.recommendations.map((item) => item.institutionName),
   );
+  assert.equal(selected.size, 5);
+  assert.ok(
+    [...selected].every((school) => schools.slice(0, 6).includes(school)),
+  );
+  assert.ok(
+    [...selected].filter((school) => !schools.slice(0, 2).includes(school))
+      .length >= 3,
+  );
+  const modelSources = JSON.parse(
+    setupResult.requests[1].messages[1].content,
+  ).sources;
+  for (const school of schools.slice(0, 6))
+    assert.ok(
+      modelSources.some((source: { excerpt: string }) =>
+        source.excerpt.includes(school),
+      ),
+    );
   assert.equal(
     setupResult.requests.filter((request) => request.supplemental).length,
     0,

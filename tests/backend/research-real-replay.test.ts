@@ -316,9 +316,24 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
       .filter((x) => x !== "cutoff" && x !== "admissionScore")
       .map((x) => `${school.schoolName}:${x}:`),
   ]);
+  // Keep the original six-school audit intact; this invocation generates a
+  // current five-school report rather than resuming the historical report.
+  assert.equal(audit.length, 81);
+  assert.equal(
+    new Set(audit.map((row: { school: string }) => row.school)).size,
+    6,
+  );
+  assert.equal(result.report.schoolPolicy?.version, "schools-4-to-5-v1");
+  assert.equal(coverage.schools.length, 5);
+  const currentSchools = new Set(
+    coverage.schools.map((school) => school.schoolName),
+  );
+  const currentAudit = audit.filter((row: { school: string }) =>
+    currentSchools.has(row.school),
+  );
   assert.deepEqual(
     new Set(
-      audit.map(
+      currentAudit.map(
         (x: { school: string; field: string; year?: number }) =>
           `${x.school}:${x.field}:${x.year ?? ""}`,
       ),
@@ -350,7 +365,10 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
     ),
   );
   assert.ok(combined.pages.filter((p) => p.source).length >= 210);
-  assert.ok(coverage.confirmed >= 8);
+  assert.equal(
+    coverage.confirmed,
+    coverage.schools.length * 15 - currentAudit.length,
+  );
   for (const row of audit) {
     assert.ok(row.evidence.length > 20);
     assert.ok(row.reviewedUrls.length > 0);

@@ -124,7 +124,7 @@ test("full collection flow retains three years and all five categories, with com
     strategy: "two-stage",
     targetScore: { total: 350, maximum: 500 },
   });
-  assert.equal(report.recommendations.length, 10);
+  assert.equal(report.recommendations.length, 5);
   assert.ok(
     report.priorityFacts!.every((f) =>
       report.sources
@@ -132,9 +132,9 @@ test("full collection flow retains three years and all five categories, with com
         ?.excerpt.includes(f.quote),
     ),
   );
-  assert.equal(report.priorityCoverage!.groups.scores.confirmed, 10);
+  assert.equal(report.priorityCoverage!.groups.scores.confirmed, 5);
   for (const category of Object.values(report.priorityCoverage!.groups))
-    assert.equal(category.confirmed, 10);
+    assert.equal(category.confirmed, 5);
   assert.equal(report.priorityCoverage!.pending, 0);
   assert.equal(report.usage!.model.byModel!["deepseek-v4-pro"].calls, 1);
   assert.ok(report.usage!.model.byModel!["deepseek-flash"].calls >= 14);

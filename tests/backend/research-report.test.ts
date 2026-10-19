@@ -390,16 +390,13 @@ test("research reads original HTTP search candidates with redirect opt-in and re
   assert.equal(pageEvents[0].options.maxRedirects, 3);
 });
 
-test("eight schools receive rule tiers independently of model wording while profile edits recompute budget checks", async () => {
+test("five schools receive rule tiers independently of model wording while profile edits recompute budget checks", async () => {
   const schools = [
     "甲研究大学",
     "乙研究大学",
     "丙研究大学",
     "丁研究大学",
     "戊研究大学",
-    "己研究大学",
-    "庚研究大学",
-    "辛研究大学",
   ];
   const feeQuote = (school: string, i: number) =>
     `${school}2027年硕士招生：法学理论（全日制）学费${i === 0 || i >= 3 ? 20000 : 8000}元/年。`;
@@ -477,10 +474,10 @@ test("eight schools receive rule tiers independently of model wording while prof
   input.run.inputSnapshot.profile.cities = [];
   const first = await module.generate(input);
   assert.equal(first.status, "completed");
-  assert.equal(first.recommendations.length, 8);
-  assert.equal(first.coverage?.schoolCount, 8);
+  assert.equal(first.recommendations.length, 5);
+  assert.equal(first.coverage?.schoolCount, 5);
   assert.equal(first.coverage?.preferredCount, 0);
-  assert.equal(first.coverage?.alternativeCount, 8);
+  assert.equal(first.coverage?.alternativeCount, 5);
   const expensive = first.recommendations.find(
     (item) => item.institutionName === schools[0],
   )!;
@@ -507,8 +504,8 @@ test("eight schools receive rule tiers independently of model wording while prof
   updated.inputSnapshot.profile.budget = "2–5 万元";
   updated.inputSnapshot.profile.notes = "";
   const after = await module.generate({ ...input, run: updated });
-  assert.equal(after.recommendations.length, 8);
-  assert.equal(after.coverage?.alternativeCount, 8);
+  assert.equal(after.recommendations.length, 5);
+  assert.equal(after.coverage?.alternativeCount, 5);
   assert.ok(
     after.recommendations.every(
       (item) =>
@@ -2594,7 +2591,7 @@ test("coded inventory recovers a city candidate omitted by the model without a s
         /意向城市为杭州.*尚未形成可核验/,
       );
     } else {
-      assert.equal(report.recommendations.length, 6);
+      assert.equal(report.recommendations.length, 5);
       assert.equal(report.recommendations[0].institutionName, "杭州研究大学");
       assert.equal(report.coverage?.preferredCitySchoolCount, 1);
       assert.equal(report.status, "completed");
@@ -2639,18 +2636,18 @@ test("a full outside model list admits a verified city candidate from the invent
         const sources = JSON.parse(messages[1].content).sources;
         const body = reportBody();
         body.facts = [];
-        body.summary = `可以进一步比较${schools.slice(0, 10).join("、")}，年度条件仍需核验。`;
-        body.recommendations = (
-          extra ? [10] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        ).map((index) => ({
-          ...structuredClone(reportBody().recommendations[0]),
-          institutionName: schools[index],
-          citations: [
-            sources.find((source: { title: string }) =>
-              source.title.startsWith(schools[index]),
-            ).id,
-          ],
-        }));
+        body.summary = `可以进一步比较${schools.slice(0, 5).join("、")}，年度条件仍需核验。`;
+        body.recommendations = (extra ? [10] : [0, 1, 2, 3, 4]).map(
+          (index) => ({
+            ...structuredClone(reportBody().recommendations[0]),
+            institutionName: schools[index],
+            citations: [
+              sources.find((source: { title: string }) =>
+                source.title.startsWith(schools[index]),
+              ).id,
+            ],
+          }),
+        );
         return {
           content: JSON.stringify(body),
           inputTokens: 100,
@@ -2664,17 +2661,18 @@ test("a full outside model list admits a verified city candidate from the invent
   run.inputSnapshot.profile.cities = ["杭州"];
   const report = await module.generate({ subjectId: "student", run });
   assert.equal(calls.length, 1);
-  assert.equal(report.recommendations.length, 10);
+  assert.equal(report.recommendations.length, 5);
   assert.equal(report.recommendations[0].institutionName, "杭州研究大学");
   assert.equal(report.coverage?.preferredCitySchoolCount, 1);
-  const omitted = schools
-    .slice(0, 10)
-    .sort((a, b) => a.localeCompare(b, "zh-CN"))
-    .at(-1)!;
-  assert.ok(
-    !report.recommendations.some((item) => item.institutionName === omitted),
+  const selected = new Set(
+    report.recommendations.map((item) => item.institutionName),
   );
-  assert.ok(!report.summary.includes(omitted));
+  const omitted = schools.slice(0, 5).filter((school) => !selected.has(school));
+  assert.ok(
+    omitted.length > 0,
+    "a preferred-city school replaces an outside card within the cap",
+  );
+  for (const school of omitted) assert.ok(!report.summary.includes(school));
   assert.match(report.summary, /杭州研究大学/);
 });
 

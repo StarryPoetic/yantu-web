@@ -136,26 +136,28 @@ export function resilienceFixture(
           : {
               summary: "根据公开目录比较学校，年度资格分别核验。",
               facts: [],
-              recommendations: schools.flatMap(([name]) => {
-                const source = sources.find((source: { excerpt: string }) =>
-                  source.excerpt.includes(name),
-                );
-                return source
-                  ? [
-                      {
-                        institutionName: name,
-                        programName: "机械工程",
-                        disciplineCode: "0802",
-                        rationale: "结合已学课程进行准备，这是推断。",
-                        fitReasons,
-                        tradeoffs: ["需核对培养方案并补足专业基础。"],
-                        preparation: ["核对初试范围。"],
-                        uncertainties: ["目标年度资格待核验。"],
-                        citations: [source.id],
-                      },
-                    ]
-                  : [];
-              }),
+              recommendations: schools
+                .flatMap(([name]) => {
+                  const source = sources.find((source: { excerpt: string }) =>
+                    source.excerpt.includes(name),
+                  );
+                  return source
+                    ? [
+                        {
+                          institutionName: name,
+                          programName: "机械工程",
+                          disciplineCode: "0802",
+                          rationale: "结合已学课程进行准备，这是推断。",
+                          fitReasons,
+                          tradeoffs: ["需核对培养方案并补足专业基础。"],
+                          preparation: ["核对初试范围。"],
+                          uncertainties: ["目标年度资格待核验。"],
+                          citations: [source.id],
+                        },
+                      ]
+                    : [];
+                })
+                .slice(0, 5),
               limitations: ["模拟数据仅用于故障演练。"],
             };
         return {
