@@ -1,6 +1,6 @@
 # 模型解释、自由对话与受控检索
 
-任务二新API流程先运行 `research-prefilter.ts` 本地有据粗筛（25校、多城市每城10校），再由 `research-refine.ts` 按分数顺序只调查入选学校，最终目标10校。达到10所有据候选或单校目录/科目/学费/城市资料充分时提前停止，仍共享24搜索/60读取。`checkpoint.prefilter`保存完整评分与剔除原因，续跑复用；缺少粗筛快照的旧证据续跑及历史离线回放保留下文原5–10校流程。当前规则、真实数据缺口和零费用对比以[实施说明13.16](../../docs/实施说明.md#1316-任务二两阶段收窄)为准，覆盖下文相冲突的新报告调查顺序和数量描述。
+任务二新API流程先运行 `research-prefilter.ts` 本地有据粗筛（最多240校、多城市每城15校），再由 `research-refine.ts` 按稳定评分和受控并发调查入选学校。新报告使用 `schools-4-to-5-v1`：最少4所、目标5所、最多5所；达标数量不替代资料充分性、城市和来源验收。`checkpoint.prefilter`与数量策略保存后续跑复用，旧报告/断点保持各自快照。历史25/10粗筛和最终10校对比见[实施说明13.16](../../docs/实施说明.md#1316-任务二两阶段收窄)，现行预算见本文“当前统一预算与诊断”。
 
 模型能力集中在本目录，密钥和调用配置只在服务端。题库在 `knowledge/questions/`，学科目录在 `knowledge/disciplines/`，招生资料在 `knowledge/catalog/`，确定性评分和专业结论分别由 `server/assessment/`、`server/disciplines/` 负责。模型输出不会自动发布到知识库，也不能改变评分、报考资格或用户确认的专业。
 
@@ -14,7 +14,7 @@
 
 本轮历史策略验证使用模拟网络／模型集成、年度与费用／校区回归及已有公开官网资料的离线复核；本文末的历史提供商连通记录不代表新策略已完成真实收费服务或全国院校三年资料的端到端验收。
 
-全流程最多24次搜索、60次官网读取。初期18次搜索、40次普通读取；意向城市恢复最多借用8次读取，实际专业和校区政策缺少地理证据时最多另补读2次、每校1次。地理链接可从任何学校已读官网发现，网址表不限制学校范围。其后费用阶段使用剩余额度、最多6次搜索和剩余读取槽位。初期、地理及费用阶段累计每校最多8次；80条搜索候选与最多24个同校HTML目录、PDF、工作簿新链接、最多3层发现。成功公开资料复用15分钟，失败不缓存，结构化事实优先，实际正文进入模型最多40项及40000输入字符。
+现行预算以 `server/explanation/research-budget.ts` 为准：每份报告最多120次搜索、180次正文读取、每校累计最多30次读取，240条搜索候选、最多72条同校PDF附件候选；初期最多54次搜索、120次读取，费用最多18次搜索，城市恢复最多追加24次读取。所有阶段共享总额度，阶段上限和预留不能相加成额外额度，校数减少不降低资料充分性要求。 成功公开资料15分钟复用，失败不缓存，正文与事实均经过身份、年度和项目范围校验；不同阶段的输入裁剪不改变事实验收标准。
 
 XLS/XLSX显式启用`allowSpreadsheet`，同样遵守研究HTTP/同校有限跳转、公网DNS、固定IP与HTTPS的TLS校验。输入最多5MB，ZIP实际展开20MB、单项5MB、2000项、40表、4000行、64列、单元格8000字符及总文本200000字符；隐藏子进程5秒和128MB旧生代限制，仅必要环境，不执行公式、宏或外部链接。使用官方发行SheetJS 0.20.3。只有文件声明的单列纵向学院合并单元格可保留真实anchor范围值并标注来源，普通空格不自动继承。附件保留真实父页与链接，正文分别引用；子文年度与学校身份矛盾时不继承。培养城市须专业学院、同一招生年度校区政策和每个可能校区地址的证据链；历史链保留 `location.year` 作参考，不跨年拼接目录与政策，不能套用招生办地址或特殊人群政策，目标年实际安排仍须核对。
 
@@ -92,13 +92,13 @@ XLS/XLSX显式启用`allowSpreadsheet`，同样遵守研究HTTP/同校有限跳�
 
 模型先收到全国184条基础目录及完整任务画像：本科专业与院校、兴趣、职业目标、城市、预算、跨专业意愿、学位偏好、七项优先级、可投入时间、课程与备考情况，以及适用公共课诊断统计、薄弱点和局限。`notes` 自由补充最多前3000字符；姓名、原始题库和未交卷答案不发送。本科院校只作用户自述背景，不推断学校层次或录取率。方向规划不能被本科专业或旧结论高亮项锁定，尊重明确拒绝与未知项。公开检索词只含年度、规划后的公开专业方向、城市偏好及可选目标学校，不含姓名、本科院校、原始补充或完整画像。
 
-研究分两个模型阶段：规划使用所选模型非思考模式（默认Pro，4096输出token/30秒），最终以Pro/high分析（默认16384输出token、45秒空闲超时/默认300秒总上限，含思考）。规划保留184目录、当前profileEvidence及结构化偏好，长notes/courses按需裁剪使输入不超过15000字符。模型阶段、修复与临时HTTP重试均使用同一runtime；搜索以sourcesOnly取证据，不额外调用摘录模型。官网读取权限与SSRF限制不变，普通HTML/文本仍限8秒、512000字节，PDF另有受控限制。
+研究包含规划、资料收集/摘要和最终分析：规划默认Flash非思考模式（4096输出token/30秒），资料收集默认Flash非思考2048输出token/30秒，最终以Pro/high分析（默认16384输出token、45秒空闲超时/默认300秒总上限，含思考）。规划保留184目录、当前profileEvidence及结构化偏好，长notes/courses按需裁剪使输入不超过15000字符。模型阶段、修复与临时HTTP重试均使用同一runtime；搜索以sourcesOnly取证据，收集器可对正文另作受控结构化提取与摘要；这些调用同样计入usage和共享模型额度。官网读取权限与SSRF限制不变，普通HTML/文本仍限8秒、512000字节，PDF另有受控限制。
 
 研究内部可显式传 `options.upgradeAcademicHttp:true`，仅在 `sourcesOnly:true` 时保留实际搜索结果中的 `http://*.edu.cn` 原始地址作为读取候选；该历史选项名现在表示允许保留教育网HTTP链接。`WebSource.retrievalNote` 记录待核验线索说明。普通聊天与用户直接提供的URL不启用，客户端不能传此内部选项；凭据、显式端口（包括80）、IP、非教育网域名和歧义URL拒绝。研究会按原始HTTP地址读取，允许同校升级到HTTPS；搜索摘要仍不是官网正文。明文成功读取保存 `transport:"http"`，并展示“明文传输（HTTP）读取，内容可能被网络中间环节篡改，仅作待核验线索”。原始url继续保留，有跳转另存finalUrl；资料库复用与报告导出保留传输方式及提示。
 
-当前预算与并发读取、模型输入、额度计算见本文件“阶段5统一预算与诊断”。搜索仍跨方向轮流发现学校，每方向4–6个 searchSchools 仅为检索线索，按校名＋专业＋硕士检索，并从已观察主机提取最多两个具体学校根域。成功公开结果15分钟复用，失败不缓存。
+当前预算与并发读取、模型输入、额度计算见本文件“当前统一预算与诊断”。搜索仍跨方向轮流发现学校，每方向4–6个 searchSchools 仅为检索线索，按校名＋专业＋硕士检索，并从已观察主机提取最多两个具体学校根域。成功公开结果15分钟复用，失败不缓存。
 
-当前报告以5–10所不同学校为目标，每校保留一个主推荐专业，同校其他专业与学位路线放入 `programAlternatives`。`demand-match-v1` 按完整画像分为 `preferred`（第一级·优先推荐）、`alternative`（第二级·适合备选）和 `exploratory`（第三级·探索选择）：方向关联、培养路线及已核验城市决定优先比较，服务端生成 `tier/tierReasons`，模型的 `suitabilityTier/suitabilityReason` 不能改变服务端层级。费用只是一个因素，同费用学校可以不同层，较贵但其他方面高度契合也可优先，须明确费用缺口。预算/城市通过 `constraintChecks` 标明 `match/mismatch/unknown`，历史比较注明年度和目标年待核验原因，未知不能当成满足；有城市偏好时，城市未知不满足优先比较条件。优先推荐不等于录取率、录取保证或报考合格。明确不跨专业、已排除方向、停招及目标年度资格硬冲突不能通过备选层放宽。不足5所时保留真实卡片并返回partial，`coverage` 展示已覆盖学校数、分层数量及具体缺口，不宣称全国无校、不按同校多专业凑数量。
+新报告以4–5所不同学校为目标，每校保留一个主推荐专业，同校其他专业与学位路线放入 `programAlternatives`。`demand-match-v1` 按完整画像分为 `preferred`（第一级·优先推荐）、`alternative`（第二级·适合备选）和 `exploratory`（第三级·探索选择）：方向关联、培养路线及已核验城市决定优先比较，服务端生成 `tier/tierReasons`，模型的 `suitabilityTier/suitabilityReason` 不能改变服务端层级。费用只是一个因素，同费用学校可以不同层，较贵但其他方面高度契合也可优先，须明确费用缺口。预算/城市通过 `constraintChecks` 标明 `match/mismatch/unknown`，历史比较注明年度和目标年待核验原因，未知不能当成满足；有城市偏好时，城市未知不满足优先比较条件。优先推荐不等于录取率、录取保证或报考合格。明确不跨专业、已排除方向、停招及目标年度资格硬冲突不能通过备选层放宽。新报告不足4所时保留真实卡片并返回partial，`coverage` 展示已覆盖学校数、分层数量及具体缺口，不宣称全国无校、不按同校多专业凑数量。
 
 学费只通过 `tuition` 结构化证据表达：amount、CNY、period（academic_year/program/semester/credit）、year、studyMode（full_time/part_time/unspecified）、连续原文quote和sourceId。必须来自该校所引官网，绑定具体项目、明确年度、学习形式、计费单位及唯一费用金额；学校一般收费、别的专业或非全日制费用不能套用。历史费用在 `academic_year` 且学习方式明确时可与年度预算作带年份的参考比较，原因同时保留原年度与目标年度收费待核对提示，不称为本年价格；目标年费用或冲突优先核验，不能借历史低价避开冲突。全程/学期/学分费用或未知学习形式不能直接与用户年度预算比较，不按学制擅自年化；住宿和生活总成本仍待核验。城市需所引官网的实际培养校区地址原文 `location`，或同年度专业—学院—政策—校区地理证据链；历史链注明 `year` 和目标年待核对原因，不凭学校名称猜所在地，也不跨年拼接培养政策。条件检查由 `research-constraints.ts` 负责，模型不能以自报结果代替constraintChecks；分层由固定需求规则产生，不由单一费用检查决定。
 
@@ -108,7 +108,7 @@ XLS/XLSX显式启用`allowSpreadsheet`，同样遵守研究HTTP/同校有限跳�
 
 意向城市单独验收：单个城市按方向循环使用，不因方向序号丢失；学校域名须来自实际学校主体标识，不能把其他学校页面中提及的导师母校当域名归属。同校不同专业保留检索机会，读页优先补齐本地项目。模型省略location时，仅从引用官网的唯一同校地址或明确同校同项目培养地址恢复，不用摘要、合作单位地址、多校区冲突或学校名称猜测城市。正向城市声明必须与核验结果一致，不能把上海说成符合杭州偏好，也不能擅自认定用户接受长三角通勤。同一综合推荐层级内，已核验符合意向城市的学校优先；不降低资格、专业关联或证据门槛凑本地学校。
 
-`coverage` 可增加 `preferredCities`、`preferredCitySchoolCount`、`unknownCitySchoolCount`；城市未知不计入匹配。已有5校但城市匹配为0，仍为partial并显示意向城市缺口；无其他校验失败时使用 `PREFERRED_CITY_COVERAGE_INCOMPLETE`，其他失败码保留且同时展示城市缺口。有实际本地硕士项目与地址线索时，可与原数量补充共用最多一次覆盖分析，不增加模型请求上限；保留已有建议，但同校可换成有据本地项目，10校已满时可用首个有据本地候选替换末位外地项，摘要同步更新。未取得城市证据时不会为凑数量虚构校区，也不宣称杭州没有适合的学校。历史报告保留原内容，需重新生成才使用本轮规则。
+`coverage` 可增加 `preferredCities`、`preferredCitySchoolCount`、`unknownCitySchoolCount`；城市未知不计入匹配。已有5校但城市匹配为0，仍为partial并显示意向城市缺口；无其他校验失败时使用 `PREFERRED_CITY_COVERAGE_INCOMPLETE`，其他失败码保留且同时展示城市缺口。有实际本地硕士项目与地址线索时，可与原数量补充共用最多一次覆盖分析，不增加模型请求上限；保留已有建议，但同校可换成有据本地项目，新报告5校已满时可用首个有据本地候选替换末位外地项，摘要同步更新。未取得城市证据时不会为凑数量虚构校区，也不宣称杭州没有适合的学校。历史报告保留原内容，需重新生成才使用本轮规则。
 
 `facts` 只接受引用来源中的连续原文摘录，每条最多300字符；前三年历史资料保留原年份，不升级为目标年事实。新报告保持 `schemaVersion:1`、`reportVersion:profile-research-v7`（兼容旧 `profile-research-v6` 等报告）、`researchDirections[]`（disciplineCode、name、rationale）及 `followUpQuestions[]`，并增加 `referencePolicy`；建议包含 `programName`、全国目录派生 `degreeType`、`fitReasons[]`（profileField、profileValue、reason）、`tradeoffs[]`、`admissionStatus`、可用时的 `referenceBasis` 与逐年科目证据。每项新建议至少包含两个不同真实画像字段的理由，画像值必须对应本次固定输入；学校及具体专业必须有实际学校官网关联依据，专业代码属于规划方向或已读官网发现且当前画像硬约束允许的全国目录方向，不能把任意学校与国家目录类别拼在一起。核心学校身份、具体硕士专业、引用及综合理由必须通过；局部无据条目可移除，但之后仍须至少两个有效且不同的真实画像维度和至少一项有效取舍，否则整项建议剔除。不得为保留数量降低证据要求。匹配理由、准备、取舍和待核验条目按项检查；删除局部无据内容后仍保留合格建议，并标partial说明删减。URL只来自实际来源；无据数字费用、分数、概率和明确资格断言拒绝。来源含URL、标题、摘录、读取时间与层级，保持 `verified:false`；结构检查不等于所有推论正确。
 
@@ -122,7 +122,7 @@ v6规划与最终报告均以字段引用生成匹配理由：模型输出 `prof
 
 规划失败可附带 `validationIssues:[{path,code}]`，仅保存服务端校验器产生的固定字段路径与错误代码，便于区分失败位置；不保存画像值、原始模型回复或内部思考。该诊断归属本人报告，不作为页面匹配理由，也不能据此宣称已完成联网。
 
-24次搜索预算内，首个学校线索无结果时，下一次使用该校的硕士培养方案查询补证，再继续其他学校。来源排序以硕士项目相关性优先：博士生/博士后招生、导师审核、录取通知和普通首页降序，低相关页面不能仅凭新学校域名挤占实际硕士资料；这些页面仍可保留为来源，但不消耗有限的正文读取槽位。
+共享120次搜索预算内，首个学校线索无结果时，下一次使用该校的硕士培养方案查询补证，再继续其他学校。来源排序以硕士项目相关性优先：博士生/博士后招生、导师审核、录取通知和普通首页降序，低相关页面不能仅凭新学校域名挤占实际硕士资料；这些页面仍可保留为来源，但不消耗有限的正文读取槽位。
 
 - `blocked`：模型或搜索未配置、尚无研究方向，或未获得真实联网来源；不会把模板冒充调研报告。
 - `partial`：只有摘要或公共平台资料、没有支持校专业关联的学校官网正文，或者证据不足、模型额度不足、超时及输出校验失败。已有来源可保留，未通过校验的内容不展示；目标年度未知本身不清空有据的条件性建议。
@@ -146,9 +146,9 @@ v6规划与最终报告均以字段引用生成匹配理由：模型输出 `prof
 
 800 是默认值，不是所有调用的统一上限。服务端输出配置须为 1–16384 的整数；输入上限为普通请求 16000、思考请求 40000 个 JSON 字符，非流式响应字节上限为65536，思考流式响应采用下述分层上限。超大响应、非正常结束、未知 token 用量和未经请求的工具调用均拒绝；适配器不自动重试、不在失败时自动换模型、禁止重定向。响应只返回最终正文及总用量，不暴露或保存供应商的隐藏思考内容。模型启用需 `YANTU_MODEL_ENABLED=true` 和服务端 `DEEPSEEK_API_KEY`，不能使用 `VITE_` 环境变量或前端请求体传递密钥。
 
-研究最终分析配置为 `YANTU_RESEARCH_MODEL`（默认 `deepseek-v4-pro`，也支持 `deepseek-flash`）、`YANTU_RESEARCH_EFFORT`（默认 `high`，允许 `low/high/max`）、`YANTU_RESEARCH_TIMEOUT_MS`（总上限默认300000毫秒，允许1–1800000整数，实际不超过整份报告剩余时限）、`YANTU_RESEARCH_MAX_OUTPUT_TOKENS`（默认及上限16384）。规划复用所选模型，固定非思考4096输出token/30秒。应用每账号100000token日额度仍可能因已有消费或重试不足以预留完整流程，应设置可承担预算；不足时返回原因，不跳过规划冒充完成。
+研究最终分析配置为 `YANTU_RESEARCH_MODEL`（默认 `deepseek-v4-pro`，也支持 `deepseek-flash`）、`YANTU_RESEARCH_EFFORT`（默认 `high`，允许 `low/high/max`）、`YANTU_RESEARCH_TIMEOUT_MS`（总上限默认300000毫秒，允许1–1800000整数，实际不超过整份报告剩余时限）、`YANTU_RESEARCH_MAX_OUTPUT_TOKENS`（默认及上限16384）。规划默认Flash，固定非思考4096输出token/30秒。显式模型日额度或已有消费可能不足以预留后续流程，应核对可承担预算；不足时返回原因，不跳过规划冒充完成。
 
-`research-generation.ts` 通过同一 `ModelRuntime` 运行规划与最终报告。每阶段结构、引用或画像校验失败且取得模型正文时最多修复一次；确认收到HTTP 500/502/503/504时，整份报告的规划与最终调用共用最多一次临时重试，退避250毫秒后通过 `beforeRetry` 再查会话、画像版本和取消状态，并以新retry键重新预留同一额度。规划与初次报告每阶段最多3次模型请求；少于5校且已有至少5个学校官网根域和5个校名线索时，最多再用一次同账本分析补充遗漏候选，不修复、不重试，不超过10校且保留已有建议。整份报告最多6次模型请求，预算不足保留已有建议并说明原因；不是保证会调用到上限。适配器自身不重试，不切换模型或供应商。网络错误、超时、认证、余额不足、限流、输出截断和取消不自动重试。校验修复只携带原始画像、目录、证据与最多六条内部字段问题；近上限时去掉无效旧回答，不裁掉原始证据。未知上游用量保留预留额度，超时不等于免费。
+`research-generation.ts` 通过同一 `ModelRuntime` 运行规划与最终报告。每阶段结构、引用或画像校验失败且取得模型正文时最多修复一次；确认收到HTTP 500/502/503/504时，规划与最终调用共享最多一次临时重试，退避250毫秒后通过 `beforeRetry` 再查会话、画像版本和取消状态，并以新retry键预留同一额度。规划与初次报告每阶段最多3次模型请求；需要覆盖补充时遵循该报告保存的数量策略，不超过其最大校数且保留已有建议。旧双阶段分析的“整份报告最多6次”仅描述规划/最终/可选补充分支，不能覆盖当前Flash逐页提取与摘要调用。收集器调用受collectionPages、collectionSummaryCalls和共享账本限制，预算不足保留已有建议并说明原因。网络错误、超时、认证、余额不足、限流、输出截断和取消不自动重试；未知上游用量保留预留额度，超时不等于免费。
 
 错误原因按安全状态分类：400/422为 `PROVIDER_INVALID_REQUEST`，401/403为 `PROVIDER_AUTH_FAILED`，402为 `PROVIDER_BALANCE_INSUFFICIENT`，429为 `RATE_LIMITED`，500/502/503/504为 `PROVIDER_TEMPORARY_UNAVAILABLE`，连接失败/中断为 `PROVIDER_NETWORK_ERROR`，本地超时为 `MODEL_TIMEOUT`，成功HTTP但非法JSON/SSE为 `INVALID_RESPONSE`；响应超限为 `RESPONSE_TOO_LARGE`、非正常结束为 `INCOMPLETE_RESPONSE`、用量缺失或非法为 `UNKNOWN_USAGE`，均明确解释模型输出故障，无需修改画像。未归类HTTP保留 `PROVIDER_UNAVAILABLE`。页面解释基础设施原因，不要求用户重填画像；不读取或展示上游错误正文、认证头和密钥。分类依据见[DeepSeek错误码](https://api-docs.deepseek.com/quick_start/error_codes/)，502/504按临时网关错误处理。
 
@@ -156,7 +156,7 @@ v6规划与最终报告均以字段引用生成匹配理由：模型输出 `prof
 
 研究思考请求使用 `stream:true` 与 `stream_options.include_usage:true`，非思考请求保持非流式JSON。`deepseek.ts` 在服务端增量解析SSE，只累计最终 `delta.content`，不累计、展示或记录 `reasoning_content`；支持字节/中文分片、多行data、CR/LF及独立或随stop返回的用量。必须取得 `[DONE]`、`finish_reason:stop`、匹配模型和完整usage，拒绝工具调用、截断、未知用量及异常结构；完整completion_tokens包含思考。空闲超时为45秒，从请求发出开始计时，每批非空字节（包括推理、心跳和未完整成帧的数据）重置；默认总上限300秒，可通过 `YANTU_RESEARCH_TIMEOUT_MS` 调整为1–1800000毫秒，但实际不超过整份报告剩余时限。持续有数据只延长空闲计时，心跳不延长总截止时间。全部SSE响应（含思考和协议帧）最多8388608字节（8MiB），单事件或未结束行最多65536字节（64KiB），最终content累计最多131072字节（128KiB），心跳不延长截止时间，DONE后取消剩余连接。失败仍保留预留额度，不因网络结局不明自动重试。依据[DeepSeek流式接口](https://api-docs.deepseek.com/api/create-chat-completion/)与[思考模式](https://api-docs.deepseek.com/guides/thinking_mode/)。流式传输可减少长时间静默等待，不保证解决DNS或连接故障。
 
-应用默认每账号每日300000、全站900000模型token，并发分别1和4；直接创建 `ModelRuntime` 时采用同一组默认值。调用前按输入字符和最大输出预留，实际输入及总输出（含思考）结算。研究、解释、咨询和修复共用账本，不能绕过额度；搜索另由共享 `createSearchBudget` 计量，应用默认每账号每日60次、全站300次，发送前计数且失败不退还。环境变量为 `YANTU_MODEL_USER_DAILY_TOKENS`、`YANTU_MODEL_DAILY_TOKENS`、`YANTU_SEARCH_USER_DAILY_REQUESTS`、`YANTU_SEARCH_DAILY_REQUESTS`；搜索次数不等于报告份数。这些数值是应用本地token上限，不是供应商账户余额或充值。账本是单进程内存、重启重置，不构成长久或跨实例账单硬上限。
+默认模型每账号每日4000000、全站12000000 token；默认搜索每账号每日180次、全站900次。显式部署配置经校验后生效，其中正整数搜索日额度低于单报告120次时会对齐到120，0仍禁用；模型日额度不会自动抬高。未读取或修改真实 `.env`。这些是本地控制额度，不是供应商余额或账单硬上限。 研究、解释、咨询、收集和修复使用同一额度；发送前预留，确认的实际输入/输出token用于结算，未知用量不退款。搜索发送前计数，失败不退还。环境变量为 `YANTU_MODEL_USER_DAILY_TOKENS`、`YANTU_MODEL_DAILY_TOKENS`、`YANTU_SEARCH_USER_DAILY_REQUESTS`、`YANTU_SEARCH_DAILY_REQUESTS`。模型普通调用每账号并发1、全局4，研究收集通过受控researchParallel分支；网页读取并发与模型并发分别控制。
 
 缓存带账号、任务、依据或对话内容、提示版本、模型配置与请求选项，最长 24 小时、最多 1000 项。`clearSubject` 清除相关私有缓存并提升清除代次；路由还在异步返回及持久化前核对账号会话和个人数据代次，防止删除、清空或登出前的请求写回旧数据。预算、并发预留与缓存目前位于单进程；重启不会保留日额度计数，多进程部署必须先改为共享事务存储，不能将现有额度声明为跨实例硬性限额。
 
@@ -205,7 +205,7 @@ npx playwright test tests/tutor-chat.spec.ts
 
 [registry.json](../../knowledge/schools/registry.json) 收录458校、31个省级行政区，含全部147所第二轮双一流。server/schools 启动时校验名称、别名、注册域名、省市、URL及核验摘要。按城市、主机及别名查询均返回 discoveryOnly: true；城市匹配区分 main 与 campus_hint，不能把种子或网页可读性当成招生事实。原杭州5校具体招生与地理导航全部保留。
 
-每个意向城市最多12条稳定线索，双一流优先、随后按校名排序；学校级 includeDomains 优先使用种子根域，库外学校沿用真实网页观察。已观察专业来源优先，直接种子导航最多6次，不占用意向城市恢复槽位。初期18次、总24次搜索与24次总读取、初期每校4次及后续每校6次上限不变。
+每个意向城市最多12条稳定线索，双一流优先、随后按校名排序；学校级 includeDomains 优先使用种子根域，库外学校沿用真实网页观察。已观察专业来源优先，直接种子导航最多6次，不占用意向城市恢复槽位。发现、初期、城市与后续补查统一使用当前120次搜索、180次正文读取及每校30次总上限。
 
 城市级校区核验要求该校在种子库中且没有跨城 campusHints，本次读到的学校实际地址全部同城且可识别；仅确认城市，具体校区仍待专业安排。跨城提示、多城市地址和库外学校继续使用专业级证据。带街道门牌的办学地址即使含电话、邮编也保留；不能绑定时展示待确认原文，纯电话／邮编／邮箱继续排除。
 
@@ -217,7 +217,7 @@ npx playwright test tests/tutor-chat.spec.ts
 
 事实按完整项目身份、字段与来源版本保存；不同来源、不同年度都保留，同一来源新读取只替换自己的旧事实。失败不删除已存证据。目标年度、历史、未标年度的复核期限分别为1、30、7天，`queryFacts()` 返回 fresh/stale 与 targetYearApplicable，过期及未标年度不能作为目标年度事实。`coverageStats()` 去重统计全库 `librarySchoolCount/libraryProgramCount`，与本次调查数量独立。
 
-报告按规划方向、意向城市映射的种子学校和 `searchSchools` 先召回原文和事实，保留来源ID与原获取时间，计入 `reusedSourceCount`。命中已绑定目录后使用既有 `research-repair.ts` 按缺口补查，`research-library-first.ts` 只为同项目仍缺的字段保留搜索；新读原文和确定性绑定结果随即入库。复用仍须经过当前画像的推荐校验，不能复用其他人的推荐结论。初期18次搜索、全程24次搜索及24次正文读取预算保持不变。
+报告按规划方向、意向城市映射的种子学校和 `searchSchools` 先召回原文和事实，保留来源ID与原获取时间，计入 `reusedSourceCount`。命中已绑定目录后使用既有 `research-repair.ts` 按缺口补查，`research-library-first.ts` 只为同项目仍缺的字段保留搜索；新读原文和确定性绑定结果随即入库。复用仍须经过当前画像的推荐校验，不能复用其他人的推荐结论。初期最多54次搜索，全程共享120次搜索、180次正文读取和单校30次上限；复用不创造额外预算。
 
 原文表允许 `.edu.cn` HTTP并保存 `transport/finalUrl/redirectChain`；复用保留明文传输标注。以最终地址为同页键，HTTP/HTTPS 去重，别名映射用于跳过未过期页面。种子登记的非edu学校HTTPS原文可入库，非edu明文不接收；报告reader权限不扩大，公网DNS、固定IP、同校最多3跳的限制保持不变。
 
@@ -233,7 +233,112 @@ npx playwright test tests/tutor-chat.spec.ts
 
 预抓取使用按得分排序的优先队列，目标年度、专业目录／招生目录及其 PDF/XLS 附件优先，简章／章程、学费、硕士次之；博士、港澳台、留学生／国际学生、本科、同等学力加试、早于当前年度两年以上及重复导航栏目降权。文章标题优先使用真实发现链接文字，避免全站固定title掩盖文章含义；HTML表格保留同一行各单元格，附件仍由既有解析器读取。默认每校20页、深度≤3，礼貌间隔和DNS／robots限制不变。免费重跑与10条事实抽样见 [阶段4质量冒烟记录](../../docs/阶段4事实质量冒烟.md)。
 
-## 阶段5统一预算与诊断
+## 当前统一预算与诊断（2026-10-20）
+
+现行预算以 `server/explanation/research-budget.ts` 为准：每份报告最多120次搜索、180次正文读取、每校累计最多30次读取，240条搜索候选、最多72条同校PDF附件候选；初期最多54次搜索、120次读取，费用最多18次搜索，城市恢复最多追加24次读取。所有阶段共享总额度，阶段上限和预留不能相加成额外额度，校数减少不降低资料充分性要求。
+
+默认模型每账号每日4000000、全站12000000 token；默认搜索每账号每日180次、全站900次。显式部署配置经校验后生效，其中正整数搜索日额度低于单报告120次时会对齐到120，0仍禁用；模型日额度不会自动抬高。未读取或修改真实 `.env`。这些是本地控制额度，不是供应商余额或账单硬上限。
+
+<!-- current-research-budget:start -->
+
+| 代码配置项 | 当前值 |
+| --- | ---: |
+| `prefilterSchools` | 240 |
+| `prefilterCitySchools` | 15 |
+| `searchDailyRequestsPerUser` | 180 |
+| `searchDailyRequestsGlobal` | 900 |
+| `collectionTargetMs` | 300000 |
+| `finalReserveMs` | 180000 |
+| `collectionPages` | 180 |
+| `collectionSummaryCalls` | 36 |
+| `collectionConcurrency` | 4 |
+| `priorityReadsPerTurn` | 6 |
+| `collectionInputChars` | 12000 |
+| `collectionOutputTokens` | 2048 |
+| `defaultResearchTotalTimeoutMs` | 600000 |
+| `finalSchools` | 5 |
+| `reads` | 180 |
+| `schoolReads` | 30 |
+| `schoolDiscoveryReads` | 1 |
+| `discoveryReads` | 8 |
+| `platformReads` | 4 |
+| `concurrency` | 12 |
+| `initialSearchConcurrency` | 1 |
+| `initialReads` | 120 |
+| `cityReads` | 24 |
+| `geographyReads` | 2 |
+| `searches` | 120 |
+| `prioritySearchReserve` | 96 |
+| `finalGapSearchReserve` | 12 |
+| `finalGapReadReserve` | 24 |
+| `externalSearchReserve` | 36 |
+| `externalReadReserve` | 48 |
+| `externalSchoolReadReserve` | 8 |
+| `prioritySchoolSearches` | 16 |
+| `initialSearches` | 54 |
+| `feeSearches` | 18 |
+| `repairSearches` | 4 |
+| `candidates` | 240 |
+| `librarySourcesPerSchool` | 16 |
+| `modelSources` | 40 |
+| `attachments` | 72 |
+| `attachmentLinks` | 12 |
+| `attachmentDepth` | 3 |
+| `registryReads` | 6 |
+| `cityCandidates` | 12 |
+| `pendingPerField` | 2 |
+| `thinkingChars` | 40000 |
+| `finalEvidenceChars` | 28000 |
+| `normalChars` | 16000 |
+| `repairHeadroom` | 2000 |
+| `requestBytes` | 131072 |
+| `pageTimeoutMs` | 8000 |
+| `pageRetryTimeoutMs` | 10000 |
+| `pageRetries` | 8 |
+| `normalTimeoutMs` | 30000 |
+| `thinkingIdleTimeoutMs` | 45000 |
+| `thinkingTimeoutMs` | 300000 |
+| `researchTotalTimeoutMs` | 1800000 |
+| `planningOutputTokens` | 4096 |
+| `finalOutputTokens` | 16384 |
+| `userDailyTokens` | 4000000 |
+| `globalDailyTokens` | 12000000 |
+
+<!-- current-research-budget:end -->
+
+新两阶段报告默认总时限600000ms（10分钟），兼容旧流程及内部可配置总时限上限1800000ms（30分钟）。最终模型默认总时限300000ms、空闲45000ms，同时受报告剩余时间约束；非思考调用30000ms，网页通常8000ms，PDF/XLS解析另有5000ms限制。收集默认启用Flash，并发上限4；网页调度并发12、同主机串行，所有失败读取计入额度。瞬时网络故障的有限补查策略不等于可无限自动重跑。
+
+`researchReservation()` 的当前预算预留计算包含收集部分，不能再沿用只含规划/最终的209344：
+
+| 预留项 | 当前值 |
+| --- | ---: |
+| `reservation.collection` | 3062464 |
+| `reservation.planning` | 20096 |
+| `reservation.final` | 56384 |
+| `reservation.required` | 3271808 |
+| `reservation.withCoverage` | 3328192 |
+
+其中collection=(collectionPages+collectionSummaryCalls+2)×(collectionInputChars+collectionOutputTokens)，required=collection+2×planning+3×final，withCoverage再加一次final。这是按字符与最大输出计算的保守容量参考，不是供应商token账单或每次必然消费；实际每次发送由runtime预占并在已知usage时结算。
+
+模型日账本、搜索日计数、并发预占与进程缓存尚未持久化；研究作业、checkpoint及report usage保存在SQLite，注册登录限流也已持久化。重启不会抹去已保存报告，但会重置前述进程日额度；多进程或可靠长期费用控制需要单独实现共享事务账本。
+
+## 历史预算和策略记录（非现行）
+
+以下保留对应阶段说明。即使旧段写有“当前”“默认”或“现行”，均仅代表该历史阶段；现在运行的数值以上表及代码为准。
+
+任务二新API流程先运行 `research-prefilter.ts` 本地有据粗筛（25校、多城市每城10校），再由 `research-refine.ts` 按分数顺序只调查入选学校，最终目标10校。达到10所有据候选或单校目录/科目/学费/城市资料充分时提前停止，仍共享24搜索/60读取。`checkpoint.prefilter`保存完整评分与剔除原因，续跑复用；缺少粗筛快照的旧证据续跑及历史离线回放保留下文原5–10校流程。当前规则、真实数据缺口和零费用对比以[实施说明13.16](../../docs/实施说明.md#1316-任务二两阶段收窄)为准，覆盖下文相冲突的新报告调查顺序和数量描述。
+
+全流程最多24次搜索、60次官网读取。初期18次搜索、40次普通读取；意向城市恢复最多借用8次读取，实际专业和校区政策缺少地理证据时最多另补读2次、每校1次。地理链接可从任何学校已读官网发现，网址表不限制学校范围。其后费用阶段使用剩余额度、最多6次搜索和剩余读取槽位。初期、地理及费用阶段累计每校最多8次；80条搜索候选与最多24个同校HTML目录、PDF、工作簿新链接、最多3层发现。成功公开资料复用15分钟，失败不缓存，结构化事实优先，实际正文进入模型最多40项及40000输入字符。
+
+24次搜索预算内，首个学校线索无结果时，下一次使用该校的硕士培养方案查询补证，再继续其他学校。来源排序以硕士项目相关性优先：博士生/博士后招生、导师审核、录取通知和普通首页降序，低相关页面不能仅凭新学校域名挤占实际硕士资料；这些页面仍可保留为来源，但不消耗有限的正文读取槽位。
+
+`research-generation.ts` 通过同一 `ModelRuntime` 运行规划与最终报告。每阶段结构、引用或画像校验失败且取得模型正文时最多修复一次；确认收到HTTP 500/502/503/504时，整份报告的规划与最终调用共用最多一次临时重试，退避250毫秒后通过 `beforeRetry` 再查会话、画像版本和取消状态，并以新retry键重新预留同一额度。规划与初次报告每阶段最多3次模型请求；少于5校且已有至少5个学校官网根域和5个校名线索时，最多再用一次同账本分析补充遗漏候选，不修复、不重试，不超过10校且保留已有建议。整份报告最多6次模型请求，预算不足保留已有建议并说明原因；不是保证会调用到上限。适配器自身不重试，不切换模型或供应商。网络错误、超时、认证、余额不足、限流、输出截断和取消不自动重试。校验修复只携带原始画像、目录、证据与最多六条内部字段问题；近上限时去掉无效旧回答，不裁掉原始证据。未知上游用量保留预留额度，超时不等于免费。
+
+应用默认每账号每日300000、全站900000模型token，并发分别1和4；直接创建 `ModelRuntime` 时采用同一组默认值。调用前按输入字符和最大输出预留，实际输入及总输出（含思考）结算。研究、解释、咨询和修复共用账本，不能绕过额度；搜索另由共享 `createSearchBudget` 计量，应用默认每账号每日60次、全站300次，发送前计数且失败不退还。环境变量为 `YANTU_MODEL_USER_DAILY_TOKENS`、`YANTU_MODEL_DAILY_TOKENS`、`YANTU_SEARCH_USER_DAILY_REQUESTS`、`YANTU_SEARCH_DAILY_REQUESTS`；搜索次数不等于报告份数。这些数值是应用本地token上限，不是供应商账户余额或充值。账本是单进程内存、重启重置，不构成长久或跨实例账单硬上限。
+
+每个意向城市最多12条稳定线索，双一流优先、随后按校名排序；学校级 includeDomains 优先使用种子根域，库外学校沿用真实网页观察。已观察专业来源优先，直接种子导航最多6次，不占用意向城市恢复槽位。初期18次、总24次搜索与24次总读取、初期每校4次及后续每校6次上限不变。
+
+### 阶段5统一预算与诊断（历史）
 
 阶段5预算统一定义于 `server/explanation/research-budget.ts` 的 `RESEARCH_BUDGET`，文档测试直接读取该模块校验数字。
 
@@ -250,55 +355,11 @@ npx playwright test tests/tutor-chat.spec.ts
 
 整份报告默认30分钟总超时，最终模型流式思考默认45秒空闲超时与300秒总上限；最终请求还会取整份报告剩余时间的较小值。非思考规划保持30秒，单页下载8秒，PDF/XLS解析另有5秒上限。超时保留MODEL_TIMEOUT或RESEARCH_TOTAL_TIMEOUT失败原因、可用建议和断点，允许用户手动续跑；不自动重试超时，未知用量仍保留预留额度。所有超时常量集中在research-budget.ts，取消检查贯穿所有阶段。
 
-## 第一批现行预算（2026-10-11，覆盖旧阶段默认值）
+### 第一批预算（2026-10-11，历史）
 
 检索72次搜索，240条搜索候选，180次正文读取，初期54次搜索、120次读取，费用最多18次搜索，城市恢复追加24次读取；最多72条同校PDF附件候选。每账号每日4000000、全站12000000 token，搜索每账号180次、全站900次。显式部署配置优先，不修改.env；旧配置示例只代表显式限额，不再代表当前默认值。
 
-| 常量                         | 值       |
-| ---------------------------- | -------- |
-| `prefilterSchools`           | 240      |
-| `prefilterCitySchools`       | 15       |
-| `searchDailyRequestsPerUser` | 180      |
-| `searchDailyRequestsGlobal`  | 900      |
-| `collectionTargetMs`         | 300000   |
-| `reads`                      | 180      |
-| `schoolReads`                | 30       |
-| `platformReads`              | 4        |
-| `concurrency`                | 12       |
-| `initialReads`               | 120      |
-| `cityReads`                  | 24       |
-| `geographyReads`             | 2        |
-| `searches`                   | 120      |
-| `initialSearches`            | 54       |
-| `feeSearches`                | 18       |
-| `repairSearches`             | 4        |
-| `candidates`                 | 240      |
-| `librarySourcesPerSchool`    | 16       |
-| `modelSources`               | 40       |
-| `attachments`                | 72       |
-| `attachmentLinks`            | 12       |
-| `attachmentDepth`            | 3        |
-| `registryReads`              | 6        |
-| `cityCandidates`             | 12       |
-| `pendingPerField`            | 2        |
-| `thinkingChars`              | 40000    |
-| `normalChars`                | 16000    |
-| `repairHeadroom`             | 2000     |
-| `requestBytes`               | 131072   |
-| `pageTimeoutMs`              | 8000     |
-| `normalTimeoutMs`            | 30000    |
-| `thinkingIdleTimeoutMs`      | 45000    |
-| `thinkingTimeoutMs`          | 300000   |
-| `researchTotalTimeoutMs`     | 1800000  |
-| `planningOutputTokens`       | 4096     |
-| `finalOutputTokens`          | 16384    |
-| `userDailyTokens`            | 4000000  |
-| `globalDailyTokens`          | 12000000 |
 
 现行城市恢复最多120次读取、追加24次读取、全报告最多180次正文读取；补查沿用72 次搜索、180 次正文读取上限。
 
 本轮真实回放修复：环境配置中的正整数搜索日额度最低与单报告72次预算对齐（包括旧60次配置），0仍表示禁用，非法值仍拒绝；账本不重置，也不保证已用额度后的第二份报告有72次。默认180/900次及4000000/12000000 token不变，不修改.env。最终补查预留12次，按学校轮询，单校累计最多30次读取；全局12并发仍遵守同主机串行、公网DNS和TLS等边界。
-
-| 常量                    | 当前值 |
-| ----------------------- | ------ |
-| `finalGapSearchReserve` | 12     |
