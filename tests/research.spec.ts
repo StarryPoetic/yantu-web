@@ -14,6 +14,7 @@ import { registerAccount } from "./helpers/account";
 import { decisionDisplayFixture } from "./helpers/research-decision-fixture";
 import { withPhase6Display } from "./helpers/research-phase6-fixture";
 import { prefilterResearchSchools } from "../server/explanation/research-prefilter";
+import { RESEARCH_SCHOOL_POLICY } from "../shared/research-policy";
 import {
   withEvidenceCoverage,
   withSupplementedTuition,
@@ -3543,13 +3544,13 @@ test("T3-11 partial report retry is reachable above school cards and shares the 
   }
 });
 
-test("T3-12 new report entrance targets 10 while historical snapshots keep 5–10", async ({
+test("T3-12 new report entrance targets 4–5 while historical snapshots keep 5–10", async ({
   page,
 }) => {
   const service = await researchService(page);
   service.setRun(await openGuidance(page));
   const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
-  await expect(panel).toContainText("目标比较 10 所不同学校");
+  await expect(panel).toContainText("目标比较 4–5 所不同学校");
   await panel
     .getByRole("button", { name: "联网调研并生成报告", exact: true })
     .click();
@@ -3565,6 +3566,73 @@ test("T3-12 new report entrance targets 10 while historical snapshots keep 5–1
     },
   }));
   await expect(panel).toContainText("目标比较 5–10 所");
+});
+
+test("T3-12b new policy without coverage statistics keeps 4–5 in the report and download without hiding evidence gaps", async ({
+  page,
+}) => {
+  const service = await researchService(page);
+  service.setRun(await openGuidance(page));
+  const panel = page.getByRole("region", { name: "联网研究报告", exact: true });
+  await panel
+    .getByRole("button", { name: "联网调研并生成报告", exact: true })
+    .click();
+  service.finish("partial", (report) => ({
+    ...report,
+    schoolPolicy: { ...RESEARCH_SCHOOL_POLICY },
+    coverage: undefined,
+    recommendations: Array.from({ length: 4 }, (_, index) => ({
+      ...report.recommendations[0],
+      institutionName: `新策略测试大学${index + 1}`,
+    })),
+  }));
+  await expect(
+    panel.getByText("本次建议 4 所不同学校，目标比较 4–5 所", { exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByLabel("报告可用性", { exact: true })).toContainText(
+    "部分可用",
+  );
+  const recommendation = panel.getByRole("region", {
+    name: "学校与专业推荐",
+    exact: true,
+  });
+  const materials = panel.getByRole("region", {
+    name: "研究资料详情",
+    exact: true,
+  });
+  await expect(recommendation.getByRole("article")).toHaveCount(4);
+  await expect(
+    materials.getByRole("region", { name: "专业资料覆盖与缺项", exact: true }),
+  ).toBeVisible();
+  await expect(
+    recommendation.getByRole("region", {
+      name: "专业资料覆盖与缺项",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  const card = recommendation.getByRole("article").first();
+  const reasons = card.getByRole("region", {
+    name: "个人匹配理由与取舍",
+    exact: true,
+  });
+  await expect(reasons).toContainText(
+    "本科已有法学基础，可以沿专业课程继续准备。",
+  );
+  await expect(reasons).toContainText("需要兼顾专业课复习与案例分析训练。");
+  await expect(
+    card.getByRole("region", { name: "费用与城市核对", exact: true }),
+  ).toContainText("尚未查到可比较的学费资料。");
+  const downloading = page.waitForEvent("download");
+  await panel
+    .getByRole("button", { name: "下载研究报告", exact: true })
+    .click();
+  const content = await readFile((await (await downloading).path())!, "utf8");
+  expect(content).toContain("本次建议 4 所不同学校，目标比较 4–5 所。");
+  expect(content).toContain("该报告生成时未记录资料覆盖统计");
+  expect(content).toContain("待补查：24 项");
+  expect(content).toContain("尚未查到可比较的学费资料。");
+  expect(content).toContain(sourceText);
+  expect(service.postCount()).toBe(1);
 });
 
 test("T3-13 global status matches partial and stale report availability", async ({

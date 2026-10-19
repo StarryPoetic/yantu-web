@@ -34,159 +34,168 @@ export function ResearchSchoolCard({
       className="research-school"
       aria-label={item.institutionName + " · " + programName(item, run)}
     >
-      <header className="research-school-heading">
-        {item.tier && (
-          <span className={"research-tier " + item.tier}>
-            {tierLabels[item.tier]}
-          </span>
-        )}
-        <h4>{item.institutionName}</h4>
-        <p className="research-program">{programName(item, run)}</p>
-        {(item.collegeName || item.majorCode) && (
-          <p className="research-program-identity">
-            {item.collegeName && <span>招生院系：{item.collegeName}</span>}
-            {item.majorCode && <span>专业代码：{item.majorCode}</span>}
-          </p>
-        )}
-        {item.degreeType && (
-          <span className="research-degree">
-            {item.degreeType === "academic" ? "学术学位" : "专业学位"}
-          </span>
-        )}
-        {!item.programName && (
-          <small>旧报告仅记录专业类别，具体招生专业待补充</small>
-        )}
-      </header>
-      {interest && <ResearchInterestActions {...interest} />}
-      <p
-        className={
-          "research-admission " +
-          (item.admissionStatus === "current_evidence"
-            ? "has-evidence"
-            : "needs-verification")
-        }
-      >
-        {admissionLabel(item, run)}
-      </p>
-      <ResearchMatchEvidence match={item.match} sources={sources} />
-      {item.referenceBasis && (
-        <section aria-label="历史资料比较依据">
-          <h5>{item.referenceBasis.year}年专业资料作为比较基准</h5>
-          <p>{item.referenceBasis.reason}</p>
-          <ResearchSourceLinks
-            ids={item.referenceBasis.sourceIds}
-            sources={sources}
-            label="历年专业依据来源"
-          />
-        </section>
-      )}
-      <section className="research-fit">
-        <h5>为什么适合你考虑</h5>
-        <p>{item.rationale}</p>
-        {!!item.tierReasons?.length && (
-          <div className="research-tier-reasons">
-            <strong>为什么在这一层</strong>
-            <ul>
-              {item.tierReasons.map((reason, i) => (
-                <li key={i}>{reason}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {!!item.fitReasons?.length && (
-          <dl>
-            {item.fitReasons.map((fit, i) => (
-              <div key={fit.profileField + ":" + i}>
-                <dt>
-                  {profileLabel(fit.profileField)}
-                  <strong>{fit.profileValue}</strong>
-                </dt>
-                <dd>{fit.reason}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </section>
-      <ResearchRecommendationFields
-        item={item}
-        run={run}
-        sources={sources}
-        gaps={gaps}
-      />
-      <section className="research-constraints" aria-label="费用与城市核对">
-        <h5>费用与城市，与你的偏好相比</h5>
-        {!!item.constraintChecks?.length && (
-          <dl className="research-constraint-list">
-            {item.constraintChecks.map((check) => (
-              <div key={check.field} className={check.status}>
-                <dt>
-                  {check.field === "budget" ? "预算" : "意向城市"}
-                  <span>
-                    {check.status === "match"
-                      ? "已有匹配依据"
-                      : check.status === "mismatch"
-                        ? "与偏好有差异"
-                        : "尚未核实"}
-                  </span>
-                </dt>
-                <dd>
-                  {check.reason}
-                  <ResearchSourceLinks
-                    ids={check.sourceIds}
-                    sources={sources}
-                    label={
-                      (check.field === "budget" ? "预算" : "城市") + "核对来源"
-                    }
-                  />
-                </dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </section>
-      <div className="research-preparation" aria-label="准备建议">
-        {!!item.preparation.length && (
-          <section>
-            <h5>准备建议</h5>
-            <p className="ws-muted">
-              这些是复习任务，实际报考科目以招生目录核验结果为准。
+      <details className="research-school-details" open>
+        <summary className="research-school-heading">
+          {item.tier && (
+            <span className={"research-tier " + item.tier}>
+              {tierLabels[item.tier]}
+            </span>
+          )}
+          <h4>{item.institutionName}</h4>
+          <p className="research-program">{programName(item, run)}</p>
+          {(item.collegeName || item.majorCode) && (
+            <p className="research-program-identity">
+              {item.collegeName && <span>招生院系：{item.collegeName}</span>}
+              {item.majorCode && <span>专业代码：{item.majorCode}</span>}
             </p>
-            <ul>
-              {item.preparation.map((text, i) => (
-                <li key={i}>{text}</li>
-              ))}
-            </ul>
+          )}
+          {item.degreeType && (
+            <span className="research-degree">
+              {item.degreeType === "academic" ? "学术学位" : "专业学位"}
+            </span>
+          )}
+          {!item.programName && (
+            <small>旧报告仅记录专业类别，具体招生专业待补充</small>
+          )}
+          <span className="research-school-toggle">
+            <span className="when-closed">展开匹配理由与学校资料</span>
+            <span className="when-open">收起学校详情</span>
+          </span>
+        </summary>
+        <div className="research-school-content">
+          {interest && <ResearchInterestActions {...interest} />}
+          <p
+            className={
+              "research-admission " +
+              (item.admissionStatus === "current_evidence"
+                ? "has-evidence"
+                : "needs-verification")
+            }
+          >
+            {admissionLabel(item, run)}
+          </p>
+          <section className="research-fit" aria-label="个人匹配理由与取舍">
+            <h5>为什么适合你考虑</h5>
+            <p>{item.rationale}</p>
+            {!!item.tierReasons?.length && (
+              <div className="research-tier-reasons">
+                <strong>为什么在这一层</strong>
+                <ul>
+                  {item.tierReasons.map((reason, i) => (
+                    <li key={i}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {!!item.fitReasons?.length && (
+              <dl>
+                {item.fitReasons.map((fit, i) => (
+                  <div key={fit.profileField + ":" + i}>
+                    <dt>
+                      {profileLabel(fit.profileField)}
+                      <strong>{fit.profileValue}</strong>
+                    </dt>
+                    <dd>{fit.reason}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {!!item.tradeoffs?.length && (
+              <div className="research-tradeoffs">
+                <h5>需要权衡</h5>
+                <ul>
+                  {item.tradeoffs.map((text, i) => (
+                    <li key={i}>{text}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
-        )}
-        {!!item.tradeoffs?.length && (
-          <section>
-            <h5>需要权衡</h5>
-            <ul>
-              {item.tradeoffs.map((text, i) => (
-                <li key={i}>{text}</li>
-              ))}
-            </ul>
+          <ResearchMatchEvidence match={item.match} sources={sources} />
+          {item.referenceBasis && (
+            <section aria-label="历史资料比较依据">
+              <h5>{item.referenceBasis.year}年专业资料作为比较基准</h5>
+              <p>{item.referenceBasis.reason}</p>
+              <ResearchSourceLinks
+                ids={item.referenceBasis.sourceIds}
+                sources={sources}
+                label="历年专业依据来源"
+              />
+            </section>
+          )}
+          <ResearchRecommendationFields
+            item={item}
+            run={run}
+            sources={sources}
+            gaps={gaps}
+          />
+          <section className="research-constraints" aria-label="费用与城市核对">
+            <h5>费用与城市，与你的偏好相比</h5>
+            {!!item.constraintChecks?.length && (
+              <dl className="research-constraint-list">
+                {item.constraintChecks.map((check) => (
+                  <div key={check.field} className={check.status}>
+                    <dt>
+                      {check.field === "budget" ? "预算" : "意向城市"}
+                      <span>
+                        {check.status === "match"
+                          ? "已有匹配依据"
+                          : check.status === "mismatch"
+                            ? "与偏好有差异"
+                            : "尚未核实"}
+                      </span>
+                    </dt>
+                    <dd>
+                      {check.reason}
+                      <ResearchSourceLinks
+                        ids={check.sourceIds}
+                        sources={sources}
+                        label={
+                          (check.field === "budget" ? "预算" : "城市") +
+                          "核对来源"
+                        }
+                      />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </section>
-        )}
-      </div>
-      <ResearchProgramAlternatives
-        items={item.programAlternatives}
-        sources={sources}
-      />
-      {!!item.uncertainties.length && (
-        <details className="research-admission-details">
-          <summary>报考前需要确认</summary>
-          <ul>
-            {item.uncertainties.map((text, i) => (
-              <li key={i}>{text}</li>
-            ))}
-          </ul>
-        </details>
-      )}
-      <footer className="research-school-sources">
-        <strong>查看学校与专业依据</strong>
-        <ResearchSourceLinks ids={item.citations} sources={sources} />
-      </footer>
+          <div className="research-preparation" aria-label="准备建议">
+            {!!item.preparation.length && (
+              <section>
+                <h5>准备建议</h5>
+                <p className="ws-muted">
+                  这些是复习任务，实际报考科目以招生目录核验结果为准。
+                </p>
+                <ul>
+                  {item.preparation.map((text, i) => (
+                    <li key={i}>{text}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+          <ResearchProgramAlternatives
+            items={item.programAlternatives}
+            sources={sources}
+          />
+          {!!item.uncertainties.length && (
+            <details className="research-admission-details">
+              <summary>报考前需要确认</summary>
+              <ul>
+                {item.uncertainties.map((text, i) => (
+                  <li key={i}>{text}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+          <footer className="research-school-sources">
+            <strong>查看学校与专业依据</strong>
+            <ResearchSourceLinks ids={item.citations} sources={sources} />
+          </footer>
+        </div>
+      </details>
     </article>
   );
 }

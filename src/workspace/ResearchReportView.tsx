@@ -78,8 +78,6 @@ export function ResearchReportView({
           {legacyResearchNotice}
         </p>
       )}
-      <ResearchEvidenceCoverage report={report} />
-      <ResearchPrefilterView value={report.prefilter} />
       {report.referencePolicy && (
         <section
           className="research-exam-policy"
@@ -93,7 +91,7 @@ export function ResearchReportView({
         <ResearchDecisionBasisView basis={report.decisionBasis} />
       )}
       {hasRecommendations ? (
-        <>
+        <section aria-label="学校与专业推荐">
           <div className="research-result-heading">
             <h3>建议优先比较的学校与专业</h3>
             <span>
@@ -160,7 +158,7 @@ export function ResearchReportView({
               </div>
             </section>
           ))}
-        </>
+        </section>
       ) : outcome !== "failure" ? (
         <section className="research-empty" aria-label="暂无学校推荐">
           <h3>
@@ -199,92 +197,102 @@ export function ResearchReportView({
           )}
         </section>
       ) : null}
-      <ResearchUnstructuredSources report={report} />
-      <ResearchCandidateAudit report={report} />
-      <div className="research-supporting-details">
-        <details>
-          <summary>
-            {outcome === "failure"
-              ? "查看失败详情与已取得的资料"
-              : "综合分析与适用范围"}
-          </summary>
-          <p className="research-summary">{report.summary}</p>
-          {hasRecommendations && report.reason && (
-            <p>{researchReason(report.reason)}</p>
-          )}
-          <ul>
-            {report.limitations.map((text, i) => (
-              <li key={i}>{text}</li>
-            ))}
-          </ul>
-          {hasRecommendations && !!report.followUpQuestions?.length && (
-            <>
-              <h4>还可以补充</h4>
-              <ul>
-                {report.followUpQuestions.map((text, i) => (
-                  <li key={i}>{text}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </details>
-        <details>
-          <summary>原文摘录 · {report.facts.length} 条</summary>
-          {report.facts.length ? (
-            report.facts.map((fact, i) => (
-              <article className="research-excerpt" key={i}>
-                {fact.year && <small>{fact.year}年资料摘录</small>}
-                <p>{fact.text}</p>
-                <ResearchSourceLinks
-                  ids={fact.citations}
-                  sources={report.sources}
-                />
-              </article>
-            ))
-          ) : (
-            <p>本次没有可展示的原文摘录。</p>
-          )}
-        </details>
-        <details className="research-sources">
-          <summary>全部来源与获取时间 · {report.sources.length} 条</summary>
-          {report.sources.map((source) => (
-            <article key={source.id}>
-              <a
-                href={safeUrl(source.url)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {source.title}
-              </a>
-              <small>
-                {source.kind === "official_page"
-                  ? "学校官网原文"
-                  : source.kind === "authority_page"
-                    ? "权威官方原文"
-                    : source.kind === "reference_page"
-                      ? "非官方，仅供参考"
-                      : "搜索摘要"}{" "}
-                · {new Date(source.retrievedAt).toLocaleString("zh-CN")}
-              </small>
-              <ResearchSourceMetadata source={source} full />
-              <p>{source.excerpt}</p>
-            </article>
-          ))}
-        </details>
-        <details className="research-technical-info">
-          <summary>技术信息</summary>
-          <p>校验问题：{report.validationIssues?.length ?? 0} 项</p>
-          <ul>
-            {Object.entries(report.readStatistics?.failuresByCode ?? {}).map(
-              ([code, count]) => (
-                <li key={code}>
-                  {code}：{count} 次
-                </li>
-              ),
+      <section className="research-materials" aria-label="研究资料详情">
+        <div className="research-materials-heading">
+          <h3>资料详情</h3>
+          <p>
+            查看已取得的依据、仍需补查的内容与来源。资料缺项不代表你不适合，也不代表学校没有公开。
+          </p>
+        </div>
+        <ResearchEvidenceCoverage report={report} />
+        <ResearchPrefilterView value={report.prefilter} />
+        <ResearchUnstructuredSources report={report} />
+        <ResearchCandidateAudit report={report} />
+        <div className="research-supporting-details">
+          <details>
+            <summary>
+              {outcome === "failure"
+                ? "查看失败详情与已取得的资料"
+                : "综合分析与适用范围"}
+            </summary>
+            <p className="research-summary">{report.summary}</p>
+            {hasRecommendations && report.reason && (
+              <p>{researchReason(report.reason)}</p>
             )}
-          </ul>
-        </details>
-      </div>
+            <ul>
+              {report.limitations.map((text, i) => (
+                <li key={i}>{text}</li>
+              ))}
+            </ul>
+            {hasRecommendations && !!report.followUpQuestions?.length && (
+              <>
+                <h4>还可以补充</h4>
+                <ul>
+                  {report.followUpQuestions.map((text, i) => (
+                    <li key={i}>{text}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </details>
+          <details>
+            <summary>原文摘录 · {report.facts.length} 条</summary>
+            {report.facts.length ? (
+              report.facts.map((fact, i) => (
+                <article className="research-excerpt" key={i}>
+                  {fact.year && <small>{fact.year}年资料摘录</small>}
+                  <p>{fact.text}</p>
+                  <ResearchSourceLinks
+                    ids={fact.citations}
+                    sources={report.sources}
+                  />
+                </article>
+              ))
+            ) : (
+              <p>本次没有可展示的原文摘录。</p>
+            )}
+          </details>
+          <details className="research-sources">
+            <summary>全部来源与获取时间 · {report.sources.length} 条</summary>
+            {report.sources.map((source) => (
+              <article key={source.id}>
+                <a
+                  href={safeUrl(source.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {source.title}
+                </a>
+                <small>
+                  {source.kind === "official_page"
+                    ? "学校官网原文"
+                    : source.kind === "authority_page"
+                      ? "权威官方原文"
+                      : source.kind === "reference_page"
+                        ? "非官方，仅供参考"
+                        : "搜索摘要"}{" "}
+                  · {new Date(source.retrievedAt).toLocaleString("zh-CN")}
+                </small>
+                <ResearchSourceMetadata source={source} full />
+                <p>{source.excerpt}</p>
+              </article>
+            ))}
+          </details>
+          <details className="research-technical-info">
+            <summary>技术信息</summary>
+            <p>校验问题：{report.validationIssues?.length ?? 0} 项</p>
+            <ul>
+              {Object.entries(report.readStatistics?.failuresByCode ?? {}).map(
+                ([code, count]) => (
+                  <li key={code}>
+                    {code}：{count} 次
+                  </li>
+                ),
+              )}
+            </ul>
+          </details>
+        </div>
+      </section>
     </div>
   );
 }

@@ -121,16 +121,66 @@ async function fixture(browser: Browser) {
 
 test("T3-01 research suggestion persists through favorites, target preparation and refresh without entering the catalogue", async ({
   browser,
-}) => {
+}, testInfo) => {
   const f = await fixture(browser);
   const { page, navigate } = f;
   try {
+    await page.setViewportSize({ width: 375, height: 812 });
     const catalogue = await (
       await page.request.get("/api/v1/programs?limit=100")
     ).json();
     const card = page.getByRole("article", {
       name: "流程测试大学 · 法学",
       exact: true,
+    });
+    const summary = card.locator("summary").first();
+    const reasons = card.getByRole("region", {
+      name: "个人匹配理由与取舍",
+      exact: true,
+    });
+    await expect(reasons).toContainText("待核验的研究建议");
+    await summary.focus();
+    await summary.press("Enter");
+    await expect(reasons).toBeHidden();
+    await expect(
+      card.getByRole("heading", { name: "流程测试大学", exact: true }),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: "收藏研究关注项", exact: true }),
+    ).toBeHidden();
+    await expect(summary).toContainText("展开匹配理由与学校资料");
+    await expect(summary).toBeFocused();
+    await summary.press("Space");
+    await expect(reasons).toBeVisible();
+    const recommendation = page.getByRole("region", {
+      name: "学校与专业推荐",
+      exact: true,
+    });
+    const materials = page.getByRole("region", {
+      name: "研究资料详情",
+      exact: true,
+    });
+    await expect(
+      materials.getByRole("region", {
+        name: "专业资料覆盖与缺项",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      recommendation.getByRole("region", {
+        name: "专业资料覆盖与缺项",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    expect((await materials.boundingBox())!.y).toBeGreaterThan(
+      (await recommendation.boundingBox())!.y,
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(375);
+    await page.screenshot({
+      path: testInfo.outputPath("research-school-mobile-expanded.png"),
+      fullPage: true,
     });
     await card
       .getByRole("button", { name: "收藏研究关注项", exact: true })
@@ -186,12 +236,32 @@ test("T3-01 research suggestion persists through favorites, target preparation a
   }
 });
 
-test("T3-02 old reports remain viewable and downloadable after a new input version, with no generation or retrieval requests", async ({
+test("T3-02 research history entry is removed while stored snapshots and unrelated planning reports remain", async ({
   browser,
 }) => {
   const f = await fixture(browser);
   const { page, navigate } = f;
   try {
+    const originalHistory = await (
+      await page.request.get("/api/v1/research/history")
+    ).json();
+    expect(originalHistory.items).toHaveLength(1);
+    const jobId = originalHistory.items[0].jobId;
+    const original = await (
+      await page.request.get(`/api/v1/research/history/${jobId}`)
+    ).json();
+    const browserHistoryRequests: string[] = [];
+    page.on("request", (request) => {
+      if (
+        new URL(request.url()).pathname.startsWith("/api/v1/research/history")
+      )
+        browserHistoryRequests.push(request.url());
+    });
+    const downloading = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "下载研究报告", exact: true })
+      .click();
+    expect((await downloading).suggestedFilename()).toMatch(/\.md$/);
     await navigate("个人画像");
     await page.getByLabel("本科专业", { exact: true }).fill("经济学");
     await page
@@ -202,29 +272,28 @@ test("T3-02 old reports remain viewable and downloadable after a new input versi
       name: "研究报告历史",
       exact: true,
     });
-    await expect(history).toContainText("需更新，与当前输入不同");
+    await expect(history).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "联网调研并生成报告", exact: true }),
     ).toBeEnabled();
-    const mutations: string[] = [];
-    page.on("request", (request) => {
-      if (request.method() !== "GET") mutations.push(request.url());
-    });
-    await history.getByRole("button", { name: "只读查看历史报告" }).click();
-    const content = page.getByRole("region", { name: "历史报告只读内容" });
-    await expect(content).toContainText("画像版本 1");
-    await expect(content).toContainText("流程测试大学");
-    await expect(
-      content.getByRole("button", { name: /收藏|加入|生成|重试/ }),
-    ).toHaveCount(0);
-    const downloading = page.waitForEvent("download");
-    await content.getByRole("button", { name: "下载历史研究报告" }).click();
-    expect((await downloading).suggestedFilename()).toMatch(/\.md$/);
-    expect(mutations).toEqual([]);
-    expect(f.calls()).toBe(1);
     await page.reload();
+    await expect(history).toHaveCount(0);
     await expect(
-      history.getByRole("button", { name: "只读查看历史报告" }),
+      page.getByRole("button", { name: "只读查看历史报告" }),
+    ).toHaveCount(0);
+    expect(browserHistoryRequests).toEqual([]);
+    const restored = await (
+      await page.request.get(`/api/v1/research/history/${jobId}`)
+    ).json();
+    expect(restored.job.report).toEqual(original.job.report);
+    expect(restored.run).toEqual(original.run);
+    expect(restored.job.needsRefresh).toBe(true);
+    expect(
+      (await (await page.request.get("/api/v1/research/history")).json()).items,
+    ).toHaveLength(1);
+    await navigate("目标与规划");
+    await expect(
+      page.getByRole("heading", { name: "固定项目规划报告", exact: true }),
     ).toBeVisible();
     expect(f.calls()).toBe(1);
   } finally {
