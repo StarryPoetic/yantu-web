@@ -92,6 +92,24 @@ test("PDF worker deadline terminates parsing and a later valid request can still
   assert.match(await pdfText(document()), /master programme/);
 });
 
+test("concurrent PDF workers keep text, limits and timeout failures isolated", async () => {
+  const english = "Parallel research programme 040101";
+  const chinese = "并行解析大学 机械工程 080200";
+  await Promise.all([
+    pdfText(document(english, 1, true)).then((text) =>
+      assert.equal(text, english),
+    ),
+    pdfText(document(chinese)).then((text) => assert.equal(text, chinese)),
+    assert.rejects(pdfText(document("two pages", 2), { maxPages: 1 }), {
+      code: "WEB_PDF_TOO_MANY_PAGES",
+    }),
+    assert.rejects(pdfText(document("deadline"), { timeoutMs: 1 }), {
+      code: "WEB_PDF_TIMEOUT",
+    }),
+  ]);
+  assert.equal(await pdfText(document(english)), english);
+});
+
 test("PDF child ignores inherited Node preload options and service process configuration", async () => {
   const previous = process.env.NODE_OPTIONS;
   process.env.NODE_OPTIONS = "--require=/must-not-be-loaded-by-pdf-parser.cjs";
