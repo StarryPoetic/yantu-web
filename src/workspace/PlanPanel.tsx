@@ -32,6 +32,7 @@ export function PlanPanel({
     [tasks, setTasks] = useState<Task[]>([]),
     [reports, setReports] = useState<Report[]>([]),
     [targets, setTargets] = useState<Record<string, number>>({}),
+    [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]),
     [report, setReport] = useState<Report | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(),
@@ -40,6 +41,25 @@ export function PlanPanel({
   const program = programs.find((item) => item.programId === programId);
   const storedPlan = resource?.data.plan;
   const plan = storedPlan?.programId === programId ? storedPlan : null;
+  const optionGroups = new Map<string, Program["subjects"]>();
+  for (const subject of program?.subjects ?? []) {
+    if (subject.optionGroupId)
+      optionGroups.set(subject.optionGroupId, [
+        ...(optionGroups.get(subject.optionGroupId) ?? []),
+        subject,
+      ]);
+  }
+  const selectedSubjects = (program?.subjects ?? []).filter(
+    (subject) =>
+      !subject.optionGroupId || selectedSubjectIds.includes(subject.subjectId),
+  );
+  const selectedTargets = Object.fromEntries(
+    selectedSubjects.flatMap((subject) =>
+      targets[subject.subjectId] === undefined
+        ? []
+        : [[subject.subjectId, targets[subject.subjectId]]],
+    ),
+  );
   const matchingRecommendation =
     program &&
     recommendation &&
@@ -72,6 +92,17 @@ export function PlanPanel({
     );
     setReports(reportsResult.data.items);
     if (planResult.data.plan?.programId === programId) {
+      setSelectedSubjectIds(
+        planResult.data.plan.subjects
+          .filter((subject) =>
+            program?.subjects.some(
+              (candidate) =>
+                candidate.subjectId === subject.subjectId &&
+                candidate.optionGroupId,
+            ),
+          )
+          .map((subject) => subject.subjectId),
+      );
       setTargets(
         Object.fromEntries(
           planResult.data.plan.subjects
@@ -81,6 +112,7 @@ export function PlanPanel({
       );
     } else {
       setTargets({});
+      setSelectedSubjectIds([]);
     }
   }
   useEffect(() => {
@@ -113,7 +145,10 @@ export function PlanPanel({
           programId: program.programId,
           programRevisionId: program.programRevisionId,
           recommendationRunId: matchingRecommendation?.recommendationRunId,
-          subjectTargets: targets,
+          subjectTargets: selectedTargets,
+          selectedSubjectIds: selectedSubjects.map(
+            (subject) => subject.subjectId,
+          ),
         },
       });
       setResource(result);
@@ -227,8 +262,44 @@ export function PlanPanel({
                 ? "当前项目资料待核验，可记录关注目标，但分数方案可能无法通过正式校验。请先完善并审核招生依据。"
                 : "保存时将校验项目修订、实际科目、单科及总分要求。"}
             </div>
+            {[...optionGroups].map(([groupId, options]) => (
+              <fieldset key={groupId} disabled={busy || locked}>
+                <legend>官方可选科目 · 任选一项</legend>
+                <p className="ws-muted">
+                  仅可在本项目招生要求列出的科目中选择；未选择时保持待确认。
+                </p>
+                {options.map((subject) => (
+                  <label key={subject.subjectId} className="ws-check">
+                    <input
+                      type="radio"
+                      name={`exam-option-${groupId}`}
+                      value={subject.subjectId}
+                      checked={selectedSubjectIds.includes(subject.subjectId)}
+                      onChange={() => {
+                        const groupIds = new Set(
+                          options.map((item) => item.subjectId),
+                        );
+                        setSelectedSubjectIds((current) => [
+                          ...current.filter((id) => !groupIds.has(id)),
+                          subject.subjectId,
+                        ]);
+                        setTargets((current) =>
+                          Object.fromEntries(
+                            Object.entries(current).filter(
+                              ([id]) => !groupIds.has(id),
+                            ),
+                          ),
+                        );
+                        setSaved(false);
+                      }}
+                    />
+                    {subject.name} · 满分 {subject.maxScore ?? "未知"}
+                  </label>
+                ))}
+              </fieldset>
+            ))}
             <div className="ws-form-grid">
-              {program.subjects.map((subject) => (
+              {selectedSubjects.map((subject) => (
                 <label key={subject.subjectId}>
                   {subject.name} · 满分 {subject.maxScore ?? "未知"}
                   <input
@@ -237,21 +308,22 @@ export function PlanPanel({
                     min="0"
                     max={subject.maxScore ?? undefined}
                     value={targets[subject.subjectId] ?? ""}
-                    disabled={subject.maxScore === null}
+                    disabled={subject.maxScore === null || busy || locked}
                     placeholder={
                       subject.maxScore === null
                         ? "满分待核验，暂不能规划"
                         : "填写目标分数"
                     }
-                    onChange={(event) =>
+                    onChange={(event) => {
                       setTargets((current) => {
                         const next = { ...current };
                         if (!event.target.value) delete next[subject.subjectId];
                         else
                           next[subject.subjectId] = Number(event.target.value);
                         return next;
-                      })
-                    }
+                      });
+                      setSaved(false);
+                    }}
                   />
                   {subject.maxScore === null &&
                     targets[subject.subjectId] !== undefined && (
@@ -275,7 +347,7 @@ export function PlanPanel({
             </div>
             <p>
               已填写目标总分：
-              {Object.values(targets).reduce(
+              {Object.values(selectedTargets).reduce(
                 (sum, number) => sum + number,
                 0,
               )}{" "}

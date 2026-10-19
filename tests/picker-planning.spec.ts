@@ -1,4 +1,13 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Browser,
+  type Locator,
+  type Page,
+} from "@playwright/test";
+import { resolve } from "node:path";
+import { createApplication } from "../server/app";
+import { createSeedCatalog } from "../server/catalog/index";
 import { registerAccount } from "./helpers/account";
 import type { Program } from "../src/workspace/contracts";
 
@@ -293,4 +302,185 @@ test("目标保存失败保留项目详情和原页面，不展示成功状态",
     (await (await page.request.get("/api/v1/me/selections")).json())
       .targetProgramId,
   ).toBeNull();
+});
+
+async function optionalSubjectFixture(browser: Browser) {
+  const origins: string[] = [];
+  const app = await createApplication({
+    databasePath: ":memory:",
+    sampleData: true,
+    staticDirectory: resolve("dist"),
+    origins,
+    admins: [],
+    bootstrapAdmins: [],
+    secureCookies: false,
+  });
+  const catalog = createSeedCatalog();
+  const target = catalog.releases[0].programs[0];
+  // Synthetic data exists only in this test's isolated memory database.
+  target.subjects = [
+    {
+      subjectId: "politics",
+      name: "思想政治理论",
+      maxScore: 100,
+      optionGroupId: null,
+    },
+    {
+      subjectId: "english",
+      name: "英语一",
+      maxScore: 100,
+      optionGroupId: "foreign-language",
+    },
+    {
+      subjectId: "japanese",
+      name: "日语",
+      maxScore: 100,
+      optionGroupId: "foreign-language",
+    },
+    { subjectId: "math", name: "数学一", maxScore: 150, optionGroupId: null },
+    {
+      subjectId: "major",
+      name: "专业基础",
+      maxScore: 150,
+      optionGroupId: null,
+    },
+  ].map((subject) => ({
+    ...subject,
+    minimumScore: 0,
+    availability: "verified_current" as const,
+    sourceIds: ["synthetic-planning-test"],
+  }));
+  target.scoreRequirements = {
+    totalMaxScore: 500,
+    totalMinimumScore: 0,
+    interviewRequirement: "仅供离线浏览器测试",
+    availability: "verified_current",
+  };
+  app.store.put("public", "catalog", "current", catalog);
+  await new Promise<void>((done) => app.server.listen(0, "127.0.0.1", done));
+  const address = app.server.address();
+  if (!address || typeof address === "string")
+    throw new Error("Missing test address");
+  const baseURL = `http://127.0.0.1:${address.port}`;
+  origins.push(baseURL);
+  const context = await browser.newContext({ baseURL });
+  await context.route("**/*", (route) =>
+    new URL(route.request().url()).origin === baseURL
+      ? route.continue()
+      : route.abort(),
+  );
+  return {
+    page: await context.newPage(),
+    targetId: target.programId,
+    otherTargetId: catalog.releases[0].programs[1].programId,
+    close: async () => {
+      await context.close();
+      await app.close();
+    },
+  };
+}
+
+test("官方可选科目单选后可保存分数，刷新恢复，切换清除旧分且合计只含所选科目", async ({
+  browser,
+}) => {
+  const f = await optionalSubjectFixture(browser);
+  const page = f.page;
+  try {
+    await registerAccount(page);
+    await page.goto("/#plan");
+    const target = page.getByRole("combobox", { name: "目标院校与专业" });
+    await target.selectOption(f.targetId);
+    const english = page.getByRole("radio", {
+      name: "英语一 · 满分 100",
+      exact: true,
+    });
+    const japanese = page.getByRole("radio", {
+      name: "日语 · 满分 100",
+      exact: true,
+    });
+    const englishScore = page.getByRole("spinbutton", {
+      name: "英语一目标分数",
+      exact: true,
+    });
+    const japaneseScore = page.getByRole("spinbutton", {
+      name: "日语目标分数",
+      exact: true,
+    });
+    const total = page.getByText("已填写目标总分：", { exact: false });
+    const save = page.getByRole("button", {
+      name: "保存目标与计划",
+      exact: true,
+    });
+    await expect(english).not.toBeChecked();
+    await expect(japanese).not.toBeChecked();
+    await expect(englishScore).toHaveCount(0);
+    await expect(japaneseScore).toHaveCount(0);
+    await english.check();
+    await englishScore.fill("80");
+    await page
+      .getByRole("spinbutton", { name: "思想政治理论目标分数", exact: true })
+      .fill("70");
+    await page
+      .getByRole("spinbutton", { name: "数学一目标分数", exact: true })
+      .fill("85");
+    await page
+      .getByRole("spinbutton", { name: "专业基础目标分数", exact: true })
+      .fill("85");
+    await expect(total).toContainText("320 分");
+    const firstSave = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/v1/me/plan") &&
+        response.request().method() === "PUT",
+    );
+    await save.click();
+    const firstResponse = await firstSave;
+    expect(firstResponse.status()).toBe(200);
+    expect(firstResponse.request().postDataJSON()).toMatchObject({
+      selectedSubjectIds: ["politics", "english", "math", "major"],
+      subjectTargets: { politics: 70, english: 80, math: 85, major: 85 },
+    });
+    await expect(
+      page.getByText("目标计划已保存", { exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(english).toBeChecked();
+    await expect(japanese).not.toBeChecked();
+    await expect(englishScore).toHaveValue("80");
+    await expect(total).toContainText("320 分");
+    await japanese.check();
+    await expect(english).not.toBeChecked();
+    await expect(englishScore).toHaveCount(0);
+    await expect(japaneseScore).toHaveValue("");
+    await expect(total).toContainText("240 分");
+    await japaneseScore.fill("75");
+    await expect(total).toContainText("315 分");
+    const secondSave = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/v1/me/plan") &&
+        response.request().method() === "PUT",
+    );
+    await save.click();
+    const secondResponse = await secondSave;
+    expect(secondResponse.status()).toBe(200);
+    expect(secondResponse.request().postDataJSON()).toMatchObject({
+      selectedSubjectIds: ["politics", "japanese", "math", "major"],
+      subjectTargets: { politics: 70, japanese: 75, math: 85, major: 85 },
+    });
+    expect(
+      secondResponse.request().postDataJSON().subjectTargets,
+    ).not.toHaveProperty("english");
+    await page.reload();
+    await expect(japanese).toBeChecked();
+    await expect(japaneseScore).toHaveValue("75");
+    await expect(total).toContainText("315 分");
+    await english.check();
+    await expect(englishScore).toHaveValue("");
+    await expect(total).toContainText("240 分");
+    await target.selectOption(f.otherTargetId);
+    await expect(english).toHaveCount(0);
+    await expect(japanese).toHaveCount(0);
+    await expect(total).toContainText("0 分");
+  } finally {
+    await f.close();
+  }
 });
