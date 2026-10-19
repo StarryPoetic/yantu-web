@@ -85,13 +85,11 @@ test(
       now: Date.parse("2026-10-11T05:00:00Z"),
     });
     const f = streamingResearchFixture();
-    const firstPending = f
-      .create()
-      .generate({
-        subjectId: f.run.subjectId,
-        run: f.run,
-        onCheckpoint: f.save,
-      });
+    const firstPending = f.create().generate({
+      subjectId: f.run.subjectId,
+      run: f.run,
+      onCheckpoint: f.save,
+    });
     await f.finalStarted();
     t.mock.timers.tick(B.thinkingIdleTimeoutMs);
     const first = await firstPending;
