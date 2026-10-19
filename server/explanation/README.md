@@ -241,68 +241,68 @@ npx playwright test tests/tutor-chat.spec.ts
 
 <!-- current-research-budget:start -->
 
-| 代码配置项 | 当前值 |
-| --- | ---: |
-| `prefilterSchools` | 240 |
-| `prefilterCitySchools` | 15 |
-| `searchDailyRequestsPerUser` | 180 |
-| `searchDailyRequestsGlobal` | 900 |
-| `collectionTargetMs` | 300000 |
-| `finalReserveMs` | 180000 |
-| `collectionPages` | 180 |
-| `collectionSummaryCalls` | 36 |
-| `collectionConcurrency` | 4 |
-| `priorityReadsPerTurn` | 6 |
-| `collectionInputChars` | 12000 |
-| `collectionOutputTokens` | 2048 |
-| `defaultResearchTotalTimeoutMs` | 600000 |
-| `finalSchools` | 5 |
-| `reads` | 180 |
-| `schoolReads` | 30 |
-| `schoolDiscoveryReads` | 1 |
-| `discoveryReads` | 8 |
-| `platformReads` | 4 |
-| `concurrency` | 12 |
-| `initialSearchConcurrency` | 1 |
-| `initialReads` | 120 |
-| `cityReads` | 24 |
-| `geographyReads` | 2 |
-| `searches` | 120 |
-| `prioritySearchReserve` | 96 |
-| `finalGapSearchReserve` | 12 |
-| `finalGapReadReserve` | 24 |
-| `externalSearchReserve` | 36 |
-| `externalReadReserve` | 48 |
-| `externalSchoolReadReserve` | 8 |
-| `prioritySchoolSearches` | 16 |
-| `initialSearches` | 54 |
-| `feeSearches` | 18 |
-| `repairSearches` | 4 |
-| `candidates` | 240 |
-| `librarySourcesPerSchool` | 16 |
-| `modelSources` | 40 |
-| `attachments` | 72 |
-| `attachmentLinks` | 12 |
-| `attachmentDepth` | 3 |
-| `registryReads` | 6 |
-| `cityCandidates` | 12 |
-| `pendingPerField` | 2 |
-| `thinkingChars` | 40000 |
-| `finalEvidenceChars` | 28000 |
-| `normalChars` | 16000 |
-| `repairHeadroom` | 2000 |
-| `requestBytes` | 131072 |
-| `pageTimeoutMs` | 8000 |
-| `pageRetryTimeoutMs` | 10000 |
-| `pageRetries` | 8 |
-| `normalTimeoutMs` | 30000 |
-| `thinkingIdleTimeoutMs` | 45000 |
-| `thinkingTimeoutMs` | 300000 |
-| `researchTotalTimeoutMs` | 1800000 |
-| `planningOutputTokens` | 4096 |
-| `finalOutputTokens` | 16384 |
-| `userDailyTokens` | 4000000 |
-| `globalDailyTokens` | 12000000 |
+| 代码配置项                      |   当前值 |
+| ------------------------------- | -------: |
+| `prefilterSchools`              |      240 |
+| `prefilterCitySchools`          |       15 |
+| `searchDailyRequestsPerUser`    |      180 |
+| `searchDailyRequestsGlobal`     |      900 |
+| `collectionTargetMs`            |   300000 |
+| `finalReserveMs`                |   180000 |
+| `collectionPages`               |      180 |
+| `collectionSummaryCalls`        |       36 |
+| `collectionConcurrency`         |        4 |
+| `priorityReadsPerTurn`          |        6 |
+| `collectionInputChars`          |    12000 |
+| `collectionOutputTokens`        |     2048 |
+| `defaultResearchTotalTimeoutMs` |   600000 |
+| `finalSchools`                  |        5 |
+| `reads`                         |      180 |
+| `schoolReads`                   |       30 |
+| `schoolDiscoveryReads`          |        1 |
+| `discoveryReads`                |        8 |
+| `platformReads`                 |        4 |
+| `concurrency`                   |       12 |
+| `initialSearchConcurrency`      |        1 |
+| `initialReads`                  |      120 |
+| `cityReads`                     |       24 |
+| `geographyReads`                |        2 |
+| `searches`                      |      120 |
+| `prioritySearchReserve`         |       96 |
+| `finalGapSearchReserve`         |       12 |
+| `finalGapReadReserve`           |       24 |
+| `externalSearchReserve`         |       36 |
+| `externalReadReserve`           |       48 |
+| `externalSchoolReadReserve`     |        8 |
+| `prioritySchoolSearches`        |       16 |
+| `initialSearches`               |       54 |
+| `feeSearches`                   |       18 |
+| `repairSearches`                |        4 |
+| `candidates`                    |      240 |
+| `librarySourcesPerSchool`       |       16 |
+| `modelSources`                  |       40 |
+| `attachments`                   |       72 |
+| `attachmentLinks`               |       12 |
+| `attachmentDepth`               |        3 |
+| `registryReads`                 |        6 |
+| `cityCandidates`                |       12 |
+| `pendingPerField`               |        2 |
+| `thinkingChars`                 |    40000 |
+| `finalEvidenceChars`            |    28000 |
+| `normalChars`                   |    16000 |
+| `repairHeadroom`                |     2000 |
+| `requestBytes`                  |   131072 |
+| `pageTimeoutMs`                 |     8000 |
+| `pageRetryTimeoutMs`            |    10000 |
+| `pageRetries`                   |        8 |
+| `normalTimeoutMs`               |    30000 |
+| `thinkingIdleTimeoutMs`         |    45000 |
+| `thinkingTimeoutMs`             |   300000 |
+| `researchTotalTimeoutMs`        |  1800000 |
+| `planningOutputTokens`          |     4096 |
+| `finalOutputTokens`             |    16384 |
+| `userDailyTokens`               |  4000000 |
+| `globalDailyTokens`             | 12000000 |
 
 <!-- current-research-budget:end -->
 
@@ -310,12 +310,12 @@ npx playwright test tests/tutor-chat.spec.ts
 
 `researchReservation()` 的当前预算预留计算包含收集部分，不能再沿用只含规划/最终的209344：
 
-| 预留项 | 当前值 |
-| --- | ---: |
-| `reservation.collection` | 3062464 |
-| `reservation.planning` | 20096 |
-| `reservation.final` | 56384 |
-| `reservation.required` | 3271808 |
+| 预留项                     |  当前值 |
+| -------------------------- | ------: |
+| `reservation.collection`   | 3062464 |
+| `reservation.planning`     |   20096 |
+| `reservation.final`        |   56384 |
+| `reservation.required`     | 3271808 |
 | `reservation.withCoverage` | 3328192 |
 
 其中collection=(collectionPages+collectionSummaryCalls+2)×(collectionInputChars+collectionOutputTokens)，required=collection+2×planning+3×final，withCoverage再加一次final。这是按字符与最大输出计算的保守容量参考，不是供应商token账单或每次必然消费；实际每次发送由runtime预占并在已知usage时结算。
@@ -358,7 +358,6 @@ npx playwright test tests/tutor-chat.spec.ts
 ### 第一批预算（2026-10-11，历史）
 
 检索72次搜索，240条搜索候选，180次正文读取，初期54次搜索、120次读取，费用最多18次搜索，城市恢复追加24次读取；最多72条同校PDF附件候选。每账号每日4000000、全站12000000 token，搜索每账号180次、全站900次。显式部署配置优先，不修改.env；旧配置示例只代表显式限额，不再代表当前默认值。
-
 
 现行城市恢复最多120次读取、追加24次读取、全报告最多180次正文读取；补查沿用72 次搜索、180 次正文读取上限。
 
