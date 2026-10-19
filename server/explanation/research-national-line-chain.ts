@@ -76,7 +76,12 @@ export function resolveNationalLineChain(input: NationalLineChain) {
     !new RegExp(
       `复试分数线参照[^。\\n]*${year}年全国硕士研究生[^。\\n]*（A类考生国家线）执行`,
     ).test(applicability!.quote) ||
-    /不低于|高于|另行|部分|例外|自行划定|调剂分数线/.test(applicability!.quote)
+    /不低于|高于|另行|部分|例外|自行划定|调剂分数线/.test(
+      applicability!.quote,
+    ) ||
+    /专项|退役大学生士兵|另行[^。\n]*(?:划线|分数|确定)|[^。\n]*(?:专业|学位点)[^。\n]*(?:高于|自行划定|自划线)/.test(
+      applicability!.source.excerpt,
+    )
   )
     missing.push(
       "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",

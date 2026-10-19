@@ -100,6 +100,41 @@ test("removing any original or using another year/college/programme keeps the ch
   );
 });
 
+test("an execution sentence cannot hide a later programme exception or a special-plan section", () => {
+  for (const boundary of [
+    "机械专业另行划线。",
+    "机械专业分数线高于国家线。",
+    "退役大学生士兵专项计划复试规则",
+  ]) {
+    const original = input.applicability!;
+    const source = {
+      ...original.source,
+      excerpt: original.source.excerpt.replace(
+        original.quote,
+        `${boundary}\n${original.quote}`,
+      ),
+    };
+    assert.equal(
+      resolveNationalLineChain({
+        ...input,
+        applicability: { ...original, source },
+      }).fact,
+      undefined,
+    );
+    const later = {
+      ...original.source,
+      excerpt: `${original.source.excerpt}\n${boundary}`,
+    };
+    assert.equal(
+      resolveNationalLineChain({
+        ...input,
+        applicability: { ...original, source: later },
+      }).fact,
+      undefined,
+    );
+  }
+});
+
 test("real general floors, older exceptions and HDU national-line columns never become execution chains", () => {
   for (const chain of chains.filter((c) => c.schoolName !== "浙江农林大学"))
     assert.equal(chain.fact, undefined);
