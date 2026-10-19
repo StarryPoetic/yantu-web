@@ -444,4 +444,24 @@ test("review progress identifies the two promoted slots without changing the his
   assert.equal(progress.promoted[0].year, 2025);
   assert.equal(progress.promoted[0].field, "cutoff");
   assert.ok(progress.promoted[0].evidence[0].supportingEvidence.length > 0);
+  const delivery = readFileSync(
+    resolve(repositoryRoot, "docs/后续改进执行台账.md"),
+    "utf8",
+  );
+  const current = delivery
+    .split("## A证据改进收口")[1]
+    ?.split("## 历史批次基线")[0];
+  assert.ok(
+    current,
+    "latest A checkpoint must be separated from previous multi-stage delivery",
+  );
+  assert.ok(
+    current.includes(
+      `可确认${progress.currentConfirmable}条、待补${progress.currentPending}条`,
+    ),
+    "delivery and machine counts must agree",
+  );
+  assert.match(current, /三步完成后停止/);
+  assert.match(current, /不以60%为完成条件/);
+  assert.match(current, /不重写历史报告/);
 });
