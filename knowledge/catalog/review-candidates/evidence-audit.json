@@ -2204,9 +2204,9 @@
   "offlineCoverage": {
     "partialGroups": {
       "scores": {
-        "confirmed": 8,
+        "confirmed": 9,
         "total": 30,
-        "ratio": 0.26666666666666666
+        "ratio": 0.3
       },
       "competition": {
         "confirmed": 1,
@@ -2229,7 +2229,7 @@
         "ratio": 0.1
       }
     },
-    "partialAverage": 0.08666666666666667,
+    "partialAverage": 0.09333333333333334,
     "completeAverage": 0,
     "schools": [
       {
@@ -2448,9 +2448,9 @@
       {
         "partialGroups": {
           "scores": {
-            "confirmed": 0,
+            "confirmed": 1,
             "total": 6,
-            "ratio": 0
+            "ratio": 0.16666666666666666
           },
           "competition": {
             "confirmed": 0,
@@ -2476,10 +2476,6 @@
         "missingScoreYears": [
           {
             "field": "cutoff",
-            "year": 2026
-          },
-          {
-            "field": "cutoff",
             "year": 2025
           },
           {
@@ -2500,9 +2496,10 @@
           }
         ],
         "schoolName": "浙江农林大学",
-        "confirmed": [],
+        "confirmed": [
+          "cutoff"
+        ],
         "pending": [
-          "cutoff",
           "admissionScore",
           "applicationAdmissionRatio",
           "admittedCount",
@@ -2589,9 +2586,9 @@
         }
       }
     ],
-    "confirmed": 10,
-    "pending": 65,
-    "schoolsWithCutoff": 2,
+    "confirmed": 11,
+    "pending": 64,
+    "schoolsWithCutoff": 3,
     "groups": {
       "scores": {
         "confirmed": 0,
@@ -2619,9 +2616,9 @@
       "school": {
         "partialGroups": {
           "scores": {
-            "confirmed": 8,
+            "confirmed": 9,
             "total": 30,
-            "ratio": 0.26666666666666666
+            "ratio": 0.3
           },
           "competition": {
             "confirmed": 1,
@@ -2644,7 +2641,7 @@
             "ratio": 0.1
           }
         },
-        "partialAverage": 0.08666666666666667,
+        "partialAverage": 0.09333333333333334,
         "completeAverage": 0,
         "schools": [
           {
@@ -2863,9 +2860,9 @@
           {
             "partialGroups": {
               "scores": {
-                "confirmed": 0,
+                "confirmed": 1,
                 "total": 6,
-                "ratio": 0
+                "ratio": 0.16666666666666666
               },
               "competition": {
                 "confirmed": 0,
@@ -2891,10 +2888,6 @@
             "missingScoreYears": [
               {
                 "field": "cutoff",
-                "year": 2026
-              },
-              {
-                "field": "cutoff",
                 "year": 2025
               },
               {
@@ -2915,9 +2908,10 @@
               }
             ],
             "schoolName": "浙江农林大学",
-            "confirmed": [],
+            "confirmed": [
+              "cutoff"
+            ],
             "pending": [
-              "cutoff",
               "admissionScore",
               "applicationAdmissionRatio",
               "admittedCount",
@@ -3004,9 +2998,9 @@
             }
           }
         ],
-        "confirmed": 10,
-        "pending": 65,
-        "schoolsWithCutoff": 2,
+        "confirmed": 11,
+        "pending": 64,
+        "schoolsWithCutoff": 3,
         "groups": {
           "scores": {
             "confirmed": 0,
@@ -3920,9 +3914,9 @@
     "combined": {
       "partialGroups": {
         "scores": {
-          "confirmed": 8,
+          "confirmed": 9,
           "total": 30,
-          "ratio": 0.26666666666666666
+          "ratio": 0.3
         },
         "competition": {
           "confirmed": 1,
@@ -3945,7 +3939,7 @@
           "ratio": 0.1
         }
       },
-      "partialAverage": 0.08666666666666667,
+      "partialAverage": 0.09333333333333334,
       "completeAverage": 0,
       "schools": [
         {
@@ -4164,9 +4158,9 @@
         {
           "partialGroups": {
             "scores": {
-              "confirmed": 0,
+              "confirmed": 1,
               "total": 6,
-              "ratio": 0
+              "ratio": 0.16666666666666666
             },
             "competition": {
               "confirmed": 0,
@@ -4192,10 +4186,6 @@
           "missingScoreYears": [
             {
               "field": "cutoff",
-              "year": 2026
-            },
-            {
-              "field": "cutoff",
               "year": 2025
             },
             {
@@ -4216,9 +4206,10 @@
             }
           ],
           "schoolName": "浙江农林大学",
-          "confirmed": [],
+          "confirmed": [
+            "cutoff"
+          ],
           "pending": [
-            "cutoff",
             "admissionScore",
             "applicationAdmissionRatio",
             "admittedCount",
@@ -4305,9 +4296,9 @@
           }
         }
       ],
-      "confirmed": 10,
-      "pending": 65,
-      "schoolsWithCutoff": 2,
+      "confirmed": 11,
+      "pending": 64,
+      "schoolsWithCutoff": 3,
       "groups": {
         "scores": {
           "confirmed": 0,
@@ -4332,9 +4323,9 @@
       }
     },
     "confirmedCutoff": {
-      "confirmed": 5,
+      "confirmed": 6,
       "total": 15,
-      "ratio": 0.3333333333333333
+      "ratio": 0.4
     },
     "confirmedAssessment": {
       "confirmed": 0,
@@ -4345,10 +4336,10 @@
   "reviewProgress": {
     "baselineConfirmed": 9,
     "baselinePending": 66,
-    "currentConfirmable": 10,
-    "currentPending": 65,
-    "confirmedDelta": 1,
-    "pendingDelta": -1,
+    "currentConfirmable": 11,
+    "currentPending": 64,
+    "confirmedDelta": 2,
+    "pendingDelta": -2,
     "promoted": [
       {
         "id": "浙江理工大学:085501:机械工程学院:cutoff:2025",
@@ -4415,6 +4406,186 @@
                 "length": 6,
                 "verified": false
               }
+            ],
+            "associationChain": []
+          }
+        ]
+      },
+      {
+        "id": "浙江农林大学:085500:光机电工程学院:cutoff:2026",
+        "school": "浙江农林大学",
+        "majorCode": "085500",
+        "field": "cutoff",
+        "year": 2026,
+        "evidence": [
+          {
+            "schoolName": "浙江农林大学",
+            "disciplineCode": "0855",
+            "majorCode": "085500",
+            "collegeName": "光机电工程学院",
+            "field": "cutoff",
+            "year": 2026,
+            "value": {
+              "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+              "number": 264,
+              "singleSubject": {
+                "maximum100": 35,
+                "above100": 53
+              },
+              "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+            },
+            "source": {
+              "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+              "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:16.520Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 702,
+              "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+              "offset": 2199,
+              "length": 52,
+              "verified": false
+            },
+            "supportingEvidence": [],
+            "associationChain": [
+              {
+                "role": "applicability",
+                "source": {
+                  "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+                  "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-10-12T13:48:16.520Z",
+                  "fixture": "tests/fixtures/research-v3a6-run11.json",
+                  "pageIndex": 702,
+                  "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+                  "offset": 2199,
+                  "length": 52,
+                  "verified": false
+                }
+              },
+              {
+                "role": "identity",
+                "source": {
+                  "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                  "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-10-12T13:47:49.590Z",
+                  "fixture": "tests/fixtures/research-v3a6-run11.json",
+                  "pageIndex": 316,
+                  "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "012光机电工程学院 | 085500机械 | 01机械设计及其理论 02智能制造技术 03智能检测与装备 | 33 | ①101-思想政治理论 ②204-英语（二） ③302-数学（二） ④818-机械设计 | 复试：工程测试技术加试：工程材料、控制工程基础 | |",
+                  "offset": 15706,
+                  "length": 134,
+                  "verified": false
+                }
+              },
+              {
+                "role": "degree",
+                "source": {
+                  "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                  "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-10-12T13:47:49.590Z",
+                  "fixture": "tests/fixtures/research-v3a6-run11.json",
+                  "pageIndex": 316,
+                  "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "（二） 全日制专业学位",
+                  "offset": 9293,
+                  "length": 11,
+                  "verified": false
+                }
+              },
+              {
+                "role": "nationalHeader",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                  "offset": 327,
+                  "length": 107,
+                  "verified": false
+                }
+              },
+              {
+                "role": "nationalColumns",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                  "offset": 435,
+                  "length": 151,
+                  "verified": false
+                }
+              },
+              {
+                "role": "nationalRow",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                  "offset": 8821,
+                  "length": 55,
+                  "verified": false
+                }
+              },
+              {
+                "role": "region",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                  "offset": 642,
+                  "length": 90,
+                  "verified": false
+                }
+              },
+              {
+                "role": "exceptions",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                  "offset": 1049,
+                  "length": 151,
+                  "verified": false
+                }
+              }
             ]
           }
         ]
@@ -4424,7 +4595,7 @@
     "humanReviewed": 0
   },
   "stageAcceptance": "A只覆盖浙江理工085501、杭电/浙科/浙农林/浙师085500。按复核原文→关联链→统计口径三步验收，做完就停；不以60%为完成条件，不触发付费，不做UI或目录入库。",
-  "method": "以最新真实运行的5校身份固定分母，对累计保存正文确定性重提取。不是网络实测、全国覆盖或人工审核。范围不适用仅指所列原文；公开可得性未确认不表示学校未公开。",
+  "method": "以最新真实运行的5校身份固定分母，对累计保存正文及定向保存国家线原文确定性重提取/关联。不是报告网络实测、全国覆盖或人工审核。范围不适用仅指所列原文；公开可得性未确认不表示学校未公开。",
   "rows": [
     {
       "id": "浙江理工大学:085501:机械工程学院:cutoff:2026",
@@ -4497,7 +4668,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -4559,7 +4731,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -4619,7 +4792,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -4679,7 +4853,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -4739,7 +4914,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -4799,7 +4975,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -4859,7 +5036,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -4976,7 +5154,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -5038,7 +5217,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5098,7 +5278,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5158,7 +5339,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5218,7 +5400,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5278,7 +5461,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5338,7 +5522,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -5454,7 +5639,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5514,7 +5700,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5574,7 +5761,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5634,7 +5822,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5694,7 +5883,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5754,7 +5944,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -5814,7 +6005,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -7120,7 +7312,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -7179,7 +7372,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7236,7 +7430,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7293,7 +7488,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7350,7 +7546,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7407,7 +7604,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7464,7 +7662,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7521,7 +7720,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7578,7 +7778,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7635,7 +7836,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7692,7 +7894,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7749,7 +7952,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7806,7 +8010,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7863,7 +8068,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江理工大学",
@@ -7920,7 +8126,8 @@
               "length": 23,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -8238,7 +8445,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -8297,7 +8505,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8354,7 +8563,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8411,7 +8621,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8454,7 +8665,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8497,7 +8709,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -8591,7 +8804,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -8650,7 +8864,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8707,7 +8922,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8764,7 +8980,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8807,7 +9024,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -8850,7 +9068,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -8962,7 +9181,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -9021,7 +9241,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9078,7 +9299,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9135,7 +9357,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9192,7 +9415,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9235,7 +9459,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -9549,7 +9774,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9607,7 +9833,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9651,7 +9878,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -9711,7 +9939,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9769,7 +9998,8 @@
               "length": 9,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -9813,7 +10043,8 @@
               "length": 109,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -11873,11 +12104,182 @@
       "collegeName": "光机电工程学院",
       "field": "cutoff",
       "year": 2026,
-      "evidenceStatus": "body_not_captured",
-      "publicAvailability": "unconfirmed",
+      "evidenceStatus": "captured_applicable",
+      "publicAvailability": "captured",
       "reviewStatus": "draft",
       "confirmedByHuman": false,
-      "applicableEvidence": [],
+      "applicableEvidence": [
+        {
+          "schoolName": "浙江农林大学",
+          "disciplineCode": "0855",
+          "majorCode": "085500",
+          "collegeName": "光机电工程学院",
+          "field": "cutoff",
+          "year": 2026,
+          "value": {
+            "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+            "number": 264,
+            "singleSubject": {
+              "maximum100": 35,
+              "above100": 53
+            },
+            "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+          },
+          "source": {
+            "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+            "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:16.520Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 702,
+            "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+            "offset": 2199,
+            "length": 52,
+            "verified": false
+          },
+          "supportingEvidence": [],
+          "associationChain": [
+            {
+              "role": "applicability",
+              "source": {
+                "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+                "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:48:16.520Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 702,
+                "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+                "offset": 2199,
+                "length": 52,
+                "verified": false
+              }
+            },
+            {
+              "role": "identity",
+              "source": {
+                "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:47:49.590Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 316,
+                "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "012光机电工程学院 | 085500机械 | 01机械设计及其理论 02智能制造技术 03智能检测与装备 | 33 | ①101-思想政治理论 ②204-英语（二） ③302-数学（二） ④818-机械设计 | 复试：工程测试技术加试：工程材料、控制工程基础 | |",
+                "offset": 15706,
+                "length": 134,
+                "verified": false
+              }
+            },
+            {
+              "role": "degree",
+              "source": {
+                "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:47:49.590Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 316,
+                "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "（二） 全日制专业学位",
+                "offset": 9293,
+                "length": 11,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalHeader",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 327,
+                "length": 107,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalColumns",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 435,
+                "length": 151,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalRow",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                "offset": 8821,
+                "length": 55,
+                "verified": false
+              }
+            },
+            {
+              "role": "region",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                "offset": 642,
+                "length": 90,
+                "verified": false
+              }
+            },
+            {
+              "role": "exceptions",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                "offset": 1049,
+                "length": 151,
+                "verified": false
+              }
+            }
+          ]
+        }
+      ],
       "rejectedScopeEvidence": [],
       "leads": [
         {
@@ -11936,7 +12338,7 @@
         }
       ],
       "priorAuditNote": "3209.htm明示2026复试线执行A类国家线，但正文没有该专业数字表，也未取得同年权威国家线表完成跨来源校验；其他学院的分数表不能借给光机电学院。2024/2025校线数值同样未取得。",
-      "nextAction": "核对同年同专业复试要求；采用国家线时补适用声明、区域、学位类型、专业范围和国家线数值链。"
+      "nextAction": "复核原文表头、年份、人群和项目范围；仍不能自动发布。"
     },
     {
       "id": "浙江农林大学:085500:光机电工程学院:cutoff:2025",
@@ -11946,12 +12348,183 @@
       "collegeName": "光机电工程学院",
       "field": "cutoff",
       "year": 2025,
-      "evidenceStatus": "body_not_captured",
+      "evidenceStatus": "scope_not_applicable",
       "publicAvailability": "unconfirmed",
       "reviewStatus": "draft",
       "confirmedByHuman": false,
       "applicableEvidence": [],
-      "rejectedScopeEvidence": [],
+      "rejectedScopeEvidence": [
+        {
+          "schoolName": "浙江农林大学",
+          "disciplineCode": "0855",
+          "majorCode": "085500",
+          "collegeName": "光机电工程学院",
+          "field": "cutoff",
+          "year": 2026,
+          "value": {
+            "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+            "number": 264,
+            "singleSubject": {
+              "maximum100": 35,
+              "above100": 53
+            },
+            "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+          },
+          "source": {
+            "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+            "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:16.520Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 702,
+            "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+            "offset": 2199,
+            "length": 52,
+            "verified": false
+          },
+          "supportingEvidence": [],
+          "associationChain": [
+            {
+              "role": "applicability",
+              "source": {
+                "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+                "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:48:16.520Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 702,
+                "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+                "offset": 2199,
+                "length": 52,
+                "verified": false
+              }
+            },
+            {
+              "role": "identity",
+              "source": {
+                "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:47:49.590Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 316,
+                "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "012光机电工程学院 | 085500机械 | 01机械设计及其理论 02智能制造技术 03智能检测与装备 | 33 | ①101-思想政治理论 ②204-英语（二） ③302-数学（二） ④818-机械设计 | 复试：工程测试技术加试：工程材料、控制工程基础 | |",
+                "offset": 15706,
+                "length": 134,
+                "verified": false
+              }
+            },
+            {
+              "role": "degree",
+              "source": {
+                "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:47:49.590Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 316,
+                "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "（二） 全日制专业学位",
+                "offset": 9293,
+                "length": 11,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalHeader",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 327,
+                "length": 107,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalColumns",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 435,
+                "length": 151,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalRow",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                "offset": 8821,
+                "length": 55,
+                "verified": false
+              }
+            },
+            {
+              "role": "region",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                "offset": 642,
+                "length": 90,
+                "verified": false
+              }
+            },
+            {
+              "role": "exceptions",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                "offset": 1049,
+                "length": 151,
+                "verified": false
+              }
+            }
+          ]
+        }
+      ],
       "leads": [
         {
           "url": "https://kaoyan.koolearn.com/20240607/1722182.html",
@@ -12031,12 +12604,183 @@
       "collegeName": "光机电工程学院",
       "field": "cutoff",
       "year": 2024,
-      "evidenceStatus": "body_not_captured",
+      "evidenceStatus": "scope_not_applicable",
       "publicAvailability": "unconfirmed",
       "reviewStatus": "draft",
       "confirmedByHuman": false,
       "applicableEvidence": [],
-      "rejectedScopeEvidence": [],
+      "rejectedScopeEvidence": [
+        {
+          "schoolName": "浙江农林大学",
+          "disciplineCode": "0855",
+          "majorCode": "085500",
+          "collegeName": "光机电工程学院",
+          "field": "cutoff",
+          "year": 2026,
+          "value": {
+            "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+            "number": 264,
+            "singleSubject": {
+              "maximum100": 35,
+              "above100": 53
+            },
+            "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+          },
+          "source": {
+            "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+            "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:16.520Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 702,
+            "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+            "offset": 2199,
+            "length": 52,
+            "verified": false
+          },
+          "supportingEvidence": [],
+          "associationChain": [
+            {
+              "role": "applicability",
+              "source": {
+                "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+                "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:48:16.520Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 702,
+                "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+                "offset": 2199,
+                "length": 52,
+                "verified": false
+              }
+            },
+            {
+              "role": "identity",
+              "source": {
+                "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:47:49.590Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 316,
+                "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "012光机电工程学院 | 085500机械 | 01机械设计及其理论 02智能制造技术 03智能检测与装备 | 33 | ①101-思想政治理论 ②204-英语（二） ③302-数学（二） ④818-机械设计 | 复试：工程测试技术加试：工程材料、控制工程基础 | |",
+                "offset": 15706,
+                "length": 134,
+                "verified": false
+              }
+            },
+            {
+              "role": "degree",
+              "source": {
+                "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+                "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:47:49.590Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 316,
+                "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "（二） 全日制专业学位",
+                "offset": 9293,
+                "length": 11,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalHeader",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 327,
+                "length": 107,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalColumns",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 435,
+                "length": 151,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalRow",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                "offset": 8821,
+                "length": 55,
+                "verified": false
+              }
+            },
+            {
+              "role": "region",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                "offset": 642,
+                "length": 90,
+                "verified": false
+              }
+            },
+            {
+              "role": "exceptions",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                "offset": 1049,
+                "length": 151,
+                "verified": false
+              }
+            }
+          ]
+        }
+      ],
       "leads": [
         {
           "url": "https://kaoyan.koolearn.com/20240607/1722182.html",
@@ -13191,7 +13935,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -13250,7 +13995,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13307,7 +14053,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13364,7 +14111,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13421,7 +14169,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13478,7 +14227,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -13635,7 +14385,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -13694,7 +14445,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13751,7 +14503,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13808,7 +14561,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13865,7 +14619,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -13922,7 +14677,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -14057,7 +14813,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "rejectedScopeEvidence": [
@@ -14116,7 +14873,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -14173,7 +14931,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -14230,7 +14989,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -14287,7 +15047,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         },
         {
           "schoolName": "浙江师范大学",
@@ -14344,7 +15105,8 @@
               "length": 6,
               "verified": false
             }
-          ]
+          ],
+          "associationChain": []
         }
       ],
       "leads": [
@@ -15584,6 +16346,1607 @@
       "leads": [],
       "priorAuditNote": "保存原文没有对应城市经济/产业统计；师大577822“培养目标…产业发展需求”是交通运输本科培养目标，不能绑定为本项目城市发展事实。 新增理工20250922001等目录中的“产业经济学/产业发展与产业政策”为课程或研究方向，已排除。",
       "nextAction": "先复查已保存原文与附件，再核对该年度、项目及人群范围；无法取得时保留缺项。"
+    }
+  ],
+  "supplementalCorpus": {
+    "generatedFrom": "tests/fixtures/research-a-national-lines.json",
+    "bodies": 2,
+    "method": "普通公开原文定向读取后保存；本生成器只离线读取，未启动第12次报告或付费调用"
+  },
+  "nationalLineChains": [
+    {
+      "schoolName": "浙江理工大学",
+      "collegeName": "机械工程学院",
+      "majorCode": "085501",
+      "year": 2024,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | A类考生① | | | B类考生② | | | 备 注 |",
+            "offset": 328,
+            "length": 63,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 备 注 |",
+            "offset": 393,
+            "length": 109,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | | 273 | 37 | 56 | 263 | 34 | 51 |",
+            "offset": 8590,
+            "length": 51,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建，江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 555,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业:力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 704,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": [
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+          "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:35.593Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 192,
+          "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "我校各学科专业复试分数线根据国家教育部确定的 202 4 年全国硕士研究生招生考试考生进入复试的初试成绩 A类考生基本要求执行（包括学术学位和专业学位硕士研究生），其中生源富余的学科专业在此基本要求上，再划定复试分数线",
+          "offset": 489,
+          "length": 109,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+          "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:35.593Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 192,
+          "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "在达到复试分数线的基础上，一志愿考生按其报考专业初试总分和相应国家线（总分线）的比值从高到低排序（若比值相同，则比较满分大于100分的单科成绩之和与相应科目满分之和的比值，从高到低排序），按照招生计划1:1.2划定第一轮复试名单",
+          "offset": 1782,
+          "length": 114,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm?s=",
+          "title": "浙江理工大学2024年硕士研究生招生复试分数线",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:35.912Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 193,
+          "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "我校各学科专业复试分数线根据国家教育部确定的 202 4 年全国硕士研究生招生考试考生进入复试的初试成绩 A类考生基本要求执行（包括学术学位和专业学位硕士研究生），其中生源富余的学科专业在此基本要求上，再划定复试分数线",
+          "offset": 489,
+          "length": 109,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm?s=",
+          "title": "浙江理工大学2024年硕士研究生招生复试分数线",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:35.912Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 193,
+          "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "在达到复试分数线的基础上，一志愿考生按其报考专业初试总分和相应国家线（总分线）的比值从高到低排序（若比值相同，则比较满分大于100分的单科成绩之和与相应科目满分之和的比值，从高到低排序），按照招生计划1:1.2划定第一轮复试名单",
+          "offset": 1782,
+          "length": 114,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm?s=103",
+          "title": "浙江理工大学2024年硕士研究生招生复试分数线",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:36.226Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 194,
+          "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "我校各学科专业复试分数线根据国家教育部确定的 202 4 年全国硕士研究生招生考试考生进入复试的初试成绩 A类考生基本要求执行（包括学术学位和专业学位硕士研究生），其中生源富余的学科专业在此基本要求上，再划定复试分数线",
+          "offset": 489,
+          "length": 109,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm?s=103",
+          "title": "浙江理工大学2024年硕士研究生招生复试分数线",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:36.226Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 194,
+          "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "在达到复试分数线的基础上，一志愿考生按其报考专业初试总分和相应国家线（总分线）的比值从高到低排序（若比值相同，则比较满分大于100分的单科成绩之和与相应科目满分之和的比值，从高到低排序），按照招生计划1:1.2划定第一轮复试名单",
+          "offset": 1782,
+          "length": 114,
+          "verified": false
+        },
+        {
+          "url": "https://gradschool.zstu.edu.cn/info/1135/7611.htm",
+          "title": "浙江理工大学2024年硕士研究生招生复试录取办法-浙江理工大研究生院部门",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:36.477Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 221,
+          "textSha256": "33201e750d73670d250fe40104f99168b966c1bdde076560db9d7e8325e9ee17",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "学校复试分数线根据教育部规定的 A类考生进入复试的初试成绩基本要求执行，复试考生名单按一志愿优先原则确定",
+          "offset": 1016,
+          "length": 52,
+          "verified": false
+        },
+        {
+          "url": "https://gradschool.zstu.edu.cn/info/1135/7611.htm",
+          "title": "浙江理工大学2024年硕士研究生招生复试录取办法-浙江理工大研究生院部门",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:36.477Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 221,
+          "textSha256": "33201e750d73670d250fe40104f99168b966c1bdde076560db9d7e8325e9ee17",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "在达到复试分数线的基础上，一志愿考生按其报考专业初试总分和相应国家线（总分线）的比值从高到低排序（若比值相同，则比较满分大于100分的单科成绩之和与相应科目满分之和的比值，从高到低排序），按照招生计划1:1.2划定第一轮复试名单",
+          "offset": 1488,
+          "length": 114,
+          "verified": false
+        }
+      ]
+    },
+    {
+      "schoolName": "浙江理工大学",
+      "collegeName": "机械工程学院",
+      "majorCode": "085501",
+      "year": 2025,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
+        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": true,
+      "evidence": [],
+      "partialStatements": [
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3203.htm",
+          "title": "浙江理工大学2025年硕士研究生招生复试录取办法-浙江理工大学研究生招生网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:21.909Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 198,
+          "textSha256": "1e1d4102c5e8a23c6c731c27e1bb63d3453e730191975ed973db85c122a49668",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "学校复试分数线根据教育部规定的 A类考生进入复试的初试成绩基本要求执行，复试考生名单按一志愿优先原则确定",
+          "offset": 768,
+          "length": 52,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3203.htm",
+          "title": "浙江理工大学2025年硕士研究生招生复试录取办法-浙江理工大学研究生招生网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:21.909Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 198,
+          "textSha256": "1e1d4102c5e8a23c6c731c27e1bb63d3453e730191975ed973db85c122a49668",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "在达到复试分数线的基础上，一志愿考生按其报考专业初试总分和相应国家线（总分线）的比值从高到低排序（若比值相同，则比较满分大于100分的单科成绩之和与相应科目满分之和的比值，从高到低排序），按照招生计划1:1.2划定第一轮复试名单",
+          "offset": 1270,
+          "length": 114,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+          "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:21.477Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 199,
+          "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "我校各学科专业复试分数线根据国家教育部确定的2025年全国硕士研究生招生考试考生进入复试的初试成绩A类考生基本要求执行（包括学术学位和专业学位硕士研究生），其中生源富余的学科专业在此基本要求上，再划定复试分数线",
+          "offset": 489,
+          "length": 105,
+          "verified": false
+        },
+        {
+          "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+          "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:21.477Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 199,
+          "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "在达到复试分数线的基础上，一志愿考生按其报考专业初试总分和相应国家线（总分线）的比值从高到低排序（若比值相同，则比较满分大于100分的单科成绩之和与相应科目满分之和的比值，从高到低排序），按照招生计划1:1.2划定第一轮复试名单",
+          "offset": 5271,
+          "length": 114,
+          "verified": false
+        }
+      ]
+    },
+    {
+      "schoolName": "浙江理工大学",
+      "collegeName": "机械工程学院",
+      "majorCode": "085501",
+      "year": 2026,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": true,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 327,
+            "length": 107,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 435,
+            "length": 151,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+            "offset": 8821,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 642,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 1049,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": [
+        {
+          "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+          "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-11T01:42:22.456Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 228,
+          "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "我校各学科专业复试分数线根据国家教育部确定的2026年全国硕士研究生招生考试考生进入复试的初试成绩A类考生基本要求执行（包括学术学位和专业学位硕士研究生），其中生源富余的学科专业在此基本要求上，再划定复试分数线",
+          "offset": 672,
+          "length": 105,
+          "verified": false
+        },
+        {
+          "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+          "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-11T01:42:22.456Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 228,
+          "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "在达到复试分数线的基础上，一志愿考生按其报考专业初试总分和相应国家线（总分线）的比值从高到低排序（若比值相同，则比较满分大于100分的单科成绩之和与相应科目满分之和的比值，从高到低排序），按照招生计划1:1.2划定第一轮复试名单",
+          "offset": 5305,
+          "length": 114,
+          "verified": false
+        }
+      ]
+    },
+    {
+      "schoolName": "杭州电子科技大学",
+      "collegeName": "机械工程学院",
+      "majorCode": "085500",
+      "year": 2024,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | A类考生① | | | B类考生② | | | 备 注 |",
+            "offset": 328,
+            "length": 63,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 备 注 |",
+            "offset": 393,
+            "length": 109,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | | 273 | 37 | 56 | 263 | 34 | 51 |",
+            "offset": 8590,
+            "length": 51,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建，江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 555,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业:力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 704,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": []
+    },
+    {
+      "schoolName": "杭州电子科技大学",
+      "collegeName": "机械工程学院",
+      "majorCode": "085500",
+      "year": 2025,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
+        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [],
+      "partialStatements": []
+    },
+    {
+      "schoolName": "杭州电子科技大学",
+      "collegeName": "机械工程学院",
+      "majorCode": "085500",
+      "year": 2026,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 327,
+            "length": 107,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 435,
+            "length": 151,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+            "offset": 8821,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 642,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 1049,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": []
+    },
+    {
+      "schoolName": "浙江科技大学",
+      "collegeName": "艺术设计与服装学院",
+      "majorCode": "085500",
+      "year": 2024,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | A类考生① | | | B类考生② | | | 备 注 |",
+            "offset": 328,
+            "length": 63,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 备 注 |",
+            "offset": 393,
+            "length": 109,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | | 273 | 37 | 56 | 263 | 34 | 51 |",
+            "offset": 8590,
+            "length": 51,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建，江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 555,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业:力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 704,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": []
+    },
+    {
+      "schoolName": "浙江科技大学",
+      "collegeName": "艺术设计与服装学院",
+      "majorCode": "085500",
+      "year": 2025,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
+        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [],
+      "partialStatements": [
+        {
+          "url": "https://yzw.zust.edu.cn/info/1035/1913.htm",
+          "title": "浙江科技大学2025年硕士研究生复试录取工作办法",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:27.843Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 910,
+          "textSha256": "2f97ae28f41106b2f1f24193e43de00c79c8262685a02b4210fb909e857b86df",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1.各专业复试分数线 按照 202 5 年全国硕士研究生招生考试 A类考生进入复试的初试成绩基本要求 确定 ",
+          "offset": 1957,
+          "length": 54,
+          "verified": false
+        }
+      ]
+    },
+    {
+      "schoolName": "浙江科技大学",
+      "collegeName": "艺术设计与服装学院",
+      "majorCode": "085500",
+      "year": 2026,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 327,
+            "length": 107,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 435,
+            "length": 151,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+            "offset": 8821,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 642,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 1049,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": [
+        {
+          "url": "https://som.zust.edu.cn/info/1018/5611.htm",
+          "title": "浙江科技大学管理学院2026年硕士研究生招生复试实施细则-浙江科技大学管理学院",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:26.671Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 561,
+          "textSha256": "26e1aafeb9010dafb8e485bd57753a0e3c55228ae4979d6c497e5c991b7d9bc3",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1.各专业复试分数线按照2026年全国硕士研究生招生考试A类考生进入复试的初试成绩基本要求确定",
+          "offset": 774,
+          "length": 47,
+          "verified": false
+        },
+        {
+          "url": "https://som.zust.edu.cn/info/1018/5611.htm",
+          "title": "浙江科技大学管理学院2026年硕士研究生招生复试实施细则-浙江科技大学管理学院",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:26.671Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 561,
+          "textSha256": "26e1aafeb9010dafb8e485bd57753a0e3c55228ae4979d6c497e5c991b7d9bc3",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "3.“退役大学生士兵专项计划”复试分数线按照2026年全国硕士研究生招生考试A类考生总分降30分，单科（满分=100分）降5分，单科（满分>100分）降10分进入复试的初试成绩基本要求确定",
+          "offset": 886,
+          "length": 94,
+          "verified": false
+        },
+        {
+          "url": "https://yzw.zust.edu.cn/info/1035/1974.htm",
+          "title": "浙江科技大学关于考生做好硕士研究生复试…",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-10T22:31:18.921Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 913,
+          "textSha256": "5771edb444ce37c4640379e498acb64528ca9db0314d8b3bf2ce63dbd8971ff6",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": " 我校近三年一志愿复试分数线为各专业国家线，供参考",
+          "offset": 619,
+          "length": 25,
+          "verified": false
+        },
+        {
+          "url": "https://yzw.zust.edu.cn/info/1035/1976.htm",
+          "title": "浙江科技大学2026年硕士研究生复试录取工…",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-10T22:30:58.068Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 914,
+          "textSha256": "f9861136bf0774a01309707988c8a2ad7c1c8ac0da7a522378d67c7eb874a947",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1.各专业复试分数线按照2026年全国硕士研究生招生考试A类考生进入复试的初试成绩基本要求确定",
+          "offset": 1079,
+          "length": 47,
+          "verified": false
+        },
+        {
+          "url": "https://yzw.zust.edu.cn/info/1035/1976.htm",
+          "title": "浙江科技大学2026年硕士研究生复试录取工…",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-10T22:30:58.068Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 914,
+          "textSha256": "f9861136bf0774a01309707988c8a2ad7c1c8ac0da7a522378d67c7eb874a947",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "3.“退役大学生士兵专项计划”复试分数线按照2026年全国硕士研究生招生考试A类考生总分降30分，单科（满分=100分）降5分，单科（满分>100分）降10分进入复试的初试成绩基本要求确定",
+          "offset": 1227,
+          "length": 94,
+          "verified": false
+        },
+        {
+          "url": "https://econ.zust.edu.cn/info/1018/2407.htm",
+          "title": "经济学院2026年硕士研究生招生复试实施细则-浙江科技大学经济学院",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:25.899Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 150,
+          "textSha256": "6a13cff7cdcc8579b280b442650461e52581da7e0be79198a796fcdedad38e65",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1.各专业复试分数线按照2026年全国硕士研究生招生考试A类考生进入复试的初试成绩基本要求确定",
+          "offset": 672,
+          "length": 47,
+          "verified": false
+        },
+        {
+          "url": "https://econ.zust.edu.cn/info/1018/2407.htm",
+          "title": "经济学院2026年硕士研究生招生复试实施细则-浙江科技大学经济学院",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:25.899Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 150,
+          "textSha256": "6a13cff7cdcc8579b280b442650461e52581da7e0be79198a796fcdedad38e65",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "3.“退役大学生士兵专项计划”复试分数线按照2026年全国硕士研究生招生考试A类考生总分降30分，单科（满分=100分）降5分，单科（满分>100分）降10分进入复试的初试成绩基本要求确定",
+          "offset": 784,
+          "length": 94,
+          "verified": false
+        }
+      ]
+    },
+    {
+      "schoolName": "浙江农林大学",
+      "collegeName": "光机电工程学院",
+      "majorCode": "085500",
+      "year": 2024,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | A类考生① | | | B类考生② | | | 备 注 |",
+            "offset": 328,
+            "length": 63,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 备 注 |",
+            "offset": 393,
+            "length": 109,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | | 273 | 37 | 56 | 263 | 34 | 51 |",
+            "offset": 8590,
+            "length": 51,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建，江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 555,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业:力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 704,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": []
+    },
+    {
+      "schoolName": "浙江农林大学",
+      "collegeName": "光机电工程学院",
+      "majorCode": "085500",
+      "year": 2025,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
+        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": false,
+      "evidence": [],
+      "partialStatements": [
+        {
+          "url": "https://yjszs.zafu.edu.cn/info/1109/2832.htm",
+          "title": "数学与计算机科学学院2025年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:50:20.756Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 723,
+          "textSha256": "0d43b9d8a8ce5ca7c9f65c7cf91c759adafc068e4a3854ae202f23bcfe798040",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "我院根据教育部公布的 “2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）， 结合生源和招生计划情况 ，确定进入复试的考生初试成绩基本要求如表 1所示",
+          "offset": 2650,
+          "length": 91,
+          "verified": false
+        }
+      ]
+    },
+    {
+      "schoolName": "浙江农林大学",
+      "collegeName": "光机电工程学院",
+      "majorCode": "085500",
+      "year": 2026,
+      "status": "complete_chain",
+      "missing": [],
+      "derivedFactId": "b1397bd9a015f6ec6fe09da4",
+      "directCutoffAvailable": false,
+      "evidence": [
+        {
+          "role": "applicability",
+          "source": {
+            "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+            "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:16.520Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 702,
+            "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+            "offset": 2199,
+            "length": 52,
+            "verified": false
+          }
+        },
+        {
+          "role": "identity",
+          "source": {
+            "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+            "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:47:49.590Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 316,
+            "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "012光机电工程学院 | 085500机械 | 01机械设计及其理论 02智能制造技术 03智能检测与装备 | 33 | ①101-思想政治理论 ②204-英语（二） ③302-数学（二） ④818-机械设计 | 复试：工程测试技术加试：工程材料、控制工程基础 | |",
+            "offset": 15706,
+            "length": 134,
+            "verified": false
+          }
+        },
+        {
+          "role": "degree",
+          "source": {
+            "url": "https://ie.zafu.edu.cn/info/1091/5213.htm",
+            "title": "浙江农林大学2026年硕士研究生招生专业目录-数学与计算机科学学院",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:47:49.590Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 316,
+            "textSha256": "7b8dc961d4542a421318842d8150bf432cefb2e1dbd60cf50f4ba405a8393b07",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "（二） 全日制专业学位",
+            "offset": 9293,
+            "length": 11,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 327,
+            "length": 107,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 435,
+            "length": 151,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+            "offset": 8821,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 642,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 1049,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": [
+        {
+          "url": "https://yjszs.zafu.edu.cn/info/1022/3209.htm",
+          "title": "光机电工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:16.520Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 702,
+          "textSha256": "b7be441e3bc843c8e3fa5e256abba085c9c3bbd4ff6a884464fa2e41d517076e",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "复试分数线参照 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）执行",
+          "offset": 2199,
+          "length": 52,
+          "verified": false
+        },
+        {
+          "url": "https://yjszs.zafu.edu.cn/info/1109/3232.htm",
+          "title": "数学与计算机科学学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:16.769Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 724,
+          "textSha256": "673a1507d87c283bb0c26b8d429f90dd88f2c53c4276c779d754b96a495b3306",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "本院根据教育部公布的 “2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求”（A类考生国家线）， 结合生源和招生计划情况 ，确定进入复试的考生初试成绩基本要求如表 1所示",
+          "offset": 2504,
+          "length": 91,
+          "verified": false
+        },
+        {
+          "url": "https://yjszs.zafu.edu.cn/info/1109/3247.htm",
+          "title": "马克思主义学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:17.063Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 726,
+          "textSha256": "7fb1af5fffc992eec8ada20392c0cf422f76e0a9e5f4bcbe897a22d33685cce5",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "根据教育部公布的 “202 6 年全国硕士研究生招生考试考生进入复试的初试成绩基本要求 ” （ A类考生国家线） ，结合生源和招生计划情况， 考生进入复试的初试总成绩不低于 369 分",
+          "offset": 1731,
+          "length": 92,
+          "verified": false
+        },
+        {
+          "url": "https://yjszs.zafu.edu.cn/info/1109/3254.htm",
+          "title": "化学与材料工程学院2026年硕士研究生复试录取工作实施细则-浙江农林大学研究生招生信息网",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:17.363Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 727,
+          "textSha256": "9edbff0515ea544246fc81ea36bdd29f94bd275b6d2177159eca6605d7a3cabf",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "复试分数线按照教育部公布的 “202 6 年全国硕士研究生招生考试考生进入复试的初试成绩基本要求 ” （ A类考生国家线 ） 执行",
+          "offset": 2130,
+          "length": 65,
+          "verified": false
+        }
+      ]
+    },
+    {
+      "schoolName": "浙江师范大学",
+      "collegeName": null,
+      "majorCode": "085500",
+      "year": 2024,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": true,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | A类考生① | | | B类考生② | | | 备 注 |",
+            "offset": 328,
+            "length": 63,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科，专业学位类别 （以下简称学科专业） | | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 总分 | 单科 （满分=100分） | 单科 （满分＞100分） | 备 注 |",
+            "offset": 393,
+            "length": 109,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | | 273 | 37 | 56 | 263 | 34 | 51 |",
+            "offset": 8590,
+            "length": 51,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建，江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 555,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202403/20240312/2293269492.html",
+            "title": "2024年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.672Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 0,
+            "textSha256": "6a63fdadd50c0c4b2da0c79d528cb7008b29e0758bae459ef46f67e283137baf",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业:力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 704,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": []
+    },
+    {
+      "schoolName": "浙江师范大学",
+      "collegeName": null,
+      "majorCode": "085500",
+      "year": 2025,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
+        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": true,
+      "evidence": [],
+      "partialStatements": []
+    },
+    {
+      "schoolName": "浙江师范大学",
+      "collegeName": null,
+      "majorCode": "085500",
+      "year": 2026,
+      "status": "incomplete_chain",
+      "missing": [
+        "同年同学院六位专业代码身份",
+        "该专业所在表段的全日制专业学位口径",
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+      ],
+      "derivedFactId": null,
+      "directCutoffAvailable": true,
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 327,
+            "length": 107,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+            "offset": 435,
+            "length": 151,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+            "offset": 8821,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 642,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+            "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-10-19T19:05:43.794Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 1,
+            "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 1049,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
+      "partialStatements": []
+    }
+  ],
+  "assessmentChains": [
+    {
+      "schoolName": "浙江理工大学",
+      "majorCode": "085501",
+      "collegeName": "机械工程学院",
+      "status": "incomplete_chain",
+      "missing": [
+        "第四轮权威矩阵中目标学校0802学科的结果原文",
+        "目标六位专业与0802学科明确依托关系原文（可调剂0802不等于依托）"
+      ],
+      "conclusion": "不把0802学科评级直接赋给0855专业学位；排名及ESI不替代学科评估。"
+    },
+    {
+      "schoolName": "杭州电子科技大学",
+      "majorCode": "085500",
+      "collegeName": "机械工程学院",
+      "status": "incomplete_chain",
+      "missing": [
+        "第四轮权威矩阵中目标学校0802学科的结果原文",
+        "目标六位专业与0802学科明确依托关系原文（可调剂0802不等于依托）"
+      ],
+      "conclusion": "不把0802学科评级直接赋给0855专业学位；排名及ESI不替代学科评估。"
+    },
+    {
+      "schoolName": "浙江科技大学",
+      "majorCode": "085500",
+      "collegeName": "艺术设计与服装学院",
+      "status": "incomplete_chain",
+      "missing": [
+        "第四轮权威矩阵中目标学校0802学科的结果原文",
+        "目标六位专业与0802学科明确依托关系原文（可调剂0802不等于依托）"
+      ],
+      "conclusion": "不把0802学科评级直接赋给0855专业学位；排名及ESI不替代学科评估。"
+    },
+    {
+      "schoolName": "浙江农林大学",
+      "majorCode": "085500",
+      "collegeName": "光机电工程学院",
+      "status": "incomplete_chain",
+      "missing": [
+        "第四轮权威矩阵中目标学校0802学科的结果原文",
+        "目标六位专业与0802学科明确依托关系原文（可调剂0802不等于依托）"
+      ],
+      "conclusion": "不把0802学科评级直接赋给0855专业学位；排名及ESI不替代学科评估。"
+    },
+    {
+      "schoolName": "浙江师范大学",
+      "majorCode": "085500",
+      "collegeName": null,
+      "status": "incomplete_chain",
+      "missing": [
+        "第四轮权威矩阵中目标学校0802学科的结果原文",
+        "目标六位专业与0802学科明确依托关系原文（可调剂0802不等于依托）"
+      ],
+      "conclusion": "不把0802学科评级直接赋给0855专业学位；排名及ESI不替代学科评估。"
     }
   ],
   "associationEvidence": [

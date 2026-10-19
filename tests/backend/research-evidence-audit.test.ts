@@ -38,13 +38,13 @@ test("fixed latest-real identities retain 75 slots and separate the historical b
   assert.equal(new Set(audit.rows.map((r) => r.id)).size, 75);
   assert.equal(
     audit.rows.filter((r) => r.evidenceStatus === "captured_applicable").length,
-    10,
+    11,
   );
-  assert.equal(audit.offlineCoverage.confirmed, 10);
-  assert.equal(audit.offlineCoverage.pending, 65);
+  assert.equal(audit.offlineCoverage.confirmed, 11);
+  assert.equal(audit.offlineCoverage.pending, 64);
   assert.equal(
     audit.offlineCoverage.combined.partialAverage,
-    0.08666666666666667,
+    0.09333333333333334,
   );
   assert.equal(audit.offlineCoverage.combined.completeAverage, 0);
   assert.equal(audit.baseline.coverage.confirmed, 9);
@@ -68,6 +68,15 @@ test("every asserted passage resolves to literal saved text, its hash and UTF-16
     ),
     ...audit.associationEvidence.map((a) => a.source),
     ...pack.candidates.map((c) => c.source),
+    ...audit.nationalLineChains.flatMap((c) => [
+      ...c.evidence.map((e) => e.source),
+      ...c.partialStatements,
+    ]),
+    ...audit.rows.flatMap((r) =>
+      r.applicableEvidence.flatMap((e) =>
+        e.associationChain.map((c) => c.source),
+      ),
+    ),
   ];
   assert.ok(refs.length > 20);
   for (const ref of refs) {
@@ -420,16 +429,16 @@ test("real spaced 2025 table headers recover only the exact ZSTU 085501 row and 
   );
 });
 
-test("review progress identifies the one promoted slot without changing the historical nine confirmations", () => {
+test("review progress identifies the two promoted slots without changing the historical nine confirmations", () => {
   const progress = audit.reviewProgress;
   assert.equal(progress.baselineConfirmed, 9);
-  assert.equal(progress.currentConfirmable, 10);
-  assert.equal(progress.currentPending, 65);
-  assert.equal(progress.confirmedDelta, 1);
-  assert.equal(progress.pendingDelta, -1);
+  assert.equal(progress.currentConfirmable, 11);
+  assert.equal(progress.currentPending, 64);
+  assert.equal(progress.confirmedDelta, 2);
+  assert.equal(progress.pendingDelta, -2);
   assert.equal(progress.humanReviewed, 0);
   assert.equal(progress.demoted.length, 0);
-  assert.equal(progress.promoted.length, 1);
+  assert.equal(progress.promoted.length, 2);
   assert.equal(progress.promoted[0].school, "浙江理工大学");
   assert.equal(progress.promoted[0].majorCode, "085501");
   assert.equal(progress.promoted[0].year, 2025);

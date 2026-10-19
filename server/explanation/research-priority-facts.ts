@@ -223,7 +223,10 @@ export function validatePriorityFacts(
         : undefined;
     if (
       key === "disciplineAssessment" &&
-      (!assessmentGrade || /未公布|预测|推测/.test(assessmentClause))
+      (!assessmentGrade ||
+        /未公布|预测|推测/.test(assessmentClause) ||
+        !/第四轮/.test(quote + source.title) ||
+        /第五轮|第三轮|2012年.*评估/.test(quote))
     )
       continue;
     // Reject literal passages about a different school embedded in the owner's page.

@@ -35,7 +35,7 @@ export function priorityFixturePages(school: {
   );
   add(
     "academic",
-    "2026年硕士研究生学科评估与专业排名",
+    "2026年硕士研究生第四轮学科评估与专业排名",
     "学科代码 | 学科名称 | 评估等级\n080200 | 机械工程 | B+\n2026年080200机械工程专业排名第20。",
   );
   add(

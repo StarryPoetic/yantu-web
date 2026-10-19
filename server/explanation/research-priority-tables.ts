@@ -370,7 +370,12 @@ function admissionTableFacts(
       groups.set(key, group);
     }
     const gradeIndex = col(/评估.*(?:结果|等级)|^等级$/);
-    if (gradeIndex >= 0 && /^[ABC][+-]?$/.test(row[gradeIndex]))
+    if (
+      gradeIndex >= 0 &&
+      /^[ABC][+-]?$/.test(row[gradeIndex]) &&
+      /第四轮/.test(source.title) &&
+      !/第五轮|第三轮|2012/.test(source.title)
+    )
       add(
         "disciplineAssessment",
         discipline,
