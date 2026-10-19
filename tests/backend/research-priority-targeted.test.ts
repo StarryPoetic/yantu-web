@@ -311,7 +311,7 @@ test("roster privacy strips identifiers, deduplicates repeated IDs and rejects a
     extractPriorityFacts(employmentTable, [discipline], "2027").find(
       (f) => f.field === "employment",
     )?.value.employmentRate,
-    96.5,
+    undefined,
   );
 });
 test("Flash first DNS failure retries once and still extracts tables with shared token accounting", async () => {

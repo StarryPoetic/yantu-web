@@ -12,6 +12,12 @@ import {
   externalFieldAllowed,
 } from "./research-source-policy.ts";
 import { publicExternalText } from "./research-external-text.ts";
+import {
+  ratioStatistics,
+  backgroundStatistics,
+  graduateEmploymentScope,
+  statisticalCollege,
+} from "./research-statistical-scope.ts";
 
 /** Public external text is evidence, never a new school identity or a catalogue publication. */
 export function externalPriorityFacts(
@@ -66,11 +72,16 @@ export function externalPriorityFacts(
           ? schools[0]
           : undefined;
     if (!school) continue;
-    const named = disciplines.filter(
-      (d) =>
-        quote.includes(d.name) ||
-        new RegExp(`\\b${d.code}\\d{0,2}\\b`).test(quote),
+    const byCode = disciplines.filter((d) =>
+      new RegExp(`\\b${d.code}\\d{0,2}\\b`).test(quote),
     );
+    const named = byCode.length
+      ? byCode
+      : disciplines.filter(
+          (d) =>
+            quote.includes(d.name) ||
+            new RegExp(`\\b${d.code}\\d{0,2}\\b`).test(quote),
+        );
     const specific = named.filter(
       (d) =>
         !named.some(
@@ -110,6 +121,32 @@ export function externalPriorityFacts(
         assessmentYear > +targetYear
       )
         return;
+      const statistical = [
+        "applicationAdmissionRatio",
+        "recommendationShare",
+      ].includes(field)
+        ? ratioStatistics(field, quote)
+        : ["undergraduateAdmission", "crossMajorAdmission"].includes(field)
+          ? backgroundStatistics(field, quote)
+          : undefined;
+      if (
+        [
+          "applicationAdmissionRatio",
+          "recommendationShare",
+          "undergraduateAdmission",
+          "crossMajorAdmission",
+        ].includes(field) &&
+        !statistical
+      )
+        return;
+      const employmentScope =
+        field === "employment" ? graduateEmploymentScope(quote) : undefined;
+      if (field === "employment" && !employmentScope) return;
+      value = {
+        ...value,
+        ...statistical,
+        ...(employmentScope ? { population: employmentScope.population } : {}),
+      };
       if (
         [
           "cutoff",
@@ -135,10 +172,16 @@ export function externalPriorityFacts(
       const fact = {
         sourceTier: policy.tier,
         schoolName: school.name,
-        disciplineCode: discipline?.code,
-        programName: discipline?.name,
-        majorCode: codes[0],
-        scope: discipline ? ("program" as const) : ("school" as const),
+        disciplineCode: employmentScope ? undefined : discipline?.code,
+        programName: employmentScope ? undefined : discipline?.name,
+        majorCode: employmentScope ? undefined : codes[0],
+        collegeName:
+          employmentScope?.collegeName ??
+          (statistical ? statisticalCollege(quote) : undefined),
+        scope:
+          discipline && !employmentScope
+            ? ("program" as const)
+            : ("school" as const),
         field,
         year: assessmentYear,
         quote,

@@ -484,6 +484,47 @@ export function buildEvidenceAudit(root = repositoryRoot) {
       conclusion:
         "不把0802学科评级直接赋给0855专业学位；排名及ESI不替代学科评估。",
     })),
+    statisticalReview: recommendations.map((r) => ({
+      schoolName: r.institutionName,
+      majorCode: r.majorCode,
+      collegeName: r.collegeName ?? null,
+      firstChoice: preferredPriorityFacts(facts, r)
+        .filter(
+          (f) =>
+            f.field === "admittedCount" && f.value.applicants !== undefined,
+        )
+        .map((f) => ({
+          year: f.year,
+          applicants: f.value.applicants,
+          allAdmitted: f.value.number,
+          conclusion:
+            "一志愿报考人数不等于一志愿录取人数；总录取含其他人群，禁止用这两个数相除。空推免列不补零。",
+          evidence: evidence(f),
+        })),
+      fields: rows
+        .filter(
+          (row) =>
+            row.institutionName === r.institutionName &&
+            [
+              "applicationAdmissionRatio",
+              "recommendationShare",
+              "undergraduateAdmission",
+              "crossMajorAdmission",
+              "employment",
+            ].includes(row.field),
+        )
+        .map((row) => ({
+          field: row.field,
+          status: row.evidenceStatus,
+          evidence: row.applicableEvidence,
+        })),
+      remainingDependencies: [
+        "同年同学院同项目同学习方式的一志愿实际录取人数及报考人数；不能拿含调剂总录取当分母",
+        "同年同群体明确推免人数及含推免的录取总人数；计划排除推免或空列不能推导占比",
+        "公开硕士录取群体的双非/跨考人数或有分母比例；本科新生、报考资格和经验评价不能代替",
+        "学院或研究生院毕业去向公开口径；不可向专业就业率外推",
+      ],
+    })),
     associationEvidence,
     authorityEntrances,
   };
@@ -586,7 +627,7 @@ function markdown(audit: ReturnType<typeof buildEvidenceAudit>) {
 | --- | --- | --- | --- | --- |
 ${audit.nationalLineChains.map((c) => `| ${c.schoolName} ${c.majorCode} | ${c.year} | ${c.status === "complete_chain" ? "完整（普通计划）" : "待补"} | ${c.directCutoffAvailable ? "是" : "否"} | ${c.missing.join("；") || "无；达到基本线不保证进入差额复试或录取"} |`).join("\n")}
 
-完整链各段保存独立原文引用，不把推导数字伪装成学校原句。浙农林2026的264/35/53仅适用光机电学院085500全日制专业学位普通计划，不延伸士兵等专项。2025国家线数值原文尚未保存。五校第四轮矩阵0802结果与目标项目依托关系均待补；允许0802考生调剂、其他学科评级和本科专业依托均不能代替。没有新证据被写入正式目录；新增关联事实只参与本台账离线核对，历史报告不改写。\n\n## 逐字段审计\n\n“范围不适用”指已有相关原文与当前槽的年/专业/学院不匹配，**不表示该字段对学校不适用**。“确认”是既有抽取规则口径，不是人工审核。数量列依次为适用原文/范围不符原文/未取得正文线索；URL、失败码、历史审计说明及下一动作在[机器台账](../knowledge/catalog/review-candidates/evidence-audit.json)。\n\n| 学校/专业 | 字段/参考年 | 已存证据状态 | 原文/异范围/缺正文 |\n| --- | --- | --- | --- |\n${rows.join("\n")}\n`;
+完整链各段保存独立原文引用，不把推导数字伪装成学校原句。浙农林2026的264/35/53仅适用光机电学院085500全日制专业学位普通计划，不延伸士兵等专项。2025国家线数值原文尚未保存。五校第四轮矩阵0802结果与目标项目依托关系均待补；允许0802考生调剂、其他学科评级和本科专业依托均不能代替。没有新证据被写入正式目录；新增关联事实只参与本台账离线核对，历史报告不改写。\n\n## 统计口径复核\n\nA的三步已落地：原文正向抽取与真实负例、逐校逐年关联、统计分母及人群边界。复核结果不等于公开资料已经齐全，也不以60%为结束条件。\n\n杭电085500保存的2024/2025/2026一志愿报考人数分别为257/321/260，总录取人数为125/130/145；后者含调剂等人群，不能相除为报录比。推免空列不能写0。机器台账statisticalReview保留每年原文和表头。其余四校未取得适用的一志愿人数完整统计，不用计划人数或单批调剂人数替代。\n\n五校报录比、推免占比、双非及跨考录取群体仍待补。浙理工就业仅确认机械工程学院毕业研究生317人、去向落实310人、97.79%，不改写为085501专业或纯硕士就业率；其余学校缺适用学院/研院原文。专业排名仍缺，ESI及经验宣传不能填入。正文统计、通用表格及外部来源入口均收紧同年同人群与分母校验；公开名单所得比例仅保留本页名单范围。\n\n已测负例包括：杭电一志愿报考与总录取混除、浙科本科4204人新闻、浙师计划人数、浙农林复试60分、浙科异学院调剂批次、错年/错评估轮次及多学院/全非全混合人群。无资料保持缺项。\n\n## 逐字段审计\n\n“范围不适用”指已有相关原文与当前槽的年/专业/学院不匹配，**不表示该字段对学校不适用**。“确认”是既有抽取规则口径，不是人工审核。数量列依次为适用原文/范围不符原文/未取得正文线索；URL、失败码、历史审计说明及下一动作在[机器台账](../knowledge/catalog/review-candidates/evidence-audit.json)。\n\n| 学校/专业 | 字段/参考年 | 已存证据状态 | 原文/异范围/缺正文 |\n| --- | --- | --- | --- |\n${rows.join("\n")}\n`;
 }
 export function auditOutputs(root = repositoryRoot) {
   const audit = buildEvidenceAudit(root),

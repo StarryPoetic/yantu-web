@@ -248,6 +248,12 @@ function admissionTableFacts(
           text: "官方汇总明确推免列占录取人数比例",
           number: (row.recommended / row.admitted) * 100,
           population: row.population,
+          ratioBasis: {
+            numerator: row.recommended,
+            denominator: row.admitted,
+            numeratorLabel: "官方汇总推免人数",
+            denominatorLabel: "官方汇总录取人数（含推免）",
+          },
         },
         evidence,
       );
@@ -385,45 +391,45 @@ function admissionTableFacts(
         { text: line, grade: row[gradeIndex] },
         evidence,
       );
-    const rateIndex = col(/就业率|去向落实率/);
-    const destinationIndex = col(/主要去向|就业去向|就业行业/);
-    const rate =
-      rateIndex >= 0 && /^\d+(?:\.\d+)?[%％]$/.test(row[rateIndex])
-        ? Number(row[rateIndex].slice(0, -1))
-        : undefined;
+    // Only explicitly comparable first-choice populations may form a ratio.
+    // A total-admitted column can include transfers and recommended students.
+    const applicants = number(/^一志愿报考人数$/),
+      admitted = number(/^一志愿实际录取人数$/);
+    const modeText = source.title + line;
+    const mixedMode =
+      modeText.includes("非全日制") &&
+      modeText.replaceAll("非全日制", "").includes("全日制");
+    const studyMode = modeText.includes("非全日制") ? "非全日制" : "全日制";
     if (
-      /硕士.*毕业|毕业.*硕士/.test(source.title + source.excerpt) &&
-      ((rate !== undefined && rate <= 100) || destinationIndex >= 0)
-    )
-      add(
-        "employment",
-        discipline,
-        code,
-        college,
-        line,
-        {
-          text: line,
-          ...(rate !== undefined && rate <= 100
-            ? { employmentRate: rate }
-            : {}),
-          ...(destinationIndex >= 0
-            ? { destinations: row[destinationIndex] }
-            : {}),
-        },
-        evidence,
-      );
-    const applicants = number(/报考人数/),
-      admitted = number(/录取人数/);
-    if (applicants !== undefined && admitted !== undefined && admitted > 0)
+      applicants !== undefined &&
+      admitted !== undefined &&
+      admitted > 0 &&
+      /全日制硕士研究生/.test(source.title) &&
+      !mixedMode &&
+      college
+    ) {
       add(
         "applicationAdmissionRatio",
         discipline,
         code,
         college,
         line,
-        { text: line, number: applicants / admitted },
+        {
+          text: line,
+          number: applicants / admitted,
+          population: `同年同学院同项目${studyMode}硕士研究生一志愿报考/实际录取`,
+          ratioBasis: {
+            numerator: applicants,
+            denominator: admitted,
+            numeratorLabel: "一志愿报考人数",
+            denominatorLabel: "一志愿实际录取人数",
+          },
+        },
         evidence,
       );
+    }
+    // Faculty graduate employment is extracted by graduateEmploymentTableFacts;
+    // a programme-only employment table cannot stand in for faculty/graduate-school data.
   }
   for (const group of groups.values()) {
     const statistics = {
@@ -453,6 +459,13 @@ function admissionTableFacts(
     if (group.recommended && group.examination)
       addGroup("recommendationShare", {
         text: "本页名单中明确标记推免的比例",
+        population: "本页公开名单口径；不代表年度全体录取或未公布批次",
+        ratioBasis: {
+          numerator: group.recommended,
+          denominator: group.rows,
+          numeratorLabel: "本页推免名单行数",
+          denominatorLabel: "本页全部名单行数（含推免）",
+        },
         number: (group.recommended / group.rows) * 100,
       });
     if (group.scores.length === group.examination && group.scores.length) {

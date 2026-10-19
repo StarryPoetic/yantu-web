@@ -17949,6 +17949,444 @@
       "conclusion": "不把0802学科评级直接赋给0855专业学位；排名及ESI不替代学科评估。"
     }
   ],
+  "statisticalReview": [
+    {
+      "schoolName": "浙江理工大学",
+      "majorCode": "085501",
+      "collegeName": "机械工程学院",
+      "firstChoice": [],
+      "fields": [
+        {
+          "field": "applicationAdmissionRatio",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "recommendationShare",
+          "status": "public_availability_unconfirmed",
+          "evidence": []
+        },
+        {
+          "field": "undergraduateAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "crossMajorAdmission",
+          "status": "public_availability_unconfirmed",
+          "evidence": []
+        },
+        {
+          "field": "employment",
+          "status": "captured_applicable",
+          "evidence": [
+            {
+              "schoolName": "浙江理工大学",
+              "disciplineCode": null,
+              "majorCode": null,
+              "collegeName": "机械工程学院",
+              "field": "employment",
+              "year": 2023,
+              "value": {
+                "text": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率；5 机械工程学院 317 310 97.79%（学院毕业研究生口径，非专业专属、非硕士单独口径）",
+                "employmentRate": 97.79,
+                "population": "学院毕业研究生，不推断为六位专业或硕士单独统计"
+              },
+              "source": {
+                "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+                "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:49:18.493Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 400,
+                "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "5 机械工程学院 317 310 97.79%",
+                "offset": 16995,
+                "length": 23,
+                "verified": false
+              },
+              "supportingEvidence": [
+                {
+                  "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+                  "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-10-12T13:49:18.493Z",
+                  "fixture": "tests/fixtures/research-v3a6-run11.json",
+                  "pageIndex": 400,
+                  "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+                  "offset": 16832,
+                  "length": 33,
+                  "verified": false
+                },
+                {
+                  "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+                  "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-10-12T13:49:18.493Z",
+                  "fixture": "tests/fixtures/research-v3a6-run11.json",
+                  "pageIndex": 400,
+                  "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+                  "offset": 16317,
+                  "length": 23,
+                  "verified": false
+                }
+              ],
+              "associationChain": []
+            }
+          ]
+        }
+      ],
+      "remainingDependencies": [
+        "同年同学院同项目同学习方式的一志愿实际录取人数及报考人数；不能拿含调剂总录取当分母",
+        "同年同群体明确推免人数及含推免的录取总人数；计划排除推免或空列不能推导占比",
+        "公开硕士录取群体的双非/跨考人数或有分母比例；本科新生、报考资格和经验评价不能代替",
+        "学院或研究生院毕业去向公开口径；不可向专业就业率外推"
+      ]
+    },
+    {
+      "schoolName": "杭州电子科技大学",
+      "majorCode": "085500",
+      "collegeName": "机械工程学院",
+      "firstChoice": [
+        {
+          "year": 2026,
+          "applicants": 260,
+          "allAdmitted": 145,
+          "conclusion": "一志愿报考人数不等于一志愿录取人数；总录取含其他人群，禁止用这两个数相除。空推免列不补零。",
+          "evidence": {
+            "schoolName": "杭州电子科技大学",
+            "disciplineCode": "0855",
+            "majorCode": "085500",
+            "collegeName": "机械工程学院",
+            "field": "admittedCount",
+            "year": 2026,
+            "value": {
+              "text": "官方公布录取人数",
+              "number": 145,
+              "applicants": 260,
+              "population": "官方汇总含士兵计划；不等于普通统考门槛，不计算目标分差"
+            },
+            "source": {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500机械  专业学位  全日制  260  106  106  145  106  39  413  264  322  264",
+              "offset": 211,
+              "length": 68,
+              "verified": false
+            },
+            "supportingEvidence": [
+              {
+                "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+                "title": "2026年硕士研究生报考上线录取情况.pdf",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-11T02:04:02.806Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 249,
+                "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+                "offset": 0,
+                "length": 132,
+                "verified": false
+              },
+              {
+                "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+                "title": "2026年硕士研究生报考上线录取情况.pdf",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-11T02:04:02.806Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 249,
+                "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010机械工程学院",
+                "offset": 133,
+                "length": 9,
+                "verified": false
+              }
+            ],
+            "associationChain": []
+          }
+        },
+        {
+          "year": 2025,
+          "applicants": 321,
+          "allAdmitted": 130,
+          "conclusion": "一志愿报考人数不等于一志愿录取人数；总录取含其他人群，禁止用这两个数相除。空推免列不补零。",
+          "evidence": {
+            "schoolName": "杭州电子科技大学",
+            "disciplineCode": "0855",
+            "majorCode": "085500",
+            "collegeName": "机械工程学院",
+            "field": "admittedCount",
+            "year": 2025,
+            "value": {
+              "text": "官方公布录取人数",
+              "number": 130,
+              "applicants": 321,
+              "population": "官方汇总含士兵计划；不等于普通统考门槛，不计算目标分差"
+            },
+            "source": {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500机械  专业学位  全日制  321  150  150  130  130  384  264  307  260",
+              "offset": 210,
+              "length": 64,
+              "verified": false
+            },
+            "supportingEvidence": [
+              {
+                "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+                "title": "2025年硕士研究生报考上线录取情况.pdf",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-11T05:19:57.293Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 242,
+                "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+                "offset": 0,
+                "length": 132,
+                "verified": false
+              },
+              {
+                "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+                "title": "2025年硕士研究生报考上线录取情况.pdf",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-11T05:19:57.293Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 242,
+                "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010机械工程学院",
+                "offset": 133,
+                "length": 9,
+                "verified": false
+              }
+            ],
+            "associationChain": []
+          }
+        },
+        {
+          "year": 2024,
+          "applicants": 257,
+          "allAdmitted": 125,
+          "conclusion": "一志愿报考人数不等于一志愿录取人数；总录取含其他人群，禁止用这两个数相除。空推免列不补零。",
+          "evidence": {
+            "schoolName": "杭州电子科技大学",
+            "disciplineCode": "0855",
+            "majorCode": "085500",
+            "collegeName": null,
+            "field": "admittedCount",
+            "year": 2024,
+            "value": {
+              "text": "官方公布录取人数",
+              "number": 125,
+              "applicants": 257,
+              "population": "官方汇总含士兵计划；不等于普通统考门槛，不计算目标分差"
+            },
+            "source": {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500机械  专业学位 全日制  257  68  68  125  67  58  383  274  323  273",
+              "offset": 175,
+              "length": 64,
+              "verified": false
+            },
+            "supportingEvidence": [
+              {
+                "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+                "title": "2024年硕士研究生报考上线录取情况.pdf",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-11T02:01:41.354Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 243,
+                "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+                "offset": 0,
+                "length": 109,
+                "verified": false
+              }
+            ],
+            "associationChain": []
+          }
+        }
+      ],
+      "fields": [
+        {
+          "field": "applicationAdmissionRatio",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "recommendationShare",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "undergraduateAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "crossMajorAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "employment",
+          "status": "body_not_captured",
+          "evidence": []
+        }
+      ],
+      "remainingDependencies": [
+        "同年同学院同项目同学习方式的一志愿实际录取人数及报考人数；不能拿含调剂总录取当分母",
+        "同年同群体明确推免人数及含推免的录取总人数；计划排除推免或空列不能推导占比",
+        "公开硕士录取群体的双非/跨考人数或有分母比例；本科新生、报考资格和经验评价不能代替",
+        "学院或研究生院毕业去向公开口径；不可向专业就业率外推"
+      ]
+    },
+    {
+      "schoolName": "浙江科技大学",
+      "majorCode": "085500",
+      "collegeName": "艺术设计与服装学院",
+      "firstChoice": [],
+      "fields": [
+        {
+          "field": "applicationAdmissionRatio",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "recommendationShare",
+          "status": "public_availability_unconfirmed",
+          "evidence": []
+        },
+        {
+          "field": "undergraduateAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "crossMajorAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "employment",
+          "status": "body_not_captured",
+          "evidence": []
+        }
+      ],
+      "remainingDependencies": [
+        "同年同学院同项目同学习方式的一志愿实际录取人数及报考人数；不能拿含调剂总录取当分母",
+        "同年同群体明确推免人数及含推免的录取总人数；计划排除推免或空列不能推导占比",
+        "公开硕士录取群体的双非/跨考人数或有分母比例；本科新生、报考资格和经验评价不能代替",
+        "学院或研究生院毕业去向公开口径；不可向专业就业率外推"
+      ]
+    },
+    {
+      "schoolName": "浙江农林大学",
+      "majorCode": "085500",
+      "collegeName": "光机电工程学院",
+      "firstChoice": [],
+      "fields": [
+        {
+          "field": "applicationAdmissionRatio",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "recommendationShare",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "undergraduateAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "crossMajorAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "employment",
+          "status": "body_not_captured",
+          "evidence": []
+        }
+      ],
+      "remainingDependencies": [
+        "同年同学院同项目同学习方式的一志愿实际录取人数及报考人数；不能拿含调剂总录取当分母",
+        "同年同群体明确推免人数及含推免的录取总人数；计划排除推免或空列不能推导占比",
+        "公开硕士录取群体的双非/跨考人数或有分母比例；本科新生、报考资格和经验评价不能代替",
+        "学院或研究生院毕业去向公开口径；不可向专业就业率外推"
+      ]
+    },
+    {
+      "schoolName": "浙江师范大学",
+      "majorCode": "085500",
+      "collegeName": null,
+      "firstChoice": [],
+      "fields": [
+        {
+          "field": "applicationAdmissionRatio",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "recommendationShare",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "undergraduateAdmission",
+          "status": "body_not_captured",
+          "evidence": []
+        },
+        {
+          "field": "crossMajorAdmission",
+          "status": "public_availability_unconfirmed",
+          "evidence": []
+        },
+        {
+          "field": "employment",
+          "status": "body_not_captured",
+          "evidence": []
+        }
+      ],
+      "remainingDependencies": [
+        "同年同学院同项目同学习方式的一志愿实际录取人数及报考人数；不能拿含调剂总录取当分母",
+        "同年同群体明确推免人数及含推免的录取总人数；计划排除推免或空列不能推导占比",
+        "公开硕士录取群体的双非/跨考人数或有分母比例；本科新生、报考资格和经验评价不能代替",
+        "学院或研究生院毕业去向公开口径；不可向专业就业率外推"
+      ]
+    }
+  ],
   "associationEvidence": [
     {
       "kind": "national_line_applicability",

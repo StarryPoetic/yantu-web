@@ -48,7 +48,8 @@ function source(tier: "authority" | "reference", excerpt: string): WebSource {
     retrievedAt: "2026-10-12T00:00:00Z",
   };
 }
-const line = "杭州电子科技大学2026年硕士研究生085500机械报录比：4:1";
+const line =
+  "杭州电子科技大学2026年机械工程学院085500机械全日制硕士研究生一志愿报考人数120人，一志愿实际录取人数30人，报录比：4:1";
 
 test("external whitelist is exact, documented, HTTPS only and excludes accounts, forums and marketing hosts", () => {
   assert.ok(RESEARCH_EXTERNAL_SOURCES.every((p) => p.reason.length > 12));
@@ -118,7 +119,7 @@ test("reference cannot provide academic grades, national lines, predictions or p
     "杭州电子科技大学2026年硕士研究生085500机械预计复试线：300",
     "杭州电子科技大学2026年硕士研究生085500机械学长经验贴录取了2位双非同学",
     "杭州电子科技大学2017年第四轮学科评估0802机械工程评估等级：C+",
-    "杭州电子科技大学2026年硕士研究生085500机械报录比：4:1。请先登录",
+    "杭州电子科技大学2026年机械工程学院085500机械全日制硕士研究生一志愿报考人数120人，一志愿实际录取人数30人，报录比：4:1。请先登录",
   ])
     assert.deepEqual(
       extractPriorityFacts(source("reference", text), ds, "2027"),
@@ -130,7 +131,8 @@ test("reference cannot provide academic grades, national lines, predictions or p
 test("embedded university names do not transfer facts between Hangzhou and Chengdu", () => {
   const s = source(
     "reference",
-    line + "\n电子科技大学2026年硕士研究生085500机械报录比：9:1",
+    line +
+      "\n电子科技大学2026年机械工程学院085500机械全日制硕士研究生一志愿报考人数270人，一志愿实际录取人数30人，报录比：9:1",
   );
   const facts = extractPriorityFacts(s, ds, "2027");
   assert.equal(
@@ -146,7 +148,7 @@ test("embedded university names do not transfer facts between Hangzhou and Cheng
 test("tiers do not double count, official overrides reference, unrelated schools and majors do not bind", () => {
   const ref = extractPriorityFacts(source("reference", line), ds, "2027")[0];
   const auth = extractPriorityFacts(
-    source("authority", line.replace("4:1", "3:1")),
+    source("authority", line.replace("4:1", "3:1").replace("120人", "90人")),
     ds,
     "2027",
   )[0];

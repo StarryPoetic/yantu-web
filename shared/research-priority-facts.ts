@@ -56,6 +56,12 @@ export interface ResearchPriorityFact {
     /** Statistical population/limits are preserved, never used as ordinary cutoff. */
     population?: string;
     applicants?: number;
+    ratioBasis?: {
+      numerator: number;
+      denominator: number;
+      numeratorLabel: string;
+      denominatorLabel: string;
+    };
     statistics?: {
       rows: number;
       examination: number;

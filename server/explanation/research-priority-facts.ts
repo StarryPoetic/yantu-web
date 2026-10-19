@@ -22,6 +22,12 @@ import {
   tablePriorityFacts,
   redactAdmissionsText,
 } from "./research-priority-tables.ts";
+import {
+  ratioStatistics,
+  backgroundStatistics,
+  graduateEmploymentScope,
+  statisticalCollege,
+} from "./research-statistical-scope.ts";
 
 const labels: Record<ResearchPriorityField, RegExp> = {
   cutoff:
@@ -125,6 +131,28 @@ export function validatePriorityFacts(
     }
     const matched = quote.match(labels[key]);
     if (!matched) continue;
+    if (key === "admittedCount" && /推免|一志愿|报录比/.test(quote)) continue;
+    const statistical = [
+      "applicationAdmissionRatio",
+      "recommendationShare",
+    ].includes(key)
+      ? ratioStatistics(key, quote)
+      : ["undergraduateAdmission", "crossMajorAdmission"].includes(key)
+        ? backgroundStatistics(key, quote)
+        : undefined;
+    if (
+      [
+        "applicationAdmissionRatio",
+        "recommendationShare",
+        "undergraduateAdmission",
+        "crossMajorAdmission",
+      ].includes(key) &&
+      !statistical
+    )
+      continue;
+    const employmentScope =
+      key === "employment" ? graduateEmploymentScope(quote) : undefined;
+    if (key === "employment" && !employmentScope) continue;
     // A programme's training aspiration is not evidence of a city's economy.
     if (
       key === "cityDevelopment" &&
@@ -251,10 +279,16 @@ export function validatePriorityFacts(
     const fact = {
       sourceTier: "school" as const,
       schoolName: school.name,
-      disciplineCode: discipline?.code,
-      programName: discipline?.name,
-      majorCode: codes[0],
-      scope: discipline ? ("program" as const) : ("school" as const),
+      disciplineCode: employmentScope ? undefined : discipline?.code,
+      programName: employmentScope ? undefined : discipline?.name,
+      majorCode: employmentScope ? undefined : codes[0],
+      collegeName:
+        employmentScope?.collegeName ??
+        (statistical ? statisticalCollege(quote) : undefined),
+      scope:
+        discipline && !employmentScope
+          ? ("program" as const)
+          : ("school" as const),
       field: key,
       year,
       quote,
@@ -263,6 +297,8 @@ export function validatePriorityFacts(
       value: {
         text: quote,
         ...(number !== undefined ? { number } : {}),
+        ...statistical,
+        ...(employmentScope ? { population: employmentScope.population } : {}),
         ...(maximum ? { maximum } : {}),
         ...(key === "disciplineAssessment" ? { grade: assessmentGrade } : {}),
         ...(key === "employment"

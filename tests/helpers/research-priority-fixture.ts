@@ -25,13 +25,13 @@ export function priorityFixturePages(school: {
   }
   add(
     "competition",
-    "2026年硕士研究生报录统计",
-    "专业代码 | 专业名称 | 报考人数 | 录取人数\n080200 | 机械工程 | 120 | 30",
+    "2026年全日制硕士研究生报录统计",
+    "学院 | 专业代码 | 专业名称 | 一志愿报考人数 | 一志愿实际录取人数\n机械工程学院 | 080200 | 机械工程 | 120 | 30",
   );
   add(
     "background",
     "2026年硕士研究生生源质量报告",
-    "2026年080200机械工程录取学生包括双非本科毕业生。\n2026年080200机械工程录取学生包括跨专业考生。",
+    "2026年机械工程学院080200机械工程硕士研究生实际录取新生中，双非本科生20人。\n2026年机械工程学院080200机械工程硕士研究生实际录取新生中，跨专业考生10人。",
   );
   add(
     "academic",
@@ -41,7 +41,7 @@ export function priorityFixturePages(school: {
   add(
     "employment",
     "2026年硕士毕业生就业质量报告",
-    `2026年080200机械工程硕士毕业生就业率：96.5%，主要去向：制造业、科研院所。\n2026年080200机械工程服务${school.city}城市发展与制造产业。`,
+    `2026年研究生院公布全校硕士毕业生就业率：96.5%，主要去向：制造业、科研院所。\n2026年080200机械工程服务${school.city}城市发展与制造产业。`,
   );
   // The unchanged synthetic profile can also produce a mechanical professional
   // degree recommendation. Give both revisions identical, separately coded rows.

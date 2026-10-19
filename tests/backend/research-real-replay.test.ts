@@ -584,7 +584,7 @@ test("real college-code header and employment policy negatives", () => {
       ),
     );
   }
-  const quote = "2026年机械工程硕士毕业生去向落实率：95%";
+  const quote = "2026年机械工程学院硕士毕业生去向落实率：95%";
   const employment = { ...s, excerpt: `浙江理工大学\n${quote}` };
   const accepted = validatePriorityFacts(
     [{ field: "employment", sourceId: s.id, quote }],
