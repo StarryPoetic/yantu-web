@@ -328,8 +328,26 @@ test("cumulative real corpus has an evidence audit for every unfilled recommende
   const currentSchools = new Set(
     coverage.schools.map((school) => school.schoolName),
   );
-  const currentAudit = audit.filter((row: { school: string }) =>
-    currentSchools.has(row.school),
+  // The old audit remains immutable. Its 2025 ZSTU cutoff gap is now resolved
+  // by the literal saved table whose header spells 专业 代码 with whitespace.
+  const currentAudit = audit.filter(
+    (row: { school: string; field: string; year?: number }) =>
+      currentSchools.has(row.school) &&
+      !(
+        row.school === "浙江理工大学" &&
+        row.field === "cutoff" &&
+        row.year === 2025
+      ),
+  );
+  assert.ok(
+    result.report.priorityFacts!.some(
+      (fact) =>
+        fact.schoolName === "浙江理工大学" &&
+        fact.majorCode === "085501" &&
+        fact.field === "cutoff" &&
+        fact.year === 2025 &&
+        fact.value.number === 260,
+    ),
   );
   assert.deepEqual(
     new Set(

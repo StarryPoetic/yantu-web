@@ -94,7 +94,9 @@ function admissionTableFacts(
   targetYear: string,
   target?: ResearchTargetScore,
 ): ResearchPriorityFact[] {
-  if (!/专业代码|学科代码|硕士研究生报考上线录取情况/.test(source.excerpt))
+  if (
+    !/专业\s*代码|学科\s*代码|硕士研究生报考上线录取情况/.test(source.excerpt)
+  )
     return [];
   if (!isSchoolPage(source)) return [];
   if (
@@ -254,13 +256,17 @@ function admissionTableFacts(
     const line = entry.line;
     const row = entry.cells ?? cells(line);
     if (row.length < 2) continue;
+    // Normalize labels only: archived tables can split 专业 代码 or 单科 units.
+    // Data cells and every quoted header/row remain the original literal text.
+    const labels = row.map((cell) => cell.replace(/\s+/g, ""));
+    const labelLine = labels.join("|");
     if (
-      /专业(?:代码|名称)|学科(?:代码|名称)/.test(line) &&
+      /专业(?:代码|名称)|学科(?:代码|名称)/.test(labelLine) &&
       /总分|单科|录取|成绩|评估|等级|报考|考试方式|就业率|去向落实率|主要去向|就业去向/.test(
-        line,
+        labelLine,
       )
     ) {
-      header = row;
+      header = labels;
       headerQuote = line;
       continue;
     }

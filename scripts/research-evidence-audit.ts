@@ -27,6 +27,13 @@ export const repositoryRoot = resolve(
   "..",
 );
 const fixtureDirectory = "tests/fixtures";
+export const A_EVIDENCE_TARGETS = [
+  { institutionName: "浙江理工大学", majorCode: "085501" },
+  { institutionName: "杭州电子科技大学", majorCode: "085500" },
+  { institutionName: "浙江科技大学", majorCode: "085500" },
+  { institutionName: "浙江农林大学", majorCode: "085500" },
+  { institutionName: "浙江师范大学", majorCode: "085500" },
+] as const;
 type Recommendation = Parameters<typeof priorityCoverage>[1][number];
 type Page = {
   url: string;
@@ -181,6 +188,19 @@ export function buildEvidenceAudit(root = repositoryRoot) {
     ),
   );
   const recommendations = corpus.latest.fixture.runs[0].recommendations;
+  if (
+    recommendations.length !== A_EVIDENCE_TARGETS.length ||
+    !A_EVIDENCE_TARGETS.every((target) =>
+      recommendations.some(
+        (r) =>
+          r.institutionName === target.institutionName &&
+          r.majorCode === target.majorCode,
+      ),
+    )
+  )
+    throw new Error(
+      "A evidence audit requires the fixed five school/program identities; refusing a changed denominator.",
+    );
   const pageByUrl = new Map(corpus.pages.map((p) => [p.url, p]));
   const evidence = (f: ResearchPriorityFact) => ({
     schoolName: f.schoolName,
@@ -191,6 +211,9 @@ export function buildEvidenceAudit(root = repositoryRoot) {
     year: f.year,
     value: f.value,
     source: sourceReference(pageByUrl.get(f.sourceUrl)!, f.quote),
+    supportingEvidence: (f.evidenceQuotes ?? []).map((quote) =>
+      sourceReference(pageByUrl.get(f.sourceUrl)!, quote),
+    ),
   });
   const oldAudit = JSON.parse(
     readFileSync(
@@ -332,9 +355,32 @@ export function buildEvidenceAudit(root = repositoryRoot) {
         verified: false,
       };
     });
+  const baselineCoverage =
+    corpus.latest.fixture.runs[0].metrics!.priorityCoverage;
+  const wasConfirmed = (row: (typeof rows)[number]) => {
+    const prior = baselineCoverage.schools.find(
+      (school) => school.schoolName === row.institutionName,
+    );
+    if (!prior) return false;
+    return row.year === null
+      ? prior.confirmed.includes(row.field)
+      : !prior.missingScoreYears.some(
+          (missing) => missing.field === row.field && missing.year === row.year,
+        );
+  };
+  const changedRow = (row: (typeof rows)[number]) => ({
+    id: row.id,
+    school: row.institutionName,
+    majorCode: row.majorCode,
+    field: row.field,
+    year: row.year,
+    evidence: row.applicableEvidence,
+  });
+  const offlineCoverage = priorityCoverage(facts, recommendations, "2027");
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "offline-research-evidence-audit",
+    scope: A_EVIDENCE_TARGETS,
     targetYear: 2027,
     networkRequests: 0,
     paidCalls: 0,
@@ -348,9 +394,30 @@ export function buildEvidenceAudit(root = repositoryRoot) {
       gitHead: corpus.latest.fixture.runs[0].metrics!.gitHead,
       coverage: corpus.latest.fixture.runs[0].metrics!.priorityCoverage,
     },
-    offlineCoverage: priorityCoverage(facts, recommendations, "2027"),
+    offlineCoverage,
+    reviewProgress: {
+      baselineConfirmed: baselineCoverage.confirmed,
+      baselinePending: baselineCoverage.pending,
+      currentConfirmable: offlineCoverage.confirmed,
+      currentPending: offlineCoverage.pending,
+      confirmedDelta: offlineCoverage.confirmed - baselineCoverage.confirmed,
+      pendingDelta: offlineCoverage.pending - baselineCoverage.pending,
+      promoted: rows
+        .filter(
+          (row) =>
+            !wasConfirmed(row) && row.evidenceStatus === "captured_applicable",
+        )
+        .map(changedRow),
+      demoted: rows
+        .filter(
+          (row) =>
+            wasConfirmed(row) && row.evidenceStatus !== "captured_applicable",
+        )
+        .map(changedRow),
+      humanReviewed: 0,
+    },
     stageAcceptance:
-      "本阶段验收可追溯正负例、国家线与学科范围门禁、小批多画像回放及确认/待补变化；三项60%仅保留为后续质量目标，不触发付费。",
+      "A只覆盖浙江理工085501、杭电/浙科/浙农林/浙师085500。按复核原文→关联链→统计口径三步验收，做完就停；不以60%为完成条件，不触发付费，不做UI或目录入库。",
     method:
       "以最新真实运行的5校身份固定分母，对累计保存正文确定性重提取。不是网络实测、全国覆盖或人工审核。范围不适用仅指所列原文；公开可得性未确认不表示学校未公开。",
     rows,
@@ -439,10 +506,7 @@ export function buildReviewCandidates(root = repositoryRoot) {
     candidates,
   };
 }
-function markdown(
-  audit: ReturnType<typeof buildEvidenceAudit>,
-  pack: ReturnType<typeof buildReviewCandidates>,
-) {
+function markdown(audit: ReturnType<typeof buildEvidenceAudit>) {
   const states: Record<string, string> = {
     captured_applicable: "有适用原文，待人工审校",
     scope_not_applicable: "现存相关原文范围不适用",
@@ -453,7 +517,7 @@ function markdown(
     (r) =>
       `| ${r.institutionName} ${r.majorCode} | ${labels[r.field]}${r.year ?? ""} | ${states[r.evidenceStatus]} | ${r.applicableEvidence.length}/${r.rejectedScopeEvidence.length}/${r.leads.filter((l) => !l.captured).length} |`,
   );
-  return `# 证据改进台账\n\n本文件由 \`node scripts/research-evidence-audit.ts --write\` 从仓库已保存真实语料生成；\`--check\` 检查产物一致。未加载 .env，未使用网络、模型或搜索。人工补充请写入后续审校记录，避免被再次生成覆盖。\n\n## 基线与口径\n\n${audit.stageAcceptance}\n\n最新真实网络基线为2026-10-12历史第11次（2a2c114），见[真实验证记录](阶段7真实验证记录.md#来源政策第7次真实运行与停止记录历史第11次2a2c114)：5校、461.846秒、120检索、180读取；合计字段8%、整类0%、复试线4/15=26.67%、学科评估0/5，9确认/66待补。三项60%门槛均未通过，连续三次无进展后停止，未新增第12次。\n\n本次扫描${audit.corpus.urls} URL/${audit.corpus.bodies}份保存正文，以最后真实运行5校固定身份形成${audit.rows.length}个字段/年度槽。离线确定性提取${audit.offlineCoverage.confirmed}确认/${audit.offlineCoverage.pending}待补、字段${(audit.offlineCoverage.combined.partialAverage * 100).toFixed(2)}%、整类${(audit.offlineCoverage.combined.completeAverage * 100).toFixed(2)}%；这些是规则复核计数，未经人工审校。不是新的网络覆盖或全国样本。\n\n8%按五类等权再按学校平均：分数类6槽（2字段×3年度）、竞争3、背景2、学科2、就业2；(23.33%+6.67%+0+0+10%)/5=8%。9/75=12%为不同的原始槽位率，不能互换。降低推荐数量不降低三项60%标准，也不重写历史分母。\n\n## 可执行顺序\n\n1. 复核下表和机器台账原文定位，优先已有正文可补的范围/表头问题；以真实负例测试防止错年、错专业、导航页和估计值误计。\n2. 国家线建立同年适用声明→学科/学位类型和A区→数值原文完整链；学科评估建立第四轮矩阵→0802→目标项目明确依托关系。链条缺一保持待补。\n3. 对报录比/推免补同年同人群分子分母，对本科/跨考背景补公开群体统计，对就业保留学院/研究生口径。没有数据不估算，不以经验评价替代。\n4. 审查首批${pack.candidates.length}条真实项目线索、补完整身份后转换为正式导入草稿。由实际资料负责人录入、独立复核人审校、发布人发布；不代填审核身份。\n5. 加入其他城市和文商理工医真实语料后做多画像回放。技术回归与真实覆盖分别验收；当前只证明这些已保存机械相关原文。\n\n资料入口核验和人工审校是后续依赖，解析、负例、待审包和运营入口可先独立推进。已公开但未抓到、所见原文范围不适用、公开可得性未确认分别记录；均不能推断学校从未公开。\n\n## 关联链核查\n\n累计语料含${audit.authorityEntrances.length}个权威域名入口线索，仅${audit.authorityEntrances.filter((e) => e.captured).length}份保存正文，均无适用优先字段。机器台账逐条保留入口fixture位置及历史失败码，区分2012旧轮次、其他学科、讲话、第四轮矩阵门户未取正文与普通未读线索。本次未做网络探测，不能把这些URL称为现已稳定可用入口。\n\n${audit.associationEvidence.map((a) => `- [${a.source.title}](${a.source.url})：${a.conclusion} 尚缺：${a.missing.join("；")}。原文定位与文本SHA-256在机器台账中。`).join("\n")}\n\n上述2022年一般A线声明含例外，不能拿2024–2026国家线数值拼接；工大0802 B+没有提升为085500项目评级。没有新证据被写入正式目录或研究核心。\n\n## 逐字段审计\n\n“范围不适用”指已有相关原文与当前槽的年/专业/学院不匹配，**不表示该字段对学校不适用**。“确认”是既有抽取规则口径，不是人工审核。数量列依次为适用原文/范围不符原文/未取得正文线索；URL、失败码、历史审计说明及下一动作在[机器台账](../knowledge/catalog/review-candidates/evidence-audit.json)。\n\n| 学校/专业 | 字段/参考年 | 已存证据状态 | 原文/异范围/缺正文 |\n| --- | --- | --- | --- |\n${rows.join("\n")}\n\n## 首批待审包与门禁\n\n[项目待审包](../knowledge/catalog/review-candidates/first-batch.json)收录${pack.candidates.length}条线索、${new Set(pack.candidates.map((c) => c.institutionName)).size}校、${new Set(pack.candidates.map((c) => c.discoveryCity)).size}个注册表城市，均为draft/unpublished/unverified，无审核人。杭电2027两项目目录原文明确812机械工程综合；保存2026原文为811机械原理，必须按年审校。浙师大目录提取片段不完整；理工/科技使用2026调剂原文，不能冒充2027统考目录。\n\n这是不可直接导入的证据包，缺失身份保持null，满分、资格、费用、培养地点和2027适用性不得默认补齐。每份引用记录fixture、页索引、抽取文本SHA-256和字偏移；该哈希不是PDF/XLS原文件哈希。实际原件、使用限制和独立审核完成后再按knowledge/catalog/README.md转换为正式草稿并发布。\n`;
+  return `# 证据改进台账\n\n本文件由 \`node scripts/research-evidence-audit.ts --write\` 从仓库已保存真实语料生成；\`--check\` 检查产物一致。未加载 .env，未使用网络、模型或搜索。人工补充请写入后续审校记录，避免被再次生成覆盖。\n\n## 基线与口径\n\n${audit.stageAcceptance}\n\n最新真实网络基线为2026-10-12历史第11次（2a2c114），见[真实验证记录](阶段7真实验证记录.md#来源政策第7次真实运行与停止记录历史第11次2a2c114)：5校、461.846秒、120检索、180读取；合计字段8%、整类0%、复试线4/15=26.67%、学科评估0/5，9确认/66待补。三项60%门槛均未通过，连续三次无进展后停止，未新增第12次。\n\n本次扫描${audit.corpus.urls} URL/${audit.corpus.bodies}份保存正文，以最后真实运行5校固定身份形成${audit.rows.length}个字段/年度槽。离线确定性提取${audit.offlineCoverage.confirmed}确认/${audit.offlineCoverage.pending}待补、字段${(audit.offlineCoverage.combined.partialAverage * 100).toFixed(2)}%、整类${(audit.offlineCoverage.combined.completeAverage * 100).toFixed(2)}%；这些是规则复核计数，未经人工审校。不是新的网络覆盖或全国样本。\n\n历史基线8%按五类等权再按学校平均：分数类6槽（2字段×3年度）、竞争3、背景2、学科2、就业2；(23.33%+6.67%+0+0+10%)/5=8%。9/75=12%为不同的原始槽位率，不能互换。降低推荐数量不降低三项60%标准，也不重写历史分母。\n\n## 本批可核对变化\n\n可确认（规则复核、非人工审核）：${audit.reviewProgress.baselineConfirmed}→${audit.reviewProgress.currentConfirmable}；待补：${audit.reviewProgress.baselinePending}→${audit.reviewProgress.currentPending}。新增${audit.reviewProgress.promoted.length}槽、撤回${audit.reviewProgress.demoted.length}槽。逐条原文、表头/身份辅助片段及SHA-256/UTF-16偏移均写入机器台账reviewProgress。\n\n${audit.reviewProgress.promoted.map((row) => `- 新增：${row.school} ${row.majorCode} ${labels[row.field]}${row.year ?? ""}；${row.evidence.map((e) => `${e.value.number ?? e.value.employmentRate ?? e.value.grade ?? "原文统计"}，原文${e.source.fixture} pages[${e.source.pageIndex}] offset ${e.source.offset}`).join("；")}。`).join("\n")}\n\n${audit.reviewProgress.demoted.map((row) => `- 撤回：${row.school} ${row.majorCode} ${labels[row.field]}${row.year ?? ""}；保留原始历史基线，当前保持待补。`).join("\n") || "无撤回槽。"}\n\n## 可执行顺序\n\n1. 复核下表和机器台账原文定位，优先已有正文可补的范围/表头问题；以真实负例测试防止错年、错专业、导航页和估计值误计。\n2. 国家线建立同年适用声明→学科/学位类型和A区→数值原文完整链；学科评估建立第四轮矩阵→0802→目标项目明确依托关系。链条缺一保持待补。\n3. 对报录比/推免补同年同人群分子分母，对本科/跨考背景补公开群体统计，对就业保留学院/研究生口径。没有数据不估算，不以经验评价替代。\n\n三步之外不自动推进；目录待审包属于C，本批不修改或入库，页面属于B。固定75槽保留历史分母，其中城市产业槽只保留旧缺项，本批不扩展城市证据。已公开但未抓到、所见原文范围不适用、公开可得性未确认分别记录；均不能推断学校从未公开。\n\n## 关联链核查\n\n累计语料含${audit.authorityEntrances.length}个权威域名入口线索，仅${audit.authorityEntrances.filter((e) => e.captured).length}份保存正文，均无适用优先字段。机器台账逐条保留入口fixture位置及历史失败码，区分2012旧轮次、其他学科、讲话、第四轮矩阵门户未取正文与普通未读线索。本次未做网络探测，不能把这些URL称为现已稳定可用入口。\n\n${audit.associationEvidence.map((a) => `- [${a.source.title}](${a.source.url})：${a.conclusion} 尚缺：${a.missing.join("；")}。原文定位与文本SHA-256在机器台账中。`).join("\n")}\n\n上述2022年一般A线声明含例外，不能拿2024–2026国家线数值拼接；工大0802 B+没有提升为085500项目评级。没有新证据被写入正式目录或研究核心。\n\n## 逐字段审计\n\n“范围不适用”指已有相关原文与当前槽的年/专业/学院不匹配，**不表示该字段对学校不适用**。“确认”是既有抽取规则口径，不是人工审核。数量列依次为适用原文/范围不符原文/未取得正文线索；URL、失败码、历史审计说明及下一动作在[机器台账](../knowledge/catalog/review-candidates/evidence-audit.json)。\n\n| 学校/专业 | 字段/参考年 | 已存证据状态 | 原文/异范围/缺正文 |\n| --- | --- | --- | --- |\n${rows.join("\n")}\n`;
 }
 export function auditOutputs(root = repositoryRoot) {
   const audit = buildEvidenceAudit(root),
@@ -467,7 +531,7 @@ export function auditOutputs(root = repositoryRoot) {
       "knowledge/catalog/review-candidates/first-batch.json",
       `${JSON.stringify(pack, null, 2)}\n`,
     ],
-    ["docs/证据改进台账.md", markdown(audit, pack)],
+    ["docs/证据改进台账.md", markdown(audit)],
   ]);
 }
 if (
@@ -484,7 +548,13 @@ if (
     );
   const outputs = auditOutputs();
   for (const [file, contents] of outputs) {
-    if (mode === "--write")
+    if (
+      mode === "--write" &&
+      readFileSync(resolve(repositoryRoot, file), "utf8").replaceAll(
+        "\r\n",
+        "\n",
+      ) !== contents
+    )
       writeFileSync(resolve(repositoryRoot, file), contents);
     if (
       mode === "--check" &&

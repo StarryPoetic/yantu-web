@@ -1,6 +1,28 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "kind": "offline-research-evidence-audit",
+  "scope": [
+    {
+      "institutionName": "浙江理工大学",
+      "majorCode": "085501"
+    },
+    {
+      "institutionName": "杭州电子科技大学",
+      "majorCode": "085500"
+    },
+    {
+      "institutionName": "浙江科技大学",
+      "majorCode": "085500"
+    },
+    {
+      "institutionName": "浙江农林大学",
+      "majorCode": "085500"
+    },
+    {
+      "institutionName": "浙江师范大学",
+      "majorCode": "085500"
+    }
+  ],
   "targetYear": 2027,
   "networkRequests": 0,
   "paidCalls": 0,
@@ -2182,9 +2204,9 @@
   "offlineCoverage": {
     "partialGroups": {
       "scores": {
-        "confirmed": 7,
+        "confirmed": 8,
         "total": 30,
-        "ratio": 0.23333333333333334
+        "ratio": 0.26666666666666666
       },
       "competition": {
         "confirmed": 1,
@@ -2207,15 +2229,15 @@
         "ratio": 0.1
       }
     },
-    "partialAverage": 0.08,
+    "partialAverage": 0.08666666666666667,
     "completeAverage": 0,
     "schools": [
       {
         "partialGroups": {
           "scores": {
-            "confirmed": 1,
+            "confirmed": 2,
             "total": 6,
-            "ratio": 0.16666666666666666
+            "ratio": 0.3333333333333333
           },
           "competition": {
             "confirmed": 0,
@@ -2239,10 +2261,6 @@
           }
         },
         "missingScoreYears": [
-          {
-            "field": "cutoff",
-            "year": 2025
-          },
           {
             "field": "cutoff",
             "year": 2024
@@ -2571,8 +2589,8 @@
         }
       }
     ],
-    "confirmed": 9,
-    "pending": 66,
+    "confirmed": 10,
+    "pending": 65,
     "schoolsWithCutoff": 2,
     "groups": {
       "scores": {
@@ -2601,9 +2619,9 @@
       "school": {
         "partialGroups": {
           "scores": {
-            "confirmed": 7,
+            "confirmed": 8,
             "total": 30,
-            "ratio": 0.23333333333333334
+            "ratio": 0.26666666666666666
           },
           "competition": {
             "confirmed": 1,
@@ -2626,15 +2644,15 @@
             "ratio": 0.1
           }
         },
-        "partialAverage": 0.08,
+        "partialAverage": 0.08666666666666667,
         "completeAverage": 0,
         "schools": [
           {
             "partialGroups": {
               "scores": {
-                "confirmed": 1,
+                "confirmed": 2,
                 "total": 6,
-                "ratio": 0.16666666666666666
+                "ratio": 0.3333333333333333
               },
               "competition": {
                 "confirmed": 0,
@@ -2658,10 +2676,6 @@
               }
             },
             "missingScoreYears": [
-              {
-                "field": "cutoff",
-                "year": 2025
-              },
               {
                 "field": "cutoff",
                 "year": 2024
@@ -2990,8 +3004,8 @@
             }
           }
         ],
-        "confirmed": 9,
-        "pending": 66,
+        "confirmed": 10,
+        "pending": 65,
         "schoolsWithCutoff": 2,
         "groups": {
           "scores": {
@@ -3906,9 +3920,9 @@
     "combined": {
       "partialGroups": {
         "scores": {
-          "confirmed": 7,
+          "confirmed": 8,
           "total": 30,
-          "ratio": 0.23333333333333334
+          "ratio": 0.26666666666666666
         },
         "competition": {
           "confirmed": 1,
@@ -3931,15 +3945,15 @@
           "ratio": 0.1
         }
       },
-      "partialAverage": 0.08,
+      "partialAverage": 0.08666666666666667,
       "completeAverage": 0,
       "schools": [
         {
           "partialGroups": {
             "scores": {
-              "confirmed": 1,
+              "confirmed": 2,
               "total": 6,
-              "ratio": 0.16666666666666666
+              "ratio": 0.3333333333333333
             },
             "competition": {
               "confirmed": 0,
@@ -3963,10 +3977,6 @@
             }
           },
           "missingScoreYears": [
-            {
-              "field": "cutoff",
-              "year": 2025
-            },
             {
               "field": "cutoff",
               "year": 2024
@@ -4295,8 +4305,8 @@
           }
         }
       ],
-      "confirmed": 9,
-      "pending": 66,
+      "confirmed": 10,
+      "pending": 65,
       "schoolsWithCutoff": 2,
       "groups": {
         "scores": {
@@ -4322,9 +4332,9 @@
       }
     },
     "confirmedCutoff": {
-      "confirmed": 4,
+      "confirmed": 5,
       "total": 15,
-      "ratio": 0.26666666666666666
+      "ratio": 0.3333333333333333
     },
     "confirmedAssessment": {
       "confirmed": 0,
@@ -4332,7 +4342,88 @@
       "ratio": 0
     }
   },
-  "stageAcceptance": "本阶段验收可追溯正负例、国家线与学科范围门禁、小批多画像回放及确认/待补变化；三项60%仅保留为后续质量目标，不触发付费。",
+  "reviewProgress": {
+    "baselineConfirmed": 9,
+    "baselinePending": 66,
+    "currentConfirmable": 10,
+    "currentPending": 65,
+    "confirmedDelta": 1,
+    "pendingDelta": -1,
+    "promoted": [
+      {
+        "id": "浙江理工大学:085501:机械工程学院:cutoff:2025",
+        "school": "浙江理工大学",
+        "majorCode": "085501",
+        "field": "cutoff",
+        "year": 2025,
+        "evidence": [
+          {
+            "schoolName": "浙江理工大学",
+            "disciplineCode": "0855",
+            "majorCode": "085501",
+            "collegeName": "机械工程学院",
+            "field": "cutoff",
+            "year": 2025,
+            "value": {
+              "text": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+              "number": 260,
+              "singleSubject": {
+                "maximum100": 34,
+                "above100": 51
+              }
+            },
+            "source": {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+              "offset": 2185,
+              "length": 46,
+              "verified": false
+            },
+            "supportingEvidence": [
+              {
+                "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+                "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:48:21.477Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 199,
+                "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+                "offset": 647,
+                "length": 64,
+                "verified": false
+              },
+              {
+                "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+                "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+                "kind": "official_page",
+                "retrievedAt": "2026-10-12T13:48:21.477Z",
+                "fixture": "tests/fixtures/research-v3a6-run11.json",
+                "pageIndex": 199,
+                "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "085501",
+                "offset": 2200,
+                "length": 6,
+                "verified": false
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "demoted": [],
+    "humanReviewed": 0
+  },
+  "stageAcceptance": "A只覆盖浙江理工085501、杭电/浙科/浙农林/浙师085500。按复核原文→关联链→统计口径三步验收，做完就停；不以60%为完成条件，不触发付费，不做UI或目录入库。",
   "method": "以最新真实运行的5校身份固定分母，对累计保存正文确定性重提取。不是网络实测、全国覆盖或人工审核。范围不适用仅指所列原文；公开可得性未确认不表示学校未公开。",
   "rows": [
     {
@@ -4376,7 +4467,37 @@
             "offset": 2323,
             "length": 46,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085501",
+              "offset": 2338,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -4408,7 +4529,37 @@
             "offset": 2219,
             "length": 46,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2234,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4438,7 +4589,217 @@
             "offset": 4055,
             "length": 49,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 4071,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0802",
+          "majorCode": "080200",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "005 |\n机械工程学院 |\n080200 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "005 |\n机械工程学院 |\n080200 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "offset": 2081,
+            "length": 46,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2096,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0855",
+          "majorCode": "085501",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "offset": 2185,
+            "length": 46,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085501",
+              "offset": 2200,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0855",
+          "majorCode": "085507",
+          "collegeName": "艺术与设计学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "012 |\n艺术与设计学院 |\n085507 |\n工业设计工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "012 |\n艺术与设计学院 |\n085507 |\n工业设计工程 |\n260 |\n34 |\n51 |",
+            "offset": 3916,
+            "length": 49,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 3932,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4468,7 +4829,37 @@
             "offset": 1232,
             "length": 49,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+              "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:50:35.593Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 192,
+              "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分 =100分） |\n单科（满分 >100分） |",
+              "offset": 650,
+              "length": 63,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+              "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:50:35.593Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 192,
+              "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 1248,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -4522,11 +4913,72 @@
       "collegeName": "机械工程学院",
       "field": "cutoff",
       "year": 2025,
-      "evidenceStatus": "scope_not_applicable",
-      "publicAvailability": "unconfirmed",
+      "evidenceStatus": "captured_applicable",
+      "publicAvailability": "captured",
       "reviewStatus": "draft",
       "confirmedByHuman": false,
-      "applicableEvidence": [],
+      "applicableEvidence": [
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0855",
+          "majorCode": "085501",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "offset": 2185,
+            "length": 46,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085501",
+              "offset": 2200,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        }
+      ],
       "rejectedScopeEvidence": [
         {
           "schoolName": "浙江理工大学",
@@ -4556,7 +5008,37 @@
             "offset": 2219,
             "length": 46,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2234,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4586,7 +5068,37 @@
             "offset": 2323,
             "length": 46,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085501",
+              "offset": 2338,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4616,7 +5128,157 @@
             "offset": 4055,
             "length": 49,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 4071,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0802",
+          "majorCode": "080200",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "005 |\n机械工程学院 |\n080200 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "005 |\n机械工程学院 |\n080200 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "offset": 2081,
+            "length": 46,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2096,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0855",
+          "majorCode": "085507",
+          "collegeName": "艺术与设计学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "012 |\n艺术与设计学院 |\n085507 |\n工业设计工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "012 |\n艺术与设计学院 |\n085507 |\n工业设计工程 |\n260 |\n34 |\n51 |",
+            "offset": 3916,
+            "length": 49,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 3932,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4646,7 +5308,37 @@
             "offset": 1232,
             "length": 49,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+              "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:50:35.593Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 192,
+              "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分 =100分） |\n单科（满分 >100分） |",
+              "offset": 650,
+              "length": 63,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+              "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:50:35.593Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 192,
+              "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 1248,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -4688,7 +5380,7 @@
         }
       ],
       "priorAuditNote": "保存的复试线正文仅2026年8507.htm；2014目录不是2024/2025复试线。",
-      "nextAction": "核对同年同专业复试要求；采用国家线时补适用声明、区域、学位类型、专业范围和国家线数值链。"
+      "nextAction": "复核原文表头、年份、人群和项目范围；仍不能自动发布。"
     },
     {
       "id": "浙江理工大学:085501:机械工程学院:cutoff:2024",
@@ -4732,7 +5424,37 @@
             "offset": 2219,
             "length": 46,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2234,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4762,7 +5484,37 @@
             "offset": 2323,
             "length": 46,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085501",
+              "offset": 2338,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4792,7 +5544,217 @@
             "offset": 4055,
             "length": 49,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分=100分） |\n单科（满分>100分） |",
+              "offset": 842,
+              "length": 60,
+              "verified": false
+            },
+            {
+              "url": "https://gradschool.zstu.edu.cn/info/1135/8507.htm",
+              "title": "浙江理工大学2026年硕士研究生招生复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T01:42:22.456Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 228,
+              "textSha256": "03405f0dfc6c00c7fe8b1e50109430b0931670c035ba7f6b9eabcc7a4db22281",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 4071,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0802",
+          "majorCode": "080200",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "005 |\n机械工程学院 |\n080200 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "005 |\n机械工程学院 |\n080200 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "offset": 2081,
+            "length": 46,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2096,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0855",
+          "majorCode": "085501",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "005 |\n机械工程学院 |\n085501 |\n机械工程 |\n260 |\n34 |\n51 |",
+            "offset": 2185,
+            "length": 46,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085501",
+              "offset": 2200,
+              "length": 6,
+              "verified": false
+            }
+          ]
+        },
+        {
+          "schoolName": "浙江理工大学",
+          "disciplineCode": "0855",
+          "majorCode": "085507",
+          "collegeName": "艺术与设计学院",
+          "field": "cutoff",
+          "year": 2025,
+          "value": {
+            "text": "012 |\n艺术与设计学院 |\n085507 |\n工业设计工程 |\n260 |\n34 |\n51 |",
+            "number": 260,
+            "singleSubject": {
+              "maximum100": 34,
+              "above100": 51
+            }
+          },
+          "source": {
+            "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+            "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+            "kind": "official_page",
+            "retrievedAt": "2026-10-12T13:48:21.477Z",
+            "fixture": "tests/fixtures/research-v3a6-run11.json",
+            "pageIndex": 199,
+            "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "012 |\n艺术与设计学院 |\n085507 |\n工业设计工程 |\n260 |\n34 |\n51 |",
+            "offset": 3916,
+            "length": 49,
+            "verified": false
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院代码 |\n学院名称 |\n专业 代码 |\n专业名称 |\n总分 |\n单科 （满分=100分） |\n单科 （满分 >100分） |",
+              "offset": 647,
+              "length": 64,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+              "title": "浙江理工大学2025年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:21.477Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 199,
+              "textSha256": "9686b028a7ffdf25525f733df47c4c1822960485034748b3f104a5c1a6c0a782",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 3932,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -4822,7 +5784,37 @@
             "offset": 1232,
             "length": 49,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+              "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:50:35.593Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 192,
+              "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 代码 |\n学院名称 |\n专业代码 |\n专业名称 |\n总分 |\n单科（满分 =100分） |\n单科（满分 >100分） |",
+              "offset": 650,
+              "length": 63,
+              "verified": false
+            },
+            {
+              "url": "https://gradadmission.zstu.edu.cn/info/1011/3099.htm",
+              "title": "浙江理工大学2024年硕士研究生招生复试分数线-浙江理工大学研究生招生网",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:50:35.593Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 192,
+              "textSha256": "8f7c87388ed92dd233ddfb914d6ed66030b23c59a1f77ee50f36c29d5a9a5df4",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085507",
+              "offset": 1248,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -6098,7 +7090,37 @@
             "offset": 16995,
             "length": 23,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -6127,7 +7149,37 @@
             "offset": 16890,
             "length": 20,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6154,7 +7206,37 @@
             "offset": 16911,
             "length": 34,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6181,7 +7263,37 @@
             "offset": 16946,
             "length": 26,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6208,7 +7320,37 @@
             "offset": 16973,
             "length": 21,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6235,7 +7377,37 @@
             "offset": 17019,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6262,7 +7434,37 @@
             "offset": 17055,
             "length": 26,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6289,7 +7491,37 @@
             "offset": 17082,
             "length": 21,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6316,7 +7548,37 @@
             "offset": 17104,
             "length": 26,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6343,7 +7605,37 @@
             "offset": 17131,
             "length": 25,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6370,7 +7662,37 @@
             "offset": 17157,
             "length": 24,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6397,7 +7719,37 @@
             "offset": 17182,
             "length": 25,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6424,7 +7776,37 @@
             "offset": 17208,
             "length": 31,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6451,7 +7833,37 @@
             "offset": 17240,
             "length": 21,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江理工大学",
@@ -6478,7 +7890,37 @@
             "offset": 17262,
             "length": 24,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "表 1-1- 6 学校 2023 届毕业研究生分学院毕业去向落实率",
+              "offset": 16832,
+              "length": 33,
+              "verified": false
+            },
+            {
+              "url": "https://jyb.zstu.edu.cn/attachment/zstu/ueditor/file/20240229/6278_%E6%B5%99%E6%B1%9F%E7%90%86%E5%B7%A5%E5%A4%A7%E5%AD%A62023%E5%B1%8A%E6%AF%95%E4%B8%9A%E7%94%9F%E5%B0%B1%E4%B8%9A%E8%B4%A8%E9%87%8F%E5%B9%B4%E5%BA%A6%E6%8A%A5%E5%91%8A.pdf",
+              "title": "浙江理工大学2023届毕业生就业质量年度报告.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:49:18.493Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 400,
+              "textSha256": "6dd60417e41ecbe927ea91c1c1819fe00697704a2acc423db97ac2b3bed975f2",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院 毕业生人数 落实去向人数 毕业去向落实率",
+              "offset": 16317,
+              "length": 23,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -6766,7 +8208,37 @@
             "offset": 211,
             "length": 68,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -6795,7 +8267,37 @@
             "offset": 133,
             "length": 77,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -6822,7 +8324,37 @@
             "offset": 133,
             "length": 76,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -6849,7 +8381,37 @@
             "offset": 210,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -6876,7 +8438,23 @@
             "offset": 110,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -6903,7 +8481,23 @@
             "offset": 175,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -6967,7 +8561,37 @@
             "offset": 210,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -6996,7 +8620,37 @@
             "offset": 133,
             "length": 77,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7023,7 +8677,37 @@
             "offset": 211,
             "length": 68,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7050,7 +8734,37 @@
             "offset": 133,
             "length": 76,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7077,7 +8791,23 @@
             "offset": 110,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7104,7 +8834,23 @@
             "offset": 175,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -7200,7 +8946,23 @@
             "offset": 175,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -7229,7 +8991,37 @@
             "offset": 133,
             "length": 77,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7256,7 +9048,37 @@
             "offset": 211,
             "length": 68,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7283,7 +9105,37 @@
             "offset": 133,
             "length": 76,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7310,7 +9162,37 @@
             "offset": 210,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7337,7 +9219,23 @@
             "offset": 110,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -7621,7 +9519,37 @@
             "offset": 211,
             "length": 68,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7649,7 +9577,37 @@
             "offset": 210,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7677,7 +9635,23 @@
             "offset": 175,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -7707,7 +9681,37 @@
             "offset": 133,
             "length": 77,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2026年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/bb749fd9-7a99-4f41-ba77-9c00b1b112f0.pdf",
+              "title": "2026年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:04:02.806Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 249,
+              "textSha256": "8c6a831d25e089de1b3c388056399ff046c8fd479ae7a542e27dbe1c2ab73c16",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7735,7 +9739,37 @@
             "offset": 133,
             "length": 76,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2025年硕士研究生报考上线录取情况\n学院  专业  学位类型  学习方式  一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数  其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分  国家线",
+              "offset": 0,
+              "length": 132,
+              "verified": false
+            },
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/a423e6e0-64af-4b7b-9e21-18c9985b1c0c.pdf",
+              "title": "2025年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T05:19:57.293Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 242,
+              "textSha256": "25b27f40da03fcc7ea9f445cb544510a6909c52b345327d0dcf9765cfedddbd8",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "010机械工程学院",
+              "offset": 133,
+              "length": 9,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "杭州电子科技大学",
@@ -7763,7 +9797,23 @@
             "offset": 110,
             "length": 64,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://grs.hdu.edu.cn/_upload/article/files/07/15/238146c64b47a728ead4a60be766/b573a579-e5c1-4daa-aabe-68191eeebd62.pdf",
+              "title": "2024年硕士研究生报考上线录取情况.pdf",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-11T02:01:41.354Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 243,
+              "textSha256": "13cd2c66517cd495c07be736f08df98f3438c203f78c56f8025a3b234283dac3",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院  专业  学位类型 学习方式 一志愿\n报考人数\n一志愿\n上线人数\n一志愿\n上复试线\n人数\n录取人数 其中推免\n录取人数\n其中一志\n愿\n录取人数\n其中调剂\n录取人数\n录取\n最高分\n录取\n最低分\n录取\n平均分 国家线",
+              "offset": 0,
+              "length": 109,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -11111,7 +13161,37 @@
             "offset": 4864,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 485,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 4870,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -11140,7 +13220,37 @@
             "offset": 2608,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 485,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2614,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11167,7 +13277,37 @@
             "offset": 2607,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2613,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11194,7 +13334,37 @@
             "offset": 4995,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 5001,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11221,7 +13391,37 @@
             "offset": 1335,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 1341,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11248,7 +13448,37 @@
             "offset": 1501,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 1507,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -11375,7 +13605,37 @@
             "offset": 4995,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 5001,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -11404,7 +13664,37 @@
             "offset": 2608,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 485,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2614,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11431,7 +13721,37 @@
             "offset": 4864,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 485,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 4870,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11458,7 +13778,37 @@
             "offset": 2607,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2613,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11485,7 +13835,37 @@
             "offset": 1335,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 1341,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11512,7 +13892,37 @@
             "offset": 1501,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 1507,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [
@@ -11617,7 +14027,37 @@
             "offset": 1501,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 1507,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "rejectedScopeEvidence": [
@@ -11646,7 +14086,37 @@
             "offset": 2608,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 485,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2614,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11673,7 +14143,37 @@
             "offset": 4864,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 485,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2026/0328/c4966a550058/page.htm",
+              "title": "浙江师范大学2026年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:11.248Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 893,
+              "textSha256": "31422816d6430ad3848e6e151df58b912cac7d819414b102900c122c1a8a5224",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 4870,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11700,7 +14200,37 @@
             "offset": 2607,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 2613,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11727,7 +14257,37 @@
             "offset": 4995,
             "length": 35,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "https://yzw.zjnu.edu.cn/2025/0326/c4966a512502/page.htm",
+              "title": "浙江师范大学2025年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:31.484Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 884,
+              "textSha256": "7bb51f0ba015d78a90e09fc4d3680192ed9d3d5d6d5be3fe496083211987b7da",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "085500",
+              "offset": 5001,
+              "length": 6,
+              "verified": false
+            }
+          ]
         },
         {
           "schoolName": "浙江师范大学",
@@ -11754,7 +14314,37 @@
             "offset": 1335,
             "length": 37,
             "verified": false
-          }
+          },
+          "supportingEvidence": [
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "学院名称 | 专业代码 | 专业名称 | 研究方向 | 总分 |",
+              "offset": 484,
+              "length": 32,
+              "verified": false
+            },
+            {
+              "url": "http://yzw.zjnu.edu.cn/2024/0327/c4966a462785/page.htm",
+              "title": "浙江师范大学2024年硕士研究生招生考试各专业复试分数线",
+              "kind": "official_page",
+              "retrievedAt": "2026-10-12T13:48:43.064Z",
+              "fixture": "tests/fixtures/research-v3a6-run11.json",
+              "pageIndex": 108,
+              "textSha256": "3f9eebe560804bbdf4a97c8ff14191b42cd53c4e73011202420d3251c673e3f1",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "080200",
+              "offset": 1341,
+              "length": 6,
+              "verified": false
+            }
+          ]
         }
       ],
       "leads": [

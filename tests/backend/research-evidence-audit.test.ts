@@ -32,17 +32,20 @@ const facts = deduplicatePriorityFacts(
   ),
 );
 
-test("fixed latest-real identities retain all 75 slots and do not convert 9/75 into 8 percent", () => {
+test("fixed latest-real identities retain 75 slots and separate the historical baseline from corrected evidence", () => {
   assert.deepEqual(audit.corpus, { urls: 1512, bodies: 404 });
   assert.equal(audit.rows.length, 75);
   assert.equal(new Set(audit.rows.map((r) => r.id)).size, 75);
   assert.equal(
     audit.rows.filter((r) => r.evidenceStatus === "captured_applicable").length,
-    9,
+    10,
   );
-  assert.equal(audit.offlineCoverage.confirmed, 9);
-  assert.equal(audit.offlineCoverage.pending, 66);
-  assert.equal(audit.offlineCoverage.combined.partialAverage, 0.08);
+  assert.equal(audit.offlineCoverage.confirmed, 10);
+  assert.equal(audit.offlineCoverage.pending, 65);
+  assert.equal(
+    audit.offlineCoverage.combined.partialAverage,
+    0.08666666666666667,
+  );
   assert.equal(audit.offlineCoverage.combined.completeAverage, 0);
   assert.equal(audit.baseline.coverage.confirmed, 9);
   assert.equal(audit.baseline.coverage.pending, 66);
@@ -56,6 +59,11 @@ test("every asserted passage resolves to literal saved text, its hash and UTF-16
     ...audit.rows.flatMap((r) =>
       [...r.applicableEvidence, ...r.rejectedScopeEvidence].map(
         (e) => e.source,
+      ),
+    ),
+    ...audit.rows.flatMap((r) =>
+      [...r.applicableEvidence, ...r.rejectedScopeEvidence].flatMap(
+        (e) => e.supportingEvidence,
       ),
     ),
     ...audit.associationEvidence.map((a) => a.source),
@@ -354,4 +362,77 @@ test("committed audit, candidate pack and Chinese ledger reproduce exactly witho
   assert.equal(result.networkRequests, 0);
   assert.equal(result.paidCalls, 0);
   assert.equal(result.mode, "--check");
+});
+
+test("real spaced 2025 table headers recover only the exact ZSTU 085501 row and preserve literal provenance", () => {
+  const page = corpus.pages.find(
+    (p) => p.url === "https://gradadmission.zstu.edu.cn/info/1011/3206.htm",
+  )!;
+  const extracted = extractPriorityFacts(page.source!, disciplines, "2027");
+  const cutoff = extracted.find(
+    (f) => f.field === "cutoff" && f.majorCode === "085501",
+  )!;
+  assert.equal(cutoff.year, 2025);
+  assert.equal(cutoff.collegeName, "机械工程学院");
+  assert.equal(cutoff.value.number, 260);
+  assert.deepEqual(cutoff.value.singleSubject, {
+    maximum100: 34,
+    above100: 51,
+  });
+  assert.equal(
+    cutoff.value.maximum,
+    undefined,
+    "single-subject maxima do not establish the total maximum",
+  );
+  assert.equal(cutoff.value.targetGap, undefined);
+  assert.ok(cutoff.evidenceQuotes!.some((q) => q.includes("专业 代码")));
+  for (const quote of [cutoff.quote, ...cutoff.evidenceQuotes!])
+    assert.ok(page.source!.excerpt.includes(quote));
+  assert.equal(
+    classifySlot({
+      recommendation: {
+        institutionName: "浙江理工大学",
+        disciplineCode: "0855",
+        majorCode: "085501",
+        collegeName: "机械工程学院",
+      },
+      field: "cutoff",
+      year: 2024,
+      facts: extracted,
+      pages: [page],
+    }).exact.length,
+    0,
+  );
+  assert.equal(
+    classifySlot({
+      recommendation: {
+        institutionName: "浙江理工大学",
+        disciplineCode: "0855",
+        majorCode: "085507",
+        collegeName: "机械工程学院",
+      },
+      field: "cutoff",
+      year: 2025,
+      facts: extracted,
+      pages: [page],
+    }).exact.length,
+    0,
+  );
+});
+
+test("review progress identifies the one promoted slot without changing the historical nine confirmations", () => {
+  const progress = audit.reviewProgress;
+  assert.equal(progress.baselineConfirmed, 9);
+  assert.equal(progress.currentConfirmable, 10);
+  assert.equal(progress.currentPending, 65);
+  assert.equal(progress.confirmedDelta, 1);
+  assert.equal(progress.pendingDelta, -1);
+  assert.equal(progress.humanReviewed, 0);
+  assert.equal(progress.demoted.length, 0);
+  assert.equal(progress.promoted.length, 1);
+  assert.equal(progress.promoted[0].school, "浙江理工大学");
+  assert.equal(progress.promoted[0].majorCode, "085501");
+  assert.equal(progress.promoted[0].year, 2025);
+  assert.equal(progress.promoted[0].field, "cutoff");
+  assert.ok(progress.promoted[0].evidence[0].supportingEvidence.length > 0);
 });
