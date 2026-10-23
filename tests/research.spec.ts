@@ -3141,6 +3141,11 @@ test("任务一：失败停止、导航跳回续跑及取消恢复", async ({ pa
   await page.clock.runFor(2000);
   await expect(progress).toHaveAttribute("aria-valuenow", stopped!);
   await expect(panel.locator(".is-walking")).toHaveCount(0);
+  expect(
+    await panel
+      .locator(".shinchan")
+      .evaluate((svg) => svg.getAnimations({ subtree: true }).length),
+  ).toBe(0);
   await page.clock.resume();
   await panel
     .getByRole("button", { name: "一键重试（复用已完成阶段）", exact: true })
@@ -3152,6 +3157,12 @@ test("任务一：失败停止、导航跳回续跑及取消恢复", async ({ pa
   await expect(page.getByLabel("报告状态", { exact: true })).toHaveText(
     "未完成",
   );
+  await expect(panel.locator(".is-walking")).toHaveCount(0);
+  expect(
+    await panel
+      .locator(".shinchan")
+      .evaluate((svg) => svg.getAnimations({ subtree: true }).length),
+  ).toBe(0);
   await page
     .getByRole("navigation", { name: "主要导航" })
     .getByRole("button", { name: "个人画像", exact: true })
@@ -3176,6 +3187,15 @@ test("任务一：减少动画模式使用静态阶段位置", async ({ page }) 
     "animation-name",
     "none",
   );
+  expect(
+    await panel
+      .locator(".shinchan")
+      .evaluate((svg) => svg.getAnimations({ subtree: true }).length),
+  ).toBe(0);
+  await expect(panel.locator(".research-walker")).toHaveCSS(
+    "transition-duration",
+    "0s",
+  );
   await page.clock.install();
   await page.clock.runFor(10000);
   await expect(panel.getByRole("progressbar")).toHaveAttribute(
@@ -3189,6 +3209,150 @@ test("任务一：减少动画模式使用静态阶段位置", async ({ page }) 
     "60",
   );
 });
+
+for (const width of [1280, 375]) {
+  test(`跑步动画：${width}px 交替屈膝摆臂、边界和动态减少动画`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    const progress = panel.getByRole("progressbar");
+    const runner = panel.locator(".shinchan");
+    await expect(runner).toBeVisible();
+    await expect(runner).toHaveAttribute("aria-hidden", "true");
+    await expect
+      .poll(() =>
+        runner.evaluate(
+          (svg) =>
+            svg
+              .getAnimations({ subtree: true })
+              .filter((a) => a.playState === "running").length,
+        ),
+      )
+      .toBeGreaterThan(0);
+    // Sample the actual browser animations at each sign and both track ends.
+    // No timeouts or new report requests are needed for a full stride.
+    const poses = [];
+    for (const fraction of [0, 0.25, 0.5, 0.75]) {
+      poses.push(
+        await runner.evaluate((svg, fraction) => {
+          for (const animation of svg.getAnimations({ subtree: true })) {
+            animation.pause();
+            animation.currentTime =
+              Number(animation.effect!.getTiming().duration) * fraction;
+          }
+          const matrix = (selector: string) =>
+            new DOMMatrixReadOnly(
+              getComputedStyle(svg.querySelector(selector)!).transform,
+            );
+          const angle = (selector: string) => {
+            const m = matrix(selector);
+            return (Math.atan2(m.b, m.a) * 180) / Math.PI;
+          };
+          const walker = svg.closest<HTMLElement>(".research-walker")!;
+          const savedLeft = walker.style.left;
+          const road = walker.parentElement!;
+          const labelBoxes = Array.from(
+            road.querySelectorAll(".research-road-sign"),
+            (label) => label.getBoundingClientRect(),
+          );
+          const bounds = [0, 10, 30, 60, 90, 100].map((position) => {
+            walker.style.left = `${position}%`;
+            const b = svg
+              .querySelector(".shinchan-body")!
+              .getBoundingClientRect();
+            return {
+              position,
+              left: b.left,
+              right: b.right,
+              labelsClear: labelBoxes.every(
+                (l) =>
+                  b.right <= l.left ||
+                  l.right <= b.left ||
+                  b.top >= l.bottom ||
+                  l.top >= b.bottom,
+              ),
+            };
+          });
+          walker.style.left = savedLeft;
+          return {
+            frontLeg: angle(".shinchan-leg.front"),
+            backLeg: angle(".shinchan-leg.back"),
+            frontArm: angle(".shinchan-arm.front"),
+            knee: angle(".shinchan-shin.front"),
+            height: matrix(".shinchan-body").f,
+            shadow: matrix(".shinchan-shadow").a,
+            bounds,
+          };
+        }, fraction),
+      );
+      await progress.screenshot({
+        path: `var/runner-${width}-${fraction * 100}.png`,
+      });
+    }
+    expect(poses[0].frontLeg * poses[0].backLeg).toBeLessThan(0);
+    expect(poses[0].frontLeg * poses[0].frontArm).toBeLessThan(0);
+    expect(poses[2].frontLeg * poses[2].frontArm).toBeLessThan(0);
+    expect(Math.abs(poses[0].knee - poses[2].knee)).toBeGreaterThan(30);
+    expect(Math.abs(poses[0].height - poses[1].height)).toBeGreaterThan(1);
+    expect(poses[1].shadow).toBeGreaterThan(poses[0].shadow);
+    for (const pose of poses)
+      for (const bounds of pose.bounds) {
+        expect(bounds.left).toBeGreaterThanOrEqual(0);
+        expect(bounds.right).toBeLessThanOrEqual(width);
+        expect(bounds.labelsClear, JSON.stringify(bounds)).toBe(true);
+      }
+    await runner.evaluate((svg) =>
+      svg.getAnimations({ subtree: true }).forEach((a) => a.play()),
+    );
+    service.stage("researching");
+    await expect(progress).toHaveAttribute("aria-valuetext", /读取官网/);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect
+      .poll(() =>
+        runner.evaluate((svg) => svg.getAnimations({ subtree: true }).length),
+      )
+      .toBe(0);
+    await expect(panel.locator(".research-walker")).toHaveCSS(
+      "transition-duration",
+      "0s",
+    );
+    await progress.screenshot({ path: `var/runner-${width}-reduced.png` });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await expect
+      .poll(() =>
+        runner.evaluate(
+          (svg) =>
+            svg
+              .getAnimations({ subtree: true })
+              .filter((a) => a.playState === "running").length,
+        ),
+      )
+      .toBeGreaterThan(0);
+    service.finish("completed");
+    await expect(panel.locator(".is-walking")).toHaveCount(0);
+    expect(
+      await runner.evaluate(
+        (svg) => svg.getAnimations({ subtree: true }).length,
+      ),
+    ).toBe(0);
+    expect(service.postCount()).toBe(1);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
+}
 
 test("任务一：浏览器直接修改和另一标签页保存均被真实后端拒绝，测评仍可作答", async ({
   browser,

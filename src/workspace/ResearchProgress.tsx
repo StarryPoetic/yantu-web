@@ -111,7 +111,7 @@ export function ResearchProgress({
         >
           <div className="research-road">
             <div
-              className={`research-walker ${running && !reduced ? "is-walking" : ""}`}
+              className={`research-walker ${running && !stopped && !reduced ? "is-walking" : ""}`}
               style={{ left: `${value}%` }}
             >
               <ShinchanWalker />

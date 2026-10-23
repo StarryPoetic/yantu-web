@@ -794,6 +794,8 @@
   );
 }
 .research-walker {
+  --stride-duration: 680ms;
+  --stride-phase: 0ms;
   position: absolute;
   width: 72px;
   height: 90px;
@@ -844,27 +846,133 @@
   margin-top: var(--space-3);
   color: var(--color-muted);
 }
+.shinchan-body,
+.shinchan-shadow,
 .shinchan-leg,
+.shinchan-shin,
 .shinchan-arm {
   transform-box: view-box;
-  transform-origin: 50px 85px;
 }
-.shinchan-arm {
-  transform-origin: 52px 63px;
+.shinchan-body {
+  transform-origin: 52px 88px;
+  transform: translateY(3px);
 }
+.shinchan-shadow {
+  transform-origin: 52px 117px;
+}
+.shinchan-leg.back {
+  transform-origin: 44px 88px;
+}
+.shinchan-leg.front {
+  transform-origin: 59px 88px;
+}
+.shinchan-shin.back {
+  transform-origin: 43px 101px;
+}
+.shinchan-shin.front {
+  transform-origin: 59px 101px;
+}
+.shinchan-arm.back {
+  transform-origin: 42px 61px;
+}
+.shinchan-arm.front {
+  transform-origin: 65px 64px;
+}
+.shinchan .back {
+  --stride-phase: -340ms;
+}
+.is-walking .shinchan-body,
+.is-walking .shinchan-shadow,
 .is-walking .shinchan-leg,
+.is-walking .shinchan-shin,
 .is-walking .shinchan-arm {
-  animation: shinchan-step 0.65s ease-in-out infinite alternate;
+  animation-duration: var(--stride-duration);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-delay: var(--stride-phase);
 }
-.is-walking .back {
-  animation-delay: -0.65s;
+.is-walking .shinchan-body {
+  animation-name: shinchan-run-body;
 }
-@keyframes shinchan-step {
-  from {
-    transform: rotate(-17deg);
+.is-walking .shinchan-shadow {
+  animation-name: shinchan-run-shadow;
+}
+.is-walking .shinchan-leg {
+  animation-name: shinchan-run-thigh;
+}
+.is-walking .shinchan-shin {
+  animation-name: shinchan-run-knee;
+}
+.is-walking .shinchan-arm {
+  animation-name: shinchan-run-arm;
+}
+@keyframes shinchan-run-thigh {
+  0%,
+  100% {
+    transform: rotate(-32deg);
   }
-  to {
-    transform: rotate(17deg);
+  25% {
+    transform: rotate(6deg);
+  }
+  50% {
+    transform: rotate(34deg);
+  }
+  75% {
+    transform: rotate(-8deg);
+  }
+}
+@keyframes shinchan-run-knee {
+  0%,
+  100% {
+    transform: rotate(12deg);
+  }
+  25% {
+    transform: rotate(8deg);
+  }
+  50% {
+    transform: rotate(72deg);
+  }
+  75% {
+    transform: rotate(88deg);
+  }
+}
+@keyframes shinchan-run-arm {
+  0%,
+  100% {
+    transform: rotate(24deg);
+  }
+  25% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(-30deg);
+  }
+  75% {
+    transform: rotate(-4deg);
+  }
+}
+@keyframes shinchan-run-body {
+  0%,
+  50%,
+  100% {
+    transform: translateY(-2px) rotate(6deg);
+  }
+  25%,
+  75% {
+    transform: translateY(1px) rotate(5deg);
+  }
+}
+@keyframes shinchan-run-shadow {
+  0%,
+  50%,
+  100% {
+    transform: scaleX(0.8);
+    opacity: 0.1;
+  }
+  25%,
+  75% {
+    transform: scaleX(1);
+    opacity: 0.16;
   }
 }
 @media (max-width: 600px) {
@@ -886,10 +994,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .research-walker {
-    transition: left 0.12s linear;
+    transition: none;
   }
-  .is-walking .shinchan-leg,
-  .is-walking .shinchan-arm {
+  .research-walker .shinchan * {
     animation: none;
   }
 }
