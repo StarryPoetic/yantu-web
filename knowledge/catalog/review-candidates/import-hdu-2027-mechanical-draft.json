@@ -6,16 +6,22 @@
     ],
     "description": "杭州电子科技大学2027目录010机械工程学院080200机械工程与085500机械两项待审草稿；非已发布招生事实。",
     "limitations": [
-      "自动录入者为Codex，不是独立人工复核人；所有断言及项目保持unverified，原公共来源保持verified:false。",
-      "仅当前保存目录原文已明确的身份及考试科目进入草稿；资格、满分、费用、学制、培养地点保持缺失。",
-      "未补原XLS字节文件和原件SHA-256；抽取文本可通过fixture位置与文本哈希追溯。",
-      "未录入历史成绩、报录比、实际推免人数、招生计划数或未经审核的排序证据。",
-      "display.city为明确待核验占位文案；目录未区分项不推断为不存在，校园及招生单元等保持null。"
+      "Codex仅进行离线自动整理及一致性复查，不是独立人工复核人；全部项目和claim仍为draft/unpublished/unverified，reviewedBy和verifiedAt为空，不可视为审核通过或正式catalog。",
+      "本次仅复查010机械工程学院080200学硕和085500专硕；补齐表头/列定位、专项接收标记、拟招生人数、复试范围及同等学力加试，不扩展其他学院或专业。",
+      "目录正文来自run11 pages/247的保存抽取文本，实际采集于2026-10-10T22:26:59.449Z，缓存标记stale（2026-10-11T22:26:59.449Z到期）；本次未重新读取官网，归档或复查时间不代表新的抓取或当前版本确认。",
+      "原XLS字节、原件SHA-256、独立审核及外部再分发许可仍缺；contentHash:null，locator中的SHA-256仅覆盖UTF-8抽取文本，不替代原件哈希，也未伪造原XLS/PDF。",
+      "目录原provenance.identityExcerpt是栏目列表，不能单独证明附件关系；关联补自run9 pages/278真实父公告正文及documentLinks[0]。父公告2026-09-29的发布日期不等同XLS版本日期，XLS publishedAt保持null；两份保存来源均verified:false。",
+      "37/130仅为目录拟招生人数，含拟接收推免且可能调整；不能作为实际录取、普通统招或推免人数，不能据此计算报录比或推免占比。",
+      "退役/少骨/对口支援列仅表达本年度本项目是否接收该专项；不证明个人资格、专项名额或联合培养状态。资格条件未完成全链复核，eligibility保持missing/complete:false。",
+      "复试专业知识考查范围不是初试科目或任选组；同等学力复试加试只适用于对应人群，不追加至普通初试四科，也不据此断定同等学力考生已满足报考条件。",
+      "学制、费用、培养地点、校区、招生单元、独立考试组、单科/总分满分及门槛未完成适用来源复核，保持null/missing；缺失只描述本草稿，不表示学校没有公布。display.city是待核验占位文案，不用父页联系地址替代培养地点。",
+      "未录入历史成绩、报录比、实际推免人数或排序证据；仍需复查目标年度变更、自命题/加试大纲、完整报考条件及专业通知。父公告的历史报考录取PDF链接不作为2027目录事实。",
+      "本次内容修订沿用年度programId，新建draft-20261023-2并指向draft-20261020-1；旧稿仅留存Git历史，不代表已入库。未写正式目录、未提交审核或发布；缺前置修订时导入必须被拒绝。"
     ]
   },
   "sources": [
     {
-      "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
+      "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
       "publisher": "杭州电子科技大学研究生院",
       "title": "2027年硕士研究生招生专业目录.xls",
       "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/0c6dd461-06e5-485e-a8cb-aea791618009.xls",
@@ -25,14 +31,27 @@
       "collectedAt": "2026-10-10T22:26:59.449Z",
       "verifiedAt": null,
       "type": "official",
-      "usageRestrictions": "仅限对已保存公开招生目录抽取文本的内部审校；未确认外部再分发权限。官方页面身份来自同校父页面provenance。contentHash:null表示原XLS字节未归档；断言locator记录抽取文本SHA-256，不代替原件哈希。"
+      "usageRestrictions": "仅限已保存公开目录抽取文本的内部待审复查；外部再分发许可未确认。原XLS字节未归档，contentHash:null；sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d不代替原件哈希。缓存stale，原collectedAt保留，未重新核验官网。附件链来源=hdu-2027-catalogue-announcement-saved-text-v1; repository:tests/fixtures/research-v3a6-run9.json#/pages/278/source/documentLinks/0；原provenance.identityExcerpt是栏目列表，不能单独证明附件链接。"
+    },
+    {
+      "sourceId": "hdu-2027-catalogue-announcement-saved-text-v1",
+      "publisher": "杭州电子科技大学研究生院",
+      "title": "2027年硕士研究生招生专业目录与自命题科目考试大纲（含报考上线录取情况）",
+      "url": "https://grs.hdu.edu.cn/2026/0929/c13497a301001/page.htm",
+      "fileReference": "repository:tests/fixtures/research-v3a6-run9.json#/pages/278/source/excerpt",
+      "contentHash": null,
+      "publishedAt": "2026-09-29",
+      "collectedAt": "2026-10-12T12:22:02.067Z",
+      "verifiedAt": null,
+      "type": "official",
+      "usageRestrictions": "仅限保存的父公告抽取文本和链接元数据内部待审复查；未确认外部再分发许可，未保存原HTML字节。sha256(extracted-text-utf8)=ee9a285f6c4f3c6f9942822034cd63c879cd8904c6b5a987a1928637815e3c43不代替原件哈希。publishedAt只表示父公告正文公布的日期，不赋给XLS。附件标题UTF16-offset=384; quote=2027年硕士研究生招生专业目录.xls；附件关系=repository:tests/fixtures/research-v3a6-run9.json#/pages/278/source/documentLinks/0，URL须精确匹配目录来源。原公共来源verified:false，本次没有重新抓取或人工审核。"
     }
   ],
   "programs": [
     {
       "programId": "hdu.edu.cn:2027:010:080200:00:academic:full_time",
-      "programRevisionId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261020-1",
-      "supersedesRevisionId": null,
+      "programRevisionId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2",
+      "supersedesRevisionId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261020-1",
       "identity": {
         "institutionId": "institution:hdu.edu.cn",
         "collegeId": "college:hdu.edu.cn:010",
@@ -61,102 +80,187 @@
       "availability": "unverified",
       "isExample": false,
       "sourceIds": [
-        "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+        "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+        "hdu-2027-catalogue-announcement-saved-text-v1"
       ],
       "claims": [
         {
-          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:admissionYear",
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:admissionYear",
           "field": "admissionYear",
           "value": 2027,
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=24; quote=2027年硕士研究生招生专业目录",
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=1; column=1; UTF16-offset=24; quote=2027年硕士研究生招生专业目录",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:admissionYear"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:collegeIdentity",
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:collegeIdentity",
           "field": "collegeIdentity",
           "value": "010机械工程学院",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=330; quote=第4行：010机械工程学院 | 080200机械工程 | 学术学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 37 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=1; header-UTF16-offset=226; header-quote=院系所; UTF16-offset=334; quote=010机械工程学院",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:collegeIdentity"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:majorIdentity",
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:majorIdentity",
           "field": "majorIdentity",
           "value": "080200机械工程",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=330; quote=第4行：010机械工程学院 | 080200机械工程 | 学术学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 37 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=2; header-UTF16-offset=232; header-quote=专业; UTF16-offset=346; quote=080200机械工程",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:majorIdentity"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:degreeType",
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:degreeType",
           "field": "degreeType",
           "value": "学术学位",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=330; quote=第4行：010机械工程学院 | 080200机械工程 | 学术学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 37 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=3; header-UTF16-offset=237; header-quote=学位类型; UTF16-offset=359; quote=学术学位",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:degreeType"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:researchDirection",
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:researchDirection",
           "field": "researchDirection",
           "value": "00不区分研究方向",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=330; quote=第4行：010机械工程学院 | 080200机械工程 | 学术学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 37 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=4; header-UTF16-offset=244; header-quote=研究方向; UTF16-offset=366; quote=00不区分研究方向",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:researchDirection"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:studyMode",
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:studyMode",
           "field": "studyMode",
           "value": "(1)全日制",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=330; quote=第4行：010机械工程学院 | 080200机械工程 | 学术学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 37 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=5; header-UTF16-offset=251; header-quote=学习方式; UTF16-offset=378; quote=(1)全日制",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:studyMode"
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:acceptsRetiredSpecialPlan",
+          "field": "acceptsRetiredSpecialPlan",
+          "value": "是",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；仅目录是否接收该专项标记；非个人资格判定、非名额、非联合培养结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=6; header-UTF16-offset=258; header-quote=是否接收退役专项; UTF16-offset=387; quote=是",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
           "supersedesClaimId": null
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:examSubjects",
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:acceptsMinoritySpecialPlan",
+          "field": "acceptsMinoritySpecialPlan",
+          "value": "否",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；仅目录是否接收该专项标记；非个人资格判定、非名额、非联合培养结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=7; header-UTF16-offset=269; header-quote=是否接收少骨专项; UTF16-offset=391; quote=否",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:acceptsCounterpartSupport",
+          "field": "acceptsCounterpartSupport",
+          "value": "否",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；仅目录是否接收该专项标记；非个人资格判定、非名额、非联合培养结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=8; header-UTF16-offset=280; header-quote=是否接收对口支援; UTF16-offset=395; quote=否",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:plannedAdmissionCount",
+          "field": "plannedAdmissionCount",
+          "value": 37,
+          "unit": "人",
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录拟招生人数，含拟接收推免且可能调整；非实际录取、普通统招或推免人数，不作比率分母",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=9; header-UTF16-offset=291; header-quote=拟招生人数; note-UTF16-offset=78; note-quote=拟招生人数说明：目录中公布的各专业拟招生人数含拟接收推免生人数，实际招生人数以教育部正式下达的招生计划为准，在复试录取时，学校将根据生源、培养、导师等情况在全校各学院、专业间调整招生计划，目录中公布的拟招生人数仅供参考。; UTF16-offset=399; quote=37",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:examSubjects",
           "field": "examSubjects",
           "value": "①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=330; quote=第4行：010机械工程学院 | 080200机械工程 | 学术学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 37 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=10; header-UTF16-offset=299; header-quote=考试科目; UTF16-offset=404; quote=①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:examSubjects"
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:interviewKnowledgeScope",
+          "field": "interviewKnowledgeScope",
+          "value": "机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；复试专业知识考查范围；非初试科目、非任选组，不推断复试形式或分数门槛",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=11; header-UTF16-offset=306; header-quote=复试专业知识考查范围; UTF16-offset=445; quote=机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:080200:00:academic:full_time:draft-20261023-2:equivalentEducationAdditionalSubjects",
+          "field": "equivalentEducationAdditionalSubjects",
+          "value": "微机原理及应用,机械设计",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/080200/学术学位/00不区分研究方向/全日制/2027年度；仅同等学力考生复试加试科目；不追加普通初试科目，不代表报考资格已满足",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=4; column=12; header-UTF16-offset=319; header-quote=同等学力复试加试科目; UTF16-offset=492; quote=微机原理及应用,机械设计",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
@@ -166,7 +270,7 @@
       "eligibility": {
         "availability": "missing",
         "complete": false,
-        "reason": "仅整理2027目录身份和科目原文；报考条件、特殊计划适用性及目标年度变更尚未独立核验。",
+        "reason": "已整理目录专项接收标记和同等学力复试加试原文；完整报考条件、学历路径及例外、专项个人资格、目标年度变更尚未独立复核，不能自动判定资格。",
         "conditions": []
       },
       "subjects": [
@@ -177,7 +281,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         },
@@ -188,7 +292,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         },
@@ -199,7 +303,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         },
@@ -210,7 +314,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         }
@@ -227,18 +331,20 @@
       "evidence": [],
       "risks": [],
       "preparationNotes": [
-        "Codex仅自动录入已保存官方目录原文，未进行独立人工复核，不能据此确认资格、排序或制订正式分数规划。",
-        "考试科目按2027目录为101、201、301、812；未填默认满分或任意可选组。2026目录的811不能替代本年度812。",
-        "校区、培养地点、招生单元和独立考试组尚待核验；null代表未采集，不代表学校没有区分。",
-        "来源中的拟招生人数包含拟接收推免人数且可能调整，本草稿不把计划数当实际统招人数或推免人数。",
-        "原XLS文件哈希及使用限制尚待补充；引用定位的哈希仅覆盖保存的抽取文本。",
-        "五题测评不能换算考研分数或录取概率。"
+        "Codex仅离线自动整理并校对已保存目录文本；全部claim仍unverified、reviewedBy:null，不构成人工审核或正式招生事实。",
+        "两专业2027目录初试均为101、201、301、812；不得按专硕习惯替换为204/302，也不得继承2026的811。满分、门槛及任选组均未推断。",
+        "复试范围与同等学力加试已按不同表头单列claim；不得混入普通初试四科，逗号分隔不表示可任选。",
+        "拟招生人数37人来自本专业目录行及第2行说明，含拟接收推免且可调整；不分拆实际统招、推免或其他专项人数，不计算比例。",
+        "退役专项是、少骨专项否、对口支援否仅为本年度本项目目录标记；个体报考资格及联合培养情况仍待核验。",
+        "原XLS字节和原件哈希缺失；目录缓存已过期，父公告附件链来自独立保存的真实页面。需原件、年度变更复查、使用许可及独立审核，不能用文本哈希代替原件。",
+        "校区、培养地点、招生单元、考试组、费用、学制和分数要求继续留空；null表示未核验，不表示学校没有区分或不存在。",
+        "保留旧修订引用只用于追踪草稿；不表示旧稿已经导入或新稿可以发布。五题测评不能换算考研分数或录取概率。"
       ]
     },
     {
       "programId": "hdu.edu.cn:2027:010:085500:00:professional:full_time",
-      "programRevisionId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261020-1",
-      "supersedesRevisionId": null,
+      "programRevisionId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2",
+      "supersedesRevisionId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261020-1",
       "identity": {
         "institutionId": "institution:hdu.edu.cn",
         "collegeId": "college:hdu.edu.cn:010",
@@ -267,102 +373,187 @@
       "availability": "unverified",
       "isExample": false,
       "sourceIds": [
-        "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+        "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+        "hdu-2027-catalogue-announcement-saved-text-v1"
       ],
       "claims": [
         {
-          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:admissionYear",
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:admissionYear",
           "field": "admissionYear",
           "value": 2027,
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=24; quote=2027年硕士研究生招生专业目录",
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=1; column=1; UTF16-offset=24; quote=2027年硕士研究生招生专业目录",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:admissionYear"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:collegeIdentity",
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:collegeIdentity",
           "field": "collegeIdentity",
           "value": "010机械工程学院",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=505; quote=第5行：010机械工程学院 | 085500机械 | 专业学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 130 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=1; header-UTF16-offset=226; header-quote=院系所; UTF16-offset=509; quote=010机械工程学院",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:collegeIdentity"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:majorIdentity",
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:majorIdentity",
           "field": "majorIdentity",
           "value": "085500机械",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=505; quote=第5行：010机械工程学院 | 085500机械 | 专业学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 130 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=2; header-UTF16-offset=232; header-quote=专业; UTF16-offset=521; quote=085500机械",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:majorIdentity"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:degreeType",
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:degreeType",
           "field": "degreeType",
           "value": "专业学位",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=505; quote=第5行：010机械工程学院 | 085500机械 | 专业学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 130 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=3; header-UTF16-offset=237; header-quote=学位类型; UTF16-offset=532; quote=专业学位",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:degreeType"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:researchDirection",
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:researchDirection",
           "field": "researchDirection",
           "value": "00不区分研究方向",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=505; quote=第5行：010机械工程学院 | 085500机械 | 专业学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 130 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=4; header-UTF16-offset=244; header-quote=研究方向; UTF16-offset=539; quote=00不区分研究方向",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
-          "supersedesClaimId": null
+          "supersedesClaimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:researchDirection"
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:studyMode",
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:studyMode",
           "field": "studyMode",
           "value": "(1)全日制",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=505; quote=第5行：010机械工程学院 | 085500机械 | 专业学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 130 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=5; header-UTF16-offset=251; header-quote=学习方式; UTF16-offset=551; quote=(1)全日制",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:studyMode"
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:acceptsRetiredSpecialPlan",
+          "field": "acceptsRetiredSpecialPlan",
+          "value": "是",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；仅目录是否接收该专项标记；非个人资格判定、非名额、非联合培养结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=6; header-UTF16-offset=258; header-quote=是否接收退役专项; UTF16-offset=560; quote=是",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
           "supersedesClaimId": null
         },
         {
-          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:examSubjects",
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:acceptsMinoritySpecialPlan",
+          "field": "acceptsMinoritySpecialPlan",
+          "value": "否",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；仅目录是否接收该专项标记；非个人资格判定、非名额、非联合培养结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=7; header-UTF16-offset=269; header-quote=是否接收少骨专项; UTF16-offset=564; quote=否",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:acceptsCounterpartSupport",
+          "field": "acceptsCounterpartSupport",
+          "value": "否",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；仅目录是否接收该专项标记；非个人资格判定、非名额、非联合培养结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=8; header-UTF16-offset=280; header-quote=是否接收对口支援; UTF16-offset=568; quote=否",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:plannedAdmissionCount",
+          "field": "plannedAdmissionCount",
+          "value": 130,
+          "unit": "人",
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录拟招生人数，含拟接收推免且可能调整；非实际录取、普通统招或推免人数，不作比率分母",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=9; header-UTF16-offset=291; header-quote=拟招生人数; note-UTF16-offset=78; note-quote=拟招生人数说明：目录中公布的各专业拟招生人数含拟接收推免生人数，实际招生人数以教育部正式下达的招生计划为准，在复试录取时，学校将根据生源、培养、导师等情况在全校各学院、专业间调整招生计划，目录中公布的拟招生人数仅供参考。; UTF16-offset=572; quote=130",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:examSubjects",
           "field": "examSubjects",
           "value": "①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合",
           "unit": null,
           "targetAdmissionYear": 2027,
-          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；普通目录事实，资格未核验",
-          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v1",
-          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; UTF16-offset=505; quote=第5行：010机械工程学院 | 085500机械 | 专业学位 | 00不区分研究方向 | (1)全日制 | 是 | 否 | 否 | 130 | ①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合 | 机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理 | 微机原理及应用,机械设计",
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；目录待审原文，非资格核验结论",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=10; header-UTF16-offset=299; header-quote=考试科目; UTF16-offset=578; quote=①101思想政治理论②201英语（一）③301数学（一）④812机械工程综合",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:examSubjects"
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:interviewKnowledgeScope",
+          "field": "interviewKnowledgeScope",
+          "value": "机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；复试专业知识考查范围；非初试科目、非任选组，不推断复试形式或分数门槛",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=11; header-UTF16-offset=306; header-quote=复试专业知识考查范围; UTF16-offset=619; quote=机械制造工程原理,理论力学,材料力学,机械设计,机械工程控制基础,机械工程图学,机械原理",
+          "availability": "unverified",
+          "enteredBy": "Codex（自动整理，非人工复核）",
+          "reviewedBy": null,
+          "supersedesClaimId": null
+        },
+        {
+          "claimId": "hdu.edu.cn:2027:010:085500:00:professional:full_time:draft-20261023-2:equivalentEducationAdditionalSubjects",
+          "field": "equivalentEducationAdditionalSubjects",
+          "value": "微机原理及应用,机械设计",
+          "unit": null,
+          "targetAdmissionYear": 2027,
+          "scope": "杭州电子科技大学/010机械工程学院/085500/专业学位/00不区分研究方向/全日制/2027年度；仅同等学力考生复试加试科目；不追加普通初试科目，不代表报考资格已满足",
+          "sourceId": "hdu-2027-catalogue-0c6dd461-saved-text-v2",
+          "locator": "repository:tests/fixtures/research-v3a6-run11.json#/pages/247/source/excerpt; sha256(extracted-text-utf8)=9bdebebdca78d73290e31962f62580b6a67c136bed862b4b1cdfc92273a92e8d; sheet=rep_print_kskm3; row=5; column=12; header-UTF16-offset=319; header-quote=同等学力复试加试科目; UTF16-offset=666; quote=微机原理及应用,机械设计",
           "availability": "unverified",
           "enteredBy": "Codex（自动整理，非人工复核）",
           "reviewedBy": null,
@@ -372,7 +563,7 @@
       "eligibility": {
         "availability": "missing",
         "complete": false,
-        "reason": "仅整理2027目录身份和科目原文；报考条件、特殊计划适用性及目标年度变更尚未独立核验。",
+        "reason": "已整理目录专项接收标记和同等学力复试加试原文；完整报考条件、学历路径及例外、专项个人资格、目标年度变更尚未独立复核，不能自动判定资格。",
         "conditions": []
       },
       "subjects": [
@@ -383,7 +574,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         },
@@ -394,7 +585,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         },
@@ -405,7 +596,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         },
@@ -416,7 +607,7 @@
           "minimumScore": null,
           "availability": "unverified",
           "sourceIds": [
-            "hdu-2027-catalogue-0c6dd461-saved-text-v1"
+            "hdu-2027-catalogue-0c6dd461-saved-text-v2"
           ],
           "optionGroupId": null
         }
@@ -433,12 +624,14 @@
       "evidence": [],
       "risks": [],
       "preparationNotes": [
-        "Codex仅自动录入已保存官方目录原文，未进行独立人工复核，不能据此确认资格、排序或制订正式分数规划。",
-        "考试科目按2027目录为101、201、301、812；未填默认满分或任意可选组。2026目录的811不能替代本年度812。",
-        "校区、培养地点、招生单元和独立考试组尚待核验；null代表未采集，不代表学校没有区分。",
-        "来源中的拟招生人数包含拟接收推免人数且可能调整，本草稿不把计划数当实际统招人数或推免人数。",
-        "原XLS文件哈希及使用限制尚待补充；引用定位的哈希仅覆盖保存的抽取文本。",
-        "五题测评不能换算考研分数或录取概率。"
+        "Codex仅离线自动整理并校对已保存目录文本；全部claim仍unverified、reviewedBy:null，不构成人工审核或正式招生事实。",
+        "两专业2027目录初试均为101、201、301、812；不得按专硕习惯替换为204/302，也不得继承2026的811。满分、门槛及任选组均未推断。",
+        "复试范围与同等学力加试已按不同表头单列claim；不得混入普通初试四科，逗号分隔不表示可任选。",
+        "拟招生人数130人来自本专业目录行及第2行说明，含拟接收推免且可调整；不分拆实际统招、推免或其他专项人数，不计算比例。",
+        "退役专项是、少骨专项否、对口支援否仅为本年度本项目目录标记；个体报考资格及联合培养情况仍待核验。",
+        "原XLS字节和原件哈希缺失；目录缓存已过期，父公告附件链来自独立保存的真实页面。需原件、年度变更复查、使用许可及独立审核，不能用文本哈希代替原件。",
+        "校区、培养地点、招生单元、考试组、费用、学制和分数要求继续留空；null表示未核验，不表示学校没有区分或不存在。",
+        "保留旧修订引用只用于追踪草稿；不表示旧稿已经导入或新稿可以发布。五题测评不能换算考研分数或录取概率。"
       ]
     }
   ]
