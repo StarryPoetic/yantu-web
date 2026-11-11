@@ -48,6 +48,12 @@ export function assessmentRoutes(c: Context): Reply | undefined {
           "question_bank_unavailable",
           "题库尚未发布，可以先探索院校。",
         );
+      if (c.store.get("public", "withdrawn-banks", bank.questionBankVersion))
+        throw new HttpError(
+          409,
+          "bank_withdrawn",
+          "题库版本已撤回，暂不能创建新测评。",
+        );
       const attempt = createAttempt(bank, {
         ...input,
         subjectId: owner,

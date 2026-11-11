@@ -19,6 +19,44 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { Store } from "../../server/store.ts";
 import { createPersistentUsageLedger } from "../../server/explanation/usage-ledger.ts";
+import type { IncomingMessage } from "node:http";
+import type { Context } from "../../server/context.ts";
+import { adminRoutes } from "../../server/routes/admin.ts";
+import { assessmentRoutes } from "../../server/routes/assessment.ts";
+import { workRoutes } from "../../server/routes/work.ts";
+import { loadQuestionBank } from "../../server/assessment/index.ts";
+import { exampleRule } from "../../server/recommendation/index.ts";
+
+function routeContext(
+  store: Store,
+  path: string,
+  body: Record<string, unknown> = {},
+  sampleData = true,
+): Context {
+  return {
+    store,
+    path,
+    body,
+    method: "POST",
+    query: new URLSearchParams(),
+    request: { headers: {} } as IncomingMessage,
+    session: {
+      subjectId: "fixture-student",
+      generation: 0,
+      csrfToken: "fixture",
+      expiresAt: Date.now() + 100000,
+    },
+    admin: { actorId: "fixture-publisher", roles: ["publisher"] },
+    config: {
+      databasePath: ":memory:",
+      sampleData,
+      secureCookies: false,
+      origins: [],
+      admins: [],
+      rateLimit: 1000,
+    },
+  };
+}
 
 const execute = promisify(execFile);
 const scripts = Object.fromEntries(
@@ -243,6 +281,7 @@ test("isolated restore protects current deletion, changed chat, passwords, withd
   };
   store.put("public", "catalog", "current", catalog);
   store.put("public", "question-bank", "current", {
+    ...(await loadQuestionBank()),
     questionBankVersion: "bank-v1",
   });
   store.db.exec(
@@ -487,4 +526,218 @@ test("restore refuses to revive a catalog when current withdrawal state is unava
       ),
   );
   await assert.rejects(stat(target), { code: "ENOENT" });
+});
+
+test("restore does not reapprove a rule withdrawn through the actual administration route", async (t) => {
+  const { directory, source, store } = await fixture(t);
+  const rule = {
+    ...exampleRule,
+    ruleVersion: "synthetic-reviewed-rule-v1",
+    reviewStatus: "approved" as const,
+    reviewedBy: ["fixture-reviewer"],
+  };
+  store.put("public", "rule", "current", rule);
+  store.put("administration", "publication", "rule-pub", {
+    kind: "rule",
+    version: rule.ruleVersion,
+    revisionIds: [],
+  });
+  const snapshot = join(directory, "snapshot.sqlite");
+  await run("backup-database", ["--source", source, "--destination", snapshot]);
+  adminRoutes(
+    routeContext(store, "/admin/publications/rule-pub/withdraw", {
+      reason: "fixture rule withdrawn",
+    }),
+  );
+  assert.equal(
+    store.get<{ reviewStatus: string }>("public", "rule")?.value.reviewStatus,
+    "draft",
+  );
+  const target = join(directory, "restored-rule");
+  await run("restore-isolated", [
+    "--snapshot",
+    snapshot,
+    "--current",
+    source,
+    "--directory",
+    target,
+  ]);
+  const restored = new Store(join(target, "candidate.sqlite"));
+  try {
+    assert.equal(
+      restored.get<{ reviewStatus: string }>("public", "rule")?.value
+        .reviewStatus,
+      "draft",
+    );
+    assert.throws(
+      () =>
+        workRoutes(
+          routeContext(
+            restored,
+            "/recommendations",
+            {
+              profileVersion: 0,
+              selectionVersion: 0,
+              targetAdmissionYear: 2027,
+            },
+            false,
+          ),
+        ),
+      { code: "rules_not_ready" },
+    );
+  } finally {
+    restored.close();
+  }
+  store.db
+    .prepare(
+      "DELETE FROM resources WHERE owner='public' AND kind='rule' AND id='current'",
+    )
+    .run();
+  const absentTarget = join(directory, "restored-rule-missing-current");
+  await run("restore-isolated", [
+    "--snapshot",
+    snapshot,
+    "--current",
+    source,
+    "--directory",
+    absentTarget,
+  ]);
+  const absent = new Store(join(absentTarget, "candidate.sqlite"));
+  try {
+    assert.equal(absent.get("public", "rule"), null);
+  } finally {
+    absent.close();
+  }
+  const newerRule = { ...rule, ruleVersion: "synthetic-reviewed-rule-v2" };
+  store.put("public", "rule", "current", newerRule);
+  const newerTarget = join(directory, "restored-newer-rule");
+  await run("restore-isolated", [
+    "--snapshot",
+    snapshot,
+    "--current",
+    source,
+    "--directory",
+    newerTarget,
+  ]);
+  const newer = new Store(join(newerTarget, "candidate.sqlite"));
+  try {
+    assert.deepEqual(newer.get("public", "rule")?.value, newerRule);
+  } finally {
+    newer.close();
+  }
+});
+
+test("restored withdrawn question bank cannot create new assessments through the actual route", async (t) => {
+  const { directory, source, store } = await fixture(t);
+  const bank = await loadQuestionBank();
+  store.put("public", "question-bank", "current", bank);
+  store.put("administration", "publication", "bank-pub", {
+    kind: "questions",
+    version: bank.questionBankVersion,
+    revisionIds: [],
+  });
+  assert.equal(
+    assessmentRoutes(
+      routeContext(store, "/assessment-attempts", { modules: ["politics"] }),
+    )?.status,
+    201,
+  );
+  const snapshot = join(directory, "snapshot.sqlite");
+  await run("backup-database", ["--source", source, "--destination", snapshot]);
+  adminRoutes(
+    routeContext(store, "/admin/publications/bank-pub/withdraw", {
+      reason: "fixture bank withdrawn",
+    }),
+  );
+  const target = join(directory, "restored-bank");
+  await run("restore-isolated", [
+    "--snapshot",
+    snapshot,
+    "--current",
+    source,
+    "--directory",
+    target,
+  ]);
+  const restored = new Store(join(target, "candidate.sqlite"));
+  try {
+    assert.ok(
+      restored.get("public", "withdrawn-banks", bank.questionBankVersion),
+    );
+    const before = restored.list("fixture-student", "attempt").length;
+    assert.throws(
+      () =>
+        assessmentRoutes(
+          routeContext(restored, "/assessment-attempts", {
+            modules: ["politics"],
+          }),
+        ),
+      { code: "bank_withdrawn" },
+    );
+    assert.equal(restored.list("fixture-student", "attempt").length, before);
+    // Even an inconsistent active row cannot bypass the durable withdrawal marker.
+    restored.put("public", "question-bank", "current", bank);
+    assert.throws(
+      () =>
+        assessmentRoutes(
+          routeContext(restored, "/assessment-attempts", {
+            modules: ["politics"],
+          }),
+        ),
+      { code: "bank_withdrawn" },
+    );
+  } finally {
+    restored.close();
+  }
+  store.put("public", "question-bank", "current", {
+    ...bank,
+    questionBankVersion: "synthetic-newer-bank-v2",
+  });
+  const newerTarget = join(directory, "restored-newer-bank");
+  await run("restore-isolated", [
+    "--snapshot",
+    snapshot,
+    "--current",
+    source,
+    "--directory",
+    newerTarget,
+  ]);
+  const newer = new Store(join(newerTarget, "candidate.sqlite"));
+  try {
+    assert.equal(
+      assessmentRoutes(
+        routeContext(newer, "/assessment-attempts", { modules: ["politics"] }),
+      )?.status,
+      201,
+    );
+  } finally {
+    newer.close();
+  }
+  store.db
+    .prepare(
+      "DELETE FROM resources WHERE owner='public' AND kind='question-bank' AND id='current'",
+    )
+    .run();
+  const missingTarget = join(directory, "restored-missing-bank");
+  await run("restore-isolated", [
+    "--snapshot",
+    snapshot,
+    "--current",
+    source,
+    "--directory",
+    missingTarget,
+  ]);
+  const missing = new Store(join(missingTarget, "candidate.sqlite"));
+  try {
+    assert.throws(
+      () =>
+        assessmentRoutes(
+          routeContext(missing, "/assessment-attempts", {
+            modules: ["politics"],
+          }),
+        ),
+      { code: "question_bank_unavailable" },
+    );
+  } finally {
+    missing.close();
+  }
 });

@@ -249,6 +249,55 @@ function protectResources(destination, current) {
     )
       put.run(row.owner, row.kind, row.id, row.value, row.etag, row.version);
   }
+  // These active resources encode withdrawal in their content, not solely in a
+  // separate tombstone. A snapshot's approval can never establish current approval.
+  for (const kind of ["rule", "question-bank"]) {
+    const live = currentResources.get(
+      JSON.stringify(["public", kind, "current"]),
+    );
+    if (live)
+      put.run(
+        live.owner,
+        live.kind,
+        live.id,
+        live.value,
+        live.etag,
+        live.version,
+      );
+    else remove.run("public", kind, "current");
+  }
+  const activeBankRow = destination
+    .prepare(
+      "SELECT * FROM resources WHERE owner='public' AND kind='question-bank' AND id='current'",
+    )
+    .get();
+  if (activeBankRow) {
+    const activeBank = JSON.parse(activeBankRow.value);
+    if (typeof activeBank.questionBankVersion !== "string")
+      fail("RESTORE_QUESTION_BANK_INVALID");
+    if (
+      destination
+        .prepare(
+          "SELECT 1 FROM resources WHERE owner='public' AND kind='withdrawn-banks' AND id=?",
+        )
+        .get(activeBank.questionBankVersion)
+    ) {
+      if (!Array.isArray(activeBank.questions))
+        fail("RESTORE_QUESTION_BANK_INVALID");
+      activeBank.questions = activeBank.questions.map((question) => ({
+        ...question,
+        publicationStatus: "withdrawn",
+      }));
+      put.run(
+        "public",
+        "question-bank",
+        "current",
+        JSON.stringify(activeBank),
+        '"isolated-restore-withdrawn-bank"',
+        Number(activeBankRow.version) + 1,
+      );
+    }
+  }
   return { removedPrivateResources, protectedWithdrawals };
 }
 
