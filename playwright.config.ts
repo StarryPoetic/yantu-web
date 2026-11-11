@@ -6,8 +6,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // Limit concurrent Chromium loads on Windows to avoid local network buffer exhaustion.
-  workers: process.env.CI || process.platform === "win32" ? 2 : 4,
+  // Concurrent Vite module loads can return ERR_NO_BUFFER_SPACE on Windows.
+  // Serialize browser contexts there; keep timeouts and retry policy unchanged.
+  workers: process.platform === "win32" ? 1 : process.env.CI ? 2 : 4,
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:4187",
