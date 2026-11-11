@@ -18,6 +18,11 @@ interface Actor {
   actorId: string;
   roles: string[];
 }
+function canReadDrafts(roles: string[]) {
+  return roles.some((role) =>
+    ["editor", "reviewer", "publisher"].includes(role),
+  );
+}
 const statuses: Record<string, string> = {
   draft: "草稿",
   pending_review: "待审核",
@@ -45,6 +50,7 @@ export function AdminPanel() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(),
     [message, setMessage] = useState("");
+  const hasDraftAccess = actor !== null && canReadDrafts(actor.roles);
   async function act(run: () => Promise<void>) {
     setBusy(true);
     setError(null);
@@ -58,6 +64,7 @@ export function AdminPanel() {
     }
   }
   async function load(nextKind = kind) {
+    if (!hasDraftAccess) return;
     const result = await request<{ items: Draft[] }>(
       `/admin/drafts/${nextKind}`,
       {},
@@ -66,17 +73,18 @@ export function AdminPanel() {
   }
   useEffect(() => {
     const controller = new AbortController();
-    void Promise.all([
-      request<Actor>("/admin/me", { signal: controller.signal }),
-      request<{ items: Draft[] }>("/admin/drafts/program", {
-        signal: controller.signal,
-      }),
-    ])
-      .then(([identity, records]) => {
-        if (!controller.signal.aborted) {
-          setActor(identity.data);
-          setDrafts(records.data.items);
-        }
+    void request<Actor>("/admin/me", { signal: controller.signal })
+      .then(async (identity) => {
+        if (controller.signal.aborted) return;
+        setActor(identity.data);
+        if (!canReadDrafts(identity.data.roles)) return;
+        const records = await request<{ items: Draft[] }>(
+          "/admin/drafts/program",
+          {
+            signal: controller.signal,
+          },
+        );
+        if (!controller.signal.aborted) setDrafts(records.data.items);
       })
       .catch((failure) => {
         if (!controller.signal.aborted) setError(failure);
@@ -146,7 +154,7 @@ export function AdminPanel() {
       </div>
       <ErrorNotice
         error={error}
-        onReload={actor ? () => void act(() => load()) : undefined}
+        onReload={hasDraftAccess ? () => void act(() => load()) : undefined}
       />
       {actor?.roles.includes("reviewer") && (
         <PerformanceReviewPanel actorId={actor.actorId} />
@@ -167,7 +175,7 @@ export function AdminPanel() {
             .join(" / ")}
         </div>
       )}
-      {actor && (
+      {actor && hasDraftAccess && (
         <>
           <section className="ws-panel ws-stack">
             <div className="ws-between">
@@ -439,9 +447,9 @@ export function AdminPanel() {
               服务端检查角色、禁止自审，并保留审计记录；管理者不能通过页面跳过复核。
             </p>
           </section>
-          <GovernancePanels roles={actor.roles} />
         </>
       )}
+      {actor && <GovernancePanels roles={actor.roles} />}
       {message && (
         <div className="ws-notice" role="status">
           {message}
