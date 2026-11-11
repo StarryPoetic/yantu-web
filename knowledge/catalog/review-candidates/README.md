@@ -4,7 +4,8 @@
 
 - `first-batch.json`：真实项目线索、原文定位及阻断检查项；所有项目保持 draft / unpublished / unverified，审核人为空。缺失身份保持 null。
 - `evidence-audit.json`：最新真实运行五校固定分母的逐字段审计，并保留历史基线与累计正文离线结果。
-- `import-hdu-2027-mechanical-draft.json`：杭电2027年010机械工程学院080200/085500的独立待审修订稿，仅复核已保存目录、表头和父公告附件链；不由下述审计命令生成或校验。所有claim仍unverified，原XLS及独立人工审核未补齐，不能导入为已审核资料或发布；新修订引用的旧稿保留在Git历史中，不表示已有前置修订入库。单独运行 `node --test tests/backend/catalog-review-import.test.ts tests/backend/catalog.test.ts tests/backend/rules.test.ts` 做离线结构、定位和隔离检查。
+- `import-hdu-2027-mechanical-draft.json`：杭电2027年010机械工程学院080200/085500的独立待审修订稿，仅复核已保存目录、表头和父公告附件链；不由下述审计命令生成或校验。所有claim仍unverified，独立人工审核未补齐，不能导入为已审核资料或发布；原XLS和旧稿在2026-11-11另行归档，详见下项，不表示已有前置修订入库。单独运行 `node --test tests/backend/catalog-review-import.test.ts tests/backend/catalog.test.ts tests/backend/rules.test.ts` 做离线结构、定位和隔离检查。
+- `20261111-review-handoff.md`：后续免费定向补证记录及人工待决表。已补真实杭电XLS/父公告和2025国家线HTML原件，保持旧稿及claim的未审状态；原件不再缺失，独立审核、完整字段和使用条件仍待补。旧稿逐字节副本在 `predecessors/`；`node scripts/verify-hdu-review-chain.ts` 只检查内存顺序，不写数据库、不审核、不发布。
 
 用 `node scripts/research-evidence-audit.ts --write` 重建，`--check` 校验一致性；不读取 `.env`，不调用网络、搜索或模型。手工审校记录应独立保存，不能编辑生成文件后指望下一次重建保留。
 

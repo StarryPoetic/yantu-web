@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "bounded-free-source-review",
+  "paidCalls": 0,
+  "humanReviewed": false,
+  "records": [
+    {
+      "url": "https://grs.hdu.edu.cn/2026/0929/c13497a301001/page.htm",
+      "attemptedAt": "2026-11-11T13:31:08.527Z",
+      "method": "single direct public GET; no redirects, no credentials",
+      "status": 200,
+      "file": "tests/fixtures/source-review-20261111/hdu-parent.html",
+      "bytes": 12807,
+      "sha256": "1f53f2514ba3f9cbb13a3f2aecfc30476b5938ee00664354db376beb73e57183",
+      "error": null,
+      "contentType": "text/html"
+    },
+    {
+      "url": "https://grs.hdu.edu.cn/_upload/article/files/5c/06/383e4fad40fb80292f0632927165/0c6dd461-06e5-485e-a8cb-aea791618009.xls",
+      "attemptedAt": "2026-11-11T13:31:11.326Z",
+      "method": "single direct public GET; no redirects, no credentials",
+      "status": 200,
+      "file": "tests/fixtures/source-review-20261111/hdu-catalogue.xls",
+      "bytes": 42496,
+      "sha256": "c59d546d73a11bf5e7dc410465f6897189ade380cbfc89dfc6fb766f1824b8da",
+      "error": null,
+      "contentType": "application/vnd.ms-excel"
+    },
+    {
+      "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+      "attemptedAt": "2026-11-11T13:31:13.312Z",
+      "method": "single direct public GET; no redirects, no credentials",
+      "status": 200,
+      "file": "tests/fixtures/source-review-20261111/national-line-2025.html",
+      "bytes": 39318,
+      "sha256": "77347a88c96e0818d1494e3d607065b8a373d42de31b9e4d459481fa18833c01",
+      "error": null,
+      "contentType": "text/html;charset=UTF-8"
+    }
+  ]
+}

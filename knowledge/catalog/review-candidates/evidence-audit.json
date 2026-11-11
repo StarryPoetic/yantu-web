@@ -16350,7 +16350,7 @@
   ],
   "supplementalCorpus": {
     "generatedFrom": "tests/fixtures/research-a-national-lines.json",
-    "bodies": 2,
+    "bodies": 3,
     "method": "普通公开原文定向读取后保存；本生成器只离线读取，未启动第12次报告或付费调用"
   },
   "nationalLineChains": [
@@ -16578,12 +16578,97 @@
       "missing": [
         "同年同学院六位专业代码身份",
         "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
-        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
       ],
       "derivedFactId": null,
       "directCutoffAvailable": true,
-      "evidence": [],
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 327,
+            "length": 106,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 434,
+            "length": 150,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 260 | 34 | 51 | 250 | 31 | 47 | 208 |",
+            "offset": 8728,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 640,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 789,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
       "partialStatements": [
         {
           "url": "https://gradadmission.zstu.edu.cn/info/1011/3203.htm",
@@ -16885,12 +16970,97 @@
       "missing": [
         "同年同学院六位专业代码身份",
         "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
-        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
       ],
       "derivedFactId": null,
       "directCutoffAvailable": false,
-      "evidence": [],
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 327,
+            "length": 106,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 434,
+            "length": 150,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 260 | 34 | 51 | 250 | 31 | 47 | 208 |",
+            "offset": 8728,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 640,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 789,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
       "partialStatements": []
     },
     {
@@ -17106,12 +17276,97 @@
       "missing": [
         "同年同学院六位专业代码身份",
         "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
-        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
       ],
       "derivedFactId": null,
       "directCutoffAvailable": false,
-      "evidence": [],
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 327,
+            "length": 106,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 434,
+            "length": 150,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 260 | 34 | 51 | 250 | 31 | 47 | 208 |",
+            "offset": 8728,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 640,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 789,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
       "partialStatements": [
         {
           "url": "https://yzw.zust.edu.cn/info/1035/1913.htm",
@@ -17441,12 +17696,97 @@
       "missing": [
         "同年同学院六位专业代码身份",
         "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
-        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
       ],
       "derivedFactId": null,
       "directCutoffAvailable": false,
-      "evidence": [],
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 327,
+            "length": 106,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 434,
+            "length": 150,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 260 | 34 | 51 | 250 | 31 | 47 | 208 |",
+            "offset": 8728,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 640,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 789,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
       "partialStatements": [
         {
           "url": "https://yjszs.zafu.edu.cn/info/1109/2832.htm",
@@ -17781,12 +18121,97 @@
       "missing": [
         "同年同学院六位专业代码身份",
         "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
-        "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据"
+        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
       ],
       "derivedFactId": null,
       "directCutoffAvailable": true,
-      "evidence": [],
+      "evidence": [
+        {
+          "role": "nationalHeader",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 327,
+            "length": 106,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalColumns",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ⑤ 和享受少数民族照顾政策考生总分要求 ⑥ | 备注 |",
+            "offset": 434,
+            "length": 150,
+            "verified": false
+          }
+        },
+        {
+          "role": "nationalRow",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "工学[08] | 其他学科专业 | 260 | 34 | 51 | 250 | 31 | 47 | 208 |",
+            "offset": 8728,
+            "length": 55,
+            "verified": false
+          }
+        },
+        {
+          "role": "region",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+            "offset": 640,
+            "length": 90,
+            "verified": false
+          }
+        },
+        {
+          "role": "exceptions",
+          "source": {
+            "url": "https://yz.chsi.com.cn/kyzx/kp/202502/20250224/2293352975.html",
+            "title": "2025年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+            "kind": "authority_page",
+            "retrievedAt": "2026-11-11T13:31:13.312Z",
+            "fixture": "tests/fixtures/research-a-national-lines.json",
+            "pageIndex": 2,
+            "textSha256": "8ce643f33f0e4f4b2f9b45cf822950c7470565b9053a456482694bfc9e2b9f48",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "③工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+            "offset": 789,
+            "length": 151,
+            "verified": false
+          }
+        }
+      ],
       "partialStatements": []
     },
     {

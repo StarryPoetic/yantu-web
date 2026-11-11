@@ -1,0 +1,4 @@
+# Preserve the actual fetched bytes covered by capture.json SHA-256 values.
+*.html -text -diff
+*.xls -text
+*.txt -text whitespace=-blank-at-eol

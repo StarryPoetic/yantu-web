@@ -1,0 +1,2 @@
+# Historical source bytes are checked against their original Git blob hash.
+*.json -text
