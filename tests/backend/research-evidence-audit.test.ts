@@ -457,6 +457,26 @@ test("review progress identifies three promoted slots without changing the histo
     resolve(repositoryRoot, "docs/后续改进执行台账.md"),
     "utf8",
   );
+  const latestDelivery = delivery.split("## A证据改进收口")[0];
+  assert.ok(
+    latestDelivery.includes(
+      `${progress.currentConfirmable} 可确认/${progress.currentPending} 待补`,
+    ),
+    "current delivery totals must agree with the machine ledger, not a historical checkpoint",
+  );
+  assert.ok(latestDelivery.includes(`人工审核 ${progress.humanReviewed}`));
+  const executionRecord = readFileSync(
+    resolve(repositoryRoot, "docs/剩余工作执行计划.md"),
+    "utf8",
+  );
+  assert.ok(
+    executionRecord.includes(
+      `变为 ${progress.currentConfirmable} / ${progress.currentPending}`,
+    ),
+  );
+  assert.ok(
+    executionRecord.includes(`人工审核仍为 **${progress.humanReviewed}**`),
+  );
   const current = delivery
     .split("## A证据改进收口")[1]
     ?.split("## 历史批次基线")[0];
