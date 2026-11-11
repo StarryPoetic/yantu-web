@@ -59,10 +59,10 @@ npm run check
 
 ## 配置模型、搜索和后台
 
-参考 [.env.example](.env.example) 和 [本地模型与联网测试](docs/本地模型与联网测试.md)。`npm run dev`、`npm start` 与 `npm run preview` 自动读取根目录 `.env`，也支持系统环境变量（系统值优先）。本地测试不需要先部署公网：
+配置项参考 [.env.example](.env.example) 和 [本地模型与联网测试](docs/本地模型与联网测试.md)。启动、构建和测试均不自动读取任何 `.env` 文件，只使用显式提供的进程环境。`npm run dev:local` 使用本地持久示例库，明确关闭模型和搜索，不初始化管理员；已有用户账号保留。需要联网服务的部署由运维通过进程环境配置。完整接续计划见[剩余工作执行计划](docs/剩余工作执行计划.md)。本地体验无需公网：
 
 ```powershell
-npm run dev
+npm run dev:local
 ```
 
 - 模型：设置 `YANTU_MODEL_ENABLED=true` 与 `DEEPSEEK_API_KEY`。默认关闭；未配置时明确提示，固定题解与专业结论仍可使用。不自动探测真实凭据。

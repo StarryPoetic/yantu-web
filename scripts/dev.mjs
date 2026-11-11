@@ -13,6 +13,7 @@ const app = await createApplication(
 await new Promise((resolve) => app.server.listen(0, "127.0.0.1", resolve));
 const apiPort = app.server.address().port;
 const vite = await createServer({
+  envFile: false,
   server: {
     host: "127.0.0.1",
     port,
