@@ -1,4 +1,5 @@
 import { useResearch } from "./ResearchContext";
+import { MyCorrections } from "./GovernancePanels";
 import { ResearchInterestsPanel } from "./ResearchInterests";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -279,6 +280,7 @@ export function CatalogPanel({
     );
   return (
     <>
+      <MyCorrections />
       <div className="ws-heading">
         <div>
           <span className="ws-eyebrow">

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { request } from "./api";
 import { Empty, ErrorNotice } from "./ui";
+import { GovernancePanels } from "./GovernancePanels";
 
 interface Draft {
   draftId: string;
@@ -434,7 +435,7 @@ export function AdminPanel() {
               服务端检查角色、禁止自审，并保留审计记录；管理者不能通过页面跳过复核。
             </p>
           </section>
-          <CorrectionQueue />
+          <GovernancePanels roles={actor.roles} />
         </>
       )}
       {message && (
@@ -443,51 +444,5 @@ export function AdminPanel() {
         </div>
       )}
     </>
-  );
-}
-
-function CorrectionQueue() {
-  const [items, setItems] = useState<
-      {
-        correctionId: string;
-        description: string;
-        status: string;
-        etag: string;
-      }[]
-    >([]),
-    [error, setError] = useState<unknown>(),
-    [loaded, setLoaded] = useState(false);
-  async function load() {
-    try {
-      const result = await request<{ items: typeof items }>(
-        "/admin/corrections",
-        {},
-      );
-      setItems(result.data.items);
-      setLoaded(true);
-      setError(null);
-    } catch (error) {
-      setError(error);
-    }
-  }
-  return (
-    <section className="ws-panel">
-      <div className="ws-between">
-        <h2>用户纠错</h2>
-        <button className="ws-secondary" onClick={() => void load()}>
-          读取纠错队列
-        </button>
-      </div>
-      <ErrorNotice error={error} />
-      {loaded && !items.length && (
-        <p className="ws-muted">暂时没有待处理纠错。</p>
-      )}
-      {items.map((item) => (
-        <div className="ws-correction" key={item.correctionId}>
-          <p>{item.description}</p>
-          <small>处理状态：{item.status}</small>
-        </div>
-      ))}
-    </section>
   );
 }

@@ -363,6 +363,32 @@ test("T-07 complete persisted choice-plan-task-report flow and T-06 deletion inv
   });
   assert.equal(correction.status, 201);
   assert.equal((await f.admin(1, "/admin/corrections")).body.items.length, 1);
+  const queuedCorrection = (await f.admin(1, "/admin/corrections")).body
+    .items[0];
+  const handled = await f.admin(
+    1,
+    `/admin/corrections/${correction.body.correctionId}`,
+    "PATCH",
+    { status: "reviewing", resolution: "已登记，原文仍待独立核对" },
+    { "if-match": queuedCorrection.etag },
+  );
+  assert.equal(handled.status, 200);
+  assert.equal(
+    (await a.request("/me/corrections")).body.items[0].resolution,
+    "已登记，原文仍待独立核对",
+  );
+  assert.equal(
+    (
+      await f.admin(
+        1,
+        `/admin/corrections/${correction.body.correctionId}`,
+        "PATCH",
+        { status: "resolved", resolution: "过期提交" },
+        { "if-match": queuedCorrection.etag },
+      )
+    ).status,
+    412,
+  );
   const assistant = await a.request("/assistant/questions", "POST", {
     question: "如何核对招生目录？",
     allowSearch: false,
@@ -482,6 +508,12 @@ test("T-06/T-09 administrative independent review, publish, immutable history an
     summary: "修订示例记录",
   });
   assert.equal(published.status, 202, JSON.stringify(published.body));
+  assert.equal((await f.admin(0, "/admin/publications")).status, 403);
+  const publicationList = await f.admin(3, "/admin/publications");
+  assert.equal(
+    publicationList.body.items[0].publicationId,
+    published.body.publicationId,
+  );
   const current = await a.request(`/programs/${original.programId}`);
   assert.equal(current.body.programRevisionId, revised.programRevisionId);
   const old = await a.request(
@@ -495,6 +527,32 @@ test("T-06/T-09 administrative independent review, publish, immutable history an
     { revisionIds: [revised.programRevisionId], reason: "资料需重新核验" },
   );
   assert.equal(withdrawn.status, 200);
+  assert.equal(
+    (await f.admin(3, "/admin/publications")).body.items[0].status,
+    "partially_withdrawn",
+  );
+  assert.equal(
+    (
+      await f.admin(
+        3,
+        `/admin/publications/${published.body.publicationId}/withdraw`,
+        "POST",
+        { reason: "撤回其余测试项目" },
+      )
+    ).body.status,
+    "withdrawn",
+  );
+  assert.equal(
+    (
+      await f.admin(
+        3,
+        `/admin/publications/${published.body.publicationId}/withdraw`,
+        "POST",
+        { reason: "重复撤回" },
+      )
+    ).status,
+    409,
+  );
   assert.equal(
     (await a.request(`/programs/${original.programId}`)).status,
     409,

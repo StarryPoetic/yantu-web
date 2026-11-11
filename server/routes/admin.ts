@@ -141,6 +141,15 @@ export function adminRoutes(c: Context): Reply | undefined {
     role(c, "auditor");
     return { body: { items: c.store.auditEvents() } };
   }
+  if (c.path === "/admin/publications" && c.method === "GET") {
+    if (!c.admin?.roles.some((r) => r === "publisher" || r === "auditor"))
+      throw new HttpError(403, "role_required", "当前身份没有此操作权限。");
+    return {
+      body: {
+        items: c.store.list(adminOwner, "publication").map((row) => row.value),
+      },
+    };
+  }
   if (c.path === "/admin/sources" && c.method === "POST") {
     role(c, "editor");
     const source = c.body as unknown as SourceRecord;
@@ -539,12 +548,21 @@ export function adminRoutes(c: Context): Reply | undefined {
     fields(c.body, ["reason", "revisionIds"]);
     const reason = text(c.body.reason, "撤回原因", 3000, true);
     const publication = required(
-      c.store.get<{ kind: string; version: string; revisionIds: string[] }>(
-        adminOwner,
-        "publication",
-        withdraw[1],
-      ),
+      c.store.get<{
+        kind: string;
+        version: string;
+        revisionIds: string[];
+        status: string;
+        withdrawnRevisionIds?: string[];
+      }>(adminOwner, "publication", withdraw[1]),
     );
+    if (publication.value.status === "withdrawn")
+      throw new HttpError(
+        409,
+        "already_withdrawn",
+        "该发布已全部撤回，请刷新列表。",
+      );
+    let withdrawnIds = publication.value.withdrawnRevisionIds ?? [];
     if (publication.value.kind === "catalog") {
       const ids = c.body.revisionIds ?? publication.value.revisionIds;
       if (
@@ -565,6 +583,7 @@ export function adminRoutes(c: Context): Reply | undefined {
           at: now(),
         });
       c.store.put("public", "catalog", "current", state);
+      withdrawnIds = [...new Set([...withdrawnIds, ...ids.map(String)])];
     } else if (publication.value.kind === "rule") {
       const active = c.store.get<RecommendationRule>("public", "rule");
       if (active?.value.ruleVersion === publication.value.version)
@@ -601,9 +620,21 @@ export function adminRoutes(c: Context): Reply | undefined {
           );
       }
     }
+    const status =
+      publication.value.kind !== "catalog" ||
+      publication.value.revisionIds.every((key) => withdrawnIds.includes(key))
+        ? "withdrawn"
+        : "partially_withdrawn";
+    c.store.put(adminOwner, "publication", withdraw[1], {
+      ...publication.value,
+      status,
+      withdrawnRevisionIds: withdrawnIds,
+      withdrawnAt: now(),
+      withdrawalReason: reason,
+    });
     c.store.audit(actor, "publication.withdraw", withdraw[1]);
     return {
-      body: { publicationId: withdraw[1], status: "withdrawn", reason },
+      body: { publicationId: withdraw[1], status, reason },
     };
   }
   const jobMatch = /^\/admin\/jobs\/([^/]+)$/.exec(c.path);
