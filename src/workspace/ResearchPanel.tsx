@@ -30,6 +30,8 @@ export function ResearchPanel({
     startingMode,
     savedReport,
     error,
+    syncStatus,
+    lastSuccessfulSyncAt,
     refresh,
     generate: start,
     selectRun,
@@ -105,8 +107,47 @@ export function ResearchPanel({
           所不同学校及对应专业，说明匹配理由、预算与城市差异、准备成本。
         </p>
       )}
-      <ErrorNotice error={error} onReload={refresh} />
-      {loading && <p role="status">正在读取报告和服务状态…</p>}
+      <ErrorNotice
+        error={error}
+        onReload={running || starting ? undefined : refresh}
+      />
+      {loading && !running && <p role="status">正在读取报告和服务状态…</p>}
+      {running && (
+        <section className="research-sync-status" aria-label="报告同步状态">
+          <p role="status">
+            {syncStatus === "disconnected"
+              ? "自动同步暂时中断，正在尝试恢复。"
+              : syncStatus === "connecting"
+                ? "正在重新连接…"
+                : "进度自动同步中"}
+          </p>
+          {lastSuccessfulSyncAt && (
+            <small className="ws-muted">
+              最近成功同步：
+              <time dateTime={lastSuccessfulSyncAt}>
+                {new Date(lastSuccessfulSyncAt).toLocaleTimeString("zh-CN", {
+                  hour12: false,
+                })}
+              </time>
+            </small>
+          )}
+          {syncStatus !== "connected" && (
+            <>
+              <p className="ws-muted">
+                当前显示最近取得的任务阶段，连接恢复后继续同步。
+              </p>
+              <button
+                className="ws-secondary"
+                disabled={syncStatus === "connecting"}
+                onClick={refresh}
+              >
+                <RefreshCw size={16} />
+                {syncStatus === "connecting" ? "正在重新连接…" : "重新连接"}
+              </button>
+            </>
+          )}
+        </section>
+      )}
       {outdated && (
         <p className="research-stale" role="status">
           {stale
@@ -217,14 +258,12 @@ export function ResearchPanel({
                     ? "重新调研并生成报告"
                     : "联网调研并生成报告"}
         </button>
-        <button
-          className="ws-secondary"
-          disabled={loading || starting}
-          onClick={refresh}
-        >
-          <RefreshCw size={16} />
-          {running ? "刷新生成进度" : "重新检查服务"}
-        </button>
+        {!running && !starting && (
+          <button className="ws-secondary" disabled={loading} onClick={refresh}>
+            <RefreshCw size={16} />
+            重新检查服务
+          </button>
+        )}
         {report && report.status !== "blocked" && !failed && (
           <button
             className="ws-secondary"

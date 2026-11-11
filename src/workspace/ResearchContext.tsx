@@ -32,12 +32,23 @@ function useResearchState() {
     report: ResearchReport;
   } | null>(null);
   const [error, setError] = useState<unknown>();
+  const [syncStatus, setSyncStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting");
+  const [lastSuccessfulSyncAt, setLastSuccessfulSyncAt] = useState<
+    string | null
+  >(null);
   const [reload, setReload] = useState(0);
   const startLock = useRef(false);
   const startController = useRef<AbortController | null>(null);
   const position = useRef({ jobId: "", value: 0 });
   const runRef = useRef(run);
   runRef.current = run;
+  const acceptSync = useCallback(() => {
+    setSyncStatus("connected");
+    setLastSuccessfulSyncAt(new Date().toISOString());
+    setError(null);
+  }, []);
   const acceptJob = useCallback((next: Job | null) => {
     setJob(next);
     if (!next || (next.mode !== "supplement" && !next.report))
@@ -61,6 +72,7 @@ function useResearchState() {
         runRef.current = next;
         setRun(next);
         acceptJob(null);
+        setLastSuccessfulSyncAt(null);
       }
     },
     [acceptJob],
@@ -69,10 +81,14 @@ function useResearchState() {
     runRef.current = null;
     setRun(null);
     acceptJob(null);
+    setLastSuccessfulSyncAt(null);
     position.current = { jobId: "", value: 0 };
     setReload((value) => value + 1);
   };
-  const refresh = useCallback(() => setReload((value) => value + 1), []);
+  const refresh = useCallback(() => {
+    setSyncStatus("connecting");
+    setReload((value) => value + 1);
+  }, []);
   useEffect(
     () => () => {
       startController.current?.abort();
@@ -82,6 +98,7 @@ function useResearchState() {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
+    setSyncStatus("connecting");
     void Promise.all([
       request<Readiness>("/research/status", { signal: controller.signal }),
       run
@@ -102,16 +119,19 @@ function useResearchState() {
           runRef.current = latest.data.run as GuidanceRun;
           setRun(latest.data.run as GuidanceRun);
         }
-        setError(null);
+        acceptSync();
       })
       .catch((failure) => {
-        if (!controller.signal.aborted) setError(failure);
+        if (!controller.signal.aborted) {
+          setError(failure);
+          setSyncStatus("disconnected");
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [run?.guidanceRunId, reload, acceptJob]);
+  }, [run?.guidanceRunId, reload, acceptJob, acceptSync]);
   const running = active(job);
   useEffect(() => {
     if (!job || !running || loading) return;
@@ -125,10 +145,13 @@ function useResearchState() {
         });
         if (controller.signal.aborted) return;
         acceptJob(result.data);
-        setError(null);
+        acceptSync();
         keepPolling = active(result.data);
       } catch (failure) {
-        if (!controller.signal.aborted) setError(failure);
+        if (!controller.signal.aborted) {
+          setError(failure);
+          setSyncStatus("disconnected");
+        }
       }
       if (!controller.signal.aborted && keepPolling)
         timer = setTimeout(() => void poll(), 1000);
@@ -138,7 +161,7 @@ function useResearchState() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [job?.jobId, running, loading, reload, acceptJob]);
+  }, [job?.jobId, running, loading, reload, acceptJob, acceptSync]);
   async function generate(mode: ResearchRequestMode = "generate") {
     if (
       startLock.current ||
@@ -163,6 +186,7 @@ function useResearchState() {
       if (!controller.signal.aborted) {
         position.current = { jobId: result.data.jobId, value: 0 };
         acceptJob({ ...result.data, mode: result.data.mode ?? mode });
+        acceptSync();
       }
     } catch (failure) {
       if (!controller.signal.aborted) {
@@ -204,6 +228,8 @@ function useResearchState() {
     startingMode,
     savedReport,
     error,
+    syncStatus,
+    lastSuccessfulSyncAt,
     refresh,
     reset,
     generate,

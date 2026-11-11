@@ -3513,7 +3513,7 @@ test("任务一：浏览器直接修改和另一标签页保存均被真实后�
   }
 });
 
-test("任务一：切换栏目和手动刷新始终只有一个活动轮询，短暂网络失败后恢复", async ({
+test("任务一：切换栏目始终只有一个活动轮询，短暂网络失败后自动恢复", async ({
   page,
 }) => {
   const service = await researchService(page);
@@ -4024,5 +4024,144 @@ for (const width of [1280, 375]) {
     ).toBe(true);
     expect(service.postCount()).toBe(1);
     expect(service.supplementCount()).toBe(1);
+  });
+}
+
+for (const width of [1280, 375]) {
+  test(`反馈同步：${width}px 正常自动更新，断连重连有反馈且只读取当前任务`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    const sync = panel.getByRole("region", {
+      name: "报告同步状态",
+      exact: true,
+    });
+    await expect(
+      sync.getByText("进度自动同步中", { exact: true }),
+    ).toBeVisible();
+    await expect(sync.locator("time")).toHaveAttribute(
+      "datetime",
+      /^\d{4}-\d{2}-\d{2}T/,
+    );
+    await expect(
+      panel.getByRole("button", { name: "刷新生成进度", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      panel.getByRole("button", { name: "重新检查服务", exact: true }),
+    ).toHaveCount(0);
+    await expect(sync.getByRole("button")).toHaveCount(0);
+    await page.clock.install();
+    const firstSync = await sync.locator("time").getAttribute("datetime");
+    await page.clock.runFor(1500);
+    await expect(sync.locator("time")).not.toHaveAttribute(
+      "datetime",
+      firstSync!,
+    );
+    let disconnected = true;
+    await page.route("**/api/v1/research-jobs/*", async (route) => {
+      if (disconnected) await route.abort();
+      else await route.fallback();
+    });
+    await page.clock.runFor(1500);
+    await expect(sync.getByRole("status")).toContainText("自动同步暂时中断");
+    await expect(
+      sync.getByRole("button", { name: "重新连接", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      panel.getByRole("button", { name: "重新读取最新记录", exact: true }),
+    ).toHaveCount(0);
+    const previousSync = await sync.locator("time").getAttribute("datetime");
+    const previousProgress = await panel
+      .getByRole("progressbar")
+      .getAttribute("aria-valuetext");
+    await page.clock.runFor(1500);
+    await expect(sync.locator("time")).toHaveAttribute(
+      "datetime",
+      previousSync!,
+    );
+    await expect(panel.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      new RegExp(`^${previousProgress!.split("，")[0]}，`),
+    );
+    let reconnectAttempts = 0;
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(
+      /\/api\/v1\/guidance\/[^/]+\/research\/latest$/,
+      async (route) => {
+        reconnectAttempts++;
+        if (reconnectAttempts === 1) {
+          await route.fulfill({
+            status: 503,
+            json: {
+              code: "temporary_connection_failure",
+              message: "暂时无法读取当前任务，请稍后重试。",
+            },
+          });
+          return;
+        }
+        await pending;
+        await route.fallback();
+      },
+    );
+    try {
+      await sync.getByRole("button", { name: "重新连接", exact: true }).click();
+      await expect(
+        sync.getByRole("button", { name: "重新连接", exact: true }),
+      ).toBeEnabled();
+      await expect(sync.getByRole("status")).toContainText("自动同步暂时中断");
+      expect(reconnectAttempts).toBe(1);
+      await sync.getByRole("button", { name: "重新连接", exact: true }).click();
+      await expect(
+        sync.getByRole("button", { name: "正在重新连接…", exact: true }),
+      ).toBeDisabled();
+      await expect(sync.getByRole("status")).toHaveText("正在重新连接…");
+      await expect(sync.locator("time")).toHaveAttribute(
+        "datetime",
+        previousSync!,
+      );
+      await page.screenshot({
+        path: testInfo.outputPath(`reconnecting-${width}.png`),
+      });
+      disconnected = false;
+      service.stage("analyzing");
+      release();
+      await expect(sync.getByRole("status")).toHaveText("进度自动同步中");
+      await expect(sync.getByRole("button")).toHaveCount(0);
+      await expect(sync.locator("time")).not.toHaveAttribute(
+        "datetime",
+        previousSync!,
+      );
+      await expect(panel.getByRole("alert")).toHaveCount(0);
+      await expect(panel.getByRole("progressbar")).toHaveAttribute(
+        "aria-valuetext",
+        /分析匹配/,
+      );
+      const before = service.pollCount();
+      await page.clock.runFor(3200);
+      expect(service.pollCount() - before).toBeGreaterThanOrEqual(2);
+      expect(service.pollCount() - before).toBeLessThanOrEqual(4);
+      expect(reconnectAttempts).toBe(2);
+      expect(service.postCount()).toBe(1);
+      expect(service.supplementCount()).toBe(0);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    } finally {
+      release();
+    }
   });
 }
