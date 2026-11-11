@@ -1,0 +1,5964 @@
+{
+  "schemaVersion": 1,
+  "kind": "question-review-template-not-publishable",
+  "source": {
+    "file": "knowledge/questions/example-v1.json",
+    "questionBankVersion": "example-unreviewed-v4-v3b-diagnostic",
+    "hashScope": "JSON.stringify(parsed source), UTF-8; not original file bytes",
+    "sha256": "1c47cf8f94476ad1f249df00fdfd8918b6f9eb8e3a890c7448628da5d898f566"
+  },
+  "notice": "56题现存示例库的审校准备材料。未经真实学科审校或样本校准；每科五题仅观察本次知识点，不预测考研成绩、能力排名或录取概率。人工结果须另存，模板不自动发布。",
+  "status": {
+    "humanReviewed": 0,
+    "calibrated": false,
+    "publication": "unpublished",
+    "importableAsQuestionBank": false
+  },
+  "coverage": {
+    "basis": "repository-declared points/scopes only; not official syllabus coverage",
+    "questionCount": 56,
+    "byModule": [
+      {
+        "module": "math",
+        "count": 23,
+        "difficulties": {
+          "basic": 10,
+          "intermediate": 7,
+          "advanced": 6
+        },
+        "representedPoints": [
+          "函数极限",
+          "定积分与基本定理",
+          "导数的基本运算",
+          "数一拓展：三重积分",
+          "数一拓展：曲线积分",
+          "数一拓展：空间直线方向",
+          "数一拓展：第二型曲面积分",
+          "概率统计：条件概率",
+          "概率统计：样本均值方差",
+          "概率统计：独立变量方差",
+          "概率：独立事件",
+          "线性代数：二次型正定",
+          "线性代数：向量线性相关",
+          "线性代数：行列式",
+          "线性代数：齐次方程自由变量",
+          "经济应用：利润最大化",
+          "经济应用：边际成本",
+          "经济应用：连续收入现值",
+          "经济应用：需求价格弹性",
+          "高数：二元函数偏导",
+          "高数：复合函数求导",
+          "高数：微分方程初值",
+          "高数：积分换元"
+        ],
+        "declaredPoints": [
+          "导数的基本运算",
+          "定积分与基本定理",
+          "函数极限",
+          "线性代数：行列式",
+          "概率：独立事件",
+          "其他未覆盖知识点（待评估）",
+          "高数：复合函数求导",
+          "高数：积分换元",
+          "高数：二元函数偏导",
+          "高数：微分方程初值",
+          "线性代数：向量线性相关",
+          "线性代数：齐次方程自由变量",
+          "线性代数：二次型正定",
+          "概率统计：条件概率",
+          "概率统计：独立变量方差",
+          "概率统计：样本均值方差",
+          "数一拓展：空间直线方向",
+          "数一拓展：三重积分",
+          "数一拓展：曲线积分",
+          "数一拓展：第二型曲面积分",
+          "经济应用：边际成本",
+          "经济应用：利润最大化",
+          "经济应用：需求价格弹性",
+          "经济应用：连续收入现值"
+        ],
+        "declaredWithoutQuestions": [
+          "其他未覆盖知识点（待评估）"
+        ],
+        "questionPointsNotDeclared": []
+      },
+      {
+        "module": "english",
+        "count": 17,
+        "difficulties": {
+          "basic": 9,
+          "intermediate": 4,
+          "advanced": 4
+        },
+        "representedPoints": [
+          "英语写作：图表描述与证据",
+          "英语写作：应用文请求",
+          "英语写作：议论文论证",
+          "英语翻译：比较结构",
+          "英语翻译：范围与限定",
+          "英语翻译：让步从句",
+          "英语长难句：主干识别",
+          "英语长难句：否定转折",
+          "英语长难句：嵌套条件与否定",
+          "英语阅读：事实定位",
+          "英语阅读：让步与论证边界",
+          "英语阅读：限定性推断",
+          "词汇：指代与近义",
+          "词汇：语境理解",
+          "语法：主谓一致",
+          "阅读：因果关系",
+          "阅读：让步关系"
+        ],
+        "declaredPoints": [
+          "阅读：让步关系",
+          "词汇：语境理解",
+          "语法：主谓一致",
+          "阅读：因果关系",
+          "词汇：指代与近义",
+          "其他未覆盖知识点（待评估）",
+          "英语阅读：事实定位",
+          "英语阅读：限定性推断",
+          "英语阅读：让步与论证边界",
+          "英语长难句：主干识别",
+          "英语长难句：否定转折",
+          "英语长难句：嵌套条件与否定",
+          "英语翻译：比较结构",
+          "英语翻译：范围与限定",
+          "英语翻译：让步从句",
+          "英语写作：应用文请求",
+          "英语写作：图表描述与证据",
+          "英语写作：议论文论证"
+        ],
+        "declaredWithoutQuestions": [
+          "其他未覆盖知识点（待评估）"
+        ],
+        "questionPointsNotDeclared": []
+      },
+      {
+        "module": "politics",
+        "count": 8,
+        "difficulties": {
+          "basic": 6,
+          "intermediate": 1,
+          "advanced": 1
+        },
+        "representedPoints": [
+          "历史唯物主义：社会存在与意识",
+          "哲学：实践与认识",
+          "哲学：矛盾特殊性",
+          "哲学：联系的条件性",
+          "哲学：认识的发展",
+          "哲学：量变与质变",
+          "唯物辩证法：具体分析",
+          "认识论：实践检验"
+        ],
+        "declaredPoints": [
+          "哲学：实践与认识",
+          "哲学：量变与质变",
+          "哲学：矛盾特殊性",
+          "哲学：联系的条件性",
+          "哲学：认识的发展",
+          "其他未覆盖知识点（待评估）",
+          "认识论：实践检验",
+          "唯物辩证法：具体分析",
+          "历史唯物主义：社会存在与意识"
+        ],
+        "declaredWithoutQuestions": [
+          "其他未覆盖知识点（待评估）"
+        ],
+        "questionPointsNotDeclared": []
+      },
+      {
+        "module": "major",
+        "count": 8,
+        "difficulties": {
+          "basic": 6,
+          "intermediate": 1,
+          "advanced": 1
+        },
+        "representedPoints": [
+          "数据结构：栈",
+          "数据结构：队列",
+          "研究方法：外部效度",
+          "研究方法：对照实验",
+          "研究方法：相关与因果",
+          "算法：二分查找",
+          "算法：顺序遍历",
+          "计算机基础：二进制"
+        ],
+        "declaredPoints": [
+          "数据结构：栈",
+          "算法：二分查找",
+          "数据结构：队列",
+          "计算机基础：二进制",
+          "算法：顺序遍历",
+          "其他未覆盖知识点（待评估）",
+          "研究方法：对照实验",
+          "研究方法：相关与因果",
+          "研究方法：外部效度"
+        ],
+        "declaredWithoutQuestions": [
+          "其他未覆盖知识点（待评估）"
+        ],
+        "questionPointsNotDeclared": []
+      }
+    ],
+    "byScope": [
+      {
+        "scope": "common-foundation",
+        "count": 56,
+        "difficulties": {
+          "basic": 31,
+          "intermediate": 13,
+          "advanced": 12
+        },
+        "questionIds": [
+          "v2-m1",
+          "v2-m2",
+          "v2-m3",
+          "v2-m4",
+          "v2-m5",
+          "v2-e1",
+          "v2-e2",
+          "v2-e3",
+          "v2-e4",
+          "v2-e5",
+          "v2-p1",
+          "v2-p2",
+          "v2-p3",
+          "v2-p4",
+          "v2-p5",
+          "v2-c1",
+          "v2-c2",
+          "v2-c3",
+          "v2-c4",
+          "v2-c5",
+          "v3b-math-01",
+          "v3b-math-02",
+          "v3b-math-03",
+          "v3b-math-04",
+          "v3b-math-05",
+          "v3b-math-06",
+          "v3b-math-07",
+          "v3b-math-08",
+          "v3b-math-09",
+          "v3b-math-10",
+          "v3b-math-11",
+          "v3b-math-12",
+          "v3b-math-13",
+          "v3b-math-14",
+          "v3b-math-15",
+          "v3b-math-16",
+          "v3b-math-17",
+          "v3b-math-18",
+          "v3b-english-01",
+          "v3b-english-02",
+          "v3b-english-03",
+          "v3b-english-04",
+          "v3b-english-05",
+          "v3b-english-06",
+          "v3b-english-07",
+          "v3b-english-08",
+          "v3b-english-09",
+          "v3b-english-10",
+          "v3b-english-11",
+          "v3b-english-12",
+          "v3b-politics-01",
+          "v3b-politics-02",
+          "v3b-politics-03",
+          "v3b-major-01",
+          "v3b-major-02",
+          "v3b-major-03"
+        ],
+        "emptyDifficultyBands": [],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      },
+      {
+        "scope": "computer-foundation",
+        "count": 5,
+        "difficulties": {
+          "basic": 5,
+          "intermediate": 0,
+          "advanced": 0
+        },
+        "questionIds": [
+          "v2-c1",
+          "v2-c2",
+          "v2-c3",
+          "v2-c4",
+          "v2-c5"
+        ],
+        "emptyDifficultyBands": [
+          "intermediate",
+          "advanced"
+        ],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      },
+      {
+        "scope": "english-one",
+        "count": 16,
+        "difficulties": {
+          "basic": 9,
+          "intermediate": 3,
+          "advanced": 4
+        },
+        "questionIds": [
+          "v2-e1",
+          "v2-e2",
+          "v2-e3",
+          "v2-e4",
+          "v2-e5",
+          "v3b-english-01",
+          "v3b-english-02",
+          "v3b-english-03",
+          "v3b-english-04",
+          "v3b-english-05",
+          "v3b-english-06",
+          "v3b-english-07",
+          "v3b-english-08",
+          "v3b-english-09",
+          "v3b-english-10",
+          "v3b-english-12"
+        ],
+        "emptyDifficultyBands": [],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      },
+      {
+        "scope": "english-two",
+        "count": 13,
+        "difficulties": {
+          "basic": 9,
+          "intermediate": 4,
+          "advanced": 0
+        },
+        "questionIds": [
+          "v2-e1",
+          "v2-e2",
+          "v2-e3",
+          "v2-e4",
+          "v2-e5",
+          "v3b-english-01",
+          "v3b-english-02",
+          "v3b-english-04",
+          "v3b-english-05",
+          "v3b-english-07",
+          "v3b-english-08",
+          "v3b-english-10",
+          "v3b-english-11"
+        ],
+        "emptyDifficultyBands": [
+          "advanced"
+        ],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      },
+      {
+        "scope": "math-one",
+        "count": 19,
+        "difficulties": {
+          "basic": 9,
+          "intermediate": 5,
+          "advanced": 5
+        },
+        "questionIds": [
+          "v2-m1",
+          "v2-m2",
+          "v2-m3",
+          "v2-m4",
+          "v2-m5",
+          "v3b-math-01",
+          "v3b-math-02",
+          "v3b-math-03",
+          "v3b-math-04",
+          "v3b-math-05",
+          "v3b-math-06",
+          "v3b-math-07",
+          "v3b-math-08",
+          "v3b-math-09",
+          "v3b-math-10",
+          "v3b-math-11",
+          "v3b-math-12",
+          "v3b-math-13",
+          "v3b-math-14"
+        ],
+        "emptyDifficultyBands": [],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      },
+      {
+        "scope": "math-three",
+        "count": 19,
+        "difficulties": {
+          "basic": 9,
+          "intermediate": 6,
+          "advanced": 4
+        },
+        "questionIds": [
+          "v2-m1",
+          "v2-m2",
+          "v2-m3",
+          "v2-m4",
+          "v2-m5",
+          "v3b-math-01",
+          "v3b-math-02",
+          "v3b-math-03",
+          "v3b-math-04",
+          "v3b-math-05",
+          "v3b-math-06",
+          "v3b-math-07",
+          "v3b-math-08",
+          "v3b-math-09",
+          "v3b-math-10",
+          "v3b-math-15",
+          "v3b-math-16",
+          "v3b-math-17",
+          "v3b-math-18"
+        ],
+        "emptyDifficultyBands": [],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      },
+      {
+        "scope": "math-two",
+        "count": 11,
+        "difficulties": {
+          "basic": 6,
+          "intermediate": 3,
+          "advanced": 2
+        },
+        "questionIds": [
+          "v2-m1",
+          "v2-m2",
+          "v2-m3",
+          "v2-m4",
+          "v3b-math-01",
+          "v3b-math-02",
+          "v3b-math-03",
+          "v3b-math-04",
+          "v3b-math-05",
+          "v3b-math-06",
+          "v3b-math-07"
+        ],
+        "emptyDifficultyBands": [],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      },
+      {
+        "scope": "politics",
+        "count": 5,
+        "difficulties": {
+          "basic": 5,
+          "intermediate": 0,
+          "advanced": 0
+        },
+        "questionIds": [
+          "v2-p1",
+          "v2-p2",
+          "v2-p3",
+          "v2-p4",
+          "v2-p5"
+        ],
+        "emptyDifficultyBands": [
+          "intermediate",
+          "advanced"
+        ],
+        "caution": "范围标签可能重叠；跨范围数量不能相加，也不证明整套考试覆盖"
+      }
+    ],
+    "legacyMajorIds": [
+      "practice",
+      "research"
+    ],
+    "majorMappingConfirmed": false,
+    "missingStudyHintQuestionIds": [
+      "v2-m1",
+      "v2-m2",
+      "v2-m3",
+      "v2-m5",
+      "v2-e1",
+      "v2-e2",
+      "v2-e3",
+      "v2-e4",
+      "v2-e5",
+      "v2-p1",
+      "v2-p2",
+      "v2-p3",
+      "v2-p4",
+      "v2-p5",
+      "v2-c1",
+      "v2-c2",
+      "v2-c3",
+      "v2-c4",
+      "v2-c5"
+    ],
+    "missingDistractorHypothesesQuestionIds": [
+      "v2-m1",
+      "v2-m2",
+      "v2-m3",
+      "v2-m4",
+      "v2-m5",
+      "v2-e1",
+      "v2-e2",
+      "v2-e3",
+      "v2-e4",
+      "v2-e5",
+      "v2-p1",
+      "v2-p2",
+      "v2-p3",
+      "v2-p4",
+      "v2-p5",
+      "v2-c1",
+      "v2-c2",
+      "v2-c3",
+      "v2-c4",
+      "v2-c5",
+      "v3b-math-01",
+      "v3b-math-02",
+      "v3b-math-03",
+      "v3b-math-04",
+      "v3b-math-05",
+      "v3b-math-06",
+      "v3b-math-07",
+      "v3b-math-08",
+      "v3b-math-09",
+      "v3b-math-10",
+      "v3b-math-11",
+      "v3b-math-12",
+      "v3b-math-13",
+      "v3b-math-14",
+      "v3b-math-15",
+      "v3b-math-16",
+      "v3b-math-17",
+      "v3b-math-18",
+      "v3b-english-01",
+      "v3b-english-02",
+      "v3b-english-03",
+      "v3b-english-04",
+      "v3b-english-05",
+      "v3b-english-06",
+      "v3b-english-07",
+      "v3b-english-08",
+      "v3b-english-09",
+      "v3b-english-10",
+      "v3b-english-11",
+      "v3b-english-12",
+      "v3b-politics-01",
+      "v3b-politics-02",
+      "v3b-politics-03",
+      "v3b-major-01",
+      "v3b-major-02",
+      "v3b-major-03"
+    ]
+  },
+  "calibrationDecisions": {
+    "owner": null,
+    "targetPopulation": null,
+    "samplingAndConsentProtocol": null,
+    "sampleSizePlan": null,
+    "observedSampleSize": null,
+    "itemDifficultyMethod": null,
+    "itemDiscriminationMethod": null,
+    "reliabilityMethodAndResult": null,
+    "validityEvidence": null,
+    "scoreMappingMethodAndValidation": null,
+    "biasAndAccessibilityReview": null,
+    "acceptanceCriteria": null,
+    "approvedBy": null,
+    "approvedAt": null
+  },
+  "entries": [
+    {
+      "questionId": "v2-m1",
+      "revisionId": "v2-m1-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/0",
+      "questionSha256": "30e321ccec989760c7c16362370271f58f466d61ed74d74f15a47a2cb2ae660d",
+      "snapshot": {
+        "id": "v2-m1",
+        "revisionId": "v2-m1-example-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "导数的基本运算",
+        "text": "已知 f(x) = x² + 3x，f′(2) 的值为？",
+        "options": [
+          "4",
+          "5",
+          "7",
+          "10"
+        ],
+        "correct": 2,
+        "explanation": "根据幂函数求导法则与导数的线性性质，f′(x) = 2x + 3，代入 x = 2 得到 7。",
+        "source": {
+          "title": "高等数学：导数的基本运算法则",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three",
+          "math-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-m2",
+      "revisionId": "v2-m2-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/1",
+      "questionSha256": "f6d571ab7ea1f5075fda9dac501d93799ef8392a6d24f713ffdf0e9aa4251fed",
+      "snapshot": {
+        "id": "v2-m2",
+        "revisionId": "v2-m2-example-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "定积分与基本定理",
+        "text": "定积分 ∫₀¹ 2x dx 的值为？",
+        "options": [
+          "0",
+          "1",
+          "2",
+          "1/2"
+        ],
+        "correct": 1,
+        "explanation": "2x 的一个原函数为 x²。根据牛顿—莱布尼茨公式，结果为 1² − 0² = 1。",
+        "source": {
+          "title": "高等数学：微积分基本定理",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three",
+          "math-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-m3",
+      "revisionId": "v2-m3-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/2",
+      "questionSha256": "8cc1ea3cfeabf588179184e7ab3fb0248a0c5f8964560e4a8d01b0b31d48a12f",
+      "snapshot": {
+        "id": "v2-m3",
+        "revisionId": "v2-m3-example-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "函数极限",
+        "text": "当 x 趋近于 0 时，sin x / x 的极限为？（x 使用弧度制）",
+        "options": [
+          "0",
+          "不存在",
+          "无穷大",
+          "1"
+        ],
+        "correct": 3,
+        "explanation": "这是三角函数的基本极限 lim(x→0) sin x / x = 1，前提是角度采用弧度制。",
+        "source": {
+          "title": "高等数学：三角函数基本极限",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three",
+          "math-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-m4",
+      "revisionId": "v2-m4-example-r3",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/3",
+      "questionSha256": "1feaf77db770924e16e549e550f098fcfe682c01da2da946931f132c266f35e0",
+      "snapshot": {
+        "id": "v2-m4",
+        "revisionId": "v2-m4-example-r3",
+        "module": "math",
+        "subject": "数学",
+        "point": "线性代数：行列式",
+        "text": "一个 2 × 2 对角矩阵的对角元素依次为 2、3，其行列式为？",
+        "options": [
+          "6",
+          "5",
+          "1",
+          "0"
+        ],
+        "correct": 0,
+        "explanation": "二阶行列式为 ad − bc；对角矩阵的两个非对角元素均为 0，所以行列式为 2 × 3 = 6。",
+        "source": {
+          "title": "线性代数：二阶行列式定义",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three",
+          "math-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished",
+        "studyHint": "先识别矩阵的主对角线与非对角位置，回想二阶行列式的定义和运算顺序。请先独立列式，提交后再查看代入和结果。",
+        "solutionPresentation": {
+          "formulas": [
+            {
+              "label": "二阶行列式的定义",
+              "expression": {
+                "items": [
+                  {
+                    "cells": [
+                      [
+                        "a",
+                        "b"
+                      ],
+                      [
+                        "c",
+                        "d"
+                      ]
+                    ],
+                    "kind": "determinant"
+                  },
+                  {
+                    "value": "= ad − bc",
+                    "kind": "text"
+                  }
+                ],
+                "kind": "row"
+              }
+            },
+            {
+              "label": "代入本题数值",
+              "expression": {
+                "items": [
+                  {
+                    "cells": [
+                      [
+                        "2",
+                        "0"
+                      ],
+                      [
+                        "0",
+                        "3"
+                      ]
+                    ],
+                    "kind": "determinant"
+                  },
+                  {
+                    "value": "= 2 × 3 − 0 × 0 = 6",
+                    "kind": "text"
+                  }
+                ],
+                "kind": "row"
+              }
+            }
+          ],
+          "diagram": {
+            "highlightDiagonal": true,
+            "alt": "二阶矩阵位置示意：第一行 a、b，第二行 c、d。高亮为主对角线的 a、d。",
+            "kind": "matrix",
+            "cells": [
+              [
+                "a",
+                "b"
+              ],
+              [
+                "c",
+                "d"
+              ]
+            ]
+          }
+        },
+        "stem": [
+          {
+            "kind": "text",
+            "text": "一个 2 × 2 对角矩阵的对角元素依次为 2、3"
+          },
+          {
+            "label": "题干：二阶对角矩阵的行列式",
+            "expression": {
+              "cells": [
+                [
+                  "2",
+                  "0"
+                ],
+                [
+                  "0",
+                  "3"
+                ]
+              ],
+              "kind": "determinant"
+            },
+            "kind": "math"
+          },
+          {
+            "kind": "text",
+            "text": "，其行列式为？"
+          }
+        ]
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-m5",
+      "revisionId": "v2-m5-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/4",
+      "questionSha256": "1121f8d47506e3a2388ee813465e4ac1c02ed572dc953fa99fb6dc3b65cc7cbf",
+      "snapshot": {
+        "id": "v2-m5",
+        "revisionId": "v2-m5-example-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "概率：独立事件",
+        "text": "事件 A、B 相互独立，P(A) = 0.5，P(B) = 0.4。P(A ∩ B) 为？",
+        "options": [
+          "0.9",
+          "0.1",
+          "0.2",
+          "0.5"
+        ],
+        "correct": 2,
+        "explanation": "独立事件同时发生的概率为各自概率的乘积，即 0.5 × 0.4 = 0.2。独立并不表示互斥。",
+        "source": {
+          "title": "概率论：独立事件的乘法公式",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-e1",
+      "revisionId": "v2-e1-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/5",
+      "questionSha256": "8636507bc588519e1b3fd5626ec52217be9f45e30d0ed1f623592b9e3ed76cca",
+      "snapshot": {
+        "id": "v2-e1",
+        "revisionId": "v2-e1-example-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "阅读：让步关系",
+        "text": "“Although the task was difficult, she completed it on time.” 这句话表达了什么？",
+        "options": [
+          "任务很简单，因此她提前完成",
+          "虽然任务很难，她仍按时完成",
+          "因为任务很难，她没有完成",
+          "她还没有开始这项任务"
+        ],
+        "correct": 1,
+        "explanation": "Although 引导让步状语从句，说明任务很难；主句 completed it on time 明确表达她仍然按时完成。",
+        "source": {
+          "title": "英语语法：Although 引导的让步状语从句",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-e2",
+      "revisionId": "v2-e2-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/6",
+      "questionSha256": "896206154f84770d2bdf370da233827071d1bf58181fc50839fdd003409f9030",
+      "snapshot": {
+        "id": "v2-e2",
+        "revisionId": "v2-e2-example-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "词汇：语境理解",
+        "text": "“Regular practice is essential for progress.” 中 essential 的意思是？",
+        "options": [
+          "必要的",
+          "偶然的",
+          "复杂的",
+          "暂时的"
+        ],
+        "correct": 0,
+        "explanation": "essential 表示“必不可少的、必要的”，句子强调持续练习对进步的必要性。",
+        "source": {
+          "title": "英语词汇：essential 的基本释义",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-e3",
+      "revisionId": "v2-e3-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/7",
+      "questionSha256": "5df9751fcf5ea2285841647a1c1b51e3da03349d1417fb2c0585d0f7a46d65a4",
+      "snapshot": {
+        "id": "v2-e3",
+        "revisionId": "v2-e3-example-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "语法：主谓一致",
+        "text": "选择合适的词填空：The results of the experiment ___ encouraging.",
+        "options": [
+          "is",
+          "was",
+          "are",
+          "has"
+        ],
+        "correct": 2,
+        "explanation": "句子的主语是复数名词 results，of the experiment 是修饰语，因此应使用复数形式 are。",
+        "source": {
+          "title": "英语语法：主谓一致与介词短语修饰语",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-e4",
+      "revisionId": "v2-e4-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/8",
+      "questionSha256": "777993930acc230b447484a1381826e980c96ff2735e5c8dad6e73a3eae2c77b",
+      "snapshot": {
+        "id": "v2-e4",
+        "revisionId": "v2-e4-example-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "阅读：因果关系",
+        "text": "“The library extended its opening hours, so students had more time to study there.” 学生有更多学习时间的原因是？",
+        "options": [
+          "学生减少了课程",
+          "图书馆搬到了新校区",
+          "图书馆减少了书籍",
+          "图书馆延长了开放时间"
+        ],
+        "correct": 3,
+        "explanation": "so 连接原因与结果。前半句 extended its opening hours 表示延长开放时间，是后半句结果的直接原因。",
+        "source": {
+          "title": "英语阅读：由 so 连接的因果关系",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-e5",
+      "revisionId": "v2-e5-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/9",
+      "questionSha256": "9a39d768decaebc745be8c6bda90faed4717243eb528c7f0b3688515b8038692",
+      "snapshot": {
+        "id": "v2-e5",
+        "revisionId": "v2-e5-example-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "词汇：指代与近义",
+        "text": "“The new method reduces the time needed for the task.” 中 reduces 最接近哪个词？",
+        "options": [
+          "increases",
+          "decreases",
+          "ignores",
+          "records"
+        ],
+        "correct": 1,
+        "explanation": "reduces 在此表示“减少”，与 decreases 意义接近。increases 表示增加，ignores 表示忽略，records 表示记录。",
+        "source": {
+          "title": "英语词汇：reduce 与 decrease 的基本释义",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-p1",
+      "revisionId": "v2-p1-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/10",
+      "questionSha256": "7f0ea84b2b5dca9017bd930d02c598853b50a2037accb623fc6290d3c7e4884c",
+      "snapshot": {
+        "id": "v2-p1",
+        "revisionId": "v2-p1-example-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "哲学：实践与认识",
+        "text": "在马克思主义认识论中，检验认识真理性的唯一标准是？",
+        "options": [
+          "个人感受",
+          "实践",
+          "多数人的赞同",
+          "表达是否流畅"
+        ],
+        "correct": 1,
+        "explanation": "实践把主观认识与客观实际联系起来，能够检验认识是否与客观实际相符合，因此是检验认识真理性的唯一标准。",
+        "source": {
+          "title": "马克思主义基本原理：实践是检验真理的唯一标准",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "politics"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-p2",
+      "revisionId": "v2-p2-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/11",
+      "questionSha256": "d25c5dc59d9e0034183eeb8f3dad48e874fb8130c79e147a8f5e0d4a36eff115",
+      "snapshot": {
+        "id": "v2-p2",
+        "revisionId": "v2-p2-example-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "哲学：量变与质变",
+        "text": "关于量变与质变的关系，下列说法正确的是？",
+        "options": [
+          "任何微小量变都立即引起质变",
+          "质变完全不需要量变积累",
+          "量变是质变的必要准备，质变是量变的必然结果",
+          "量变与质变毫无关联"
+        ],
+        "correct": 2,
+        "explanation": "量变为质变作必要准备；量变达到一定程度、突破事物的度时发生质变。并非任何一次微小变化都会立即改变事物性质。",
+        "source": {
+          "title": "马克思主义基本原理：量变质变规律",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "politics"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-p3",
+      "revisionId": "v2-p3-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/12",
+      "questionSha256": "e866c5b52bb4191b0fb3ebeb3815e242c1c381fde555375bc9b1f65f73d4be8c",
+      "snapshot": {
+        "id": "v2-p3",
+        "revisionId": "v2-p3-example-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "哲学：矛盾特殊性",
+        "text": "面对不同学生的学习困难，分别分析原因并制定不同方案，体现了哪种方法？",
+        "options": [
+          "具体问题具体分析",
+          "所有情况套用同一方案",
+          "只看表面现象",
+          "拒绝分析条件"
+        ],
+        "correct": 0,
+        "explanation": "不同对象、阶段与条件中的矛盾各有特点。针对具体条件分析问题并选择相应方法，体现了具体问题具体分析。",
+        "source": {
+          "title": "马克思主义基本原理：矛盾特殊性与具体问题具体分析",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "politics"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-p4",
+      "revisionId": "v2-p4-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/13",
+      "questionSha256": "722ac8203a3c70ba7dc52d3dea0799c88f1e116f06d4efde064ce9d94d939a36",
+      "snapshot": {
+        "id": "v2-p4",
+        "revisionId": "v2-p4-example-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "哲学：联系的条件性",
+        "text": "“联系是有条件的”意味着什么？",
+        "options": [
+          "任意两个事物都有直接联系",
+          "联系完全由个人意愿决定",
+          "只要同时出现就一定有因果关系",
+          "具体联系依赖一定条件，应结合条件进行分析"
+        ],
+        "correct": 3,
+        "explanation": "联系具有条件性，具体联系的形成和作用依赖一定条件。不能主观臆造联系，也不能仅凭同时出现就认定因果关系。",
+        "source": {
+          "title": "马克思主义基本原理：联系的客观性与条件性",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "politics"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-p5",
+      "revisionId": "v2-p5-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/14",
+      "questionSha256": "50c8bbf09238c59779d23f294bc9be464abe7c4c4b26c944a47c85c4b9933bdd",
+      "snapshot": {
+        "id": "v2-p5",
+        "revisionId": "v2-p5-example-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "哲学：认识的发展",
+        "text": "“实践—认识—再实践—再认识”主要说明了认识过程的哪一特点？",
+        "options": [
+          "认识一经形成就永远不变",
+          "认识在实践基础上反复发展、不断深化",
+          "认识不需要实际检验",
+          "认识只能来自直接经验"
+        ],
+        "correct": 1,
+        "explanation": "认识从实践中产生，又回到实践接受检验，并在新的实践中得到发展。这个过程体现了认识的反复性和不断深化。",
+        "source": {
+          "title": "马克思主义基本原理：实践与认识的辩证运动",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "politics"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-c1",
+      "revisionId": "v2-c1-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/15",
+      "questionSha256": "aced00210bd999627d77593f1367cc9f179cee0d902abaae3bc4509117c35746",
+      "snapshot": {
+        "id": "v2-c1",
+        "revisionId": "v2-c1-example-r1",
+        "module": "major",
+        "subject": "计算机专业基础",
+        "point": "数据结构：栈",
+        "text": "元素 A、B、C 依次入栈，期间没有出栈操作。随后连续出栈，顺序是什么？",
+        "options": [
+          "A、B、C",
+          "B、A、C",
+          "C、B、A",
+          "C、A、B"
+        ],
+        "correct": 2,
+        "explanation": "栈遵循“后进先出”规则。C 最后入栈，先出栈，之后依次为 B、A。",
+        "source": {
+          "title": "数据结构：栈的后进先出特性",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "computer-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-c2",
+      "revisionId": "v2-c2-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/16",
+      "questionSha256": "97ffd5b49ae966d9fa31eef996516ec6c6ecdbf17f882577a7c74e0fa92d0d3b",
+      "snapshot": {
+        "id": "v2-c2",
+        "revisionId": "v2-c2-example-r1",
+        "module": "major",
+        "subject": "计算机专业基础",
+        "point": "算法：二分查找",
+        "text": "在有序数组中进行二分查找，其最坏时间复杂度为？",
+        "options": [
+          "O(1)",
+          "O(log n)",
+          "O(n)",
+          "O(n²)"
+        ],
+        "correct": 1,
+        "explanation": "每次比较都将待查区间缩小约一半。经过约 log₂n 次比较，区间缩小为一个元素。",
+        "source": {
+          "title": "数据结构：有序数组二分查找的复杂度分析",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "computer-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-c3",
+      "revisionId": "v2-c3-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/17",
+      "questionSha256": "25915d310257bee56de3abd47a733aae7c456467c3297080cf11251f6347b307",
+      "snapshot": {
+        "id": "v2-c3",
+        "revisionId": "v2-c3-example-r1",
+        "module": "major",
+        "subject": "计算机专业基础",
+        "point": "数据结构：队列",
+        "text": "元素 A、B、C 依次进入一个空的普通队列，首次出队的元素是？",
+        "options": [
+          "A",
+          "B",
+          "C",
+          "无法确定"
+        ],
+        "correct": 0,
+        "explanation": "普通队列遵循“先进先出”规则。A 最先进入队列，因此首次出队的是 A。",
+        "source": {
+          "title": "数据结构：队列的先进先出特性",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "computer-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-c4",
+      "revisionId": "v2-c4-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/18",
+      "questionSha256": "663b1f5fd9c3ac86fff3fb47f30cdd2242be8dce1093a14e3319149f077e390f",
+      "snapshot": {
+        "id": "v2-c4",
+        "revisionId": "v2-c4-example-r1",
+        "module": "major",
+        "subject": "计算机专业基础",
+        "point": "计算机基础：二进制",
+        "text": "二进制数 1010 对应的十进制数是？",
+        "options": [
+          "8",
+          "9",
+          "12",
+          "10"
+        ],
+        "correct": 3,
+        "explanation": "从右向左的位权是 1、2、4、8，所以 1010₂ = 1 × 8 + 0 × 4 + 1 × 2 + 0 × 1 = 10。",
+        "source": {
+          "title": "计算机组成原理：二进制与十进制转换",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "computer-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v2-c5",
+      "revisionId": "v2-c5-example-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/19",
+      "questionSha256": "7147e21cbc8d92435fe35866b4134b2209228afc55fdef42e472d379a565afb2",
+      "snapshot": {
+        "id": "v2-c5",
+        "revisionId": "v2-c5-example-r1",
+        "module": "major",
+        "subject": "计算机专业基础",
+        "point": "算法：顺序遍历",
+        "text": "一个循环恰好访问长度为 n 的数组中的每个元素一次，每次执行常数时间操作，其时间复杂度为？",
+        "options": [
+          "O(1)",
+          "O(log n)",
+          "O(n)",
+          "O(n²)"
+        ],
+        "correct": 2,
+        "explanation": "共执行 n 次常数时间操作，总用时随 n 线性增长，因此时间复杂度为 O(n)。",
+        "source": {
+          "title": "数据结构与算法：线性遍历的时间复杂度",
+          "origin": "本项目既有演示题，非官方试题，待来源与版权复核",
+          "rights": "仅限本地演示，正式发布前须完成版权和学科审核",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "computer-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-01",
+      "revisionId": "v3b-math-01-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/20",
+      "questionSha256": "f26cdf9c6a00688e6ca438cc665345f2c8cb0fbf8c724596706019707c3dd8c6",
+      "snapshot": {
+        "id": "v3b-math-01",
+        "revisionId": "v3b-math-01-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "高数：复合函数求导",
+        "text": "设 f(x)=(2x+1)³，则 f′(1) 为多少？",
+        "options": [
+          "18",
+          "27",
+          "54",
+          "81"
+        ],
+        "correct": 2,
+        "explanation": "链式法则给出 f′(x)=6(2x+1)²，因此 f′(1)=54。",
+        "studyHint": "先复习“高数：复合函数求导”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：高数：复合函数求导",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-two",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-02",
+      "revisionId": "v3b-math-02-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/21",
+      "questionSha256": "9bd4ca839418289d13d6546ae5f9b81f69ddfe29b3c0e000fafc6ac9d05ee3dc",
+      "snapshot": {
+        "id": "v3b-math-02",
+        "revisionId": "v3b-math-02-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "高数：积分换元",
+        "text": "定积分 ∫₀¹ x/(1+x²) dx 等于？",
+        "options": [
+          "ln 2",
+          "(ln 2)/2",
+          "1/2",
+          "1"
+        ],
+        "correct": 1,
+        "explanation": "令 u=1+x²，du=2x dx，积分变为 (1/2)∫₁² du/u=(ln 2)/2。",
+        "studyHint": "先复习“高数：积分换元”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：高数：积分换元",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-two",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-03",
+      "revisionId": "v3b-math-03-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/22",
+      "questionSha256": "55f34f10e2d72479b19b1a5b3155ecd6267eeebd2bcb3cc8d261cd8c783fcbb9",
+      "snapshot": {
+        "id": "v3b-math-03",
+        "revisionId": "v3b-math-03-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "高数：二元函数偏导",
+        "text": "f(x,y)=x²y+eʸ，求点 (1,0) 处的 ∂f/∂y。",
+        "options": [
+          "0",
+          "1",
+          "2",
+          "3"
+        ],
+        "correct": 2,
+        "explanation": "对 y 求偏导时 x 视作常数，∂f/∂y=x²+eʸ，在 (1,0) 处为 2。",
+        "studyHint": "先复习“高数：二元函数偏导”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：高数：二元函数偏导",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-two",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-04",
+      "revisionId": "v3b-math-04-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/23",
+      "questionSha256": "35db25a4c7ea5b2e6e1c7986e1bfbb72c6f924c0032d3bb7306c3a36a242418c",
+      "snapshot": {
+        "id": "v3b-math-04",
+        "revisionId": "v3b-math-04-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "高数：微分方程初值",
+        "text": "函数 y 满足 y′=2y、y(0)=3，则 y(ln 2) 为？",
+        "options": [
+          "6",
+          "9",
+          "12",
+          "24"
+        ],
+        "correct": 2,
+        "explanation": "分离变量或识别指数解得 y=Ce^(2x)，由初值得 C=3，故 y(ln 2)=3×4=12。",
+        "studyHint": "先复习“高数：微分方程初值”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：高数：微分方程初值",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-two",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-05",
+      "revisionId": "v3b-math-05-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/24",
+      "questionSha256": "8eddaedb8f500326a35aaaba1042ad30d05473cb5bc966f074a2727ff84ea187",
+      "snapshot": {
+        "id": "v3b-math-05",
+        "revisionId": "v3b-math-05-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "线性代数：向量线性相关",
+        "text": "向量 a=(1,2)，b=(2,4)。下列判断正确的是？",
+        "options": [
+          "a、b 线性无关",
+          "b=2a，二者线性相关",
+          "a、b 都是零向量",
+          "二者张成整个二维平面"
+        ],
+        "correct": 1,
+        "explanation": "b=2a，因此存在非全零系数 2a−b=0，二者线性相关，只张成一条直线。",
+        "studyHint": "先复习“线性代数：向量线性相关”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：线性代数：向量线性相关",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-two",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-06",
+      "revisionId": "v3b-math-06-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/25",
+      "questionSha256": "752afa4ab24b19c74e81d364832eda2a3dacefca929416290580da20677bfa0b",
+      "snapshot": {
+        "id": "v3b-math-06",
+        "revisionId": "v3b-math-06-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "线性代数：齐次方程自由变量",
+        "text": "一个 3×4 矩阵 A 的秩为 3，则齐次方程组 Ax=0 的解空间维数为？",
+        "options": [
+          "0",
+          "1",
+          "3",
+          "4"
+        ],
+        "correct": 1,
+        "explanation": "未知量数为 4，由秩与零空间维数关系，解空间维数=4−3=1。",
+        "studyHint": "先复习“线性代数：齐次方程自由变量”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：线性代数：齐次方程自由变量",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-two",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-07",
+      "revisionId": "v3b-math-07-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/26",
+      "questionSha256": "2d44e43987efe79533dfb969d6389bc67b997b694a15ccbc8fa1adee69e90ab2",
+      "snapshot": {
+        "id": "v3b-math-07",
+        "revisionId": "v3b-math-07-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "线性代数：二次型正定",
+        "text": "实二次型 q(x,y)=2x²+2xy+3y² 是否正定？",
+        "options": [
+          "是，顺序主子式分别为 2 和 5",
+          "否，因为含交叉项",
+          "否，因为行列式为 −2",
+          "无法判断，必须指定 x、y"
+        ],
+        "correct": 0,
+        "explanation": "对应对称矩阵为 [[2,1],[1,3]]，两个顺序主子式为 2、6−1=5，均为正，故正定。",
+        "studyHint": "先复习“线性代数：二次型正定”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：线性代数：二次型正定",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-two",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-08",
+      "revisionId": "v3b-math-08-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/27",
+      "questionSha256": "236f8307578206a32d6a1b7a3c866e3b499e7ae1e8c69dd6f132c8f33760b589",
+      "snapshot": {
+        "id": "v3b-math-08",
+        "revisionId": "v3b-math-08-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "概率统计：条件概率",
+        "text": "盒中有 3 个红球和 2 个蓝球，随机不放回抽取两个球。已知第一个是红球，第二个仍为红球的概率是？",
+        "options": [
+          "3/5",
+          "2/5",
+          "1/2",
+          "1/3"
+        ],
+        "correct": 2,
+        "explanation": "取走一个红球后剩余 2 红 2 蓝，第二个为红球的条件概率为 2/4=1/2。",
+        "studyHint": "先复习“概率统计：条件概率”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：概率统计：条件概率",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-09",
+      "revisionId": "v3b-math-09-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/28",
+      "questionSha256": "83bc2ae15a097b4b9afb6ed02f9deb992668d548b2eaa625d03edd144703c4f8",
+      "snapshot": {
+        "id": "v3b-math-09",
+        "revisionId": "v3b-math-09-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "概率统计：独立变量方差",
+        "text": "X、Y 独立且 Var(X)=2、Var(Y)=3，则 Var(2X−Y) 为？",
+        "options": [
+          "1",
+          "5",
+          "7",
+          "11"
+        ],
+        "correct": 3,
+        "explanation": "独立使协方差为 0，Var(2X−Y)=4Var(X)+Var(Y)=8+3=11，减号不使方差相减。",
+        "studyHint": "先复习“概率统计：独立变量方差”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：概率统计：独立变量方差",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-10",
+      "revisionId": "v3b-math-10-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/29",
+      "questionSha256": "87bd8ce97011274579bc54074128701a5f01d86fa2098d69dfb148e086d4ae38",
+      "snapshot": {
+        "id": "v3b-math-10",
+        "revisionId": "v3b-math-10-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "概率统计：样本均值方差",
+        "text": "X₁,…,X₉ 独立同分布，总体方差为 36。样本均值的标准差是多少？",
+        "options": [
+          "2",
+          "4",
+          "6",
+          "12"
+        ],
+        "correct": 0,
+        "explanation": "均值的方差为 36/9=4，标准差取平方根得到 2。注意区分方差与标准差。",
+        "studyHint": "先复习“概率统计：样本均值方差”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：概率统计：样本均值方差",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-11",
+      "revisionId": "v3b-math-11-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/30",
+      "questionSha256": "e95a750d95dad50ff1369aafc726c7c83dc1e3232a22dffe743e7483d9b65f5d",
+      "snapshot": {
+        "id": "v3b-math-11",
+        "revisionId": "v3b-math-11-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "数一拓展：空间直线方向",
+        "text": "空间直线写作 (x,y,z)=(1,0,2)+t(2,−1,3)，哪个向量是它的方向向量？",
+        "options": [
+          "(1,0,2)",
+          "(2,−1,3)",
+          "(3,−1,5)",
+          "(0,0,0)"
+        ],
+        "correct": 1,
+        "explanation": "参数 t 的系数向量 (2,−1,3) 描述沿直线的位移方向；(1,0,2) 是直线上的一个点。",
+        "studyHint": "先复习“数一拓展：空间直线方向”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：数一拓展：空间直线方向",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-12",
+      "revisionId": "v3b-math-12-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/31",
+      "questionSha256": "afa51a8db5b4db9c419e33380109f4efbe4971e2c74fa750dd8f37b39253c18e",
+      "snapshot": {
+        "id": "v3b-math-12",
+        "revisionId": "v3b-math-12-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "数一拓展：三重积分",
+        "text": "在长方体 Ω=[0,1]×[0,2]×[0,3] 上，三重积分 ∭Ω (x+1) dV 等于？",
+        "options": [
+          "6",
+          "8",
+          "9",
+          "12"
+        ],
+        "correct": 2,
+        "explanation": "先对 x 积分得 ∫₀¹(x+1)dx=3/2，再乘 y、z 区间长度 2×3，结果为 9。",
+        "studyHint": "先复习“数一拓展：三重积分”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：数一拓展：三重积分",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-13",
+      "revisionId": "v3b-math-13-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/32",
+      "questionSha256": "4417558e54e40c0aa11db61405ad834cbaec8649d0e126de408bd6c350556833",
+      "snapshot": {
+        "id": "v3b-math-13",
+        "revisionId": "v3b-math-13-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "数一拓展：曲线积分",
+        "text": "C 为单位圆的逆时针正向边界，则闭曲线积分 ∮C (−y dx+x dy) 为？",
+        "options": [
+          "0",
+          "π",
+          "2π",
+          "−2π"
+        ],
+        "correct": 2,
+        "explanation": "用格林公式，∂x/∂x−∂(−y)/∂y=2，对单位圆盘积分为 2π；逆时针与正向相符。",
+        "studyHint": "先复习“数一拓展：曲线积分”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：数一拓展：曲线积分",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-14",
+      "revisionId": "v3b-math-14-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/33",
+      "questionSha256": "33a5d582fa8797a02b3da6babce2b5509fe2ca7cfe6b049d7a875eeeb11cb164",
+      "snapshot": {
+        "id": "v3b-math-14",
+        "revisionId": "v3b-math-14-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "数一拓展：第二型曲面积分",
+        "text": "S 为单位球面、取外法向，向量场 F=(x,y,z) 穿过 S 的通量为？",
+        "options": [
+          "0",
+          "4π/3",
+          "4π",
+          "12π"
+        ],
+        "correct": 2,
+        "explanation": "散度 div F=3，由高斯公式通量为 3 倍单位球体积，即 3×4π/3=4π。",
+        "studyHint": "先复习“数一拓展：第二型曲面积分”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：数一拓展：第二型曲面积分",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-one"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-15",
+      "revisionId": "v3b-math-15-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/34",
+      "questionSha256": "a55194edca53f5c8e4ec2af49d80b89d9458615ff9c79177dafe12b33eba916c",
+      "snapshot": {
+        "id": "v3b-math-15",
+        "revisionId": "v3b-math-15-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "经济应用：边际成本",
+        "text": "某产品总成本 C(q)=120+5q+q²。产量 q=4 时的边际成本 C′(4) 是？",
+        "options": [
+          "9",
+          "13",
+          "36",
+          "156"
+        ],
+        "correct": 1,
+        "explanation": "边际成本是总成本对产量的导数 C′(q)=5+2q，因此 C′(4)=13，不是平均成本。",
+        "studyHint": "先复习“经济应用：边际成本”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：经济应用：边际成本",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-16",
+      "revisionId": "v3b-math-16-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/35",
+      "questionSha256": "898befed31b03d2f5ab47b782eb18b6c69c249b3893563d7ca09c6bb941c5fd4",
+      "snapshot": {
+        "id": "v3b-math-16",
+        "revisionId": "v3b-math-16-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "经济应用：利润最大化",
+        "text": "已知需求价格 p(q)=20−q，总成本 C(q)=4q+9，q≥0。利润最大的产量是？",
+        "options": [
+          "4",
+          "8",
+          "10",
+          "16"
+        ],
+        "correct": 1,
+        "explanation": "利润为 q(20−q)−(4q+9)=16q−q²−9。导数 16−2q=0 得 q=8，二阶导数 −2<0，且边界不优于该点。",
+        "studyHint": "先复习“经济应用：利润最大化”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：经济应用：利润最大化",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-17",
+      "revisionId": "v3b-math-17-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/36",
+      "questionSha256": "dbcf5000f3be29e7f339af23f8016e72c9244c40e5e74cc03ef1976c4e62b8c4",
+      "snapshot": {
+        "id": "v3b-math-17",
+        "revisionId": "v3b-math-17-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "经济应用：需求价格弹性",
+        "text": "需求函数 q(p)=100−2p。在 p=20 时，价格弹性的绝对值 |p q′(p)/q(p)| 为？",
+        "options": [
+          "1/3",
+          "2/3",
+          "1",
+          "3/2"
+        ],
+        "correct": 1,
+        "explanation": "q(20)=60，q′(p)=−2，所以绝对弹性为 |20×(−2)/60|=2/3。",
+        "studyHint": "先复习“经济应用：需求价格弹性”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：经济应用：需求价格弹性",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-math-18",
+      "revisionId": "v3b-math-18-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/37",
+      "questionSha256": "66d5bcda9f63cb9b7a57e3bc821ab1d5fb567faf3e483921c254ae72e60fd3a6",
+      "snapshot": {
+        "id": "v3b-math-18",
+        "revisionId": "v3b-math-18-r1",
+        "module": "math",
+        "subject": "数学",
+        "point": "经济应用：连续收入现值",
+        "text": "某项目未来 2 年每年连续产生收入 100 单位，连续贴现率为 r=0.05。收入现值是哪一式？",
+        "options": [
+          "200e^(−0.1)",
+          "2000(1−e^(−0.1))",
+          "2000(e^(0.1)−1)",
+          "100(1−e^(−0.05))"
+        ],
+        "correct": 1,
+        "explanation": "时刻 t 的收入流折为 100e^(−0.05t)，现值是 ∫₀²100e^(−0.05t)dt=2000(1−e^(−0.1))，不能全部按期末一次贴现。",
+        "studyHint": "先复习“经济应用：连续收入现值”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：经济应用：连续收入现值",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "math-three"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-01",
+      "revisionId": "v3b-english-01-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/38",
+      "questionSha256": "9d51509becb5d3975856332bc237b2b10b2be55ff08a65ee2abd9285166df8e9",
+      "snapshot": {
+        "id": "v3b-english-01",
+        "revisionId": "v3b-english-01-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语阅读：事实定位",
+        "text": "Read: The library extended its evening hours in April. Visits rose, but weekend attendance stayed unchanged. Which statement is supported?",
+        "options": [
+          "Weekend visits doubled.",
+          "Evening opening hours became longer.",
+          "All visitors came in April.",
+          "The library closed on weekends."
+        ],
+        "correct": 1,
+        "explanation": "extended its evening hours 直接说明晚间开放时间延长；周末人数保持不变，不能推断翻倍或闭馆。",
+        "studyHint": "先复习“英语阅读：事实定位”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语阅读：事实定位",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-02",
+      "revisionId": "v3b-english-02-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/39",
+      "questionSha256": "318fdc2536ba16429b9c44c6fdd41410232438632ef41cf231337951216a3152",
+      "snapshot": {
+        "id": "v3b-english-02",
+        "revisionId": "v3b-english-02-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语阅读：限定性推断",
+        "text": "Read: A town offered free bus rides for one month. Car traffic fell near the station, yet no counts were taken elsewhere. What can reasonably be concluded?",
+        "options": [
+          "Cars disappeared throughout the town.",
+          "The policy permanently changed travel habits.",
+          "A local decline was observed, but town-wide effects are uncertain.",
+          "Free buses had no effect anywhere."
+        ],
+        "correct": 2,
+        "explanation": "证据仅涉及车站附近和一个月，支持局部下降，但缺少其他地区计数和长期观察，不能外推全城永久效果。",
+        "studyHint": "先复习“英语阅读：限定性推断”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语阅读：限定性推断",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-03",
+      "revisionId": "v3b-english-03-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/40",
+      "questionSha256": "09f5a479c7f36860a1b16836318c2885d201a7df1c45bbbd3e6f3b8902abd1c8",
+      "snapshot": {
+        "id": "v3b-english-03",
+        "revisionId": "v3b-english-03-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语阅读：让步与论证边界",
+        "text": "Read: Although automated summaries can spare readers routine work, their apparent fluency may conceal omissions. Their value therefore depends less on replacing judgment than on helping readers decide where closer reading is warranted. What is the author’s position?",
+        "options": [
+          "Fluency guarantees completeness.",
+          "Summaries should replace all close reading.",
+          "Summaries are useful when guided by critical judgment.",
+          "Automation cannot save any time."
+        ],
+        "correct": 2,
+        "explanation": "作者先承认节省时间，再指出流畅可能掩盖遗漏，主张以判断力指导使用摘要、定位需精读处，而非全面替代阅读。",
+        "studyHint": "先复习“英语阅读：让步与论证边界”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语阅读：让步与论证边界",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-04",
+      "revisionId": "v3b-english-04-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/41",
+      "questionSha256": "e44fe851c489947abf09b8e9597c0196ae37cae93fb4fea42e9fd2ee652df8b0",
+      "snapshot": {
+        "id": "v3b-english-04",
+        "revisionId": "v3b-english-04-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语长难句：主干识别",
+        "text": "In “The report that the interns prepared last week was revised yesterday”, what is the main clause?",
+        "options": [
+          "The interns prepared last week.",
+          "The report was revised yesterday.",
+          "That was revised yesterday.",
+          "The report prepared the interns."
+        ],
+        "correct": 1,
+        "explanation": "that 引导修饰 report 的定语从句。去掉从句后主干是 The report was revised yesterday。",
+        "studyHint": "先复习“英语长难句：主干识别”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语长难句：主干识别",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-05",
+      "revisionId": "v3b-english-05-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/42",
+      "questionSha256": "08b4092c8249ad53acff646d341d86f521dd9ea1e6dddcf64458058e5d47097b",
+      "snapshot": {
+        "id": "v3b-english-05",
+        "revisionId": "v3b-english-05-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语长难句：否定转折",
+        "text": "“Not because the proposal was cheap, but because it could be tested on a small scale, the team accepted it.” Why was it accepted?",
+        "options": [
+          "It required no money.",
+          "It had already succeeded everywhere.",
+          "It could be tried on a limited scale.",
+          "The team rejected small trials."
+        ],
+        "correct": 2,
+        "explanation": "not because A, but because B 否定 A 为接受理由，强调 B：可以在小规模上试验。",
+        "studyHint": "先复习“英语长难句：否定转折”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语长难句：否定转折",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-06",
+      "revisionId": "v3b-english-06-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/43",
+      "questionSha256": "21814eec51eae0f6328dc7fac9e2b12eb5d7990081000ffe21cfa9a56aefae6a",
+      "snapshot": {
+        "id": "v3b-english-06",
+        "revisionId": "v3b-english-06-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语长难句：嵌套条件与否定",
+        "text": "“The claim that a method is reliable merely because it has often been used is one that the researchers would accept only if independent tests supported it.” Which paraphrase is accurate?",
+        "options": [
+          "Frequent use alone proves reliability.",
+          "Researchers accept the claim without testing.",
+          "Independent support is a necessary condition for accepting the claim.",
+          "Independent tests are impossible when a method is popular."
+        ],
+        "correct": 2,
+        "explanation": "主干是 The claim is one that…；only if 表示必要条件。常用并非充分证据，研究者接受该主张需要独立测试支持。",
+        "studyHint": "先复习“英语长难句：嵌套条件与否定”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语长难句：嵌套条件与否定",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-07",
+      "revisionId": "v3b-english-07-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/44",
+      "questionSha256": "36a405475a86a6aeb0595a6524d61728e9c21c44b7144669bdeeaaf7a555b31d",
+      "snapshot": {
+        "id": "v3b-english-07",
+        "revisionId": "v3b-english-07-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语翻译：比较结构",
+        "text": "Choose the best translation of “The new route is less direct but more reliable.”",
+        "options": [
+          "新路线更直接，却不太可靠。",
+          "新路线不那么直接，但更加可靠。",
+          "新路线既不直接也不可靠。",
+          "新路线的直接程度与可靠性相同。"
+        ],
+        "correct": 1,
+        "explanation": "less direct 是不那么直接，more reliable 是更加可靠，but 保留转折关系。",
+        "studyHint": "先复习“英语翻译：比较结构”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语翻译：比较结构",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-08",
+      "revisionId": "v3b-english-08-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/45",
+      "questionSha256": "7e6e8f8f5073bbe80eba2128d87c4fee4884e4eb9929f09688ec0134d5447c99",
+      "snapshot": {
+        "id": "v3b-english-08",
+        "revisionId": "v3b-english-08-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语翻译：范围与限定",
+        "text": "Choose the best translation of “Access to data does not necessarily lead to a better decision.”",
+        "options": [
+          "接触数据必然带来更好的决定。",
+          "没有数据也必然能作出更好的决定。",
+          "能获取数据并不一定意味着能作出更好的决定。",
+          "数据永远无法改善决定。"
+        ],
+        "correct": 2,
+        "explanation": "not necessarily 否定必然联系，不是否定一切可能性；access 指获取数据的条件。",
+        "studyHint": "先复习“英语翻译：范围与限定”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语翻译：范围与限定",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-09",
+      "revisionId": "v3b-english-09-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/46",
+      "questionSha256": "5616506eb8265f38de0b5859b6e85e37f863118d5ab0da3e5e23f6eb0235db60",
+      "snapshot": {
+        "id": "v3b-english-09",
+        "revisionId": "v3b-english-09-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语翻译：让步从句",
+        "text": "Choose the best translation of “However convincing a forecast may appear, it remains conditional on assumptions that can change.”",
+        "options": [
+          "预测越有说服力，其假设就越不会变化。",
+          "无论预测看起来多么有说服力，它仍以可能变化的假设为条件。",
+          "如果预测没有说服力，就应停止提出假设。",
+          "预测能保证所有假设都成立。"
+        ],
+        "correct": 1,
+        "explanation": "However+形容词 引导让步，that 修饰 assumptions；conditional on 表示以……为条件，不能译为保证。",
+        "studyHint": "先复习“英语翻译：让步从句”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语翻译：让步从句",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-10",
+      "revisionId": "v3b-english-10-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/47",
+      "questionSha256": "9f96a405e298257b9631688dacca499e77d6860564b4bf407a39869bcbc49b63",
+      "snapshot": {
+        "id": "v3b-english-10",
+        "revisionId": "v3b-english-10-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语写作：应用文请求",
+        "text": "You need to ask a tutor for a short meeting. Which sentence is appropriately polite and specific?",
+        "options": [
+          "Meet me immediately.",
+          "Would you be available for a fifteen-minute meeting on Friday?",
+          "You must cancel all your classes.",
+          "I am writing something about anything."
+        ],
+        "correct": 1,
+        "explanation": "该句用 would you 表达礼貌请求，并写明时长和日期；其他选项强硬或缺少具体目的。",
+        "studyHint": "先复习“英语写作：应用文请求”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语写作：应用文请求",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-11",
+      "revisionId": "v3b-english-11-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/48",
+      "questionSha256": "51d267fdfe9184aba70eae02904d6315437014ee9631e5e0813806bd36e8e7aa",
+      "snapshot": {
+        "id": "v3b-english-11",
+        "revisionId": "v3b-english-11-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语写作：图表描述与证据",
+        "text": "A chart shows bicycle commuting rose from 20% in 2020 to 30% in 2025. Which sentence accurately describes the chart without inventing a cause?",
+        "options": [
+          "Cycling rose by 10 percentage points over the period.",
+          "Cycling rose by 10 percent relative to its initial level.",
+          "A new law certainly caused the rise.",
+          "Everyone cycled to work in 2025."
+        ],
+        "correct": 0,
+        "explanation": "30%−20%=10 个百分点。相对增幅是 50%，图表本身不能证明某法律造成增长。",
+        "studyHint": "先复习“英语写作：图表描述与证据”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语写作：图表描述与证据",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-two"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-english-12",
+      "revisionId": "v3b-english-12-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/49",
+      "questionSha256": "87fd82165c7a3c33df39cc5957fe9bce4449bb52c85d4ba0eb704ca9fd57f82e",
+      "snapshot": {
+        "id": "v3b-english-12",
+        "revisionId": "v3b-english-12-r1",
+        "module": "english",
+        "subject": "英语",
+        "point": "英语写作：议论文论证",
+        "text": "For an essay arguing that campus recycling needs more than bins, which sentence best develops the argument with a mechanism?",
+        "options": [
+          "Recycling is recycling.",
+          "Every campus has solved all waste problems.",
+          "Clear labels can reduce sorting mistakes, so bins should be paired with practical guidance.",
+          "Students are lazy and never change."
+        ],
+        "correct": 2,
+        "explanation": "该句给出标识减少分类错误的机制，并联系“设施加指导”的论点；避免循环论证、绝对化和人身归因。",
+        "studyHint": "先复习“英语写作：议论文论证”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：英语写作：议论文论证",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation",
+          "english-one"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-politics-01",
+      "revisionId": "v3b-politics-01-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/50",
+      "questionSha256": "4c08a086f0e71b5be1d3b75dc6900e1eec7cfc3ce841820fee8c50c63adc3edc",
+      "snapshot": {
+        "id": "v3b-politics-01",
+        "revisionId": "v3b-politics-01-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "认识论：实践检验",
+        "text": "某团队提出节水方案，先在两栋楼试行、测量用水变化，再调整方案。这最直接体现了？",
+        "options": [
+          "用主观愿望代替事实",
+          "实践是检验认识的重要环节",
+          "一次成功即可永远适用",
+          "认识无需接受现实检验"
+        ],
+        "correct": 1,
+        "explanation": "试行、测量与调整把认识放到实践中检验并发展；局部试验不能证明所有条件下永久成立。",
+        "studyHint": "先复习“认识论：实践检验”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：认识论：实践检验",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation"
+        ],
+        "majorIds": [],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-politics-02",
+      "revisionId": "v3b-politics-02-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/51",
+      "questionSha256": "7b5b2f3dd262fcf4a99f44229e1e1c1c609a479b345af338d58dada576359f06",
+      "snapshot": {
+        "id": "v3b-politics-02",
+        "revisionId": "v3b-politics-02-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "唯物辩证法：具体分析",
+        "text": "两个社区人口结构和公共设施不同，采用同一种服务安排效果差异很大。改进时最合适的方法是？",
+        "options": [
+          "忽视差异，坚持同一安排",
+          "只参考其中一次偶然反馈",
+          "结合各社区具体条件分析矛盾并调整方案",
+          "认定所有经验都无意义"
+        ],
+        "correct": 2,
+        "explanation": "矛盾具有特殊性，解决问题应结合具体对象和条件，不能机械套用同一方案，也不能否定经验的价值。",
+        "studyHint": "先复习“唯物辩证法：具体分析”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：唯物辩证法：具体分析",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation"
+        ],
+        "majorIds": [],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-politics-03",
+      "revisionId": "v3b-politics-03-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/52",
+      "questionSha256": "187a633f20718ac581f9cde699dbc164356f65a936a141ab41b9395f0605fee5",
+      "snapshot": {
+        "id": "v3b-politics-03",
+        "revisionId": "v3b-politics-03-r1",
+        "module": "politics",
+        "subject": "政治",
+        "point": "历史唯物主义：社会存在与意识",
+        "text": "某地产业结构改变后，职业观念逐渐调整，但部分旧观念仍持续存在。最恰当的解释是？",
+        "options": [
+          "社会意识完全不受现实生活影响",
+          "社会意识随社会存在变化且具有相对独立性",
+          "所有观念必定与经济变化同时消失",
+          "个别观念可以单独决定全部社会结构"
+        ],
+        "correct": 1,
+        "explanation": "产业与生活条件的改变影响观念，同时观念可能滞后或具有延续性，说明社会意识的相对独立性。",
+        "studyHint": "先复习“历史唯物主义：社会存在与意识”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：历史唯物主义：社会存在与意识",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation"
+        ],
+        "majorIds": [],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-major-01",
+      "revisionId": "v3b-major-01-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/53",
+      "questionSha256": "893be07d510151fcb3c31ffb5f01af5dac2c8eda8efcc078b77ac1a6846c71da",
+      "snapshot": {
+        "id": "v3b-major-01",
+        "revisionId": "v3b-major-01-r1",
+        "module": "major",
+        "subject": "专业课",
+        "point": "研究方法：对照实验",
+        "text": "为检验一种新记忆训练的效果，哪种设计更能减少选择偏差？",
+        "options": [
+          "只招募训练成绩最高者",
+          "随机分组，并给对照组安排等时长的普通训练",
+          "训练后只询问是否喜欢课程",
+          "只记录成功的参加者"
+        ],
+        "correct": 1,
+        "explanation": "随机分组减少组间系统差异，等时长对照有助于控制练习时间；只选高分者或只报成功会产生偏差。",
+        "studyHint": "先复习“研究方法：对照实验”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：研究方法：对照实验",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "basic",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-major-02",
+      "revisionId": "v3b-major-02-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/54",
+      "questionSha256": "0126582db69305d230e844e19b227babaa0e57ac4d49942573f8d09e67a97b14",
+      "snapshot": {
+        "id": "v3b-major-02",
+        "revisionId": "v3b-major-02-r1",
+        "module": "major",
+        "subject": "专业课",
+        "point": "研究方法：相关与因果",
+        "text": "调查发现参加学习小组的人平均成绩较高，但没有随机分组。最稳妥的表述是？",
+        "options": [
+          "学习小组必然提高每个人成绩",
+          "两者存在观察到的关联，还需考虑基础与动机等混杂因素",
+          "成绩高只能由学习小组造成",
+          "没有随机分组就不能描述任何关联"
+        ],
+        "correct": 1,
+        "explanation": "观察性关联不自动证明因果，基础水平、动机等可能同时影响参加意愿和成绩，需要进一步设计来识别因果。",
+        "studyHint": "先复习“研究方法：相关与因果”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：研究方法：相关与因果",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "intermediate",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    },
+    {
+      "questionId": "v3b-major-03",
+      "revisionId": "v3b-major-03-r1",
+      "sourcePointer": "knowledge/questions/example-v1.json#/questions/55",
+      "questionSha256": "2ee986519fea8f3cf6e4191bdbeecf7be0b259c24e62b9f817d6aef5be536315",
+      "snapshot": {
+        "id": "v3b-major-03",
+        "revisionId": "v3b-major-03-r1",
+        "module": "major",
+        "subject": "专业课",
+        "point": "研究方法：外部效度",
+        "text": "某研究在一所高校的自愿报名学生中获得稳定结果。直接推广到所有在职人群的主要问题是？",
+        "options": [
+          "样本内结果稳定就必然可普遍推广",
+          "没有报告所有姓名",
+          "目标人群与样本来源不同，外部效度仍需验证",
+          "只要增加图表就能消除差异"
+        ],
+        "correct": 2,
+        "explanation": "研究对象、工作环境和选择机制不同，稳定的样本内结果不能自动推广，应在目标人群中复核可迁移性。",
+        "studyHint": "先复习“研究方法：外部效度”的定义与适用条件，再逐项检查选项。",
+        "source": {
+          "title": "研途原创诊断题：研究方法：外部效度",
+          "origin": "本项目原创情境与数值，非历年真题，不逐字复制试题",
+          "rights": "本项目原创；正式发布仍须完成独立学科审校",
+          "applicableYears": []
+        },
+        "scopes": [
+          "common-foundation"
+        ],
+        "majorIds": [
+          "research",
+          "practice"
+        ],
+        "difficulty": "advanced",
+        "calibration": "manual_initial",
+        "errorHypotheses": {},
+        "reviewStatus": "draft",
+        "publicationStatus": "unpublished"
+      },
+      "review": {
+        "reviewerId": null,
+        "reviewedAt": null,
+        "decision": null,
+        "rationale": null,
+        "correctedAnswerOrRevision": null,
+        "requiredChecks": {
+          "answer_unique": {
+            "passed": null,
+            "notes": null
+          },
+          "conditions_complete": {
+            "passed": null,
+            "notes": null
+          },
+          "options_distinct": {
+            "passed": null,
+            "notes": null
+          },
+          "explanation_consistent": {
+            "passed": null,
+            "notes": null
+          },
+          "scope_checked": {
+            "passed": null,
+            "notes": null
+          },
+          "rights_checked": {
+            "passed": null,
+            "notes": null
+          }
+        },
+        "additionalChecks": {
+          "hint_does_not_reveal_answer": {
+            "passed": null,
+            "notes": null
+          },
+          "math_and_diagram_match_explanation": {
+            "passed": null,
+            "notes": null
+          },
+          "accessible_text_equivalent": {
+            "passed": null,
+            "notes": null
+          },
+          "distractor_hypotheses_supported": {
+            "passed": null,
+            "notes": null
+          },
+          "difficulty_and_exam_scope_reviewed": {
+            "passed": null,
+            "notes": null
+          }
+        }
+      }
+    }
+  ]
+}

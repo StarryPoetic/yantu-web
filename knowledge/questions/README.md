@@ -4,6 +4,8 @@
 
 `example-v1.json` 保留原有20道演示题，新增36道原创题（数学共23、英语17、政治8、专业课8），当前内部版本为 `example-unreviewed-v4-v3b-diagnostic`。行列式嵌在题干对应文字后，位置示意图仅在交卷后的解析中出现。题库**未经真实学科审校**，保持 `draft/unpublished`，仅供服务端显式启用的本地示例练习，不用于正式能力诊断。升级当前示例库时保留已创建测评的原题目快照。
 
+5a完整审校准备包见 [review-candidates/README.md](review-candidates/README.md)：56题逐项快照与空白审核表、范围/缺项清单和未校准声明已离线生成。人工审核字段保持null；真实学科审校和样本校准等人，不视为已完成或可发布。
+
 ## 内容、范围与审核
 
 扩建时参考 `question-template.json`，填写唯一正确选项、解析、知识点、适用范围、人工初分难度、干扰项假设以及来源和使用权。`knowledgePoints` 是题库范围的知识点目录，未覆盖项保持待评估。`math-one/math-two/math-three` 是范围，`basic/intermediate/advanced` 是难度，不能混用。
