@@ -23,13 +23,21 @@ const supplement = JSON.parse(
     "utf8",
   ),
 ) as { pages: { source: WebSource }[] };
+const hdu = JSON.parse(
+  readFileSync(
+    resolve(repositoryRoot, "tests/fixtures/research-a-hdu-applicability.json"),
+    "utf8",
+  ),
+) as { pages: { source: WebSource }[] };
 const chains = nationalAssociationAudit(
   corpus.latest.fixture.runs[0].recommendations,
-  [...corpus.pages, ...supplement.pages].flatMap((p) =>
+  [...corpus.pages, ...supplement.pages, ...hdu.pages].flatMap((p) =>
     p.source ? [p.source] : [],
   ),
 );
-const complete = chains.find((c) => c.status === "complete_chain")!;
+const complete = chains.find(
+  (c) => c.status === "complete_chain" && c.schoolName === "浙江农林大学",
+)!;
 const input: NationalLineChain = {
   schoolName: complete.schoolName,
   collegeName: complete.collegeName!,
@@ -45,7 +53,7 @@ const input: NationalLineChain = {
 
 test("real ZAFU 2026 chain binds the ordinary A-region engineering row, never B/care/special columns", () => {
   assert.equal(chains.length, 15);
-  assert.equal(chains.filter((c) => c.status === "complete_chain").length, 1);
+  assert.equal(chains.filter((c) => c.status === "complete_chain").length, 2);
   const { fact } = resolveNationalLineChain(input);
   assert.equal(fact!.schoolName, "浙江农林大学");
   assert.equal(fact!.collegeName, "光机电工程学院");
@@ -136,7 +144,10 @@ test("an execution sentence cannot hide a later programme exception or a special
 });
 
 test("real general floors, older exceptions and HDU national-line columns never become execution chains", () => {
-  for (const chain of chains.filter((c) => c.schoolName !== "浙江农林大学"))
+  for (const chain of chains.filter(
+    (c) =>
+      c.schoolName !== "浙江农林大学" && c.schoolName !== "杭州电子科技大学",
+  ))
     assert.equal(chain.fact, undefined);
   const audit = buildEvidenceAudit();
   assert.equal(audit.assessmentChains.length, 5);
@@ -157,8 +168,8 @@ test("real general floors, older exceptions and HDU national-line columns never 
       .size,
     3,
   );
-  assert.equal(audit.reviewProgress.currentConfirmable, 11);
-  assert.equal(audit.reviewProgress.currentPending, 64);
+  assert.equal(audit.reviewProgress.currentConfirmable, 12);
+  assert.equal(audit.reviewProgress.currentPending, 63);
 });
 
 test("assessment results with a missing or different round never acquire fourth-round status", () => {

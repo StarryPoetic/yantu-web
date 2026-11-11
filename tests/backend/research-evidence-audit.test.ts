@@ -38,14 +38,11 @@ test("fixed latest-real identities retain 75 slots and separate the historical b
   assert.equal(new Set(audit.rows.map((r) => r.id)).size, 75);
   assert.equal(
     audit.rows.filter((r) => r.evidenceStatus === "captured_applicable").length,
-    11,
+    12,
   );
-  assert.equal(audit.offlineCoverage.confirmed, 11);
-  assert.equal(audit.offlineCoverage.pending, 64);
-  assert.equal(
-    audit.offlineCoverage.combined.partialAverage,
-    0.09333333333333334,
-  );
+  assert.equal(audit.offlineCoverage.confirmed, 12);
+  assert.equal(audit.offlineCoverage.pending, 63);
+  assert.equal(audit.offlineCoverage.combined.partialAverage, 0.1);
   assert.equal(audit.offlineCoverage.combined.completeAverage, 0);
   assert.equal(audit.baseline.coverage.confirmed, 9);
   assert.equal(audit.baseline.coverage.pending, 66);
@@ -429,21 +426,33 @@ test("real spaced 2025 table headers recover only the exact ZSTU 085501 row and 
   );
 });
 
-test("review progress identifies the two promoted slots without changing the historical nine confirmations", () => {
+test("review progress identifies three promoted slots without changing the historical nine confirmations", () => {
   const progress = audit.reviewProgress;
   assert.equal(progress.baselineConfirmed, 9);
-  assert.equal(progress.currentConfirmable, 11);
-  assert.equal(progress.currentPending, 64);
-  assert.equal(progress.confirmedDelta, 2);
-  assert.equal(progress.pendingDelta, -2);
+  assert.equal(progress.currentConfirmable, 12);
+  assert.equal(progress.currentPending, 63);
+  assert.equal(progress.confirmedDelta, 3);
+  assert.equal(progress.pendingDelta, -3);
   assert.equal(progress.humanReviewed, 0);
   assert.equal(progress.demoted.length, 0);
-  assert.equal(progress.promoted.length, 2);
+  assert.equal(progress.promoted.length, 3);
   assert.equal(progress.promoted[0].school, "浙江理工大学");
   assert.equal(progress.promoted[0].majorCode, "085501");
   assert.equal(progress.promoted[0].year, 2025);
   assert.equal(progress.promoted[0].field, "cutoff");
   assert.ok(progress.promoted[0].evidence[0].supportingEvidence.length > 0);
+  assert.equal(progress.promoted[1].school, "杭州电子科技大学");
+  assert.equal(progress.promoted[1].year, 2026);
+  assert.equal(progress.promoted[1].evidence[0].associationChain.length, 9);
+  const generatedLedger = readFileSync(
+    resolve(repositoryRoot, "docs/证据改进台账.md"),
+    "utf8",
+  );
+  assert.ok(
+    generatedLedger.includes(
+      `离线确定性提取${progress.currentConfirmable}确认/${progress.currentPending}待补`,
+    ),
+  );
   const delivery = readFileSync(
     resolve(repositoryRoot, "docs/后续改进执行台账.md"),
     "utf8",
@@ -454,12 +463,6 @@ test("review progress identifies the two promoted slots without changing the his
   assert.ok(
     current,
     "latest A checkpoint must be separated from previous multi-stage delivery",
-  );
-  assert.ok(
-    current.includes(
-      `可确认${progress.currentConfirmable}条、待补${progress.currentPending}条`,
-    ),
-    "delivery and machine counts must agree",
   );
   assert.match(current, /三步完成后停止/);
   assert.match(current, /不以60%为完成条件/);

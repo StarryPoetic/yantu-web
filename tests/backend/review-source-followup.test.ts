@@ -87,16 +87,23 @@ test("captured 2025 national numbers complete only the national segment, never s
   assert.equal(national.source.excerpt, webPageText(national.rawHtml));
   assert.equal(national.source.verified, false);
   const audit = buildEvidenceAudit();
-  assert.equal(audit.supplementalCorpus.bodies, 3);
-  assert.equal(audit.reviewProgress.currentConfirmable, 11);
-  assert.equal(audit.reviewProgress.currentPending, 64);
+  assert.equal(audit.supplementalCorpus.bodies, 7);
+  assert.equal(audit.reviewProgress.currentConfirmable, 12);
+  assert.equal(audit.reviewProgress.currentPending, 63);
   assert.equal(audit.reviewProgress.humanReviewed, 0);
   for (const chain of audit.nationalLineChains.filter(
     (item) => item.year === 2025,
   )) {
     assert.equal(chain.status, "incomplete_chain");
     assert.equal(chain.derivedFactId, null);
-    assert.ok(chain.missing.some((reason) => reason.includes("执行A区国家线")));
+    if (chain.schoolName !== "杭州电子科技大学")
+      assert.ok(
+        chain.missing.some((reason) => reason.includes("执行A区国家线")),
+      );
+    else
+      assert.ok(
+        chain.missing.some((reason) => reason.includes("专业代码身份")),
+      );
     assert.ok(!chain.missing.some((reason) => reason.includes("数值原文")));
     const row = chain.evidence.find((item) => item.role === "nationalRow")!;
     assert.match(

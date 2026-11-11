@@ -202,15 +202,21 @@ export function buildEvidenceAudit(root = repositoryRoot) {
     throw new Error(
       "A evidence audit requires the fixed five school/program identities; refusing a changed denominator.",
     );
-  const associationFixture = `${fixtureDirectory}/research-a-national-lines.json`;
-  const associationPages = (
-    JSON.parse(readFileSync(resolve(root, associationFixture), "utf8")) as {
-      pages: Page[];
-    }
-  ).pages.map((p, pageIndex) => ({
-    ...p,
-    origin: { fixture: associationFixture, pageIndex },
-  }));
+  const associationFixtures = [
+    "research-a-national-lines.json",
+    "research-a-hdu-applicability.json",
+  ];
+  const associationPages = associationFixtures.flatMap((name) => {
+    const associationFixture = `${fixtureDirectory}/${name}`;
+    return (
+      JSON.parse(readFileSync(resolve(root, associationFixture), "utf8")) as {
+        pages: Page[];
+      }
+    ).pages.map((p, pageIndex) => ({
+      ...p,
+      origin: { fixture: associationFixture, pageIndex },
+    }));
+  });
   const allPages = [...corpus.pages, ...associationPages];
   const chains = nationalAssociationAudit(
     recommendations,
@@ -448,7 +454,9 @@ export function buildEvidenceAudit(root = repositoryRoot) {
       "以最新真实运行的5校身份固定分母，对累计保存正文及定向保存国家线原文确定性重提取/关联。不是报告网络实测、全国覆盖或人工审核。范围不适用仅指所列原文；公开可得性未确认不表示学校未公开。",
     rows,
     supplementalCorpus: {
-      generatedFrom: associationFixture,
+      generatedFrom: associationFixtures.map(
+        (name) => `${fixtureDirectory}/${name}`,
+      ),
       bodies: associationPages.length,
       method:
         "普通公开原文定向读取后保存；本生成器只离线读取，未启动第12次报告或付费调用",
@@ -621,7 +629,7 @@ function markdown(audit: ReturnType<typeof buildEvidenceAudit>) {
     (r) =>
       `| ${r.institutionName} ${r.majorCode} | ${labels[r.field]}${r.year ?? ""} | ${states[r.evidenceStatus]} | ${r.applicableEvidence.length}/${r.rejectedScopeEvidence.length}/${r.leads.filter((l) => !l.captured).length} |`,
   );
-  return `# 证据改进台账\n\n本文件由 \`node scripts/research-evidence-audit.ts --write\` 从仓库已保存真实语料生成；\`--check\` 检查产物一致。未加载 .env，未使用网络、模型或搜索。人工补充请写入后续审校记录，避免被再次生成覆盖。\n\n## 基线与口径\n\n${audit.stageAcceptance}\n\n最新真实网络基线为2026-10-12历史第11次（2a2c114），见[真实验证记录](阶段7真实验证记录.md#来源政策第7次真实运行与停止记录历史第11次2a2c114)：5校、461.846秒、120检索、180读取；合计字段8%、整类0%、复试线4/15=26.67%、学科评估0/5，9确认/66待补。三项60%门槛均未通过，连续三次无进展后停止，未新增第12次。\n\n本次扫描${audit.corpus.urls} URL/${audit.corpus.bodies}份保存正文，以最后真实运行5校固定身份形成${audit.rows.length}个字段/年度槽。离线确定性提取${audit.offlineCoverage.confirmed}确认/${audit.offlineCoverage.pending}待补、字段${(audit.offlineCoverage.combined.partialAverage * 100).toFixed(2)}%、整类${(audit.offlineCoverage.combined.completeAverage * 100).toFixed(2)}%；这些是规则复核计数，未经人工审校。不是新的网络覆盖或全国样本。\n\n历史基线8%按五类等权再按学校平均：分数类6槽（2字段×3年度）、竞争3、背景2、学科2、就业2；(23.33%+6.67%+0+0+10%)/5=8%。9/75=12%为不同的原始槽位率，不能互换。降低推荐数量不降低三项60%标准，也不重写历史分母。\n\n## 本批可核对变化\n\n可确认（规则复核、非人工审核）：${audit.reviewProgress.baselineConfirmed}→${audit.reviewProgress.currentConfirmable}；待补：${audit.reviewProgress.baselinePending}→${audit.reviewProgress.currentPending}。新增${audit.reviewProgress.promoted.length}槽、撤回${audit.reviewProgress.demoted.length}槽。逐条原文、表头/身份辅助片段及SHA-256/UTF-16偏移均写入机器台账reviewProgress。\n\n${audit.reviewProgress.promoted.map((row) => `- 新增：${row.school} ${row.majorCode} ${labels[row.field]}${row.year ?? ""}；${row.evidence.map((e) => `${e.value.number ?? e.value.employmentRate ?? e.value.grade ?? "原文统计"}，原文${e.source.fixture} pages[${e.source.pageIndex}] offset ${e.source.offset}`).join("；")}。`).join("\n")}\n\n${audit.reviewProgress.demoted.map((row) => `- 撤回：${row.school} ${row.majorCode} ${labels[row.field]}${row.year ?? ""}；保留原始历史基线，当前保持待补。`).join("\n") || "无撤回槽。"}\n\n## 可执行顺序\n\n1. 复核下表和机器台账原文定位，优先已有正文可补的范围/表头问题；以真实负例测试防止错年、错专业、导航页和估计值误计。\n2. 国家线建立同年适用声明→学科/学位类型和A区→数值原文完整链；学科评估建立第四轮矩阵→0802→目标项目明确依托关系。链条缺一保持待补。\n3. 对报录比/推免补同年同人群分子分母，对本科/跨考背景补公开群体统计，对就业保留学院/研究生口径。没有数据不估算，不以经验评价替代。\n\n三步之外不自动推进；目录待审包属于C，本批不修改或入库，页面属于B。固定75槽保留历史分母，其中城市产业槽只保留旧缺项，本批不扩展城市证据。已公开但未抓到、所见原文范围不适用、公开可得性未确认分别记录；均不能推断学校从未公开。\n\n## 关联链核查\n\n累计语料含${audit.authorityEntrances.length}个权威域名入口线索，仅${audit.authorityEntrances.filter((e) => e.captured).length}份保存正文，均无适用优先字段。机器台账逐条保留入口fixture位置及历史失败码，区分2012旧轮次、其他学科、讲话、第四轮矩阵门户未取正文与普通未读线索。本生成器不做网络请求；A期间对第四轮矩阵门户的普通读取返回HTTP 412，仅记录本次读取失败，不能据此认定永久不可用。另保存3份2024/2025/2026教育部国家线官方HTML作为关联补充原文，不改历史语料统计。2025原件于2026-11-11定向免费补齐，学校适用声明仍逐项待核验。\n\n${audit.associationEvidence.map((a) => `- [${a.source.title}](${a.source.url})：${a.conclusion} 尚缺：${a.missing.join("；")}。原文定位与文本SHA-256在机器台账中。`).join("\n")}\n\n上述2022年一般A线声明和工大B+仅作为历史负例，不是本批目标学校的完整关联。以下15条逐校逐年国家线链与5条学科依托链独立记录，已有直接复试分数的槽不必强行改写成国家线关联。
+  return `# 证据改进台账\n\n本文件由 \`node scripts/research-evidence-audit.ts --write\` 从仓库已保存真实语料生成；\`--check\` 检查产物一致。未加载 .env，未使用网络、模型或搜索。人工补充请写入后续审校记录，避免被再次生成覆盖。\n\n## 基线与口径\n\n${audit.stageAcceptance}\n\n最新真实网络基线为2026-10-12历史第11次（2a2c114），见[真实验证记录](阶段7真实验证记录.md#来源政策第7次真实运行与停止记录历史第11次2a2c114)：5校、461.846秒、120检索、180读取；合计字段8%、整类0%、复试线4/15=26.67%、学科评估0/5，9确认/66待补。三项60%门槛均未通过，连续三次无进展后停止，未新增第12次。\n\n本次扫描${audit.corpus.urls} URL/${audit.corpus.bodies}份保存正文，以最后真实运行5校固定身份形成${audit.rows.length}个字段/年度槽。离线确定性提取${audit.offlineCoverage.confirmed}确认/${audit.offlineCoverage.pending}待补、字段${(audit.offlineCoverage.combined.partialAverage * 100).toFixed(2)}%、整类${(audit.offlineCoverage.combined.completeAverage * 100).toFixed(2)}%；这些是规则复核计数，未经人工审校。不是新的网络覆盖或全国样本。\n\n历史基线8%按五类等权再按学校平均：分数类6槽（2字段×3年度）、竞争3、背景2、学科2、就业2；(23.33%+6.67%+0+0+10%)/5=8%。9/75=12%为不同的原始槽位率，不能互换。降低推荐数量不降低三项60%标准，也不重写历史分母。\n\n## 本批可核对变化\n\n可确认（规则复核、非人工审核）：${audit.reviewProgress.baselineConfirmed}→${audit.reviewProgress.currentConfirmable}；待补：${audit.reviewProgress.baselinePending}→${audit.reviewProgress.currentPending}。新增${audit.reviewProgress.promoted.length}槽、撤回${audit.reviewProgress.demoted.length}槽。逐条原文、表头/身份辅助片段及SHA-256/UTF-16偏移均写入机器台账reviewProgress。\n\n${audit.reviewProgress.promoted.map((row) => `- 新增：${row.school} ${row.majorCode} ${labels[row.field]}${row.year ?? ""}；${row.evidence.map((e) => `${e.value.number ?? e.value.employmentRate ?? e.value.grade ?? "原文统计"}，原文${e.source.fixture} pages[${e.source.pageIndex}] offset ${e.source.offset}`).join("；")}。`).join("\n")}\n\n${audit.reviewProgress.demoted.map((row) => `- 撤回：${row.school} ${row.majorCode} ${labels[row.field]}${row.year ?? ""}；保留原始历史基线，当前保持待补。`).join("\n") || "无撤回槽。"}\n\n## 可执行顺序\n\n1. 复核下表和机器台账原文定位，优先已有正文可补的范围/表头问题；以真实负例测试防止错年、错专业、导航页和估计值误计。\n2. 国家线建立同年适用声明→学科/学位类型和A区→数值原文完整链；学科评估建立第四轮矩阵→0802→目标项目明确依托关系。链条缺一保持待补。\n3. 对报录比/推免补同年同人群分子分母，对本科/跨考背景补公开群体统计，对就业保留学院/研究生口径。没有数据不估算，不以经验评价替代。\n\n三步之外不自动推进；目录待审包属于C，本批不修改或入库，页面属于B。固定75槽保留历史分母，其中城市产业槽只保留旧缺项，本批不扩展城市证据。已公开但未抓到、所见原文范围不适用、公开可得性未确认分别记录；均不能推断学校从未公开。\n\n## 关联链核查\n\n累计语料含${audit.authorityEntrances.length}个权威域名入口线索，仅${audit.authorityEntrances.filter((e) => e.captured).length}份保存正文，均无适用优先字段。机器台账逐条保留入口fixture位置及历史失败码，区分2012旧轮次、其他学科、讲话、第四轮矩阵门户未取正文与普通未读线索。本生成器不做网络请求；A期间对第四轮矩阵门户的普通读取返回HTTP 412，仅记录本次读取失败，不能据此认定永久不可用。另保存3份2024/2025/2026教育部国家线官方HTML作为关联补充原文，不改历史语料统计。2025原件于2026-11-11定向免费补齐；同日有界免费核验10个新入口，另归档杭电4份官方HTML，2026年同学院六位专业身份、全日制专业学位列头和A类执行声明闭合，2024/2025仍缺完整身份/学习方式依据。详见[本轮来源交接](../knowledge/catalog/review-candidates/20261111-evidence-followup.md)。\n\n${audit.associationEvidence.map((a) => `- [${a.source.title}](${a.source.url})：${a.conclusion} 尚缺：${a.missing.join("；")}。原文定位与文本SHA-256在机器台账中。`).join("\n")}\n\n上述2022年一般A线声明和工大B+仅作为历史负例，不是本批目标学校的完整关联。以下15条逐校逐年国家线链与5条学科依托链独立记录，已有直接复试分数的槽不必强行改写成国家线关联。
 
 | 学校/专业 | 年度 | 国家线关联 | 直接复试线已存 | 仍缺 |
 | --- | --- | --- | --- | --- |

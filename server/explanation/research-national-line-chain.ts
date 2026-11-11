@@ -6,7 +6,7 @@ import { schoolRegistry } from "../schools/index.ts";
 /** A chain uses the named document heading, not a publication date or footer link. */
 export function chainDocumentYear(source: WebSource) {
   const heading = source.title.match(
-    /(20\d{2})年(?:全国)?硕士研究生(?:招生专业目录|复试录取工作实施细则|招生考试考生进入复试的初试成绩基本要求)/,
+    /(20\d{2})年(?:全国)?硕士研究生(?:招生专业目录|复试录取工作实施细则|招生复试一志愿录取实施细则|招生复试分数线|招生考试考生进入复试的初试成绩基本要求)/,
   );
   if (heading && source.excerpt.slice(0, 1000).includes(heading[0]))
     return Number(heading[1]);
@@ -20,6 +20,7 @@ export type NationalLineChain = {
   year: number;
   identity?: ChainPassage;
   degree?: ChainPassage;
+  identityColumns?: ChainPassage;
   applicability?: ChainPassage;
   nationalHeader?: ChainPassage;
   nationalColumns?: ChainPassage;
@@ -55,33 +56,74 @@ export function resolveNationalLineChain(input: NationalLineChain) {
   )
     missing.push("同年同学院六位专业代码身份");
   const degree = input.degree;
-  if (
-    !owned(degree) ||
-    !literal(identity) ||
-    degree!.source.url !== identity.source.url ||
-    !/全日制专业学位/.test(degree!.quote) ||
-    /非全日制/.test(degree!.quote) ||
+  const identityColumns = input.identityColumns;
+  const identityCells = identity?.quote.split("|").map((cell) => cell.trim());
+  const tableDegree =
+    owned(identityColumns) &&
+    literal(identity) &&
+    literal(degree) &&
+    identityColumns!.source.url === identity.source.url &&
+    degree.source.url === identity.source.url &&
+    degree.quote === identity.quote &&
+    /^学院代码\s*\|\s*学院\s*\|\s*专业代码\s*\|\s*专业名称\s*\|\s*学位类型\s*\|\s*学习方式\s*\|/.test(
+      identityColumns!.quote,
+    ) &&
+    identity.source.excerpt.indexOf(identityColumns!.quote) <
+      identity.source.excerpt.indexOf(identity.quote) &&
+    identity.source.excerpt
+      .slice(0, identity.source.excerpt.indexOf(identity.quote))
+      .split("\n")
+      .filter((line) => /^学院代码\s*\|/.test(line))
+      .at(-1) === identityColumns!.quote &&
+    identityCells?.[1] === collegeName &&
+    identityCells[2] === majorCode &&
+    identityCells[4] === "专业学位" &&
+    identityCells[5] === "全日制";
+  const sectionDegree =
+    literal(degree) &&
+    literal(identity) &&
+    /全日制专业学位/.test(degree.quote) &&
+    !/非全日制/.test(degree.quote) &&
     [
       ...identity.source.excerpt
         .slice(0, identity.source.excerpt.indexOf(identity.quote))
         .matchAll(/（[一二三四五]）[^\n]*(?:学术学位|专业学位)[^\n]*/g),
-    ].at(-1)?.[0] !== degree!.quote
+    ].at(-1)?.[0] === degree.quote;
+  if (
+    !owned(degree) ||
+    !literal(identity) ||
+    degree!.source.url !== identity.source.url ||
+    !(tableDegree || sectionDegree)
   )
     missing.push("该专业所在表段的全日制专业学位口径");
   const applicability = input.applicability;
+  const professionalStatement =
+    literal(applicability) &&
+    /招生复试一志愿录取实施细则/.test(applicability.source.title) &&
+    /^\d*\.?\s*专业型硕士研究生复试分数线为国家\s*A\s*类复试线要求。?$/.test(
+      applicability.quote.trim(),
+    );
+  const generalStatement =
+    literal(applicability) &&
+    new RegExp(
+      `复试分数线参照[^。\\n]*${year}年全国硕士研究生[^。\\n]*（A类考生国家线）执行`,
+    ).test(applicability.quote);
   if (
     !owned(applicability) ||
     !collegeName ||
     !applicability!.source.title.includes(collegeName) ||
-    !new RegExp(
-      `复试分数线参照[^。\\n]*${year}年全国硕士研究生[^。\\n]*（A类考生国家线）执行`,
-    ).test(applicability!.quote) ||
+    !(generalStatement || professionalStatement) ||
     /不低于|高于|另行|部分|例外|自行划定|调剂分数线/.test(
       applicability!.quote,
     ) ||
-    /专项|退役大学生士兵|另行[^。\n]*(?:划线|分数|确定)|[^。\n]*(?:专业|学位点)[^。\n]*(?:高于|自行划定|自划线)/.test(
+    /另行[^。\n]*(?:划线|分数|确定)|[^。\n]*(?:专业|学位点)[^。\n]*(?:高于|自行划定|自划线)/.test(
       applicability!.source.excerpt,
-    )
+    ) ||
+    (professionalStatement
+      ? /(?:专项|退役大学生士兵)[^。\n]*(?:分数线|复试规则|降分|降低)/.test(
+          applicability!.source.excerpt,
+        )
+      : /专项|退役大学生士兵/.test(applicability!.source.excerpt))
   )
     missing.push(
       "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）",
@@ -121,6 +163,16 @@ export function resolveNationalLineChain(input: NationalLineChain) {
     missing.push(
       "同年教育部工学其他专业A区数值原文、列头、浙江区域及照顾专业排除依据",
     );
+  if (
+    tableDegree &&
+    (!row ||
+      identityCells?.[9] !== "国家线" ||
+      [6, 7, 8].some(
+        (column, index) =>
+          Number(identityCells?.[column]) !== Number(row[index + 1]),
+      ))
+  )
+    missing.push("同年学校分数表与国家线数值一致");
   if (missing.length)
     return { status: "incomplete_chain" as const, missing, fact: undefined };
   const fact: ResearchPriorityFact = {

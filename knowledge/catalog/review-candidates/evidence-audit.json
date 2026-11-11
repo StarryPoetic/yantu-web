@@ -2204,9 +2204,9 @@
   "offlineCoverage": {
     "partialGroups": {
       "scores": {
-        "confirmed": 9,
+        "confirmed": 10,
         "total": 30,
-        "ratio": 0.3
+        "ratio": 0.3333333333333333
       },
       "competition": {
         "confirmed": 1,
@@ -2229,7 +2229,7 @@
         "ratio": 0.1
       }
     },
-    "partialAverage": 0.09333333333333334,
+    "partialAverage": 0.1,
     "completeAverage": 0,
     "schools": [
       {
@@ -2305,9 +2305,9 @@
       {
         "partialGroups": {
           "scores": {
-            "confirmed": 3,
+            "confirmed": 4,
             "total": 6,
-            "ratio": 0.5
+            "ratio": 0.6666666666666666
           },
           "competition": {
             "confirmed": 1,
@@ -2333,10 +2333,6 @@
         "missingScoreYears": [
           {
             "field": "cutoff",
-            "year": 2026
-          },
-          {
-            "field": "cutoff",
             "year": 2025
           },
           {
@@ -2346,11 +2342,11 @@
         ],
         "schoolName": "杭州电子科技大学",
         "confirmed": [
+          "cutoff",
           "admissionScore",
           "admittedCount"
         ],
         "pending": [
-          "cutoff",
           "applicationAdmissionRatio",
           "recommendationShare",
           "undergraduateAdmission",
@@ -2586,9 +2582,9 @@
         }
       }
     ],
-    "confirmed": 11,
-    "pending": 64,
-    "schoolsWithCutoff": 3,
+    "confirmed": 12,
+    "pending": 63,
+    "schoolsWithCutoff": 4,
     "groups": {
       "scores": {
         "confirmed": 0,
@@ -2616,9 +2612,9 @@
       "school": {
         "partialGroups": {
           "scores": {
-            "confirmed": 9,
+            "confirmed": 10,
             "total": 30,
-            "ratio": 0.3
+            "ratio": 0.3333333333333333
           },
           "competition": {
             "confirmed": 1,
@@ -2641,7 +2637,7 @@
             "ratio": 0.1
           }
         },
-        "partialAverage": 0.09333333333333334,
+        "partialAverage": 0.1,
         "completeAverage": 0,
         "schools": [
           {
@@ -2717,9 +2713,9 @@
           {
             "partialGroups": {
               "scores": {
-                "confirmed": 3,
+                "confirmed": 4,
                 "total": 6,
-                "ratio": 0.5
+                "ratio": 0.6666666666666666
               },
               "competition": {
                 "confirmed": 1,
@@ -2745,10 +2741,6 @@
             "missingScoreYears": [
               {
                 "field": "cutoff",
-                "year": 2026
-              },
-              {
-                "field": "cutoff",
                 "year": 2025
               },
               {
@@ -2758,11 +2750,11 @@
             ],
             "schoolName": "杭州电子科技大学",
             "confirmed": [
+              "cutoff",
               "admissionScore",
               "admittedCount"
             ],
             "pending": [
-              "cutoff",
               "applicationAdmissionRatio",
               "recommendationShare",
               "undergraduateAdmission",
@@ -2998,9 +2990,9 @@
             }
           }
         ],
-        "confirmed": 11,
-        "pending": 64,
-        "schoolsWithCutoff": 3,
+        "confirmed": 12,
+        "pending": 63,
+        "schoolsWithCutoff": 4,
         "groups": {
           "scores": {
             "confirmed": 0,
@@ -3914,9 +3906,9 @@
     "combined": {
       "partialGroups": {
         "scores": {
-          "confirmed": 9,
+          "confirmed": 10,
           "total": 30,
-          "ratio": 0.3
+          "ratio": 0.3333333333333333
         },
         "competition": {
           "confirmed": 1,
@@ -3939,7 +3931,7 @@
           "ratio": 0.1
         }
       },
-      "partialAverage": 0.09333333333333334,
+      "partialAverage": 0.1,
       "completeAverage": 0,
       "schools": [
         {
@@ -4015,9 +4007,9 @@
         {
           "partialGroups": {
             "scores": {
-              "confirmed": 3,
+              "confirmed": 4,
               "total": 6,
-              "ratio": 0.5
+              "ratio": 0.6666666666666666
             },
             "competition": {
               "confirmed": 1,
@@ -4043,10 +4035,6 @@
           "missingScoreYears": [
             {
               "field": "cutoff",
-              "year": 2026
-            },
-            {
-              "field": "cutoff",
               "year": 2025
             },
             {
@@ -4056,11 +4044,11 @@
           ],
           "schoolName": "杭州电子科技大学",
           "confirmed": [
+            "cutoff",
             "admissionScore",
             "admittedCount"
           ],
           "pending": [
-            "cutoff",
             "applicationAdmissionRatio",
             "recommendationShare",
             "undergraduateAdmission",
@@ -4296,9 +4284,9 @@
           }
         }
       ],
-      "confirmed": 11,
-      "pending": 64,
-      "schoolsWithCutoff": 3,
+      "confirmed": 12,
+      "pending": 63,
+      "schoolsWithCutoff": 4,
       "groups": {
         "scores": {
           "confirmed": 0,
@@ -4323,9 +4311,9 @@
       }
     },
     "confirmedCutoff": {
-      "confirmed": 6,
+      "confirmed": 7,
       "total": 15,
-      "ratio": 0.4
+      "ratio": 0.4666666666666667
     },
     "confirmedAssessment": {
       "confirmed": 0,
@@ -4336,10 +4324,10 @@
   "reviewProgress": {
     "baselineConfirmed": 9,
     "baselinePending": 66,
-    "currentConfirmable": 11,
-    "currentPending": 64,
-    "confirmedDelta": 2,
-    "pendingDelta": -2,
+    "currentConfirmable": 12,
+    "currentPending": 63,
+    "confirmedDelta": 3,
+    "pendingDelta": -3,
     "promoted": [
       {
         "id": "浙江理工大学:085501:机械工程学院:cutoff:2025",
@@ -4408,6 +4396,202 @@
               }
             ],
             "associationChain": []
+          }
+        ]
+      },
+      {
+        "id": "杭州电子科技大学:085500:机械工程学院:cutoff:2026",
+        "school": "杭州电子科技大学",
+        "majorCode": "085500",
+        "field": "cutoff",
+        "year": 2026,
+        "evidence": [
+          {
+            "schoolName": "杭州电子科技大学",
+            "disciplineCode": "0855",
+            "majorCode": "085500",
+            "collegeName": "机械工程学院",
+            "field": "cutoff",
+            "year": 2026,
+            "value": {
+              "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+              "number": 264,
+              "singleSubject": {
+                "maximum100": 35,
+                "above100": 53
+              },
+              "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+            },
+            "source": {
+              "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+              "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+              "kind": "official_page",
+              "retrievedAt": "2026-11-11T13:59:24.001Z",
+              "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+              "pageIndex": 1,
+              "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+              "hashScope": "saved-extracted-text-utf8",
+              "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+              "offset": 785,
+              "length": 28,
+              "verified": false
+            },
+            "supportingEvidence": [],
+            "associationChain": [
+              {
+                "role": "identity",
+                "source": {
+                  "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                  "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-11-11T13:59:21.446Z",
+                  "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                  "pageIndex": 0,
+                  "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                  "offset": 615,
+                  "length": 63,
+                  "verified": false
+                }
+              },
+              {
+                "role": "degree",
+                "source": {
+                  "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                  "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-11-11T13:59:21.446Z",
+                  "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                  "pageIndex": 0,
+                  "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                  "offset": 615,
+                  "length": 63,
+                  "verified": false
+                }
+              },
+              {
+                "role": "identityColumns",
+                "source": {
+                  "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                  "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-11-11T13:59:21.446Z",
+                  "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                  "pageIndex": 0,
+                  "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "学院代码 | 学院 | 专业代码 | 专业名称 | 学位类型 | 学习方式 | 总分 | 单科（满分=100） | 单科（满分>100） | 复试线 |",
+                  "offset": 472,
+                  "length": 76,
+                  "verified": false
+                }
+              },
+              {
+                "role": "applicability",
+                "source": {
+                  "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+                  "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+                  "kind": "official_page",
+                  "retrievedAt": "2026-11-11T13:59:24.001Z",
+                  "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                  "pageIndex": 1,
+                  "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+                  "offset": 785,
+                  "length": 28,
+                  "verified": false
+                }
+              },
+              {
+                "role": "nationalHeader",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                  "offset": 327,
+                  "length": 107,
+                  "verified": false
+                }
+              },
+              {
+                "role": "nationalColumns",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                  "offset": 435,
+                  "length": 151,
+                  "verified": false
+                }
+              },
+              {
+                "role": "nationalRow",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                  "offset": 8821,
+                  "length": 55,
+                  "verified": false
+                }
+              },
+              {
+                "role": "region",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                  "offset": 642,
+                  "length": 90,
+                  "verified": false
+                }
+              },
+              {
+                "role": "exceptions",
+                "source": {
+                  "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                  "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                  "kind": "authority_page",
+                  "retrievedAt": "2026-10-19T19:05:43.794Z",
+                  "fixture": "tests/fixtures/research-a-national-lines.json",
+                  "pageIndex": 1,
+                  "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                  "hashScope": "saved-extracted-text-utf8",
+                  "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                  "offset": 1049,
+                  "length": 151,
+                  "verified": false
+                }
+              }
+            ]
           }
         ]
       },
@@ -8211,15 +8395,203 @@
       "collegeName": "机械工程学院",
       "field": "cutoff",
       "year": 2026,
-      "evidenceStatus": "public_availability_unconfirmed",
-      "publicAvailability": "unconfirmed",
+      "evidenceStatus": "captured_applicable",
+      "publicAvailability": "captured",
       "reviewStatus": "draft",
       "confirmedByHuman": false,
-      "applicableEvidence": [],
+      "applicableEvidence": [
+        {
+          "schoolName": "杭州电子科技大学",
+          "disciplineCode": "0855",
+          "majorCode": "085500",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2026,
+          "value": {
+            "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+            "number": 264,
+            "singleSubject": {
+              "maximum100": 35,
+              "above100": 53
+            },
+            "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+          },
+          "source": {
+            "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+            "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:24.001Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 1,
+            "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+            "offset": 785,
+            "length": 28,
+            "verified": false
+          },
+          "supportingEvidence": [],
+          "associationChain": [
+            {
+              "role": "identity",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                "offset": 615,
+                "length": 63,
+                "verified": false
+              }
+            },
+            {
+              "role": "degree",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                "offset": 615,
+                "length": 63,
+                "verified": false
+              }
+            },
+            {
+              "role": "identityColumns",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学院代码 | 学院 | 专业代码 | 专业名称 | 学位类型 | 学习方式 | 总分 | 单科（满分=100） | 单科（满分>100） | 复试线 |",
+                "offset": 472,
+                "length": 76,
+                "verified": false
+              }
+            },
+            {
+              "role": "applicability",
+              "source": {
+                "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+                "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:24.001Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 1,
+                "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+                "offset": 785,
+                "length": 28,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalHeader",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 327,
+                "length": 107,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalColumns",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 435,
+                "length": 151,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalRow",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                "offset": 8821,
+                "length": 55,
+                "verified": false
+              }
+            },
+            {
+              "role": "region",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                "offset": 642,
+                "length": 90,
+                "verified": false
+              }
+            },
+            {
+              "role": "exceptions",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                "offset": 1049,
+                "length": 151,
+                "verified": false
+              }
+            }
+          ]
+        }
+      ],
       "rejectedScopeEvidence": [],
       "leads": [],
       "priorAuditNote": "三年报考上线录取PDF表头最后一列明确为“国家线”，不是本院本专业复试线；另存两份2024分数线属于圣光机计算科学与智能控制研究中心，没有085500机械行。",
-      "nextAction": "核对同年同专业复试要求；采用国家线时补适用声明、区域、学位类型、专业范围和国家线数值链。"
+      "nextAction": "复核原文表头、年份、人群和项目范围；仍不能自动发布。"
     },
     {
       "id": "杭州电子科技大学:085500:机械工程学院:cutoff:2025",
@@ -8229,12 +8601,200 @@
       "collegeName": "机械工程学院",
       "field": "cutoff",
       "year": 2025,
-      "evidenceStatus": "body_not_captured",
+      "evidenceStatus": "scope_not_applicable",
       "publicAvailability": "unconfirmed",
       "reviewStatus": "draft",
       "confirmedByHuman": false,
       "applicableEvidence": [],
-      "rejectedScopeEvidence": [],
+      "rejectedScopeEvidence": [
+        {
+          "schoolName": "杭州电子科技大学",
+          "disciplineCode": "0855",
+          "majorCode": "085500",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2026,
+          "value": {
+            "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+            "number": 264,
+            "singleSubject": {
+              "maximum100": 35,
+              "above100": 53
+            },
+            "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+          },
+          "source": {
+            "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+            "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:24.001Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 1,
+            "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+            "offset": 785,
+            "length": 28,
+            "verified": false
+          },
+          "supportingEvidence": [],
+          "associationChain": [
+            {
+              "role": "identity",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                "offset": 615,
+                "length": 63,
+                "verified": false
+              }
+            },
+            {
+              "role": "degree",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                "offset": 615,
+                "length": 63,
+                "verified": false
+              }
+            },
+            {
+              "role": "identityColumns",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学院代码 | 学院 | 专业代码 | 专业名称 | 学位类型 | 学习方式 | 总分 | 单科（满分=100） | 单科（满分>100） | 复试线 |",
+                "offset": 472,
+                "length": 76,
+                "verified": false
+              }
+            },
+            {
+              "role": "applicability",
+              "source": {
+                "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+                "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:24.001Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 1,
+                "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+                "offset": 785,
+                "length": 28,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalHeader",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 327,
+                "length": 107,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalColumns",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 435,
+                "length": 151,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalRow",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                "offset": 8821,
+                "length": 55,
+                "verified": false
+              }
+            },
+            {
+              "role": "region",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                "offset": 642,
+                "length": 90,
+                "verified": false
+              }
+            },
+            {
+              "role": "exceptions",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                "offset": 1049,
+                "length": 151,
+                "verified": false
+              }
+            }
+          ]
+        }
+      ],
       "leads": [
         {
           "url": "http://elec.hdu.edu.cn/2025/0117/c1787a274608/page.htm",
@@ -8274,12 +8834,200 @@
       "collegeName": "机械工程学院",
       "field": "cutoff",
       "year": 2024,
-      "evidenceStatus": "body_not_captured",
+      "evidenceStatus": "scope_not_applicable",
       "publicAvailability": "unconfirmed",
       "reviewStatus": "draft",
       "confirmedByHuman": false,
       "applicableEvidence": [],
-      "rejectedScopeEvidence": [],
+      "rejectedScopeEvidence": [
+        {
+          "schoolName": "杭州电子科技大学",
+          "disciplineCode": "0855",
+          "majorCode": "085500",
+          "collegeName": "机械工程学院",
+          "field": "cutoff",
+          "year": 2026,
+          "value": {
+            "text": "同年专业身份、学院A线执行声明与教育部国家线原文关联",
+            "number": 264,
+            "singleSubject": {
+              "maximum100": 35,
+              "above100": 53
+            },
+            "population": "全日制专业学位；学院执行A区国家线；普通考生口径，不延伸专项或录取最低分"
+          },
+          "source": {
+            "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+            "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:24.001Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 1,
+            "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+            "offset": 785,
+            "length": 28,
+            "verified": false
+          },
+          "supportingEvidence": [],
+          "associationChain": [
+            {
+              "role": "identity",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                "offset": 615,
+                "length": 63,
+                "verified": false
+              }
+            },
+            {
+              "role": "degree",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+                "offset": 615,
+                "length": 63,
+                "verified": false
+              }
+            },
+            {
+              "role": "identityColumns",
+              "source": {
+                "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+                "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:21.446Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 0,
+                "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学院代码 | 学院 | 专业代码 | 专业名称 | 学位类型 | 学习方式 | 总分 | 单科（满分=100） | 单科（满分>100） | 复试线 |",
+                "offset": 472,
+                "length": 76,
+                "verified": false
+              }
+            },
+            {
+              "role": "applicability",
+              "source": {
+                "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+                "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+                "kind": "official_page",
+                "retrievedAt": "2026-11-11T13:59:24.001Z",
+                "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+                "pageIndex": 1,
+                "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+                "offset": 785,
+                "length": 28,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalHeader",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | A类考生 ① | | | B类考生 ② | | | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 327,
+                "length": 107,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalColumns",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "学科门类 | 一级学科、专业学位类别 （以下简称学科专业） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 总分 | 单科 （满分=100分） | 单科 （满分>100分） | 报考“少数民族高层次骨干人才计划”考生 ③ 和享受少数民族照顾政策考生 ④ 总分要求 | 备注 |",
+                "offset": 435,
+                "length": 151,
+                "verified": false
+              }
+            },
+            {
+              "role": "nationalRow",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "工学[08] | 其他学科专业 | 264 | 35 | 53 | 254 | 32 | 48 | 211 |",
+                "offset": 8821,
+                "length": 55,
+                "verified": false
+              }
+            },
+            {
+              "role": "region",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "①A类考生：报考地处一区（北京、天津、河北、山西、辽宁、吉林、黑龙江、上海、江苏、浙江、安徽、福建、江西、山东、河南、湖北、湖南、广东、重庆、四川、陕西等21省市）招生单位的考生。",
+                "offset": 642,
+                "length": 90,
+                "verified": false
+              }
+            },
+            {
+              "role": "exceptions",
+              "source": {
+                "url": "https://yz.chsi.com.cn/kyzx/kp/202602/20260228/2293449093.html",
+                "title": "2026年全国硕士研究生招生考试考生进入复试的初试成绩基本要求",
+                "kind": "authority_page",
+                "retrievedAt": "2026-10-19T19:05:43.794Z",
+                "fixture": "tests/fixtures/research-a-national-lines.json",
+                "pageIndex": 1,
+                "textSha256": "124dfba07791d66858745ae9aab56c8049b0b8724f99c3c20e4f7a229d3f6e6a",
+                "hashScope": "saved-extracted-text-utf8",
+                "quote": "⑤工学照顾专业：力学[0801]、冶金工程[0806]、动力工程及工程热物理[0807]、水利工程[0815]、地质资源与地质工程[0818]、矿业工程[0819]、船舶与海洋工程[0824]、航空宇航科学与技术[0825]、兵器科学与技术[0826]、核科学与技术[0827]、农业工程[0828]。",
+                "offset": 1049,
+                "length": 151,
+                "verified": false
+              }
+            }
+          ]
+        }
+      ],
       "leads": [
         {
           "url": "http://grs.hdu.edu.cn/2024/0327/c1721a262640/page.htm",
@@ -16349,8 +17097,11 @@
     }
   ],
   "supplementalCorpus": {
-    "generatedFrom": "tests/fixtures/research-a-national-lines.json",
-    "bodies": 3,
+    "generatedFrom": [
+      "tests/fixtures/research-a-national-lines.json",
+      "tests/fixtures/research-a-hdu-applicability.json"
+    ],
+    "bodies": 7,
     "method": "普通公开原文定向读取后保存；本生成器只离线读取，未启动第12次报告或付费调用"
   },
   "nationalLineChains": [
@@ -16867,12 +17618,28 @@
       "status": "incomplete_chain",
       "missing": [
         "同年同学院六位专业代码身份",
-        "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+        "该专业所在表段的全日制专业学位口径"
       ],
       "derivedFactId": null,
       "directCutoffAvailable": false,
       "evidence": [
+        {
+          "role": "applicability",
+          "source": {
+            "url": "https://me.hdu.edu.cn/2024/0326/c12695a262578/page.htm",
+            "title": "机械工程学院2024年硕士研究生招生复试一志愿录取实施细则",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:28.396Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 3,
+            "textSha256": "87379b382cf6af5f51eeaa1c8765da47d800da929ca26acfc6a6c28dca47055c",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+            "offset": 785,
+            "length": 28,
+            "verified": false
+          }
+        },
         {
           "role": "nationalHeader",
           "source": {
@@ -16959,7 +17726,36 @@
           }
         }
       ],
-      "partialStatements": []
+      "partialStatements": [
+        {
+          "url": "https://me.hdu.edu.cn/2024/0326/c12695a262578/page.htm",
+          "title": "机械工程学院2024年硕士研究生招生复试一志愿录取实施细则",
+          "kind": "official_page",
+          "retrievedAt": "2026-11-11T13:59:28.396Z",
+          "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+          "pageIndex": 3,
+          "textSha256": "87379b382cf6af5f51eeaa1c8765da47d800da929ca26acfc6a6c28dca47055c",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 学术型硕士研究生复试分数线为国家 A 类复试线要求；",
+          "offset": 755,
+          "length": 29,
+          "verified": false
+        },
+        {
+          "url": "https://me.hdu.edu.cn/2024/0326/c12695a262578/page.htm",
+          "title": "机械工程学院2024年硕士研究生招生复试一志愿录取实施细则",
+          "kind": "official_page",
+          "retrievedAt": "2026-11-11T13:59:28.396Z",
+          "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+          "pageIndex": 3,
+          "textSha256": "87379b382cf6af5f51eeaa1c8765da47d800da929ca26acfc6a6c28dca47055c",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+          "offset": 785,
+          "length": 28,
+          "verified": false
+        }
+      ]
     },
     {
       "schoolName": "杭州电子科技大学",
@@ -16969,12 +17765,28 @@
       "status": "incomplete_chain",
       "missing": [
         "同年同学院六位专业代码身份",
-        "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
+        "该专业所在表段的全日制专业学位口径"
       ],
       "derivedFactId": null,
       "directCutoffAvailable": false,
       "evidence": [
+        {
+          "role": "applicability",
+          "source": {
+            "url": "https://me.hdu.edu.cn/2025/0325/c12695a276462/page.htm",
+            "title": "机械工程学院2025年硕士研究生招生复试一志愿录取实施细则",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:27.882Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 2,
+            "textSha256": "d5b445870fc10ade78252bd19ae0d1d17cf41bfee554c6aa264ae9e8e958be9c",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+            "offset": 787,
+            "length": 28,
+            "verified": false
+          }
+        },
         {
           "role": "nationalHeader",
           "source": {
@@ -17061,22 +17873,115 @@
           }
         }
       ],
-      "partialStatements": []
+      "partialStatements": [
+        {
+          "url": "https://me.hdu.edu.cn/2025/0325/c12695a276462/page.htm",
+          "title": "机械工程学院2025年硕士研究生招生复试一志愿录取实施细则",
+          "kind": "official_page",
+          "retrievedAt": "2026-11-11T13:59:27.882Z",
+          "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+          "pageIndex": 2,
+          "textSha256": "d5b445870fc10ade78252bd19ae0d1d17cf41bfee554c6aa264ae9e8e958be9c",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 学术型硕士研究生复试分数线为国家 A 类复试线要求；",
+          "offset": 757,
+          "length": 29,
+          "verified": false
+        },
+        {
+          "url": "https://me.hdu.edu.cn/2025/0325/c12695a276462/page.htm",
+          "title": "机械工程学院2025年硕士研究生招生复试一志愿录取实施细则",
+          "kind": "official_page",
+          "retrievedAt": "2026-11-11T13:59:27.882Z",
+          "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+          "pageIndex": 2,
+          "textSha256": "d5b445870fc10ade78252bd19ae0d1d17cf41bfee554c6aa264ae9e8e958be9c",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+          "offset": 787,
+          "length": 28,
+          "verified": false
+        }
+      ]
     },
     {
       "schoolName": "杭州电子科技大学",
       "collegeName": "机械工程学院",
       "majorCode": "085500",
       "year": 2026,
-      "status": "incomplete_chain",
-      "missing": [
-        "同年同学院六位专业代码身份",
-        "该专业所在表段的全日制专业学位口径",
-        "同年目标学院明确执行A区国家线的声明（最低资格或含未消除例外不算）"
-      ],
-      "derivedFactId": null,
+      "status": "complete_chain",
+      "missing": [],
+      "derivedFactId": "46af07b60a46fc061d01a486",
       "directCutoffAvailable": false,
       "evidence": [
+        {
+          "role": "identity",
+          "source": {
+            "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+            "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:21.446Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 0,
+            "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+            "offset": 615,
+            "length": 63,
+            "verified": false
+          }
+        },
+        {
+          "role": "degree",
+          "source": {
+            "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+            "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:21.446Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 0,
+            "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "010 | 机械工程学院 | 085500 | 机械 | 专业学位 | 全日制 | 264 | 35 | 53 | 国家线 |",
+            "offset": 615,
+            "length": 63,
+            "verified": false
+          }
+        },
+        {
+          "role": "identityColumns",
+          "source": {
+            "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+            "title": "杭州电子科技大学2026年硕士研究生招生复试分数线",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:21.446Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 0,
+            "textSha256": "9986efe0e6c3d8a0a5d0be3969ad5263cecff95000bc921c7ee5517eef2fb9ae",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "学院代码 | 学院 | 专业代码 | 专业名称 | 学位类型 | 学习方式 | 总分 | 单科（满分=100） | 单科（满分>100） | 复试线 |",
+            "offset": 472,
+            "length": 76,
+            "verified": false
+          }
+        },
+        {
+          "role": "applicability",
+          "source": {
+            "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+            "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+            "kind": "official_page",
+            "retrievedAt": "2026-11-11T13:59:24.001Z",
+            "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+            "pageIndex": 1,
+            "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+            "hashScope": "saved-extracted-text-utf8",
+            "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+            "offset": 785,
+            "length": 28,
+            "verified": false
+          }
+        },
         {
           "role": "nationalHeader",
           "source": {
@@ -17163,7 +18068,36 @@
           }
         }
       ],
-      "partialStatements": []
+      "partialStatements": [
+        {
+          "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+          "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+          "kind": "official_page",
+          "retrievedAt": "2026-11-11T13:59:24.001Z",
+          "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+          "pageIndex": 1,
+          "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 学术型硕士研究生复试分数线为国家 A 类复试线要求；",
+          "offset": 755,
+          "length": 29,
+          "verified": false
+        },
+        {
+          "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+          "title": "机械工程学院2026年硕士研究生招生复试一志愿录取实施细则",
+          "kind": "official_page",
+          "retrievedAt": "2026-11-11T13:59:24.001Z",
+          "fixture": "tests/fixtures/research-a-hdu-applicability.json",
+          "pageIndex": 1,
+          "textSha256": "89bf70a449400e26d42c1de52b8f7c049b7374c1107fa82a33a8addb03a38490",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "2. 专业型硕士研究生复试分数线为国家 A 类复试线要求",
+          "offset": 785,
+          "length": 28,
+          "verified": false
+        }
+      ]
     },
     {
       "schoolName": "浙江科技大学",
@@ -17485,6 +18419,48 @@
         }
       ],
       "partialStatements": [
+        {
+          "url": "https://enr.zust.edu.cn/info/1100/4236.htm",
+          "title": "环境与资源学院2026年硕士研究生招生复试实施细则-浙江科技大学环境与资源学院",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:26.295Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 158,
+          "textSha256": "439fa9c32f7b90e75ad33d88b61b8bfea29e02a5a5c391fa33593d47424ae3dc",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "3.“退役大学生士兵专项计划”复试分数线按照202 6 年全国硕士研究生招生考试 A 类考生 总分降 30分，单科（满分=100分）降5分，单科（满分>100分）降10分 进入复试的初试成绩基本要求确定",
+          "offset": 1076,
+          "length": 101,
+          "verified": false
+        },
+        {
+          "url": "https://shxy.zust.edu.cn/info/1216/8033.htm",
+          "title": "浙江科技大学生物与化学工程学院 2026年硕士研究生复试实施细则-生物与化学工程学院",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-11T05:19:29.523Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 557,
+          "textSha256": "30101502075224372aeb49c37d9b6a72ff5140b837ab1c041e3378fd260f1cea",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 学院化学工程与技术、生物与医药、机械专业的复试 分数 线按照 2026 年全国硕士研究生招生考试 A 类考生进入复试的初试成绩基本要求确定",
+          "offset": 1060,
+          "length": 72,
+          "verified": false
+        },
+        {
+          "url": "https://shxy.zust.edu.cn/info/1216/8033.htm",
+          "title": "浙江科技大学生物与化学工程学院 2026年硕士研究生复试实施细则-生物与化学工程学院",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-11T05:19:29.523Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 557,
+          "textSha256": "30101502075224372aeb49c37d9b6a72ff5140b837ab1c041e3378fd260f1cea",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "3.“ 退役大学生士兵专项计划 ” 复试分数线按照 2026 年全国硕士研究生招生考试 A 类考生总分降 30 分，单科（满分 =100 分）降 5 分，单科（满分 >100 分）降 10 分进入复试的初试成绩基本要求确定",
+          "offset": 1213,
+          "length": 111,
+          "verified": false
+        },
         {
           "url": "https://som.zust.edu.cn/info/1018/5611.htm",
           "title": "浙江科技大学管理学院2026年硕士研究生招生复试实施细则-浙江科技大学管理学院",
@@ -18110,7 +19086,36 @@
           }
         }
       ],
-      "partialStatements": []
+      "partialStatements": [
+        {
+          "url": "https://yzw.zjnu.edu.cn/2024/0326/c4966a462549/page.htm",
+          "title": "浙江师范大学2024年硕士研究生复试录取办法",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:44.185Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 877,
+          "textSha256": "2d44a0a090021faf90910ade4665b6e79ce344cac34248e122504c6f54a797c1",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 各专业复试分数线应符合 2024 年全国硕士研究生招生考试 A 类考生进入复试的初试成绩基本要求，在此基础上，生源充足的专业根据招生计划再划定复试分数线",
+          "offset": 874,
+          "length": 79,
+          "verified": false
+        },
+        {
+          "url": "http://yzw.zjnu.edu.cn/2024/0326/c4966a462549/page.htm",
+          "title": "浙江师范大学2024年硕士研究生复试录取办法",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T11:13:05.564Z",
+          "fixture": "tests/fixtures/research-v3a6-run7.json",
+          "pageIndex": 32,
+          "textSha256": "2d44a0a090021faf90910ade4665b6e79ce344cac34248e122504c6f54a797c1",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 各专业复试分数线应符合 2024 年全国硕士研究生招生考试 A 类考生进入复试的初试成绩基本要求，在此基础上，生源充足的专业根据招生计划再划定复试分数线",
+          "offset": 874,
+          "length": 79,
+          "verified": false
+        }
+      ]
     },
     {
       "schoolName": "浙江师范大学",
@@ -18212,7 +19217,22 @@
           }
         }
       ],
-      "partialStatements": []
+      "partialStatements": [
+        {
+          "url": "https://yzw.zjnu.edu.cn/2025/0325/c4966a512423/page.htm",
+          "title": "浙江师范大学2025年硕士研究生复试录取办法",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:32.263Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 883,
+          "textSha256": "75237d3083295cf308ec565a8170f260a8b61889df5ba82caf9b548eba895c3f",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 各专业复试分数线应符合 2025 年全国硕士研究生招生考试 A 类考生进入复试的初试成绩基本要求，在此基础上，生源充足的专业根据招生计划再划定复试分数线",
+          "offset": 874,
+          "length": 79,
+          "verified": false
+        }
+      ]
     },
     {
       "schoolName": "浙江师范大学",
@@ -18314,7 +19334,22 @@
           }
         }
       ],
-      "partialStatements": []
+      "partialStatements": [
+        {
+          "url": "https://yzw.zjnu.edu.cn/2026/0326/c4966a549809/page.htm",
+          "title": "浙江师范大学2026年硕士研究生复试录取办法",
+          "kind": "official_page",
+          "retrievedAt": "2026-10-12T13:48:12.705Z",
+          "fixture": "tests/fixtures/research-v3a6-run11.json",
+          "pageIndex": 892,
+          "textSha256": "a244d7587c1d28d8f48f6e22fa722fa6b516a9d4a9ed7c8db81ff7f67aeefa97",
+          "hashScope": "saved-extracted-text-utf8",
+          "quote": "1. 各专业复试分数线应符合 202 6 年全国硕士研究生招生考试 A 类考生进入复试的初试成绩基本要求，在此基础上，生源充足的专业根据招生计划再划定复试分数线",
+          "offset": 857,
+          "length": 80,
+          "verified": false
+        }
+      ]
     }
   ],
   "assessmentChains": [

@@ -1,0 +1,58 @@
+{
+  "scope": "five-school-mechanical-evidence-A",
+  "newUniqueEntrances": 10,
+  "paidCalls": 0,
+  "humanReviewed": false,
+  "records": [
+    {
+      "url": "https://grs.hdu.edu.cn/2026/0324/c13270a290580/page.htm",
+      "attemptedAt": "2026-11-11T13:59:21.446Z",
+      "status": 200,
+      "contentType": "text/html",
+      "bytes": 161452,
+      "sha256": "dc239403ddbf9acbc18f8bd8125ef4c70fa50a90b18b3f61ad0bd14e0db098aa",
+      "file": "tests/fixtures/source-evidence-20261111/hdu-2026-cutoff.html",
+      "error": null
+    },
+    {
+      "url": "https://me.hdu.edu.cn/2026/0325/c12695a290636/page.htm",
+      "attemptedAt": "2026-11-11T13:59:24.001Z",
+      "status": 200,
+      "contentType": "text/html",
+      "bytes": 56987,
+      "sha256": "6a9936e4cadc70cec0a5a4be49228b2732e4d14fdc89c924e31d2049d87d4325",
+      "file": "tests/fixtures/source-evidence-20261111/hdu-2026-rules.html",
+      "error": null
+    },
+    {
+      "url": "https://me.hdu.edu.cn/2025/0325/c12695a276462/page.htm",
+      "attemptedAt": "2026-11-11T13:59:27.882Z",
+      "status": 200,
+      "contentType": "text/html",
+      "bytes": 48840,
+      "sha256": "fd64d4622568fdcfb34c03131d8f3ab030501d7ca8a00958597727e77d9d9cc8",
+      "file": "tests/fixtures/source-evidence-20261111/hdu-2025-rules.html",
+      "error": null
+    },
+    {
+      "url": "https://me.hdu.edu.cn/2024/0326/c12695a262578/page.htm",
+      "attemptedAt": "2026-11-11T13:59:28.396Z",
+      "status": 200,
+      "contentType": "text/html",
+      "bytes": 59302,
+      "sha256": "58873b5ce41c055124f0a79a772981fa23071da3e0e9ef796381dcce4fe7e45e",
+      "file": "tests/fixtures/source-evidence-20261111/hdu-2024-rules.html",
+      "error": null
+    },
+    {
+      "url": "https://www.moe.gov.cn/jyb_xwfb/gzdt_gzdt/s5987/201712/P020171228506450281540.pdf",
+      "attemptedAt": "2026-11-11T13:59:28.916Z",
+      "status": 302,
+      "contentType": null,
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "file": null,
+      "error": null
+    }
+  ]
+}

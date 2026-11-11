@@ -35,14 +35,15 @@ export function nationalAssociationAudit(
       const candidates: ChainPassage[] = [];
       for (const source of schoolSources) {
         for (const quote of source.excerpt.match(
-          /[^。\n]*(?:国家线|A类考生|A类地区|A类分数)[^。\n]*/g,
+          /[^。\n]*(?:国家线|A\s*类考生|A\s*类地区|A\s*类分数|国家\s*A\s*类复试线)[^。\n]*/g,
         ) ?? []) {
           if (/复试|分数线/.test(quote) && quote.length < 600)
             candidates.push({ source, quote });
           if (
             target.collegeName &&
             source.title.includes(target.collegeName) &&
-            /复试分数线参照.*（A类考生国家线）执行/.test(quote)
+            (/复试分数线参照.*（A类考生国家线）执行/.test(quote) ||
+              /专业型硕士研究生复试分数线为国家\s*A\s*类复试线要求/.test(quote))
           )
             input.applicability = { source, quote };
         }
@@ -57,6 +58,16 @@ export function nationalAssociationAudit(
           );
         if (!quote) continue;
         const prior = source.excerpt.slice(0, source.excerpt.indexOf(quote));
+        const columns = prior
+          .split("\n")
+          .filter((line) => /^学院代码\s*\|/.test(line))
+          .at(-1);
+        if (columns && /\|\s*专业学位\s*\|\s*全日制\s*\|/.test(quote)) {
+          input.identity = { source, quote };
+          input.degree = { source, quote };
+          input.identityColumns = { source, quote: columns };
+          continue;
+        }
         const heading = [
           ...prior.matchAll(
             /（[一二三四五]）[^\n]*(?:学术学位|专业学位)[^\n]*/g,
