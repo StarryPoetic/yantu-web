@@ -70,6 +70,10 @@ test("documented reservation includes collection and matches the executable rese
 });
 
 test("historical defaults are separated from current guidance instead of satisfying current assertions", () => {
+  const readme = read("README.md");
+  assert.ok(readme.includes("SQLite 事务持久预占"));
+  assert.ok(readme.includes("活动调用并发和作业调度仍限单进程"));
+  assert.ok(!readme.includes("重启会重置"));
   for (const name of documents) {
     const current = read(name).split(/^## 历史(?:预算|发现)/m)[0];
     assert.ok(current.includes("current-research-budget:end"), name);
