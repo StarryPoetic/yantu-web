@@ -534,8 +534,10 @@ export async function createApplication(
           );
       } else {
         result = store.transaction(() => remember(route()));
-        if (path === "/me/profile" && method === "DELETE")
+        if (path === "/me/profile" && method === "DELETE") {
           assistant.clearSubject(owner);
+          researchEngine.clearSubject(owner);
+        }
       }
       send(response, result, requestId);
     } catch (error) {

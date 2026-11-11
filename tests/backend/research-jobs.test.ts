@@ -846,16 +846,23 @@ test("research jobs persist actual stages, deduplicate submissions and replay cu
     409,
   );
 });
-test("deleting records during generation cannot resurrect a research job or report", async (t) => {
+test("successful profile deletion clears only its active research and cannot resurrect a job or report", async (t) => {
   const started = deferred(),
     release = deferred(),
     finished = deferred();
+  const cleared: string[] = [];
+  const privateMemory = new Map([["other-owner", "unrelated context"]]);
+  let owner = "";
   const engine: ResearchReportModule = {
     getReadiness: () => ({ ready: true, reasons: [], model }),
-    clearSubject() {
+    clearSubject(subjectId) {
+      cleared.push(subjectId);
+      privateMemory.delete(subjectId);
       release.resolve();
     },
     generate: async (input) => {
+      owner = input.subjectId;
+      privateMemory.set(owner, "private research context");
       await input.onProgress?.("researching");
       started.resolve();
       await release.promise;
@@ -869,6 +876,23 @@ test("deleting records during generation cannot resurrect a research job or repo
   await started.promise;
   const profile = await request("/me/profile"),
     preview = await request("/me/profile/deletion-preview");
+  for (const [etag, scope, status] of [
+    [profile.etag, "obsolete-scope", 409],
+    ['"stale-etag"', preview.body.deletionScopeVersion, 412],
+  ] as const) {
+    assert.equal(
+      (
+        await request("/me/profile", "DELETE", undefined, {
+          "If-Match": etag,
+          "Deletion-Scope-Version": scope,
+        })
+      ).status,
+      status,
+    );
+    assert.deepEqual(cleared, []);
+    assert.ok(privateMemory.has(owner));
+    assert.ok(app.store.get(owner, "research-job", created.body.jobId));
+  }
   assert.equal(
     (
       await request("/me/profile", "DELETE", undefined, {
@@ -878,6 +902,9 @@ test("deleting records during generation cannot resurrect a research job or repo
     ).status,
     202,
   );
+  assert.deepEqual(cleared, [owner]);
+  assert.equal(privateMemory.has(owner), false);
+  assert.equal(privateMemory.get("other-owner"), "unrelated context");
   release.resolve();
   await finished.promise;
   assert.equal(
