@@ -2516,7 +2516,7 @@ async function openProgrammeCoverage(page: Page) {
   ).toBeVisible();
   await expect(
     panel.getByText(
-      "继续补查会复用已有资料，优先补齐缺少的原文；已有报告在补查期间仍可查看。",
+      "继续补查仅处理当前报告已展示的学校与项目，复用已有资料；新证据可以更新这些学校的顺序并标明变化。扩展其他学校请重新调研。",
       { exact: true },
     ),
   ).toBeVisible();
@@ -4230,6 +4230,126 @@ for (const width of [1280, 375]) {
     ).toHaveCount(0);
     expect(service.postCount()).toBe(1);
     expect(service.supplementCount()).toBe(1);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
+}
+for (const outcome of [
+  "updated",
+  "no_change",
+  "no_pending_work",
+  "scope_unverified",
+] as const) {
+  test(`补查结果：${outcome} 显示真实调用与项目变化`, async ({ page }) => {
+    await page.setViewportSize({
+      width: outcome === "updated" ? 375 : 1280,
+      height: 900,
+    });
+    const service = await researchService(page);
+    const run = await openGuidance(page);
+    service.setRun(run);
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    const noCalls = ["no_pending_work", "scope_unverified"].includes(outcome);
+    service.finish("partial", (report) => ({
+      ...report,
+      supplement: {
+        version: 1,
+        baseGeneratedAt: report.generatedAt,
+        outcome,
+        scope:
+          outcome === "scope_unverified"
+            ? []
+            : [
+                {
+                  institutionName: "浏览器测试大学",
+                  disciplineCode: "0301",
+                  majorCode: "030105",
+                  programName: "民商法学",
+                },
+                {
+                  institutionName: "浏览器测试乙大学",
+                  disciplineCode: "0301",
+                  majorCode: "030105",
+                  programName: "民商法学",
+                },
+              ],
+        reusedSourceCount: 7,
+        newSourceCount: outcome === "updated" ? 1 : 0,
+        newSearchCount: noCalls ? 0 : 2,
+        newReadCount: noCalls ? 0 : 3,
+        remainingTaskCount: noCalls ? 0 : 1,
+        changes:
+          outcome === "updated"
+            ? [
+                {
+                  institutionName: "浏览器测试大学",
+                  programName: "民商法学",
+                  majorCode: "030105",
+                  programKey: "test-a",
+                  beforeRank: 2,
+                  afterRank: 1,
+                  beforeTier: "alternative",
+                  afterTier: "preferred",
+                  changedFields: ["tuition", "ranking"],
+                },
+                {
+                  institutionName: "浏览器测试乙大学",
+                  programName: "民商法学",
+                  majorCode: "030105",
+                  programKey: "test-b",
+                  beforeRank: 1,
+                  afterRank: null,
+                  changedFields: ["eligibility"],
+                },
+              ]
+            : [],
+      },
+    }));
+    const result = panel.getByRole("region", {
+      name: "最近一次补查结果",
+      exact: true,
+    });
+    await expect(result).toContainText("复用已有来源 7 份");
+    await expect(result).toContainText(
+      `本次检索 ${noCalls ? 0 : 2} 次、读取 ${noCalls ? 0 : 3} 次`,
+    );
+    await expect(result).toContainText("已查过但缺少原文的资料继续待补");
+    const supplement = panel.getByRole("button", {
+      name: "继续补查缺少的资料",
+      exact: true,
+    });
+    if (noCalls) await expect(supplement).toBeDisabled();
+    else await expect(supplement).toBeEnabled();
+    if (outcome === "updated") {
+      await expect(
+        result.getByRole("list", { name: "本次项目变化", includeHidden: true }),
+      ).toBeHidden();
+      await result.locator("summary").click();
+      const changes = result.getByRole("list", { name: "本次项目变化" });
+      await expect(changes).toContainText("第 2 位 → 第 1 位");
+      await expect(changes).toContainText("适合备选 → 优先推荐");
+      await expect(changes).toContainText("学费、推荐顺序或层级");
+      await expect(changes).toContainText("已从本次建议中移除");
+      await expect(changes).toContainText("民商法学（030105）");
+    } else if (outcome === "no_change") {
+      await expect(result).toContainText("原报告建议保留");
+    } else if (outcome === "scope_unverified") {
+      await expect(result).toContainText(
+        "旧报告缺少明确的专业范围，本次未检索",
+      );
+    } else {
+      await expect(result).toContainText("本次未再次检索");
+    }
+    expect(service.postCount()).toBe(1);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,

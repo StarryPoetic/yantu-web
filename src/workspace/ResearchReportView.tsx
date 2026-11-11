@@ -12,6 +12,7 @@ import { ResearchDecisionBasisView } from "./ResearchDecisionBasisView";
 import { ResearchCandidateAudit } from "./ResearchCandidateAudit";
 import { ResearchEvidenceCoverage } from "./ResearchEvidenceCoverage";
 import { ResearchPrefilterView } from "./ResearchPrefilterView";
+import { ResearchSupplementSummary } from "./ResearchSupplementSummary";
 import {
   recommendationGroups,
   researchCoverage,
@@ -76,6 +77,9 @@ export function ResearchReportView({
           </div>
         </dl>
       </section>
+      {report.supplement && (
+        <ResearchSupplementSummary result={report.supplement} />
+      )}
       {legacy && (
         <p className="research-legacy" role="status">
           {legacyResearchNotice}

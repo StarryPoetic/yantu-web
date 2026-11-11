@@ -62,6 +62,14 @@ export function ResearchPanel({
     startingMode === "supplement" || (running && job?.mode === "supplement");
   const failureStage =
     job && researchStageName(report?.failureStage ?? job.stage);
+  const noSupplementWork =
+    !!report &&
+    ((report.supplement &&
+      (report.supplement.outcome === "scope_unverified" ||
+        report.supplement.remainingTaskCount === 0)) ||
+      (!report.supplement &&
+        report.evidenceCoverage?.gaps.length === 0 &&
+        !report.priorityCoverage?.pending));
   const serviceNotice = readiness && !readiness.ready && (
     <div className="research-service-notice">
       <strong>报告服务尚未准备好</strong>
@@ -221,7 +229,7 @@ export function ResearchPanel({
               running ||
               !readiness?.ready ||
               outdated ||
-              report.evidenceCoverage?.gaps.length === 0
+              noSupplementWork
             }
           >
             <RefreshCw size={17} />
@@ -279,9 +287,9 @@ export function ResearchPanel({
       )}
       {report && !failed && (
         <small className="ws-muted">
-          {report.evidenceCoverage?.gaps.length === 0
-            ? "本次记录的待补查项已补齐。需要重新调查时，可重新生成报告。"
-            : "继续补查会复用已有资料，优先补齐缺少的原文；已有报告在补查期间仍可查看。"}
+          {noSupplementWork
+            ? "当前没有可继续执行的补查任务。资料仍以原文核验状态为准；需要调查新资料或其他学校时，请重新调研。"
+            : "继续补查仅处理当前报告已展示的学校与项目，复用已有资料；新证据可以更新这些学校的顺序并标明变化。扩展其他学校请重新调研。"}
         </small>
       )}
       {job && report && (
