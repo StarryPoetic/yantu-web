@@ -1,8 +1,46 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { pdfText, pdfTextLimits } from "../../server/explanation/pdf-text.ts";
+import {
+  pdfText as parsePdfText,
+  pdfTextLimits,
+} from "../../server/explanation/pdf-text.ts";
+import type { PdfTextDiagnostic } from "../../server/explanation/pdf-text.ts";
+import { pdfWorkerStages } from "../../server/explanation/pdf-text-diagnostics.ts";
 import { createHttpsReader } from "../../server/explanation/web.ts";
+
+async function pdfText(
+  data: Uint8Array,
+  options: Parameters<typeof parsePdfText>[1] = {},
+) {
+  const events: Readonly<PdfTextDiagnostic>[] = [];
+  let failureCode = "";
+  try {
+    return await parsePdfText(data, {
+      ...options,
+      onDiagnostic(event) {
+        events.push(event);
+        return options.onDiagnostic?.(event);
+      },
+    });
+  } catch (error) {
+    failureCode =
+      typeof error === "object" && error !== null && "code" in error
+        ? String(error.code)
+        : "";
+    throw error;
+  } finally {
+    // Unexpected production-deadline failures and explicit diagnostics contain safe metadata only.
+    if (
+      events.length &&
+      (process.env.YANTU_PDF_DIAGNOSTICS === "1" ||
+        (failureCode === "WEB_PDF_TIMEOUT" &&
+          (options.timeoutMs ?? pdfTextLimits.timeoutMs) ===
+            pdfTextLimits.timeoutMs))
+    )
+      console.log(`PDF_DIAGNOSTIC ${JSON.stringify({ events })}`);
+  }
+}
 
 function document(
   text = "Research University master programme 040101",
@@ -108,6 +146,148 @@ test("concurrent PDF workers keep text, limits and timeout failures isolated", a
     }),
   ]);
   assert.equal(await pdfText(document(english)), english);
+});
+
+test("PDF diagnostics preserve successful startup, module, parse and teardown ordering without document content", async () => {
+  const events: Readonly<PdfTextDiagnostic>[] = [];
+  const secretText = "PRIVATE_DOCUMENT_MARKER_NOT_FOR_DIAGNOSTICS";
+  assert.equal(
+    await pdfText(document(secretText), {
+      onDiagnostic: (event) => {
+        events.push(event);
+      },
+    }),
+    secretText,
+  );
+  const stages = events.map((event) => event.stage);
+  assert.equal(stages[0], "requested");
+  assert.equal(events[0].timeoutMs, 5000);
+  assert.deepEqual(
+    stages.filter((stage) => pdfWorkerStages.includes(stage as never)),
+    [...pdfWorkerStages],
+  );
+  assert.ok(
+    stages.indexOf("destroy_finished") < stages.indexOf("result_received"),
+  );
+  assert.ok(
+    stages.indexOf("result_received") < stages.indexOf("termination_requested"),
+  );
+  assert.equal(new Set(events.map((event) => event.requestId)).size, 1);
+  assert.ok(
+    events.every(
+      (event, index) =>
+        Number.isFinite(event.elapsedMs) &&
+        event.elapsedMs >= 0 &&
+        (index === 0 || event.elapsedMs >= events[index - 1].elapsedMs),
+    ),
+  );
+  const workerEvents = events.filter(
+    (event) => event.workerElapsedMs !== undefined,
+  );
+  assert.ok(
+    workerEvents.every(
+      (event, index) =>
+        index === 0 ||
+        event.workerElapsedMs! >= workerEvents[index - 1].workerElapsedMs!,
+    ),
+  );
+  assert.equal(JSON.stringify(events).includes(secretText), false);
+  assert.ok(
+    events.every((event) =>
+      Object.keys(event).every((key) =>
+        [
+          "requestId",
+          "stage",
+          "elapsedMs",
+          "timeoutMs",
+          "workerElapsedMs",
+          "code",
+        ].includes(key),
+      ),
+    ),
+  );
+});
+
+test("PDF timeout retains the last observed phase safely and diagnostics never extend the production deadline", async () => {
+  assert.equal(pdfTextLimits.timeoutMs, 5000);
+  const events: Readonly<PdfTextDiagnostic>[] = [];
+  await assert.rejects(
+    pdfText(document(), {
+      timeoutMs: 1,
+      onDiagnostic: (event) => {
+        events.push(event);
+      },
+    }),
+    (
+      error: Error & {
+        code?: string;
+        pdfDiagnostics?: Readonly<PdfTextDiagnostic>[];
+      },
+    ) => {
+      assert.equal(error.code, "WEB_PDF_TIMEOUT");
+      assert.ok(
+        error.pdfDiagnostics?.some(
+          (event) =>
+            event.stage === "deadline" && event.code === "WEB_PDF_TIMEOUT",
+        ),
+      );
+      assert.equal(
+        error.pdfDiagnostics?.at(-1)?.stage,
+        "termination_requested",
+      );
+      assert.equal(JSON.stringify(error).includes("pdfDiagnostics"), false);
+      return true;
+    },
+  );
+  assert.equal(events.filter((event) => event.stage === "deadline").length, 1);
+  assert.equal(events[0].timeoutMs, 1);
+  assert.ok(!events.some((event) => event.stage === "destroy_finished"));
+});
+
+test("throwing or rejecting PDF diagnostic observers do not change parsing results", async () => {
+  assert.equal(
+    await pdfText(document("Sync observer"), {
+      onDiagnostic() {
+        throw new Error("observer failure");
+      },
+    }),
+    "Sync observer",
+  );
+  assert.equal(
+    await pdfText(document("Async observer"), {
+      async onDiagnostic() {
+        throw new Error("observer rejection");
+      },
+    }),
+    "Async observer",
+  );
+});
+
+test("concurrent PDF diagnostics stay scoped to one worker, including a timed-out neighbor", async () => {
+  const success: Readonly<PdfTextDiagnostic>[] = [],
+    timeout: Readonly<PdfTextDiagnostic>[] = [];
+  await Promise.all([
+    pdfText(document("Independent diagnostic"), {
+      onDiagnostic: (event) => {
+        success.push(event);
+      },
+    }).then((value) => assert.equal(value, "Independent diagnostic")),
+    assert.rejects(
+      pdfText(document(), {
+        timeoutMs: 1,
+        onDiagnostic: (event) => {
+          timeout.push(event);
+        },
+      }),
+      { code: "WEB_PDF_TIMEOUT" },
+    ),
+  ]);
+  assert.equal(new Set(success.map((event) => event.requestId)).size, 1);
+  assert.equal(new Set(timeout.map((event) => event.requestId)).size, 1);
+  assert.notEqual(success[0].requestId, timeout[0].requestId);
+  assert.ok(success.some((event) => event.stage === "destroy_finished"));
+  assert.ok(!success.some((event) => event.stage === "deadline"));
+  assert.ok(timeout.some((event) => event.stage === "deadline"));
 });
 
 test("PDF child ignores inherited Node preload options and service process configuration", async () => {
