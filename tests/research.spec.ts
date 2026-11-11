@@ -4186,9 +4186,9 @@ for (const width of [1280, 375]) {
     await expect(activity).toContainText("等待服务器发送首条处理记录");
     for (let index = 0; index < 35; index++)
       service.stage("researching", `原任务读取完成 ${index}`);
-    await expect(activity.getByRole("status")).toContainText(
-      "原任务读取完成 34",
-    );
+    await expect(
+      activity.getByRole("note", { name: "最新处理记录" }),
+    ).toContainText("原任务读取完成 34");
     await activity.getByText("查看处理记录", { exact: true }).click();
     const list = activity.getByLabel("本次任务处理记录列表", { exact: true });
     await expect(list.locator("li").first()).toContainText("原任务读取完成 34");
@@ -4199,8 +4199,13 @@ for (const width of [1280, 375]) {
     const oldScroll = await list.evaluate((element) => element.scrollTop);
     expect(oldScroll).toBeGreaterThan(0);
     service.stage("researching", "刚完成的新读取");
-    await expect(activity.getByRole("status")).toContainText("刚完成的新读取");
+    await expect(
+      activity.getByRole("note", { name: "最新处理记录" }),
+    ).toContainText("刚完成的新读取");
     await expect(list.locator("li").first()).toContainText("刚完成的新读取");
+    await expect(
+      panel.getByRole("status").filter({ hasText: "刚完成的新读取" }),
+    ).toHaveCount(1);
     expect(
       await list.evaluate((element) => element.scrollTop),
     ).toBeGreaterThanOrEqual(oldScroll);
@@ -4216,9 +4221,9 @@ for (const width of [1280, 375]) {
       name: "本次补查记录",
       exact: true,
     });
-    await expect(supplementActivity.getByRole("status")).toContainText(
-      "只补本报告项目的学费原文",
-    );
+    await expect(
+      supplementActivity.getByRole("note", { name: "最新处理记录" }),
+    ).toContainText("只补本报告项目的学费原文");
     await expect(supplementActivity.locator("details")).not.toHaveAttribute(
       "open",
       "",

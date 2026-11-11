@@ -23,7 +23,7 @@ export const ResearchJobActivity = memo(function ResearchJobActivity({
   const latest = job.events.at(-1);
   return (
     <section className="research-activity" aria-label={`${label}记录`}>
-      <p role="status">
+      <p role="note" aria-label="最新处理记录">
         <strong>{label}最新记录</strong>
         {latest ? (
           <>

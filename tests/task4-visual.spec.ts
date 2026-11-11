@@ -192,7 +192,7 @@ for (const width of [375, 1280]) {
         expect(boxes[i]!.x).toBeGreaterThanOrEqual(
           boxes[i - 1]!.x + boxes[i - 1]!.width,
         );
-      await expect(page.locator(".shinchan-leg").first()).toHaveCSS(
+      await expect(page.locator(".jelly-mascot")).toHaveCSS(
         "animation-name",
         "none",
       );
