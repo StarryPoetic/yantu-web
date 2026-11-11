@@ -740,6 +740,44 @@ test("search progress distinguishes returned leads, empty results, limits and fa
     });
 });
 
+test("repair diagnostics distinguish failed searches from successful empty or model-free searches", async (t) => {
+  for (const [reason, searched, expectedFailures] of [
+    [undefined, true, 0],
+    ["NO_WEB_EVIDENCE", true, 0],
+    ["MODEL_DISABLED", true, 0],
+    ["MODEL_DISABLED", false, 1],
+    ["SEARCH_UNAVAILABLE", false, 1],
+    ["SEARCH_BUDGET_EXHAUSTED", false, 1],
+    ["WEB_TIMEOUT", false, 1],
+  ] as const)
+    await t.test(`${reason ?? "empty"}, searched=${searched}`, async () => {
+      const service = web();
+      const answer = service.answer;
+      service.answer = async (...args) => ({
+        ...(await answer(...args)),
+        searched,
+        reason,
+      });
+      const events: string[] = [];
+      const result = await repairResearchEvidence({
+        ...base(),
+        maxRequests: 1,
+        web: service,
+        onProgress: async (detail) => {
+          events.push(detail);
+        },
+      });
+      assert.equal(result.searchFailures, expectedFailures);
+      assert.equal(result.requestCount, 1);
+      assert.equal(result.readCount, 0);
+      assert.equal(events[1].includes("返回受限"), !!expectedFailures);
+      assert.equal(
+        result.stoppedReason,
+        reason === "SEARCH_BUDGET_EXHAUSTED" ? reason : undefined,
+      );
+    });
+});
+
 test("library-first opening and subsequent gap rounds prefer the requested city", async () => {
   const preferred = page("杭州电子科技大学", "hdu.edu.cn");
   const outside = page("西北大学", "nwu.edu.cn");

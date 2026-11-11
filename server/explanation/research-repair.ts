@@ -27,12 +27,25 @@ import {
   webPageText,
   readSourceMetadata,
   type WebSource,
+  type WebAnswerResult,
   type WebReadResult,
   type createWebAnswerModule,
 } from "./web.ts";
 
 export const publicEvidenceId = (url: string) =>
   `evidence-${createHash("sha256").update(url).digest("hex").slice(0, 20)}`;
+
+/** An empty successful search is exhausted work, not a provider failure to retry. */
+export function researchSearchFailed(
+  result: Pick<WebAnswerResult, "reason" | "searched">,
+) {
+  // A sources-only response can carry MODEL_DISABLED despite successful search.
+  return (
+    !!result.reason &&
+    result.reason !== "NO_WEB_EVIDENCE" &&
+    !(result.reason === "MODEL_DISABLED" && result.searched)
+  );
+}
 
 /** Rebase reused citations as a graph; account-private recommendations are never imported. */
 export function reusableResearchSources(
@@ -237,6 +250,7 @@ export async function repairResearchEvidence(input: {
     let stoppedReason: string | undefined;
     let requestCount = 0,
       readCount = 0,
+      searchFailures = 0,
       searched = false;
     const readsPerGap = Math.min(
       B.schoolReads,
@@ -621,8 +635,10 @@ export async function repairResearchEvidence(input: {
           await progress(`缺项检索失败：${searchLabel}，保留已有证据`);
         throw error;
       }
+      const searchFailed = researchSearchFailed(found);
+      if (searchFailed) searchFailures++;
       await progress(
-        found.reason
+        searchFailed
           ? `缺项检索返回受限：${searchLabel}，返回 ${found.sources.length} 条待核验线索`
           : found.sources.length
             ? `缺项检索结果返回：${searchLabel}，返回 ${found.sources.length} 条待核验线索`
@@ -722,6 +738,7 @@ export async function repairResearchEvidence(input: {
       limitations,
       requestCount,
       readCount,
+      searchFailures,
       searched,
       stoppedReason,
     };
