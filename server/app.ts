@@ -137,10 +137,8 @@ export async function createApplication(
         .filter(Boolean),
     }),
   });
-  const research = createResearchRoutes(
-    store,
-    dependencies.research ?? assistant.research,
-  );
+  const researchEngine = dependencies.research ?? assistant.research;
+  const research = createResearchRoutes(store, researchEngine);
   const limits = new Map<string, { count: number; until: number }>();
   const inFlight = new Map<string, { hash: string; promise: Promise<Reply> }>();
   const resolveSessionHash = (request: IncomingMessage): string | null => {
@@ -245,6 +243,12 @@ export async function createApplication(
           session,
           sessionHash,
         });
+        if (path === "/auth/delete-account" && method === "POST" && session) {
+          // Auth has committed the deletion. Do not retain private caches or let
+          // ongoing research continue with the deleted subject's in-memory state.
+          assistant.clearSubject(session.subjectId);
+          researchEngine.clearSubject(session.subjectId);
+        }
         return send(response, reply, requestId);
       }
       if (path === "/guest-sessions" && method === "POST") {

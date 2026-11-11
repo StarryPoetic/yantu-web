@@ -10,8 +10,123 @@ import { hashPassword, verifyPassword } from "../../server/auth/password.ts";
 import { blankProfile } from "../../server/profile.ts";
 import type { AppConfig } from "../../server/config.ts";
 import { authRateLimit } from "../../server/config.ts";
+import type { ResearchEngine } from "../../server/routes/research.ts";
 
 const password = "test-only-secure-password";
+
+test("only successful account deletion clears the owner's active research and prevents late writes", async (t) => {
+  let release!: () => void;
+  let started!: () => void;
+  const suspended = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const generating = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const cleared: string[] = [];
+  const privateMemory = new Map<string, string>();
+  const model = {
+    name: "deepseek-v4-pro",
+    thinking: true,
+    effort: "high",
+  } as const;
+  const engine: ResearchEngine = {
+    getReadiness: () => ({ ready: true, reasons: [], model }),
+    clearSubject(owner) {
+      cleared.push(owner);
+      privateMemory.delete(owner);
+    },
+    async generate(input) {
+      privateMemory.set(input.subjectId, "test-only-private-context");
+      started();
+      await suspended;
+      // Simulate an upstream call that has already completed despite cancellation.
+      return {
+        schemaVersion: 1,
+        status: "completed",
+        generatedAt: new Date().toISOString(),
+        guidanceRunId: input.run.guidanceRunId,
+        versions: input.run.versions,
+        summary: "late private result",
+        facts: [],
+        recommendations: [],
+        sources: [],
+        limitations: ["synthetic test only"],
+        model,
+        searched: true,
+      };
+    },
+  };
+  const f = await setup({}, { research: engine });
+  t.after(async () => {
+    release();
+    await f.app.close();
+  });
+  const client = f.client();
+  const registered = await client.request("/auth/register", "POST", {
+    username: "cleanup.student",
+    password,
+  });
+  const owner = registered.body.user.accountId;
+  const other = await f
+    .client()
+    .request("/auth/register", "POST", { username: "cleanup.other", password });
+  const otherOwner = other.body.user.accountId;
+  privateMemory.set(otherOwner, "other-owner-memory");
+  const profile = await client.request("/me/profile");
+  const saved = await client.request(
+    "/me/profile",
+    "PUT",
+    { ...profile.body.profile, major: "法学", targetMajor: "法学" },
+    { "If-Match": profile.etag },
+  );
+  const selection = await client.request("/me/selections");
+  const guidance = await client.request("/guidance", "POST", {
+    profileVersion: saved.body.profileVersion,
+    selectionVersion: selection.body.selectionVersion,
+    assessmentRefs: [],
+  });
+  assert.equal(guidance.status, 201);
+  const job = await client.request(
+    "/guidance/" + guidance.body.guidanceRunId + "/research",
+    "POST",
+    {},
+  );
+  assert.equal(job.status, 202);
+  await generating;
+  assert.ok(privateMemory.has(owner));
+  for (const [body, status] of [
+    [{ currentPassword: password }, 422],
+    [
+      { currentPassword: "wrong-password", confirmation: "DELETE_ACCOUNT" },
+      401,
+    ],
+  ] as const) {
+    assert.equal(
+      (await client.request("/auth/delete-account", "POST", body)).status,
+      status,
+    );
+    assert.deepEqual(cleared, []);
+    assert.ok(privateMemory.has(owner));
+    assert.ok(f.app.store.get(owner, "research-job", job.body.jobId));
+  }
+  const deleted = await client.request("/auth/delete-account", "POST", {
+    currentPassword: password,
+    confirmation: "DELETE_ACCOUNT",
+  });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(cleared, [owner]);
+  assert.equal(privateMemory.has(owner), false);
+  assert.equal(privateMemory.get(otherOwner), "other-owner-memory");
+  release();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(f.app.store.get(owner, "research-job", job.body.jobId), null);
+  assert.equal(f.app.store.list(owner, "research-checkpoint").length, 0);
+  assert.equal(f.app.store.list(owner, "research-latest").length, 0);
+  assert.equal(f.app.store.hasPersonalData(owner), false);
+  assert.equal(f.app.store.account("cleanup.student"), null);
+  assert.ok(f.app.store.account("cleanup.other"));
+});
 
 test("password recovery preserves unrelated guest records and requires the normal login migration choice", async (t) => {
   const f = await setup();
@@ -291,14 +406,20 @@ test("security operations reject anonymous clients and administrator self-deleti
   );
   assert.ok(f.app.store.account("security.admin"));
 });
-async function setup(overrides: Partial<AppConfig> = {}) {
-  const app = await createApplication({
-    databasePath: ":memory:",
-    sampleData: true,
-    staticDirectory: undefined,
-    rateLimit: 10000,
-    ...overrides,
-  });
+async function setup(
+  overrides: Partial<AppConfig> = {},
+  dependencies: Parameters<typeof createApplication>[1] = {},
+) {
+  const app = await createApplication(
+    {
+      databasePath: ":memory:",
+      sampleData: true,
+      staticDirectory: undefined,
+      rateLimit: 10000,
+      ...overrides,
+    },
+    dependencies,
+  );
   await new Promise<void>((resolve) =>
     app.server.listen(0, "127.0.0.1", resolve),
   );
