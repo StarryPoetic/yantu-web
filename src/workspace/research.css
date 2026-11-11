@@ -772,7 +772,7 @@
 
 .research-journey {
   margin: var(--space-7) 0 var(--space-4);
-  padding: 0 var(--space-7);
+  padding: 0 max(var(--space-7), 44px);
 }
 .research-road {
   position: relative;
@@ -794,19 +794,43 @@
   );
 }
 .research-walker {
-  --stride-duration: 680ms;
-  --stride-phase: 0ms;
+  --jelly-width: 85px;
+  --jelly-height: 90px;
   position: absolute;
-  width: 72px;
-  height: 90px;
+  width: var(--jelly-width);
+  height: var(--jelly-height);
   bottom: 0;
   transform: translateX(-50%);
   z-index: 2;
 }
-.shinchan {
+.jelly-mascot {
+  display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  background-image: url("/media/jelly-progress-atlas.webp");
+  background-repeat: repeat;
+  background-size: calc(var(--jelly-width) * 12) calc(var(--jelly-height) * 8);
+  background-position: 0 0;
+}
+.is-walking .jelly-mascot {
+  animation:
+    jelly-frames-x 0.5s steps(12, end) infinite,
+    jelly-frames-y 4s steps(8, end) infinite;
+}
+.research-walker:not(.is-walking) .jelly-mascot {
+  background-image: url("/media/jelly-progress-poster.webp");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+@keyframes jelly-frames-x {
+  to {
+    background-position-x: calc(var(--jelly-width) * -12);
+  }
+}
+@keyframes jelly-frames-y {
+  to {
+    background-position-y: calc(var(--jelly-height) * -8);
+  }
 }
 .research-road-signs {
   display: contents;
@@ -846,145 +870,16 @@
   margin-top: var(--space-3);
   color: var(--color-muted);
 }
-.shinchan-body,
-.shinchan-shadow,
-.shinchan-leg,
-.shinchan-shin,
-.shinchan-arm {
-  transform-box: view-box;
-}
-.shinchan-body {
-  transform-origin: 52px 88px;
-  transform: translateY(3px);
-}
-.shinchan-shadow {
-  transform-origin: 52px 117px;
-}
-.shinchan-leg.back {
-  transform-origin: 44px 88px;
-}
-.shinchan-leg.front {
-  transform-origin: 59px 88px;
-}
-.shinchan-shin.back {
-  transform-origin: 43px 101px;
-}
-.shinchan-shin.front {
-  transform-origin: 59px 101px;
-}
-.shinchan-arm.back {
-  transform-origin: 42px 61px;
-}
-.shinchan-arm.front {
-  transform-origin: 65px 64px;
-}
-.shinchan .back {
-  --stride-phase: -340ms;
-}
-.is-walking .shinchan-body,
-.is-walking .shinchan-shadow,
-.is-walking .shinchan-leg,
-.is-walking .shinchan-shin,
-.is-walking .shinchan-arm {
-  animation-duration: var(--stride-duration);
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-delay: var(--stride-phase);
-}
-.is-walking .shinchan-body {
-  animation-name: shinchan-run-body;
-}
-.is-walking .shinchan-shadow {
-  animation-name: shinchan-run-shadow;
-}
-.is-walking .shinchan-leg {
-  animation-name: shinchan-run-thigh;
-}
-.is-walking .shinchan-shin {
-  animation-name: shinchan-run-knee;
-}
-.is-walking .shinchan-arm {
-  animation-name: shinchan-run-arm;
-}
-@keyframes shinchan-run-thigh {
-  0%,
-  100% {
-    transform: rotate(-32deg);
-  }
-  25% {
-    transform: rotate(6deg);
-  }
-  50% {
-    transform: rotate(34deg);
-  }
-  75% {
-    transform: rotate(-8deg);
-  }
-}
-@keyframes shinchan-run-knee {
-  0%,
-  100% {
-    transform: rotate(12deg);
-  }
-  25% {
-    transform: rotate(8deg);
-  }
-  50% {
-    transform: rotate(72deg);
-  }
-  75% {
-    transform: rotate(88deg);
-  }
-}
-@keyframes shinchan-run-arm {
-  0%,
-  100% {
-    transform: rotate(24deg);
-  }
-  25% {
-    transform: rotate(-4deg);
-  }
-  50% {
-    transform: rotate(-30deg);
-  }
-  75% {
-    transform: rotate(-4deg);
-  }
-}
-@keyframes shinchan-run-body {
-  0%,
-  50%,
-  100% {
-    transform: translateY(-2px) rotate(6deg);
-  }
-  25%,
-  75% {
-    transform: translateY(1px) rotate(5deg);
-  }
-}
-@keyframes shinchan-run-shadow {
-  0%,
-  50%,
-  100% {
-    transform: scaleX(0.8);
-    opacity: 0.1;
-  }
-  25%,
-  75% {
-    transform: scaleX(1);
-    opacity: 0.16;
-  }
-}
 @media (max-width: 600px) {
   .research-progress {
     padding: var(--space-4) var(--space-3);
   }
   .research-journey {
-    padding: 0 var(--space-6);
+    padding: 0 max(var(--space-6), 36px);
   }
   .research-walker {
-    width: 56px;
-    height: 76px;
+    --jelly-width: 68px;
+    --jelly-height: 72px;
   }
   .research-progress ol {
     grid-template-columns: 1fr 1fr;
@@ -996,8 +891,12 @@
   .research-walker {
     transition: none;
   }
-  .research-walker .shinchan * {
+  .research-walker .jelly-mascot {
     animation: none;
+    background-image: url("/media/jelly-progress-poster.webp");
+    background-size: 100% 100%;
+    background-position: 0 0;
+    background-repeat: no-repeat;
   }
 }
 .research-prefilter {

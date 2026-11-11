@@ -3143,7 +3143,7 @@ test("任务一：失败停止、导航跳回续跑及取消恢复", async ({ pa
   await expect(panel.locator(".is-walking")).toHaveCount(0);
   expect(
     await panel
-      .locator(".shinchan")
+      .locator(".jelly-mascot")
       .evaluate((svg) => svg.getAnimations({ subtree: true }).length),
   ).toBe(0);
   await page.clock.resume();
@@ -3160,7 +3160,7 @@ test("任务一：失败停止、导航跳回续跑及取消恢复", async ({ pa
   await expect(panel.locator(".is-walking")).toHaveCount(0);
   expect(
     await panel
-      .locator(".shinchan")
+      .locator(".jelly-mascot")
       .evaluate((svg) => svg.getAnimations({ subtree: true }).length),
   ).toBe(0);
   await page
@@ -3183,13 +3183,13 @@ test("任务一：减少动画模式使用静态阶段位置", async ({ page }) 
     "aria-valuenow",
     "30",
   );
-  await expect(panel.locator(".shinchan-leg").first()).toHaveCSS(
+  await expect(panel.locator(".jelly-mascot").first()).toHaveCSS(
     "animation-name",
     "none",
   );
   expect(
     await panel
-      .locator(".shinchan")
+      .locator(".jelly-mascot")
       .evaluate((svg) => svg.getAnimations({ subtree: true }).length),
   ).toBe(0);
   await expect(panel.locator(".research-walker")).toHaveCSS(
@@ -3211,7 +3211,7 @@ test("任务一：减少动画模式使用静态阶段位置", async ({ page }) 
 });
 
 for (const width of [1280, 375]) {
-  test(`跑步动画：${width}px 交替屈膝摆臂、边界和动态减少动画`, async ({
+  test(`果冻动画：${width}px 透明逐帧动作、边界和动态减少动画`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
@@ -3226,7 +3226,7 @@ for (const width of [1280, 375]) {
       .getByRole("button", { name: "联网调研并生成报告", exact: true })
       .click();
     const progress = panel.getByRole("progressbar");
-    const runner = panel.locator(".shinchan");
+    const runner = panel.locator(".jelly-mascot");
     await expect(runner).toBeVisible();
     await expect(runner).toHaveAttribute("aria-hidden", "true");
     await expect
@@ -3239,41 +3239,69 @@ for (const width of [1280, 375]) {
         ),
       )
       .toBeGreaterThan(0);
-    // Sample the actual browser animations at each sign and both track ends.
-    // No timeouts or new report requests are needed for a full stride.
+    // Inspect the deployed atlas, including transparent borders in all 96 frames.
+    const asset = await runner.evaluate(async () => {
+      const atlas = new Image();
+      atlas.src = "/media/jelly-progress-atlas.webp";
+      await atlas.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = atlas.width;
+      canvas.height = atlas.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(atlas, 0, 0);
+      const { data } = ctx.getImageData(0, 0, atlas.width, atlas.height);
+      let bordersClear = true;
+      const contents = [];
+      for (let frame = 0; frame < 96; frame++) {
+        const left = (frame % 12) * 170,
+          top = Math.floor(frame / 12) * 180;
+        let opaque = 0;
+        for (let y = 0; y < 180; y++)
+          for (let x = 0; x < 170; x++) {
+            const alpha = data[((top + y) * atlas.width + left + x) * 4 + 3];
+            if (x === 0 || y === 0 || x === 169 || y === 179)
+              bordersClear &&= alpha === 0;
+            if (alpha > 200) opaque++;
+          }
+        contents.push(opaque);
+      }
+      return {
+        width: atlas.width,
+        height: atlas.height,
+        bordersClear,
+        contents,
+      };
+    });
+    expect([asset.width, asset.height]).toEqual([2040, 1440]);
+    expect(asset.bordersClear).toBe(true);
+    expect(asset.contents.every((count) => count > 3000 && count < 25000)).toBe(
+      true,
+    );
+    // Sample actual CSS sprite positions and both track ends without paid requests.
     const poses = [];
-    for (const fraction of [0, 0.25, 0.5, 0.75]) {
+    for (const fraction of [0, 0.29, 0.58, 0.87]) {
       poses.push(
         await runner.evaluate((svg, fraction) => {
           for (const animation of svg.getAnimations({ subtree: true })) {
             animation.pause();
-            animation.currentTime =
-              Number(animation.effect!.getTiming().duration) * fraction;
+            animation.currentTime = 4000 * fraction;
           }
-          const matrix = (selector: string) =>
-            new DOMMatrixReadOnly(
-              getComputedStyle(svg.querySelector(selector)!).transform,
-            );
-          const angle = (selector: string) => {
-            const m = matrix(selector);
-            return (Math.atan2(m.b, m.a) * 180) / Math.PI;
-          };
           const walker = svg.closest<HTMLElement>(".research-walker")!;
           const savedLeft = walker.style.left;
           const road = walker.parentElement!;
+          const journey = road.parentElement!.getBoundingClientRect();
           const labelBoxes = Array.from(
             road.querySelectorAll(".research-road-sign"),
             (label) => label.getBoundingClientRect(),
           );
           const bounds = [0, 10, 30, 60, 90, 100].map((position) => {
             walker.style.left = `${position}%`;
-            const b = svg
-              .querySelector(".shinchan-body")!
-              .getBoundingClientRect();
+            const b = svg.getBoundingClientRect();
             return {
               position,
               left: b.left,
               right: b.right,
+              insideJourney: b.left >= journey.left && b.right <= journey.right,
               labelsClear: labelBoxes.every(
                 (l) =>
                   b.right <= l.left ||
@@ -3285,30 +3313,21 @@ for (const width of [1280, 375]) {
           });
           walker.style.left = savedLeft;
           return {
-            frontLeg: angle(".shinchan-leg.front"),
-            backLeg: angle(".shinchan-leg.back"),
-            frontArm: angle(".shinchan-arm.front"),
-            knee: angle(".shinchan-shin.front"),
-            height: matrix(".shinchan-body").f,
-            shadow: matrix(".shinchan-shadow").a,
+            framePosition: getComputedStyle(svg).backgroundPosition,
             bounds,
           };
         }, fraction),
       );
       await progress.screenshot({
-        path: `var/runner-${width}-${fraction * 100}.png`,
+        path: `var/jelly-${width}-${fraction * 100}.png`,
       });
     }
-    expect(poses[0].frontLeg * poses[0].backLeg).toBeLessThan(0);
-    expect(poses[0].frontLeg * poses[0].frontArm).toBeLessThan(0);
-    expect(poses[2].frontLeg * poses[2].frontArm).toBeLessThan(0);
-    expect(Math.abs(poses[0].knee - poses[2].knee)).toBeGreaterThan(30);
-    expect(Math.abs(poses[0].height - poses[1].height)).toBeGreaterThan(1);
-    expect(poses[1].shadow).toBeGreaterThan(poses[0].shadow);
+    expect(new Set(poses.map((pose) => pose.framePosition)).size).toBe(4);
     for (const pose of poses)
       for (const bounds of pose.bounds) {
         expect(bounds.left).toBeGreaterThanOrEqual(0);
         expect(bounds.right).toBeLessThanOrEqual(width);
+        expect(bounds.insideJourney, JSON.stringify(bounds)).toBe(true);
         expect(bounds.labelsClear, JSON.stringify(bounds)).toBe(true);
       }
     await runner.evaluate((svg) =>
@@ -3326,7 +3345,8 @@ for (const width of [1280, 375]) {
       "transition-duration",
       "0s",
     );
-    await progress.screenshot({ path: `var/runner-${width}-reduced.png` });
+    await expect(runner).toHaveCSS("background-image", /jelly-progress-poster/);
+    await progress.screenshot({ path: `var/jelly-${width}-reduced.png` });
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await expect
       .poll(() =>

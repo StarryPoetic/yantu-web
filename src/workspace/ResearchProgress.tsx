@@ -2,7 +2,7 @@ import type { ResearchJob } from "../../server/routes/research";
 
 import { useEffect, useState } from "react";
 import { useResearch } from "./ResearchContext";
-import { ShinchanWalker } from "./ShinchanWalker";
+import { JellyMascot } from "./JellyMascot";
 import {
   researchSteps,
   progressBounds,
@@ -114,7 +114,7 @@ export function ResearchProgress({
               className={`research-walker ${running && !stopped && !reduced ? "is-walking" : ""}`}
               style={{ left: `${value}%` }}
             >
-              <ShinchanWalker />
+              <JellyMascot />
             </div>
             <div className="research-road-signs">
               {researchSteps.map((step) => (
