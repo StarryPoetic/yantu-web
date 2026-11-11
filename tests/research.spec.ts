@@ -4165,3 +4165,75 @@ for (const width of [1280, 375]) {
     }
   });
 }
+for (const width of [1280, 375]) {
+  test(`处理记录：${width}px 最新在前、阅读不跳动、补查记录独立`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    const activity = panel.getByRole("region", {
+      name: "本次调研记录",
+      exact: true,
+    });
+    await expect(activity).toContainText("等待服务器发送首条处理记录");
+    for (let index = 0; index < 35; index++)
+      service.stage("researching", `原任务读取完成 ${index}`);
+    await expect(activity.getByRole("status")).toContainText(
+      "原任务读取完成 34",
+    );
+    await activity.getByText("查看处理记录", { exact: true }).click();
+    const list = activity.getByLabel("本次任务处理记录列表", { exact: true });
+    await expect(list.locator("li").first()).toContainText("原任务读取完成 34");
+    await expect(list.locator("li").last()).toContainText("原任务读取完成 0");
+    await list.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    const oldScroll = await list.evaluate((element) => element.scrollTop);
+    expect(oldScroll).toBeGreaterThan(0);
+    service.stage("researching", "刚完成的新读取");
+    await expect(activity.getByRole("status")).toContainText("刚完成的新读取");
+    await expect(list.locator("li").first()).toContainText("刚完成的新读取");
+    expect(
+      await list.evaluate((element) => element.scrollTop),
+    ).toBeGreaterThanOrEqual(oldScroll);
+    service.finish("partial");
+    const supplement = panel.getByRole("button", {
+      name: "继续补查缺少的资料",
+      exact: true,
+    });
+    await expect(supplement).toBeEnabled();
+    await supplement.click();
+    service.stage("researching", "只补本报告项目的学费原文");
+    const supplementActivity = panel.getByRole("region", {
+      name: "本次补查记录",
+      exact: true,
+    });
+    await expect(supplementActivity.getByRole("status")).toContainText(
+      "只补本报告项目的学费原文",
+    );
+    await expect(supplementActivity.locator("details")).not.toHaveAttribute(
+      "open",
+      "",
+    );
+    await supplementActivity.getByText("查看处理记录", { exact: true }).click();
+    await expect(supplementActivity.locator("li")).toHaveCount(1);
+    await expect(
+      panel.getByText("原任务读取完成 34", { exact: false }),
+    ).toHaveCount(0);
+    expect(service.postCount()).toBe(1);
+    expect(service.supplementCount()).toBe(1);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  });
+}

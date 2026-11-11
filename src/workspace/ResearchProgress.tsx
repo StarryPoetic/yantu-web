@@ -3,6 +3,7 @@ import type { ResearchJob } from "../../server/routes/research";
 import { useEffect, useState } from "react";
 import { useResearch } from "./ResearchContext";
 import { JellyMascot } from "./JellyMascot";
+import { ResearchJobActivity } from "./ResearchJobActivity";
 import {
   researchSteps,
   progressBounds,
@@ -168,19 +169,7 @@ export function ResearchProgress({
             ? "本次处理已停止，不会在后台继续。需要再次生成时，请手动点击生成按钮。"
             : "本次处理已结束。再次生成需要你手动发起。"}
       </small>
-      {!!job.events.length && (
-        <details>
-          <summary>查看处理记录</summary>
-          <ul>
-            {job.events.map((event, i) => (
-              <li key={i}>
-                {new Date(event.at).toLocaleTimeString("zh-CN")} ·{" "}
-                {event.message}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <ResearchJobActivity key={job.jobId} job={job} />
     </div>
   );
 }

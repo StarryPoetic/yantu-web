@@ -101,6 +101,29 @@
 .research-progress details {
   margin-top: var(--space-5);
 }
+.research-activity {
+  margin-top: var(--space-5);
+  overflow-wrap: anywhere;
+}
+.research-activity > p > strong {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+.research-activity time {
+  font-variant-numeric: tabular-nums;
+}
+.research-activity-list {
+  max-height: 20rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.research-activity-list ul {
+  padding-left: var(--space-6);
+}
+.research-activity-list li {
+  margin-block: var(--space-3);
+}
 .research-report {
   margin-top: var(--space-6);
   overflow-wrap: anywhere;
