@@ -18,6 +18,7 @@ import {
 import { createResearchEvidenceLibrary } from "../../server/explanation/research-library.ts";
 import type { ModelMessage } from "../../server/explanation/deepseek.ts";
 import type { WebSource } from "../../server/explanation/web.ts";
+import type { ResearchCheckpoint } from "../../server/explanation/research-resume.ts";
 
 // Public-policy fixtures are fictional; no provider or live school request is made.
 const school = "苏州清源大学";
@@ -61,6 +62,8 @@ function setup(
     noResults?: boolean;
     directoryText?: string;
     fee?: "success" | "failed";
+    feeText?: string;
+    pages?: Record<string, string>;
     schoolHints?: string[];
   } = {},
 ) {
@@ -148,10 +151,14 @@ function setup(
           contentType: "text/html",
           text: settings.directoryText ?? directory,
         };
+      if (settings.pages?.[value])
+        return { contentType: "text/html", text: settings.pages[value] };
       if (value === feeUrl && settings.fee === "success")
         return {
           contentType: "text/html",
-          text: `${school}2026年硕士研究生收费标准。\n001机械学院 | 080200 机械工程 全日制 学费8000元/年。`,
+          text:
+            settings.feeText ??
+            `${school}2026年硕士研究生收费标准。\n001机械学院 | 080200 机械工程 全日制 学费8000元/年。`,
         };
       throw new ModelError("WEB_UNAVAILABLE");
     },
@@ -447,10 +454,11 @@ test("supplement mode continues saved programme gaps, preserves prior bytes and 
     );
     assert.equal(program.fields.location.status, "missing");
     assert.ok(
-      report.candidateAudit!.some(
-        (candidate) => candidate.institutionName === "南京远山大学",
+      report.candidateAudit!.every(
+        (candidate) => candidate.institutionName !== "南京远山大学",
       ),
     );
+    assert.equal(report.supplement?.outcome, "updated");
     assert.ok(
       report.sources.some(
         (source) => source.url === url && source.excerpt === directory,
@@ -557,6 +565,490 @@ test("a supplement cannot borrow a previous report from another guidance run or 
         error instanceof ModelError && error.code === "GUIDANCE_NOT_FOUND",
     );
     assert.equal(requests.length, count);
+  } finally {
+    store.close();
+  }
+});
+
+test("supplement has no model or prefilter calls, preserves no-change facts/time and exhausts completed queries across restart", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library);
+    const run = guidance("frozen-supplement");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    const next = setup(store, {
+      noResults: true,
+      now: () => initialTime + 6 * 60000,
+      schoolHints: ["南京远山大学"],
+    });
+    let saved: ResearchCheckpoint | undefined;
+    const report = await next.module.generate({
+      strategy: "two-stage",
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: base,
+      onCheckpoint: (cp) => {
+        saved = structuredClone(cp);
+      },
+    });
+    assert.equal(next.modelCalls.length, 0);
+    assert.equal(report.supplement?.outcome, "no_change");
+    assert.equal(report.generatedAt, base.generatedAt);
+    assert.deepEqual(report.facts, base.facts);
+    assert.deepEqual(report.recommendations, base.recommendations);
+    assert.ok(
+      next.requests.every(
+        (request) => !decodeURIComponent(request).includes("南京远山大学"),
+      ),
+    );
+    assert.equal(
+      report.supplement?.newSearchCount,
+      next.requests.filter(
+        (request) => new URL(request).hostname === "api.search.brave.com",
+      ).length,
+    );
+    assert.equal(
+      report.supplement?.newReadCount,
+      next.requests.filter(
+        (request) => new URL(request).hostname !== "api.search.brave.com",
+      ).length,
+    );
+    assert.equal(report.supplement?.remainingTaskCount, 0);
+    const restarted = setup(store, { noResults: true });
+    const repeated = await restarted.module.generate({
+      strategy: "two-stage",
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: report,
+      checkpoint: saved,
+    });
+    assert.equal(repeated.supplement?.outcome, "no_pending_work");
+    assert.equal(repeated.supplement?.newSearchCount, 0);
+    assert.equal(repeated.supplement?.newReadCount, 0);
+    assert.deepEqual(restarted.requests, []);
+    assert.deepEqual(restarted.modelCalls, []);
+    assert.equal(repeated.generatedAt, base.generatedAt);
+    const legacyFailure = structuredClone(saved!);
+    for (const result of Object.values(legacyFailure.searches))
+      Object.assign(result, { reason: "SEARCH_UNAVAILABLE", searched: false });
+    legacyFailure.supplement!.completedTaskIds = [];
+    const retryBase = structuredClone(base);
+    retryBase.evidenceCoverage!.lookupKeys = [];
+    const recovery = setup(store, { noResults: true });
+    const recovered = await recovery.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "retry",
+      previousReport: retryBase,
+      checkpoint: legacyFailure,
+    });
+    assert.ok(
+      recovery.requests.length > 0,
+      "legacy cached provider failures must not permanently poison a retry",
+    );
+    assert.equal(recovered.supplement?.remainingTaskCount, 0);
+    assert.equal(recovery.modelCalls.length, 0);
+  } finally {
+    store.close();
+  }
+});
+
+test("complete evidence and unverifiable legacy scope exit before any model/search/read", async () => {
+  const store = new Store();
+  try {
+    const initial = setup(store, { noResults: true });
+    seed(initial.library);
+    const run = guidance("supplement-noop");
+    const base = await initial.module.generate({
+      subjectId: run.subjectId,
+      run,
+    });
+    const complete = structuredClone(base);
+    complete.evidenceCoverage!.gaps = [];
+    delete complete.priorityCoverage;
+    const after = setup(store, { noResults: false });
+    const report = await after.module.generate({
+      strategy: "two-stage",
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: complete,
+    });
+    assert.equal(report.supplement?.outcome, "no_pending_work");
+    assert.equal(report.usage?.searches.paid, 0);
+    assert.equal(report.usage?.model.calls, 0);
+    assert.equal(report.usage?.reads.reads, 0);
+    assert.deepEqual(after.requests, []);
+    assert.deepEqual(after.modelCalls, []);
+    const legacy = structuredClone(base);
+    delete legacy.recommendations[0].majorCode;
+    const blocked = await after.module.generate({
+      strategy: "two-stage",
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: legacy,
+    });
+    assert.equal(blocked.supplement?.outcome, "scope_unverified");
+    assert.deepEqual(after.requests, []);
+    assert.deepEqual(after.modelCalls, []);
+  } finally {
+    store.close();
+  }
+});
+
+test("failed supplemental linked reads remain pending and retry reuses its scope/checkpoint after cooldown", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library, [{ url: feeUrl, title: "2026年硕士研究生收费标准" }]);
+    const run = guidance("supplement-retry");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    const failed = setup(store, {
+      noResults: true,
+      now: () => initialTime + 6 * 60000,
+    });
+    let saved: ResearchCheckpoint | undefined;
+    const partial = await failed.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: base,
+      onCheckpoint: (cp) => {
+        saved = structuredClone(cp);
+      },
+    });
+    assert.ok(partial.supplement!.remainingTaskCount > 0);
+    assert.equal(partial.generatedAt, base.generatedAt);
+    const resumed = setup(store, {
+      noResults: true,
+      fee: "success",
+      now: () => initialTime + 12 * 60000,
+    });
+    const result = await resumed.module.generate({
+      strategy: "two-stage",
+      subjectId: run.subjectId,
+      run,
+      mode: "retry",
+      previousReport: partial,
+      checkpoint: saved,
+    });
+    assert.equal(resumed.modelCalls.length, 0);
+    assert.ok(resumed.requests.includes(feeUrl));
+    assert.equal(result.supplement?.outcome, "updated");
+    assert.deepEqual(result.supplement?.scope, partial.supplement?.scope);
+    assert.ok(
+      result.supplement!.changes.some((change) =>
+        change.changedFields.includes("tuition"),
+      ),
+    );
+  } finally {
+    store.close();
+  }
+});
+
+test("current-year cessation removes only its frozen project without replacing it with another school", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library, [{ url: feeUrl, title: "2027年硕士招生专业目录调整" }]);
+    const run = guidance("supplement-cessation");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    assert.ok(base.recommendations.length);
+    const after = setup(store, {
+      noResults: true,
+      fee: "success",
+      feeText: `${school}2027年硕士研究生招生专业目录。\n001机械学院 | 080200 机械工程 学术学位 全日制 本专业暂停招生。`,
+      now: () => initialTime + 6 * 60000,
+    });
+    const result = await after.module.generate({
+      strategy: "two-stage",
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: base,
+    });
+    assert.ok(after.requests.includes(feeUrl));
+    assert.equal(after.modelCalls.length, 0);
+    assert.equal(result.recommendations.length, 0);
+    assert.equal(result.supplement?.outcome, "updated");
+    assert.ok(
+      result.supplement!.changes.some(
+        (change) => change.afterRank === null && change.beforeRank === 1,
+      ),
+    );
+    assert.equal(base.recommendations.length, 1);
+  } finally {
+    store.close();
+  }
+});
+
+test("retry merges saved new evidence when interrupted after the last task but before final report", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library, [{ url: feeUrl, title: "2026年硕士研究生收费标准" }]);
+    const run = guidance("supplement-merge-resume");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    const next = setup(store, {
+      noResults: true,
+      fee: "success",
+      now: () => initialTime + 6 * 60000,
+    });
+    let saved: ResearchCheckpoint | undefined;
+    await assert.rejects(
+      next.module.generate({
+        subjectId: run.subjectId,
+        run,
+        mode: "supplement",
+        previousReport: base,
+        onCheckpoint: (cp) => {
+          saved = structuredClone(cp);
+          if (
+            cp.supplement?.workingSources?.some(
+              (source) => source.url === feeUrl,
+            ) &&
+            cp.supplement.plan.tasks.every((task) =>
+              cp.supplement!.completedTaskIds.includes(task.id),
+            )
+          )
+            throw new ModelError("MODEL_TIMEOUT");
+        },
+      }),
+      (error) => error instanceof ModelError && error.code === "MODEL_TIMEOUT",
+    );
+    assert.ok(
+      saved?.supplement?.workingSources?.some(
+        (source) => source.url === feeUrl,
+      ),
+    );
+    const resumed = setup(store, {
+      noResults: true,
+      now: () => initialTime + 7 * 60000,
+    });
+    const result = await resumed.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "retry",
+      previousReport: base,
+      checkpoint: saved,
+    });
+    assert.equal(result.supplement?.outcome, "updated");
+    assert.ok(
+      result.supplement?.changes.some((change) =>
+        change.changedFields.includes("tuition"),
+      ),
+    );
+    assert.deepEqual(resumed.requests, []);
+    assert.deepEqual(resumed.modelCalls, []);
+  } finally {
+    store.close();
+  }
+});
+
+test("supplement timeout after new reads preserves the original public report and keeps work only in checkpoint", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library, [{ url: feeUrl, title: "2026年硕士研究生收费标准" }]);
+    const run = guidance("supplement-timeout-preserves");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    const next = setup(store, {
+      noResults: true,
+      fee: "success",
+      now: () => initialTime + 6 * 60000,
+    });
+    let interrupted = false;
+    let saved: ResearchCheckpoint | undefined;
+    const result = await next.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: base,
+      onCheckpoint: (cp) => {
+        saved = structuredClone(cp);
+        if (
+          !interrupted &&
+          cp.supplement?.workingSources?.some((source) => source.url === feeUrl)
+        ) {
+          interrupted = true;
+          throw new ModelError("RESEARCH_TOTAL_TIMEOUT");
+        }
+      },
+    });
+    assert.equal(result.reason, "RESEARCH_TOTAL_TIMEOUT");
+    assert.deepEqual(result.sources, base.sources);
+    assert.deepEqual(result.recommendations, base.recommendations);
+    assert.deepEqual(result.facts, base.facts);
+    assert.equal(result.generatedAt, base.generatedAt);
+    assert.ok(
+      saved?.supplement?.workingSources?.some(
+        (source) => source.url === feeUrl,
+      ),
+    );
+  } finally {
+    store.close();
+  }
+});
+
+test("updating one school preserves the other frozen school card exactly", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library, [{ url: feeUrl, title: "2026年硕士研究生收费标准" }]);
+    const run = guidance("supplement-unaffected-card");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    const other = {
+      ...structuredClone(base.recommendations[0]),
+      institutionName: "南京远山大学",
+      rationale: "保留这张独立卡片的原始说明。",
+      preparation: ["原定准备任务"],
+      citations: ["other-source"],
+    };
+    base.recommendations.push(other);
+    base.sources.push({
+      id: "other-source",
+      url: "https://yz.yuanshan.edu.cn/directory.htm",
+      title: "南京远山大学2026年硕士目录",
+      excerpt: directory.replaceAll(school, "南京远山大学"),
+      kind: "official_page",
+      verified: false,
+      retrievedAt: new Date(initialTime).toISOString(),
+    });
+    const next = setup(store, {
+      noResults: true,
+      fee: "success",
+      now: () => initialTime + 6 * 60000,
+    });
+    const result = await next.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: base,
+    });
+    assert.equal(result.supplement?.outcome, "updated");
+    assert.deepEqual(
+      result.recommendations.find(
+        (item) => item.institutionName === other.institutionName,
+      ),
+      other,
+    );
+    assert.ok(
+      next.requests.every(
+        (value) => !decodeURIComponent(value).includes("南京远山大学"),
+      ),
+    );
+  } finally {
+    store.close();
+  }
+});
+
+test("legacy displayed same-school alternatives may omit optional prose without breaking supplemental ranking", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library, [{ url: feeUrl, title: "2026年硕士研究生收费标准" }]);
+    const run = guidance("supplement-legacy-alternative");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    const main = base.recommendations[0];
+    main.programAlternatives = [
+      {
+        programName: "机械",
+        disciplineCode: "0855",
+        majorCode: "085500",
+        collegeName: main.collegeName,
+        degreeType: "professional",
+        studyMode: "full_time",
+        exams: main.exams!,
+        match: main.match!,
+        tier: "alternative",
+        citations: [...main.citations],
+      },
+    ];
+    base.sources.find((source) => source.url === url)!.excerpt +=
+      "\n001机械学院 | 085500 机械 专业学位 全日制 ①101思想政治理论 ②204英语二 ③302数学二 ④811机械原理";
+    const next = setup(store, {
+      noResults: true,
+      fee: "success",
+      now: () => initialTime + 6 * 60000,
+    });
+    const result = await next.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: base,
+    });
+    assert.equal(result.supplement?.outcome, "updated");
+    const codes = result.recommendations.flatMap((item) => [
+      item.majorCode,
+      ...(item.programAlternatives ?? []).map((route) => route.majorCode),
+    ]);
+    assert.deepEqual(new Set(codes), new Set(["080200", "085500"]));
+    assert.equal(next.modelCalls.length, 0);
+  } finally {
+    store.close();
+  }
+});
+
+test("a supplemental read allowance does not mark remaining linked documents as finished", async () => {
+  const store = new Store();
+  try {
+    const first = setup(store, { noResults: true });
+    seed(first.library);
+    const run = guidance("supplement-budget-continuation");
+    const base = await first.module.generate({ subjectId: run.subjectId, run });
+    const links = Array.from({ length: 31 }, (_, index) => ({
+      url: `https://${host}/fees-${index}.htm`,
+      title: `2026年硕士研究生收费说明${index}`,
+    }));
+    base.sources.find((source) => source.url === url)!.documentLinks = links;
+    const pages = Object.fromEntries(
+      links.map((link) => [
+        link.url,
+        `${school}2026年硕士研究生收费说明，收费标准请以另行公布的原文为准。`,
+      ]),
+    );
+    const next = setup(store, {
+      noResults: true,
+      pages,
+      now: () => initialTime + 6 * 60000,
+    });
+    let saved: ResearchCheckpoint | undefined;
+    const partial = await next.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "supplement",
+      previousReport: base,
+      onCheckpoint: (cp) => {
+        saved = structuredClone(cp);
+      },
+    });
+    assert.ok(
+      partial.supplement!.newReadCount > 0 &&
+        partial.supplement!.newReadCount <= 30,
+    );
+    assert.ok(partial.supplement!.remainingTaskCount > 0);
+    const resumed = setup(store, {
+      noResults: true,
+      pages,
+      now: () => initialTime + 12 * 60000,
+    });
+    const result = await resumed.module.generate({
+      subjectId: run.subjectId,
+      run,
+      mode: "retry",
+      previousReport: partial,
+      checkpoint: saved,
+    });
+    assert.equal(
+      result.supplement?.newReadCount,
+      31 - partial.supplement!.newReadCount,
+    );
+    assert.equal(resumed.modelCalls.length, 0);
+    assert.equal(result.generatedAt, base.generatedAt);
   } finally {
     store.close();
   }

@@ -19,6 +19,8 @@ export interface ResearchSupplementResult {
   changes: {
     institutionName: string;
     programKey: string;
+    programName?: string;
+    majorCode?: string;
     /** One-based school ranks; null means absent from that result. */
     beforeRank: number | null;
     afterRank: number | null;

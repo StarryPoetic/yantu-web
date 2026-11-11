@@ -425,7 +425,13 @@ export async function repairResearchEvidence(input: {
             .map(({ url, title }) => ({ url, title }));
         if (existing) sources.splice(sources.indexOf(existing), 1, source);
         else sources.push(source);
-        await input.onSource?.(source);
+        try {
+          await input.onSource?.(source);
+        } catch (error) {
+          // Failed checkpoint/ownership persistence must abort, not become a page failure.
+          progressFailures.add(error);
+          throw error;
+        }
         const attempt: ResearchReadAttempt = {
           url: candidate.url,
           status: "success",
@@ -731,6 +737,31 @@ export async function repairResearchEvidence(input: {
         await input.onSource?.(bound);
       }
     }
+    const pendingReadUrls = [
+      ...new Set(
+        gaps.flatMap((gap) =>
+          sources
+            .filter((source) =>
+              sourceHasSchoolIdentity(source, gap.institutionName),
+            )
+            .flatMap((source) => [
+              ...(source.kind === "search_snippet" &&
+              matchesTitle(gap.field, source.title)
+                ? [source.url]
+                : []),
+              ...(source.documentLinks ?? [])
+                .filter((link) => matchesTitle(gap.field, link.title))
+                .map((link) => link.url),
+            ])
+            .filter(
+              (url) =>
+                unread(url) &&
+                (!input.allowedDomains ||
+                  input.allowedDomains.includes(academicDomain(url))),
+            ),
+        ),
+      ),
+    ];
     return {
       sources,
       attempts,
@@ -741,6 +772,7 @@ export async function repairResearchEvidence(input: {
       searchFailures,
       searched,
       stoppedReason,
+      pendingReadUrls,
     };
   } finally {
     scheduler.dispose();

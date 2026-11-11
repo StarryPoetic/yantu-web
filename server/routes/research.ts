@@ -352,6 +352,19 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
         return { status: 202, body: view(c, previous) };
       const supplement = route[2] === "supplement";
       const retry = route[2] === "retry";
+      const savedCheckpoint = previous
+        ? store.get<ResearchCheckpoint>(
+            owner,
+            "research-checkpoint",
+            previous.jobId,
+          )?.value
+        : undefined;
+      const retrySupplement =
+        retry &&
+        (previous?.mode === "supplement" ||
+          savedCheckpoint?.operationMode === "supplement" ||
+          !!savedCheckpoint?.supplement ||
+          previous?.report?.evidenceCoverage?.mode === "supplement");
       if (retry && !previous)
         throw new HttpError(
           409,
@@ -391,8 +404,13 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
         createdAt: created,
         updatedAt: created,
         events: [],
-        mode: supplement ? "supplement" : retry ? "retry" : "generate",
-        ...(supplement ? { report: previous!.report } : {}),
+        mode:
+          supplement || retrySupplement
+            ? "supplement"
+            : retry
+              ? "retry"
+              : "generate",
+        ...(supplement || retry ? { report: previous?.report } : {}),
         ...(selectedProgram
           ? {
               target: {
@@ -403,15 +421,8 @@ export function createResearchRoutes(store: Store, engine: ResearchEngine) {
             }
           : {}),
       };
-      if (retry && previous) {
-        const saved = store.get<ResearchCheckpoint>(
-          owner,
-          "research-checkpoint",
-          previous.jobId,
-        );
-        if (saved)
-          store.put(owner, "research-checkpoint", job.jobId, saved.value);
-      }
+      if ((retry || supplement) && savedCheckpoint)
+        store.put(owner, "research-checkpoint", job.jobId, savedCheckpoint);
       store.put(owner, "research-job", job.jobId, job);
       store.put(owner, "research-latest", run.guidanceRunId, {
         jobId: job.jobId,

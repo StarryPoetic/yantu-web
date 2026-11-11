@@ -93,6 +93,14 @@ test("legacy missing major identity is scope_unverified and never partially exec
   assert.match(plan.limitations.join(""), /重新调研/);
 });
 
+test("a legacy report without a saved evidence ledger cannot assume every field is complete", () => {
+  const saved = report();
+  delete saved.evidenceCoverage;
+  const plan = createSupplementPlan(saved, []);
+  assert.equal(plan.scopeVerified, false);
+  assert.equal(plan.tasks.length, 0);
+});
+
 test("project match rejects another college, mode, degree or major rather than school-only membership", () => {
   assert.equal(matchesSupplementScope(main, main), true);
   for (const delta of [

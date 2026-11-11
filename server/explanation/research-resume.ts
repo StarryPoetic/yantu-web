@@ -4,6 +4,7 @@ import type { WebAnswerResult, WebReadResult } from "./web.ts";
 import type { ResearchReport } from "./research.ts";
 import type { ResearchPrefilter } from "../../shared/research-prefilter.ts";
 import type { ResearchSchoolPolicy } from "../../shared/research-policy.ts";
+import type { ResearchSupplementState } from "./research-supplement-plan.ts";
 
 /** Owned job data, never a cross-account cache or part of the public job response. */
 export interface ResearchCheckpoint {
@@ -16,6 +17,8 @@ export interface ResearchCheckpoint {
   report?: ResearchReport;
   evidenceReady?: boolean;
   prefilter?: ResearchPrefilter;
+  operationMode?: "generate" | "supplement";
+  supplement?: ResearchSupplementState;
 }
 
 /** A deadline also bounds adapters which ignore cancellation. Late results cannot be saved. */

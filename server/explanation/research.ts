@@ -1,4 +1,7 @@
 import { researchCompute } from "./research-compute.ts";
+import { createSupplementPlan } from "./research-supplement-plan.ts";
+import { executeSupplement, supplementResult } from "./research-supplement.ts";
+import type { ResearchSupplementResult } from "../../shared/research-supplement.ts";
 import {
   RESEARCH_SCHOOL_POLICY,
   savedResearchSchoolPolicy,
@@ -98,6 +101,7 @@ import type { ResearchEvidenceLibrary } from "./research-library.ts";
 import {
   repairResearchEvidence,
   reusableResearchSources,
+  researchSearchFailed,
 } from "./research-repair.ts";
 import { generateResearchValue } from "./research-generation.ts";
 import { enrichResearchFees } from "./research-fees.ts";
@@ -178,6 +182,7 @@ export interface ResearchConfig extends WebAnswerConfig {
   allowAcademicHosts?: boolean;
 }
 export interface ResearchReport {
+  supplement?: ResearchSupplementResult;
   schoolPolicy?: ResearchSchoolPolicy;
   priorityFacts?: ResearchPriorityFact[];
   priorityCoverage?: ReturnType<typeof priorityCoverage>;
@@ -1532,6 +1537,7 @@ export function createResearchReportModule(
       input = { ...input, signal: deadline.signal };
       let lastStage: ResearchStage = "preparing";
       let paidSearches = 0;
+      let newReadRequests = 0;
       let checkpointSearchHits = 0;
       const persist = async () => {
         deadline.check();
@@ -1543,6 +1549,11 @@ export function createResearchReportModule(
         async answer(request, options) {
           deadline.check();
           const key = hash({ request, options });
+          if (
+            checkpoint.searches[key] &&
+            researchSearchFailed(checkpoint.searches[key])
+          )
+            delete checkpoint.searches[key];
           if (checkpoint.searches[key]) {
             checkpointSearchHits++;
             return structuredClone(checkpoint.searches[key]);
@@ -1561,7 +1572,8 @@ export function createResearchReportModule(
           deadline.check();
           if (checkpoint.prefilter && checkpoint.report?.usage)
             checkpoint.report.usage.searches.paid = paidSearches;
-          checkpoint.searches[key] = structuredClone(result);
+          if (!researchSearchFailed(result))
+            checkpoint.searches[key] = structuredClone(result);
           await persist();
           return result;
         },
@@ -1600,6 +1612,86 @@ export function createResearchReportModule(
             )
               throw new ModelError("GUIDANCE_NOT_FOUND");
             const targetYear = String(run.inputSnapshot.profile.year ?? "");
+            const isSupplement =
+              input.mode === "supplement" ||
+              (input.mode === "retry" &&
+                (checkpoint.operationMode === "supplement" ||
+                  !!checkpoint.supplement));
+            checkpoint.operationMode = isSupplement ? "supplement" : "generate";
+            if (isSupplement) {
+              const base =
+                input.previousReport ?? checkpoint.supplement?.baseReport;
+              if (!base) throw new ModelError("GUIDANCE_NOT_FOUND");
+              if (
+                !checkpoint.supplement ||
+                (input.mode !== "retry" &&
+                  checkpoint.supplement.baseReport.generatedAt !==
+                    base.generatedAt)
+              ) {
+                checkpoint.supplement = {
+                  plan: createSupplementPlan(
+                    base,
+                    researchDirectory(run).allowed,
+                  ),
+                  completedTaskIds:
+                    checkpoint.supplement?.completedTaskIds ?? [],
+                  baseReport: structuredClone(base),
+                };
+              }
+              const state = checkpoint.supplement;
+              const pending = state.plan.tasks.filter(
+                (t) => !state.completedTaskIds.includes(t.id),
+              );
+              if (
+                !state.plan.scopeVerified ||
+                (!pending.length &&
+                  (!state.workingSources?.length || state.merged))
+              ) {
+                const result = structuredClone(base);
+                result.supplement = supplementResult(
+                  state.plan,
+                  !state.plan.scopeVerified
+                    ? "scope_unverified"
+                    : "no_pending_work",
+                );
+                result.supplement.reusedSourceCount = base.sources.length;
+                result.usage = {
+                  searches: {
+                    paid: 0,
+                    cacheHits: 0,
+                    libraryHits: base.sources.length,
+                  },
+                  reads: {
+                    reads: 0,
+                    success: 0,
+                    failed: 0,
+                    bySchool: {},
+                    platformReads: 0,
+                  },
+                  model: { calls: 0, inputTokens: 0, outputTokens: 0 },
+                };
+                result.readStatistics = {
+                  success: 0,
+                  failed: 0,
+                  failuresByCode: {},
+                };
+                result.limitations = [
+                  ...new Set([
+                    ...result.limitations,
+                    ...state.plan.limitations,
+                  ]),
+                ];
+                checkpoint.report = result;
+                checkpoint.supplement!.merged = true;
+                await stage(
+                  "writing",
+                  !state.plan.scopeVerified
+                    ? "原报告缺少明确专业范围，本次未发起补查"
+                    : "已记录缺项没有尚未执行的补查任务，复用原报告",
+                );
+                return result;
+              }
+            }
             const referenceYears = historicalReferenceYears(targetYear);
             const report: ResearchReport = {
               schoolPolicy,
@@ -1649,11 +1741,24 @@ export function createResearchReportModule(
             report.usage.model = Object.assign(usage.model, { byModel });
             report.targetScore = targetScore;
             const resumeEvidence =
+              !isSupplement &&
               input.mode === "retry" &&
               (checkpoint.evidenceReady ||
                 (!checkpoint.prefilter &&
                   !!input.previousReport?.sources.some(isSchoolPage)));
             const retained = checkpoint.report ?? input.previousReport;
+            if (isSupplement) {
+              Object.assign(
+                report,
+                structuredClone(checkpoint.supplement!.baseReport),
+              );
+              report.sources = structuredClone(
+                checkpoint.supplement!.workingSources ??
+                  retained?.sources ??
+                  report.sources,
+              );
+              report.usage = usage;
+            }
             if (resumeEvidence && retained) {
               report.sources = structuredClone(retained.sources);
               report.recommendations = structuredClone(
@@ -1756,6 +1861,7 @@ export function createResearchReportModule(
             const demandPlan = createDemandPlan(run);
             // Old evidence-ready checkpoints keep their original investigation scope.
             const twoStage =
+              !isSupplement &&
               input.strategy === "two-stage" &&
               (!resumeEvidence ||
                 !!checkpoint.prefilter ||
@@ -1818,8 +1924,21 @@ export function createResearchReportModule(
                 /最终推荐5至10所/g,
                 `最终推荐${schoolRange}所`,
               );
-              const result =
-                prefilter && demandPlan.directions.length
+              const result = isSupplement
+                ? {
+                    value: {
+                      directions: checkpoint.supplement!.plan.scope.map(
+                        (scope) => ({
+                          disciplineCode: scope.disciplineCode,
+                          rationale: "继续核验已展示项目的缺项",
+                          searchSchools: [scope.institutionName],
+                          fitReasons: [],
+                        }),
+                      ),
+                      followUpQuestions: [],
+                    } as ResearchPlan,
+                  }
+                : prefilter && demandPlan.directions.length
                   ? { value: demandPlan }
                   : resumeEvidence && retained?.researchDirections?.length
                     ? {
@@ -1851,7 +1970,7 @@ export function createResearchReportModule(
                       });
               live();
               plan = result.value;
-              if (demandPlan.directions.length) {
+              if (!isSupplement && demandPlan.directions.length) {
                 plan = {
                   ...plan,
                   directions: [
@@ -1948,11 +2067,12 @@ export function createResearchReportModule(
                     )
                     .slice(0, 3)
                 : [];
-            const candidateLeads = prefilter
-              ? []
-              : (config.allowAcademicHosts ?? true)
-                ? preferredCityCandidateLeads(regions, disciplines)
-                : [];
+            const candidateLeads =
+              prefilter || isSupplement
+                ? []
+                : (config.allowAcademicHosts ?? true)
+                  ? preferredCityCandidateLeads(regions, disciplines)
+                  : [];
             const library = dependencies.library;
             const saveSource = async (source: WebSource) => {
               live();
@@ -1976,32 +2096,35 @@ export function createResearchReportModule(
                 (s) => s.institutionName,
               );
             }
-            const loaded = resumeEvidence
-              ? []
-              : (library?.load({
-                  ...schoolPreferences,
-                  disciplineCodes: disciplines.map((item) => item.code),
-                  targetYear: year,
-                  schoolNames: [
-                    selectedSchool,
-                    ...candidateLeads.map((item) => item.school),
-                    ...plan.directions.flatMap(
-                      (item) => item.searchSchools ?? [],
-                    ),
-                  ].filter(Boolean),
-                  maxSources: B.candidates,
-                }) ?? []);
-            const seeds = reusableResearchSources(
-              [
-                ...report.sources,
-                ...loaded,
-                ...(input.previousReport?.sources ?? []),
-              ],
-              config.now?.() ?? Date.now(),
-            ).filter(
-              (source) =>
-                !prefilter || selectedResearchSource(prefilter, source),
-            );
+            const loaded =
+              resumeEvidence || isSupplement
+                ? []
+                : (library?.load({
+                    ...schoolPreferences,
+                    disciplineCodes: disciplines.map((item) => item.code),
+                    targetYear: year,
+                    schoolNames: [
+                      selectedSchool,
+                      ...candidateLeads.map((item) => item.school),
+                      ...plan.directions.flatMap(
+                        (item) => item.searchSchools ?? [],
+                      ),
+                    ].filter(Boolean),
+                    maxSources: B.candidates,
+                  }) ?? []);
+            const seeds = isSupplement
+              ? structuredClone(report.sources)
+              : reusableResearchSources(
+                  [
+                    ...report.sources,
+                    ...loaded,
+                    ...(input.previousReport?.sources ?? []),
+                  ],
+                  config.now?.() ?? Date.now(),
+                ).filter(
+                  (source) =>
+                    !prefilter || selectedResearchSource(prefilter, source),
+                );
             const attempts: ResearchReadAttempt[] = [
               ...(input.previousReport?.evidenceCoverage?.attempts ?? []),
               ...(library?.attempts(seeds.map((source) => source.url)) ?? []),
@@ -2053,25 +2176,25 @@ export function createResearchReportModule(
                 let result =
                   checkpoint.pages[value] ??
                   (await deadline.wait(
-                    sharedResearchRead(value, signal, () =>
-                      (researchExternalPolicy(value) ? externalReader : reader)(
-                        value,
-                        {
-                          signal,
-                          allowedHosts,
-                          maxRedirects: 3,
-                          allowHttp: true,
-                          timeoutMs: retriedPages.has(value)
-                            ? B.pageRetryTimeoutMs
-                            : B.pageTimeoutMs,
-                          maxBytes: 512000,
-                          allowPdf: true,
-                          maxPdfBytes: 5000000,
-                          allowSpreadsheet: true,
-                          maxSpreadsheetBytes: 5000000,
-                        },
-                      ),
-                    ),
+                    sharedResearchRead(value, signal, () => {
+                      newReadRequests++;
+                      return (
+                        researchExternalPolicy(value) ? externalReader : reader
+                      )(value, {
+                        signal,
+                        allowedHosts,
+                        maxRedirects: 3,
+                        allowHttp: true,
+                        timeoutMs: retriedPages.has(value)
+                          ? B.pageRetryTimeoutMs
+                          : B.pageTimeoutMs,
+                        maxBytes: 512000,
+                        allowPdf: true,
+                        maxPdfBytes: 5000000,
+                        allowSpreadsheet: true,
+                        maxSpreadsheetBytes: 5000000,
+                      });
+                    }),
                   ));
                 if (
                   /拟录取|录取名单/.test(result.text) &&
@@ -2280,6 +2403,40 @@ export function createResearchReportModule(
                   input.signal,
                 );
               };
+              if (isSupplement) {
+                const result = await executeSupplement({
+                  state: checkpoint.supplement!,
+                  report,
+                  run,
+                  disciplines,
+                  targetYear: year,
+                  subjectId: input.subjectId,
+                  signal: input.signal,
+                  web,
+                  readPage: fetchPage,
+                  attempts,
+                  lookupKeys,
+                  now: config.now,
+                  onSource: saveSource,
+                  onAttempt: recordAttempt,
+                  onProgress: (message) => stage("researching", message),
+                  persist,
+                  counts: () => ({
+                    searches: paidSearches,
+                    reads: newReadRequests,
+                  }),
+                });
+                usage.searches.paid = paidSearches;
+                usage.searches.cacheHits = checkpointSearchHits;
+                checkpoint.report = result;
+                await stage(
+                  "writing",
+                  result.supplement?.outcome === "updated"
+                    ? "已在原项目范围内更新依据与排序"
+                    : "本次未发现可改变结论的有效依据，保留原报告",
+                );
+                return result;
+              }
               const priorInventory =
                 resumeEvidence || prefilter
                   ? { recommendations: [], audit: [] }
@@ -4010,6 +4167,37 @@ export function createResearchReportModule(
           error.code !== "RESEARCH_TOTAL_TIMEOUT"
         )
           throw error;
+        if (checkpoint.supplement) {
+          const preserved = structuredClone(checkpoint.supplement.baseReport);
+          preserved.failureStage = lastStage;
+          preserved.reason = "RESEARCH_TOTAL_TIMEOUT";
+          preserved.status = "partial";
+          preserved.usage = checkpoint.report?.usage;
+          preserved.readStatistics = {
+            success: preserved.usage?.reads.success ?? 0,
+            failed: preserved.usage?.reads.failed ?? 0,
+            failuresByCode: preserved.usage?.reads.failuresByCode ?? {},
+          };
+          preserved.supplement = {
+            ...supplementResult(checkpoint.supplement.plan, "no_change"),
+            reusedSourceCount: preserved.sources.length,
+            newSearchCount: paidSearches,
+            newReadCount: newReadRequests,
+            remainingTaskCount: checkpoint.supplement.plan.tasks.filter(
+              (task) =>
+                !checkpoint.supplement!.completedTaskIds.includes(task.id),
+            ).length,
+          };
+          preserved.limitations = [
+            ...new Set([
+              ...preserved.limitations,
+              "本次补查达到时限；保留原报告，已读取资料仅保存为继续补查的断点。",
+            ]),
+          ];
+          checkpoint.report = preserved;
+          await originalInput.onCheckpoint?.(checkpoint);
+          return preserved;
+        }
         const report = checkpoint.report;
         const fallback: ResearchReport = report ?? {
           schoolPolicy,

@@ -12,6 +12,7 @@ import type {
   ResearchReport,
   ResearchInput,
 } from "../../server/explanation/research.ts";
+import type { ResearchCheckpoint } from "../../server/explanation/research-resume.ts";
 const model = {
   name: "deepseek-v4-pro",
   thinking: true,
@@ -575,6 +576,188 @@ test("a thrown supplementation failure retains the base report across latest-job
   assert.deepEqual(job.report, base);
   assert.ok(job.progress < 100);
 });
+
+for (const legacy of [false, true])
+  test(`retry keeps supplementation mode, checkpoint and the old report after failure (${legacy ? "legacy checkpoint" : "frozen supplement plan"})`, async (t) => {
+    const firstDone = deferred(),
+      supplementStarted = deferred(),
+      releaseSupplement = deferred(),
+      retryStarted = deferred(),
+      releaseRetry = deferred();
+    const inputs: ResearchInput[] = [];
+    let saved!: ResearchCheckpoint;
+    const engine: ResearchReportModule = {
+      getReadiness: () => ({ ready: true, reasons: [], model }),
+      clearSubject() {
+        releaseSupplement.resolve();
+        releaseRetry.resolve();
+      },
+      async generate(input) {
+        inputs.push(input);
+        if (inputs.length === 1) {
+          firstDone.resolve();
+          return {
+            ...output(input),
+            recommendations: [
+              {
+                institutionName: "研究大学",
+                disciplineCode: "0301",
+                majorCode: "030101",
+                programName: "法学理论",
+                rationale: "此前已保存的专业原文",
+                preparation: [],
+                uncertainties: ["学费待核验"],
+                citations: ["source"],
+              },
+            ],
+            sources: [
+              {
+                id: "source",
+                title: "2026年硕士招生专业目录",
+                url: "https://example.edu.cn/catalog",
+                excerpt: "研究大学 030101 法学理论",
+                retrievedAt: "2026-10-11T00:00:00Z",
+                kind: "official_page",
+                verified: false,
+              },
+            ],
+          };
+        }
+        if (inputs.length === 2) {
+          saved = {
+            version: 1,
+            contextHash: "owned-supplement-context",
+            models: { originalPlanning: { done: true } },
+            searches: {},
+            pages: {
+              "https://example.edu.cn/fees": {
+                text: "已获取、尚待项目绑定的收费原文",
+                contentType: "text/plain",
+              },
+            },
+            report: structuredClone(input.previousReport!),
+            ...(legacy
+              ? {}
+              : {
+                  operationMode: "supplement" as const,
+                  supplement: {
+                    plan: {
+                      version: 1 as const,
+                      baseGeneratedAt: input.previousReport!.generatedAt,
+                      scope: [
+                        {
+                          institutionName: "研究大学",
+                          disciplineCode: "0301",
+                          majorCode: "030101",
+                          programName: "法学理论",
+                        },
+                      ],
+                      scopeVerified: true,
+                      tasks: [],
+                      limitations: [],
+                    },
+                    completedTaskIds: ["saved-completed-task"],
+                    baseReport: structuredClone(input.previousReport!),
+                  },
+                }),
+          };
+          await input.onCheckpoint?.(saved);
+          await input.onProgress?.("researching", "本次补查已保存读取断点");
+          supplementStarted.resolve();
+          await releaseSupplement.promise;
+          throw new Error("supplement provider unavailable");
+        }
+        await input.onProgress?.("researching", "继续原补查断点");
+        retryStarted.resolve();
+        await releaseRetry.promise;
+        throw new Error("retry provider unavailable");
+      },
+    };
+    const { app, request, runId } = await fixture(t, engine);
+    try {
+      await request(`/guidance/${runId}/research`, "POST", {});
+      await firstDone.promise;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      const base = (await request(`/guidance/${runId}/research/latest`)).body
+        .job.report;
+      const supplement = await request(
+        `/guidance/${runId}/research/supplement`,
+        "POST",
+        {},
+      );
+      assert.equal(supplement.body.mode, "supplement");
+      assert.deepEqual(supplement.body.report, base);
+      await supplementStarted.promise;
+      releaseSupplement.resolve();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      const failed = (await request(`/guidance/${runId}/research/latest`)).body
+        .job;
+      assert.equal(failed.status, "failed");
+      assert.deepEqual(failed.report, base);
+
+      const retry = await request(
+        `/guidance/${runId}/research/retry`,
+        "POST",
+        {},
+      );
+      assert.equal(retry.status, 202);
+      assert.notEqual(retry.body.jobId, supplement.body.jobId);
+      assert.equal(retry.body.mode, "supplement");
+      assert.deepEqual(
+        retry.body.report,
+        base,
+        "the queued retry retains the original report",
+      );
+      await retryStarted.promise;
+      assert.equal(inputs.length, 3);
+      assert.equal(inputs[2].mode, "supplement");
+      assert.deepEqual(inputs[2].previousReport, base);
+      assert.deepEqual(inputs[2].checkpoint, saved);
+      if (legacy) {
+        assert.equal(inputs[2].checkpoint?.operationMode, undefined);
+        assert.equal(inputs[2].checkpoint?.supplement, undefined);
+      } else {
+        assert.deepEqual(inputs[2].checkpoint?.supplement?.completedTaskIds, [
+          "saved-completed-task",
+        ]);
+      }
+      assert.deepEqual(
+        app.store.get<ResearchCheckpoint>(
+          inputs[2].subjectId,
+          "research-checkpoint",
+          retry.body.jobId,
+        )?.value,
+        saved,
+      );
+      assert.equal(
+        retry.body.checkpoint,
+        undefined,
+        "private checkpoint is never exposed in the job API",
+      );
+      const running = (await request(`/guidance/${runId}/research/latest`)).body
+        .job;
+      assert.equal(running.status, "running");
+      assert.deepEqual(running.report, base);
+      releaseRetry.resolve();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      const failedRetry = (await request(`/guidance/${runId}/research/latest`))
+        .body.job;
+      assert.equal(failedRetry.status, "failed");
+      assert.deepEqual(failedRetry.report, base);
+      assert.ok(failedRetry.progress < 100);
+      assert.deepEqual(
+        app.store.get<ResearchCheckpoint>(
+          inputs[2].subjectId,
+          "research-checkpoint",
+          retry.body.jobId,
+        )?.value,
+        saved,
+      );
+    } finally {
+      releaseSupplement.resolve();
+      releaseRetry.resolve();
+    }
+  });
 
 test("an invalid model response during supplementation does not erase previously grounded recommendations", async (t) => {
   const done = deferred(),

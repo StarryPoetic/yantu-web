@@ -4,6 +4,7 @@ import type { ResearchEvidenceGap } from "../../shared/research-coverage.ts";
 import type { ResearchReport } from "./research.ts";
 import type { Discipline } from "../disciplines/types.ts";
 import { missingPriorityQueries } from "./research-targeted.ts";
+import type { WebSource } from "./web.ts";
 
 const digest = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -32,10 +33,9 @@ export function matchesSupplementScope(
     normalized(value.institutionName) === normalized(scope.institutionName) &&
     value.disciplineCode === scope.disciplineCode &&
     value.majorCode === scope.majorCode &&
-    (!scope.collegeName ||
-      normalized(value.collegeName) === normalized(scope.collegeName)) &&
-    (!scope.degreeType || value.degreeType === scope.degreeType) &&
-    (!scope.studyMode || value.studyMode === scope.studyMode)
+    normalized(value.collegeName) === normalized(scope.collegeName) &&
+    value.degreeType === scope.degreeType &&
+    value.studyMode === scope.studyMode
   );
 }
 
@@ -59,6 +59,10 @@ export interface ResearchSupplementState {
   /** Complete includes a checked query with no usable evidence, not a negative admission fact. */
   completedTaskIds: string[];
   baseReport: ResearchReport;
+  workingSources?: WebSource[];
+  failedTaskIds?: string[];
+  /** IO exhaustion is not completion until its evidence has been merged into a report. */
+  merged?: boolean;
 }
 
 const terms = {
@@ -85,7 +89,7 @@ export function createSupplementPlan(
     ],
   );
   const scope: ResearchSupplementScope[] = [];
-  let scopeVerified = projects.length > 0;
+  let scopeVerified = projects.length > 0 && !!report.evidenceCoverage;
   for (const project of projects) {
     if (
       !project.institutionName ||
