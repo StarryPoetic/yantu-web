@@ -73,6 +73,15 @@ const base = () => ({
     contentType: "text/plain",
   }),
 });
+function deferred() {
+  let resolve!: () => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<void>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
 
 test("prefetch reserves failed reads before the outer reader records its cooldown", async () => {
   const attempts: ResearchReadAttempt[] = [];
@@ -381,6 +390,7 @@ test("temporary failures retain last valid evidence, record diagnostics and resp
 
 test("empty documents stay unavailable and cancellation is propagated", async () => {
   const parent = page();
+  const events: string[] = [];
   parent.documentLinks = [
     { url: "https://example.edu.cn/new.pdf", title: "硕士专业目录" },
   ];
@@ -388,10 +398,15 @@ test("empty documents stay unavailable and cancellation is propagated", async ()
     ...base(),
     sources: [parent],
     maxRequests: 0,
+    onProgress: async (detail) => {
+      events.push(detail);
+    },
     readPage: async () => ({ text: "", contentType: "application/pdf" }),
   });
   assert.equal(result.sources.length, 1);
   assert.equal(result.attempts[0].reason, "WEB_EMPTY");
+  assert.match(events[1], /原文读取返回.*等待内容核验/);
+  assert.match(events[2], /原文整理未完成.*缺项保持待补/);
   await assert.rejects(
     repairResearchEvidence({
       ...base(),
@@ -480,6 +495,249 @@ test("library gap opening reads different schools concurrently and records every
   assert.equal(result.readCount, 2);
   assert.equal(result.attempts.length, 2);
   assert.ok(result.attempts.every((attempt) => attempt.status === "success"));
+});
+
+for (const failed of [false, true])
+  test(`opening read ${failed ? "failure" : "return"} is reported before a slower peer settles`, async () => {
+    const parents = [
+      page("甲研究大学", "a.edu.cn"),
+      page("乙研究大学", "b.edu.cn"),
+    ].map((source, index) => ({
+      ...source,
+      id: `parent-${index}`,
+      documentLinks: [
+        { url: source.url + ".pdf", title: "2026年硕士专业目录初试科目" },
+      ],
+    }));
+    const slow = deferred();
+    const fastReported = deferred();
+    const events: string[] = [],
+      started: string[] = [],
+      saved: string[] = [];
+    const attempts: ResearchReadAttempt[] = [];
+    const pending = repairResearchEvidence({
+      ...base(),
+      gaps: [gap("甲研究大学"), gap("乙研究大学")],
+      sources: parents,
+      maxRequests: 0,
+      maxReads: 2,
+      onAttempt: (attempt) => attempts.push(attempt),
+      onSource: (source) => {
+        saved.push(source.url);
+      },
+      onProgress: async (detail) => {
+        events.push(detail);
+        if (
+          detail.startsWith(failed ? "原文读取失败" : "原文读取返回") &&
+          detail.includes("乙研究大学")
+        )
+          fastReported.resolve();
+      },
+      readPage: async (url) => {
+        const school = url.includes("a.edu.cn") ? "甲研究大学" : "乙研究大学";
+        assert.ok(
+          events.some(
+            (event) =>
+              event.startsWith("提交原文读取任务") && event.includes(school),
+          ),
+        );
+        started.push(url);
+        if (school === "甲研究大学") await slow.promise;
+        else if (failed)
+          throw Object.assign(new Error("private body / token"), {
+            code: "HTTP_404",
+          });
+        return { text: "030101 法学理论", contentType: "application/pdf" };
+      },
+    });
+    // If the implementation fails before producing the event, surface its error
+    // instead of leaving an unresolved event promise hanging in the test.
+    pending.catch(fastReported.reject);
+    try {
+      await fastReported.promise;
+      assert.equal(started.length, 2);
+      assert.equal(
+        events.filter(
+          (event) =>
+            event.startsWith("原文读取返回") && event.includes("甲研究大学"),
+        ).length,
+        0,
+      );
+      assert.equal(
+        attempts.length,
+        0,
+        "source consumption remains ordered behind the pending wave",
+      );
+    } finally {
+      slow.resolve();
+    }
+    const result = await pending;
+    assert.equal(result.readCount, 2);
+    assert.equal(result.requestCount, 0);
+    assert.equal(result.attempts.length, 2);
+    assert.deepEqual(
+      saved,
+      started.filter((url) => !failed || url.includes("a.edu.cn")),
+    );
+    assert.equal(
+      events.filter((event) => event.startsWith("原文读取失败")).length,
+      Number(failed),
+    );
+    assert.ok(
+      events.every((event) => !/private body|token|https:|已补齐/.test(event)),
+    );
+  });
+
+test("queued same-school reads report their start only when the reader is invoked", async () => {
+  const parent = page();
+  parent.documentLinks = [0, 1].map((index) => ({
+    url: `https://example.edu.cn/${index}.pdf`,
+    title: "2026年硕士专业目录初试科目",
+  }));
+  const firstStarted = deferred();
+  const firstReleased = deferred();
+  const events: string[] = [];
+  const pending = repairResearchEvidence({
+    ...base(),
+    sources: [parent],
+    maxRequests: 0,
+    maxReads: 2,
+    onProgress: async (detail) => {
+      events.push(detail);
+    },
+    readPage: async (url) => {
+      if (url.endsWith("/0.pdf")) {
+        firstStarted.resolve();
+        await firstReleased.promise;
+      }
+      return { text: "030101 法学理论", contentType: "application/pdf" };
+    },
+  });
+  pending.catch(firstStarted.reject);
+  try {
+    await firstStarted.promise;
+    assert.equal(
+      events.filter((event) => event.startsWith("提交原文读取任务")).length,
+      1,
+    );
+    assert.equal(
+      events.filter((event) => event.startsWith("原文读取返回")).length,
+      0,
+    );
+  } finally {
+    firstReleased.resolve();
+  }
+  const result = await pending;
+  assert.equal(result.readCount, 2);
+  assert.match(events[0], /提交原文读取任务.*任务 1/);
+  assert.match(events[1], /原文读取返回.*任务 1/);
+  assert.match(events[2], /提交原文读取任务.*任务 2/);
+  assert.match(events[3], /原文读取返回.*任务 2/);
+});
+
+test("progress persistence errors propagate instead of being recorded as unavailable evidence", async () => {
+  const parent = page();
+  parent.documentLinks = [{ url: parent.url + ".pdf", title: "硕士专业目录" }];
+  const error = new Error("progress persistence unavailable");
+  let reads = 0,
+    attempts = 0;
+  await assert.rejects(
+    repairResearchEvidence({
+      ...base(),
+      sources: [parent],
+      maxRequests: 0,
+      onProgress: async () => {
+        throw error;
+      },
+      onAttempt: () => {
+        attempts++;
+      },
+      readPage: async () => {
+        reads++;
+        return { text: parent.excerpt, contentType: "text/plain" };
+      },
+    }),
+    (received) => received === error,
+  );
+  assert.equal(reads, 0);
+  assert.equal(attempts, 0);
+});
+
+test("cancelled reads have no false completion or ordinary failure event", async () => {
+  const parent = page();
+  parent.documentLinks = [{ url: parent.url + ".pdf", title: "硕士专业目录" }];
+  const error = Object.assign(new Error("cancelled"), {
+    code: "RESEARCH_CANCELLED",
+  });
+  const events: string[] = [];
+  await assert.rejects(
+    repairResearchEvidence({
+      ...base(),
+      sources: [parent],
+      maxRequests: 0,
+      onProgress: async (detail) => {
+        events.push(detail);
+      },
+      readPage: async () => {
+        throw error;
+      },
+    }),
+    (received) => received === error,
+  );
+  assert.equal(events.length, 1);
+  assert.match(events[0], /提交原文读取任务/);
+});
+
+test("search progress distinguishes returned leads, empty results, limits and failed tasks", async (t) => {
+  for (const outcome of ["leads", "empty", "limited", "failed"] as const)
+    await t.test(outcome, async () => {
+      const events: string[] = [];
+      const questions: string[] = [];
+      const service = web(
+        outcome === "leads" ? [{ ...page(), kind: "search_snippet" }] : [],
+        questions,
+      );
+      const answer = service.answer;
+      const error = new Error("provider URL contains private token");
+      service.answer = async (...args) => {
+        assert.match(events.at(-1)!, /提交缺项检索任务/);
+        if (outcome === "failed") throw error;
+        const result = await answer(...args);
+        return outcome === "limited"
+          ? { ...result, reason: "SEARCH_BUDGET_EXHAUSTED" }
+          : result;
+      };
+      const pending = repairResearchEvidence({
+        ...base(),
+        maxRequests: 1,
+        web: service,
+        onProgress: async (detail) => {
+          events.push(detail);
+        },
+      });
+      if (outcome === "failed")
+        await assert.rejects(pending, (received) => received === error);
+      else {
+        const result = await pending;
+        assert.equal(result.requestCount, 1);
+        assert.equal(result.readCount, 0);
+        assert.equal(questions.length, 1);
+      }
+      assert.equal(events.length, 2);
+      assert.match(
+        events[1],
+        outcome === "leads"
+          ? /返回 1 条待核验线索/
+          : outcome === "empty"
+            ? /本轮未返回候选，缺项保持待补/
+            : outcome === "limited"
+              ? /返回受限/
+              : /缺项检索失败/,
+      );
+      assert.ok(
+        events.every((event) => !/private|token|https:|已补齐/.test(event)),
+      );
+    });
 });
 
 test("library-first opening and subsequent gap rounds prefer the requested city", async () => {

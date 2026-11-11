@@ -171,10 +171,36 @@ export async function repairResearchEvidence(input: {
         input.targetYear,
       ) ||
     a.url.localeCompare(b.url);
-  const scheduler = createResearchReader(
-    (url) => input.readPage(url),
-    input.signal,
-  );
+  const readContexts = new Map<string, { label: string; returned?: boolean }>();
+  const progressFailures = new Set<unknown>();
+  const progress = async (detail: string) => {
+    try {
+      await input.onProgress(detail);
+    } catch (error) {
+      // Progress persistence errors are not ordinary unavailable documents.
+      progressFailures.add(error);
+      throw error;
+    }
+  };
+  const scheduler = createResearchReader(async (url, signal) => {
+    const context = readContexts.get(url)!;
+    // This is a reader task: the supplied reader may itself reuse a cached page.
+    // Emit from dispatch/settlement, not from the later ordered batch consumer.
+    await progress(`提交原文读取任务：${context.label}`);
+    signal.throwIfAborted();
+    let result: Awaited<ReturnType<typeof input.readPage>>;
+    try {
+      result = await input.readPage(url);
+    } catch (error) {
+      if (!cancelled(error) && !signal.aborted)
+        await progress(`原文读取失败：${context.label}，保留已有证据`);
+      throw error;
+    }
+    if (!signal.aborted)
+      await progress(`原文读取返回：${context.label}，等待内容核验`);
+    context.returned = true;
+    return result;
+  }, input.signal);
   try {
     const sources = structuredClone([...input.sources]);
     const attempts: ResearchReadAttempt[] = [];
@@ -322,6 +348,9 @@ export async function repairResearchEvidence(input: {
       }
       touched.add(candidate.url);
       readCount++;
+      readContexts.set(candidate.url, {
+        label: `${gap.institutionName}${gap.programName ?? ""}（读取任务 ${readCount}）`,
+      });
       return true;
     }
     async function read(
@@ -333,9 +362,6 @@ export async function repairResearchEvidence(input: {
     ) {
       if (!outcome && !reserve(candidate, gap)) return;
       const existing = sources.find((source) => source.url === candidate.url);
-      await input.onProgress(
-        `正在补查${gap.institutionName}${gap.programName ?? ""}：${gap.nextAction}`,
-      );
       try {
         if (outcome?.status === "rejected") throw outcome.reason;
         const result =
@@ -394,7 +420,11 @@ export async function repairResearchEvidence(input: {
         attempts.push(attempt);
         input.onAttempt?.(attempt);
       } catch (error) {
-        if (cancelled(error)) throw error;
+        if (cancelled(error) || progressFailures.has(error)) throw error;
+        if (readContexts.get(candidate.url)?.returned)
+          await progress(
+            `原文整理未完成：${readContexts.get(candidate.url)!.label}，缺项保持待补`,
+          );
         const attempt: ResearchReadAttempt = {
           url: candidate.url,
           status: "failed",
@@ -571,19 +601,32 @@ export async function repairResearchEvidence(input: {
           .digest("hex"),
       );
       requestCount++;
-      await input.onProgress(
-        `按已记录缺项检索${gap.institutionName}${gap.programName ?? "硕士专业目录"}`,
-      );
-      const found = await input.web.answer(
-        { subjectId: input.subjectId, question: query, search: true },
-        {
-          sourcesOnly: true,
-          upgradeAcademicHttp: true,
-          search: {
-            count: 10,
-            ...(domains.length ? { includeDomains: domains } : {}),
+      const searchLabel = `${gap.institutionName}${gap.programName ?? "硕士专业目录"}（检索任务 ${requestCount}）`;
+      await progress(`提交缺项检索任务：${searchLabel}`);
+      let found: Awaited<ReturnType<typeof input.web.answer>>;
+      try {
+        found = await input.web.answer(
+          { subjectId: input.subjectId, question: query, search: true },
+          {
+            sourcesOnly: true,
+            upgradeAcademicHttp: true,
+            search: {
+              count: 10,
+              ...(domains.length ? { includeDomains: domains } : {}),
+            },
           },
-        },
+        );
+      } catch (error) {
+        if (!cancelled(error) && !input.signal?.aborted)
+          await progress(`缺项检索失败：${searchLabel}，保留已有证据`);
+        throw error;
+      }
+      await progress(
+        found.reason
+          ? `缺项检索返回受限：${searchLabel}，返回 ${found.sources.length} 条待核验线索`
+          : found.sources.length
+            ? `缺项检索结果返回：${searchLabel}，返回 ${found.sources.length} 条待核验线索`
+            : `缺项检索结果返回：${searchLabel}，本轮未返回候选，缺项保持待补`,
       );
       searched ||= found.searched;
       if (found.reason)
