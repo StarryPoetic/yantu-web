@@ -22,6 +22,11 @@ import type {
 } from "../recommendation/index.ts";
 import type { AssessmentAttempt } from "../assessment/types.ts";
 import { buildPlan } from "../planning/index.ts";
+import {
+  currentPerformance,
+  invalidatePerformancePlan,
+  stalePlanPerformance,
+} from "../performance/index.ts";
 import type { PlanSnapshot, PlanTask } from "../planning/index.ts";
 import { buildReport } from "../reports/index.ts";
 import type { ReportSnapshot } from "../reports/index.ts";
@@ -32,6 +37,16 @@ function candidates(run: RecommendationRun) {
   return [...run.ranked, ...run.pendingVerification, ...run.eligibleUnranked];
 }
 function currentPlan(c: Context) {
+  const saved = c.store.get<PlanSnapshot | null>(c.session.subjectId, "plan");
+  if (
+    saved?.value &&
+    stalePlanPerformance(c.store, c.session.subjectId, saved.value)
+  )
+    invalidatePerformancePlan(
+      c.store,
+      c.session.subjectId,
+      "成绩依据已过期、撤回或适用范围变化，请重新保存计划",
+    );
   return (
     c.store.get<PlanSnapshot | null>(c.session.subjectId, "plan") ??
     c.store.put<PlanSnapshot | null>(
@@ -335,6 +350,7 @@ export function workRoutes(c: Context): Reply | undefined {
         recommendationRunId: run?.recommendationRunId,
         generatedAt: now(),
         targetScores: targetScores as Record<string, number | null> | undefined,
+        currentPerformance: currentPerformance(c.store, owner, target),
         targetTotalScore: c.body.targetTotalScore as number | undefined,
         selectedSubjectIds: c.body.selectedSubjectIds as string[] | undefined,
         confirmedMajorId: selection.confirmedMajorId,
@@ -401,18 +417,38 @@ export function workRoutes(c: Context): Reply | undefined {
     }
   }
   const planHistory = /^\/me\/plans\/([^/]+)\/versions\/(\d+)$/.exec(c.path);
-  if (planHistory && c.method === "GET")
+  if (planHistory && c.method === "GET") {
+    const history = required(
+      c.store.get<PlanSnapshot>(
+        owner,
+        "plan-history",
+        `${planHistory[1]}:${planHistory[2]}`,
+      ),
+    ).value;
+    const stale = stalePlanPerformance(c.store, owner, history);
     return {
       body: {
-        plan: required(
-          c.store.get(
-            owner,
-            "plan-history",
-            `${planHistory[1]}:${planHistory[2]}`,
-          ),
-        ).value,
+        plan: stale
+          ? {
+              ...history,
+              valid: false,
+              status: "needs_review",
+              subjects: history.subjects.map((subject) => ({
+                ...subject,
+                currentEvidence: null,
+                currentScore: null,
+                gap: null,
+                gapStatus: "pending",
+              })),
+              pendingItems: [
+                ...history.pendingItems,
+                "历史成绩依据已失效，不可作为当前分数或差距",
+              ],
+            }
+          : history,
       },
     };
+  }
   if (c.path === "/me/tasks" && c.method === "GET") {
     const plan = currentPlan(c).value;
     const taskIds = new Set(plan?.tasks.map((t) => t.taskId) ?? []);
@@ -434,8 +470,15 @@ export function workRoutes(c: Context): Reply | undefined {
     fields(c.body, ["completed"]);
     if (typeof c.body.completed !== "boolean")
       throw new HttpError(422, "invalid_task", "任务完成状态必须明确。");
+    currentPlan(c);
     const task = required(c.store.get<TaskState>(owner, "task", taskMatch[1]));
     matchEtag(c.request.headers["if-match"], task.etag);
+    if (task.value.needsReconfirmation && c.body.completed)
+      throw new HttpError(
+        409,
+        "task_needs_review",
+        "任务依据已变化，请先重新保存并确认计划。",
+      );
     const saved = c.store.put(owner, "task", taskMatch[1], {
       ...task.value,
       completed: c.body.completed,
@@ -473,6 +516,12 @@ export function workRoutes(c: Context): Reply | undefined {
         ).value
       : undefined;
     if (plan) {
+      if (stalePlanPerformance(c.store, owner, plan))
+        throw new HttpError(
+          409,
+          "plan_performance_stale",
+          "该历史计划的成绩依据已失效，请重新核验并保存计划。",
+        );
       const active = currentPlan(c).value;
       const confirmedMajorId = selectionsResource(c).value.confirmedMajorId;
       if (
@@ -558,18 +607,26 @@ export function workRoutes(c: Context): Reply | undefined {
       c.store.get<ReportSnapshot>(owner, "report", reportMatch[1]),
     ).value;
     const current = catalog(c.store);
-    const withdrawn = candidates(report.recommendation).some((p) =>
-      current.withdrawnRevisionIds.includes(p.programRevisionId),
-    );
+    const performanceStale = report.plan
+      ? stalePlanPerformance(c.store, owner, report.plan)
+      : false;
+    const withdrawn =
+      performanceStale ||
+      candidates(report.recommendation).some((p) =>
+        current.withdrawnRevisionIds.includes(p.programRevisionId),
+      );
     return {
       body: {
         ...report,
         status: "succeeded",
-        needsRefresh: runView(c, report.recommendation).needsRefresh,
+        needsRefresh:
+          performanceStale || runView(c, report.recommendation).needsRefresh,
         withdrawn,
-        warning: withdrawn
-          ? "依据已撤回，仅保留历史记录，请勿继续作为报考依据。"
-          : null,
+        warning: performanceStale
+          ? "成绩依据已失效，仅保留历史记录；当前分数与差距须重新核验。"
+          : withdrawn
+            ? "依据已撤回，仅保留历史记录，请勿继续作为报考依据。"
+            : null,
       },
     };
   }

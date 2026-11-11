@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { request } from "./api";
 import { Empty, ErrorNotice } from "./ui";
 import { GovernancePanels } from "./GovernancePanels";
+import { PerformanceReviewPanel } from "./PerformanceReviewPanel";
 
 interface Draft {
   draftId: string;
@@ -147,6 +148,9 @@ export function AdminPanel() {
         error={error}
         onReload={actor ? () => void act(() => load()) : undefined}
       />
+      {actor?.roles.includes("reviewer") && (
+        <PerformanceReviewPanel actorId={actor.actorId} />
+      )}
       {actor && (
         <div className="ws-notice" role="status">
           当前管理身份：{actor.actorId} · 权限：

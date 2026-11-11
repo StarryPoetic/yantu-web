@@ -16,6 +16,7 @@ export class PlanningError extends Error {
 }
 
 export interface CurrentPerformance {
+  performanceId?: string;
   subjectId: string;
   score: number;
   maxScore: number;

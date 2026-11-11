@@ -21,13 +21,14 @@ import type { PlanSnapshot } from "../planning/index.ts";
 import { isDisciplineId } from "../disciplines/index.ts";
 import { programMatchesDiscipline } from "../../shared/discipline-matching.ts";
 
-export const deletionScopeVersion = "all-personal-v1";
+export const deletionScopeVersion = "all-personal-v2";
 export const deletionScope = [
   "画像及历史版本",
   "测评草稿、作答与诊断",
   "推荐与报告",
   "收藏、屏蔽及确认专业",
   "目标计划与阶段任务",
+  "成绩、证明定位及审核记录",
   "纠错记录与个人解释缓存",
 ];
 export interface ProfileResource {

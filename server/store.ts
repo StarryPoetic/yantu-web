@@ -275,9 +275,9 @@ export class Store {
     this.db.prepare("DELETE FROM idempotency WHERE owner=?").run(owner);
     this.db
       .prepare(
-        "DELETE FROM resources WHERE owner='administration' AND kind='correction' AND json_extract(value,'$.subjectId')=?",
+        "DELETE FROM resources WHERE owner='administration' AND ((kind='correction' AND json_extract(value,'$.subjectId')=?) OR (kind='performance-index' AND json_extract(value,'$.ownerId')=?))",
       )
-      .run(owner);
+      .run(owner, owner);
     return this.generation(owner);
   }
   audit(actor: string, action: string, objectId: string) {

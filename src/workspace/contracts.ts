@@ -65,6 +65,7 @@ export interface PlanResource {
   planVersion: number;
 }
 export interface Task {
+  needsConfirmation?: boolean;
   taskId: string;
   title: string;
   description?: string;

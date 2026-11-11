@@ -13,6 +13,7 @@ import type {
   Task,
 } from "./contracts";
 import { Empty, ErrorNotice } from "./ui";
+import { PerformancePanel } from "./PerformancePanel";
 
 export function PlanPanel({
   programs,
@@ -379,6 +380,42 @@ export function PlanPanel({
           </p>
         )}
       </form>
+      {program && (
+        <PerformancePanel
+          key={`${program.programRevisionId}:${selectedSubjects.map((subject) => subject.subjectId).join(",")}`}
+          program={program}
+          subjects={selectedSubjects}
+          onChanged={async () => {
+            const [updated, taskList] = await Promise.all([
+              request<PlanResource>("/me/plan"),
+              request<{ items: Task[] }>("/me/tasks"),
+            ]);
+            setResource(updated);
+            setTasks(taskList.data.items);
+          }}
+        />
+      )}
+      {plan && (
+        <section
+          className="ws-panel ws-stack"
+          aria-label="已保存计划分数与差距"
+        >
+          <h2>已保存计划分数与差距</h2>
+          <p>
+            差距只比较审核通过且仍有效的同口径成绩与自定目标，不代表预测成绩或录取概率。
+          </p>
+          {plan.subjects.map((subject) => (
+            <p key={subject.subjectId}>
+              {subject.name}：目标 {subject.targetScore ?? "待制定"} · 当前{" "}
+              {subject.currentScore ?? "待评估"} · 差距{" "}
+              {subject.gap ?? "待评估"}
+            </p>
+          ))}
+          {plan.status === "needs_review" && (
+            <p className="ws-warning">计划依据已变化，请重新核验后保存。</p>
+          )}
+        </section>
+      )}
       <section className="ws-panel">
         <h2>下一步任务</h2>
         {tasks.length ? (
@@ -388,7 +425,7 @@ export function PlanPanel({
                 <input
                   type="checkbox"
                   checked={task.completed}
-                  disabled={busy}
+                  disabled={busy || task.needsConfirmation}
                   onChange={(event) => {
                     const completed = event.target.checked;
                     void act(async () => {
@@ -425,6 +462,9 @@ export function PlanPanel({
                 />
                 <span>
                   <strong>{task.title}</strong>
+                  {task.needsConfirmation && (
+                    <small>依据已变化，请重新保存计划后确认任务。</small>
+                  )}
                   {task.description && <small>{task.description}</small>}
                 </span>
               </label>

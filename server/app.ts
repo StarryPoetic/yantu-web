@@ -27,6 +27,7 @@ import { researchInterestRoutes } from "./routes/research-interests.ts";
 import { catalogRoutes } from "./routes/catalog.ts";
 import { assessmentRoutes } from "./routes/assessment.ts";
 import { workRoutes } from "./routes/work.ts";
+import { performanceRoutes, performanceReplay } from "./routes/performance.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { createAssistantRoutes } from "./routes/assistant.ts";
 import { createAuthRoutes } from "./routes/auth.ts";
@@ -360,6 +361,13 @@ export async function createApplication(
           );
         const saved = JSON.parse(String(replay.response)) as Reply;
         const savedBody = saved.body as Record<string, unknown>;
+        const refreshedPerformance = performanceReplay(context, savedBody);
+        if (refreshedPerformance)
+          return send(
+            response,
+            { ...refreshedPerformance, status: saved.status },
+            requestId,
+          );
         const refreshedResearch = research.replay(context, savedBody);
         if (refreshedResearch)
           return send(response, refreshedResearch, requestId);
@@ -472,8 +480,9 @@ export async function createApplication(
       };
       const route = (): Reply => {
         const result = admin
-          ? adminRoutes(context)
+          ? (performanceRoutes(context) ?? adminRoutes(context))
           : (research.handle(context) ??
+            performanceRoutes(context) ??
             catalogRoutes(context) ??
             guidanceRoutes(context) ??
             profileRoutes(context) ??
