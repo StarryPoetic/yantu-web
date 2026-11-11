@@ -3,7 +3,7 @@ import type { ResearchReportModule } from "../server/explanation/research";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Locator } from "@playwright/test";
 import type { GuidanceRun } from "../server/disciplines/types";
 import type { ResearchJob } from "../server/routes/research";
 import type {
@@ -40,6 +40,13 @@ const stages: Record<ResearchStage, { progress: number; message: string }> = {
   },
   writing: { progress: 90, message: "正在核对引用与专业代码，整理报告" },
 };
+
+async function openSchoolDetails(card: Locator) {
+  const details = card.locator(":scope > .research-school-details");
+  await expect(details).toBeVisible();
+  if ((await details.getAttribute("open")) === null)
+    await details.locator(":scope > summary").click();
+}
 
 async function openGuidance(
   page: Page,
@@ -781,6 +788,7 @@ test("阶段进度真实变化，刷新恢复同一任务并展示完整报告�
     name: "浏览器测试大学 · 法学（民商法方向）",
     exact: true,
   });
+  await openSchoolDetails(school);
   await expect(
     school.getByRole("heading", { name: "浏览器测试大学", exact: true }),
   ).toBeVisible();
@@ -888,6 +896,7 @@ test("待确认原文在手机卡片和下载中保留，不参与城市预算�
     ],
     readStatistics: { success: 1, failed: 1, failuresByCode: { HTTP_404: 1 } },
   }));
+  await openSchoolDetails(panel.getByRole("article").first());
   const evidence = panel
     .getByRole("region", { name: "学费资料状态", exact: true })
     .getByRole("region", {
@@ -958,6 +967,7 @@ test("手机上明确展示部分报告与搜索摘要，保留来源和适用�
     panel.getByRole("region", { name: "报告生成失败", exact: true }),
   ).toHaveCount(0);
   await expect(panel.getByText("研究报告", { exact: true })).toHaveCount(0);
+  await openSchoolDetails(panel.getByRole("article").first());
   await expect(panel.getByText(/报考条件待核验/)).toBeVisible();
   await expect(
     panel.getByText("本次只取得搜索摘要，仍需读取官网原文。", { exact: true }),
@@ -1181,6 +1191,7 @@ test("跨专业画像优先展示具体学校专业、真实个人理由与成�
       name: school + " · 应用统计（数据分析方向）",
       exact: true,
     });
+    await openSchoolDetails(card);
     await expect(card).toBeVisible();
     await expect(card.getByText("生物医学工程", { exact: true })).toBeVisible();
     await expect(card.getByText("接受跨专业", { exact: true })).toBeVisible();
@@ -1275,10 +1286,13 @@ test("五所学校按综合适合度分三层，昂贵仍可优先且同价可�
     exact: true,
   });
   await expect(exploratory.getByRole("article")).toHaveCount(1);
+  for (const card of await panel.getByRole("article").all())
+    await openSchoolDetails(card);
   const expensive = preferred.getByRole("article", {
     name: "分级测试丁大学 · 电子信息（人工智能技术）",
     exact: true,
   });
+  await openSchoolDetails(expensive);
   await expect(expensive.getByText("机械工程", { exact: true })).toBeVisible();
   await expect(expensive.getByText(/你接受跨专业/)).toBeVisible();
   await expect(
@@ -1301,6 +1315,7 @@ test("五所学校按综合适合度分三层，昂贵仍可优先且同价可�
     name: "分级测试乙大学 · 电子信息（人工智能技术）",
     exact: true,
   });
+  await openSchoolDetails(unknown);
   await expect(
     unknown.getByText(
       "尚未查到可核对的学费金额，暂不能判断是否符合你的年度预算。",
@@ -1316,6 +1331,7 @@ test("五所学校按综合适合度分三层，昂贵仍可优先且同价可�
     name: "分级测试丙大学 · 电子信息（人工智能技术）",
     exact: true,
   });
+  await openSchoolDetails(historical);
   await expect(
     historical.getByText(
       `${Number(run.inputSnapshot.profile.year) - 2} 年参考学费：40,000 元/全程（该专业标准；非全日制）`,
@@ -1887,6 +1903,7 @@ for (const { empty, reportVersion } of [
             exact: true,
           }),
         ).toBeVisible();
+        await openSchoolDetails(panel.getByRole("article").first());
         await expect(panel.getByText(/报考条件待核验/)).toBeVisible();
       }
       await page.reload();
@@ -2056,6 +2073,7 @@ test("v7展示测评依据、真实科目与同校专业对比，并明确杭州
     exact: true,
   });
   await expect(basis).toBeVisible();
+  await basis.locator(":scope > details > summary").click();
   await expect(basis.getByText("示例练习观察", { exact: true })).toBeVisible();
   await expect(
     basis.getByText("练习范围：数学一", { exact: true }),
@@ -2082,6 +2100,7 @@ test("v7展示测评依据、真实科目与同校专业对比，并明确杭州
     name: "浏览器测试大学 · 法学（民商法方向）",
     exact: true,
   });
+  await openSchoolDetails(card);
   await expect(
     card.getByText("招生院系：主项目法学院", { exact: true }),
   ).toBeVisible();
@@ -2325,6 +2344,7 @@ test("只有一年历史资料时仍显示目标年度的已知改科并同步�
   await expect(
     panel.getByText("近年考试科目对照", { exact: true }),
   ).toHaveCount(0);
+  await openSchoolDetails(panel.getByRole("article").first());
   const changes = panel.getByRole("region", {
     name: "考试科目年度变化",
     exact: true,
@@ -2422,6 +2442,7 @@ test("历年政策优先展示2026备考参考与2025对照，2027科目作为�
     name: "浏览器测试大学 · 法学（民商法方向）",
     exact: true,
   });
+  await openSchoolDetails(card);
   await expect(
     card.getByRole("heading", {
       name: "2026年专业资料作为比较基准",
@@ -2821,14 +2842,17 @@ for (const width of [1280, 375]) {
       name: "已绑定测试大学 · 法学（民商法方向）",
       exact: true,
     });
+    await openSchoolDetails(bound);
     const pending = panel.getByRole("article", {
       name: "待确认测试大学 · 法学（民商法方向）",
       exact: true,
     });
+    await openSchoolDetails(pending);
     const missing = panel.getByRole("article", {
       name: "未找到测试大学 · 法学（民商法方向）",
       exact: true,
     });
+    await openSchoolDetails(missing);
     for (const label of ["初试科目", "学费", "培养校区/城市", "资料年度"]) {
       await expect(
         bound
@@ -3795,6 +3819,7 @@ test("T3-12b new policy without coverage statistics keeps 4–5 in the report an
     }),
   ).toHaveCount(0);
   const card = recommendation.getByRole("article").first();
+  await openSchoolDetails(card);
   const reasons = card.getByRole("region", {
     name: "个人匹配理由与取舍",
     exact: true,
@@ -3855,3 +3880,149 @@ test("T3-13 global status matches partial and stale report availability", async 
   await expect(badge).toHaveText("需更新");
   await expect(page.locator(".research-global-notice")).toContainText("需更新");
 });
+
+for (const width of [1280, 375]) {
+  test(`反馈折叠：${width}px 整块依据默认隐藏，卡片吸顶/底部收起与新报告重置`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 820 });
+    const service = await researchService(page);
+    service.setRun(await openGuidance(page));
+    const panel = page.getByRole("region", {
+      name: "联网研究报告",
+      exact: true,
+    });
+    await panel
+      .getByRole("button", { name: "联网调研并生成报告", exact: true })
+      .click();
+    const makeReport = (
+      report: ResearchReport,
+      generatedAt = "2026-11-12T00:00:00Z",
+    ): ResearchReport => ({
+      ...report,
+      generatedAt,
+      decisionBasis: decisionDisplayFixture(),
+      recommendations: ["第一测试大学", "第二测试大学"].map(
+        (institutionName) => ({
+          ...report.recommendations[0],
+          institutionName,
+          preparation: Array.from(
+            { length: 25 },
+            (_, index) =>
+              `复习任务${index + 1}：核对课程记录与官方范围，安排基础知识复习和适用题目练习。`,
+          ),
+        }),
+      ),
+    });
+    service.finish("completed", makeReport);
+    const basis = panel.getByRole("region", {
+      name: "测评与学位路线依据",
+      exact: true,
+    });
+    const basisToggle = basis.locator(":scope > details > summary");
+    await expect(basisToggle).toBeVisible();
+    await expect(basis.getByText("示例练习观察", { exact: true })).toBeHidden();
+    await expect(
+      basis.getByRole("region", { name: "学术学位路线", exact: true }),
+    ).toBeHidden();
+    await expect(
+      basis.getByRole("region", { name: "考试类型比较依据", exact: true }),
+    ).toBeHidden();
+    await basisToggle.focus();
+    await basisToggle.press("Enter");
+    await expect(
+      basis.getByText("示例练习观察", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      basis.getByRole("region", { name: "学术学位路线", exact: true }),
+    ).toBeVisible();
+    await expect(
+      basis.getByRole("region", { name: "考试类型比较依据", exact: true }),
+    ).toBeVisible();
+    await basisToggle.press("Space");
+    await expect(basis.getByText("示例练习观察", { exact: true })).toBeHidden();
+    const cards = panel.getByRole("article");
+    await expect(cards).toHaveCount(2);
+    for (const card of await cards.all())
+      await expect(card.locator(":scope > details")).not.toHaveAttribute(
+        "open",
+        "",
+      );
+    const first = cards.first();
+    const summary = first.locator(":scope > details > summary");
+    await summary.click();
+    await expect(
+      first.getByRole("region", { name: "个人匹配理由与取舍", exact: true }),
+    ).toBeVisible();
+    await first
+      .locator(".research-preparation li")
+      .nth(5)
+      .scrollIntoViewIfNeeded();
+    const controls = first.locator(".research-school-controls");
+    await expect(controls).toHaveCSS("position", "sticky");
+    await expect
+      .poll(async () => (await controls.boundingBox())!.y)
+      .toBeGreaterThanOrEqual(0);
+    await expect
+      .poll(async () => (await controls.boundingBox())!.y)
+      .toBeLessThan(50);
+    expect((await summary.boundingBox())!.y).toBeLessThan(0);
+    const bounds = (await controls.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    await page.screenshot({
+      path: testInfo.outputPath(`card-sticky-${width}.png`),
+    });
+    await controls
+      .getByRole("button", { name: "收起第一测试大学详情", exact: true })
+      .click();
+    await expect(
+      first.getByRole("region", { name: "个人匹配理由与取舍", exact: true }),
+    ).toBeHidden();
+    await expect(summary).toBeFocused();
+    await expect(summary).toBeInViewport();
+    await summary.press("Enter");
+    await first
+      .locator(".research-school-bottom-actions")
+      .getByRole("button")
+      .click();
+    await expect(summary).toBeFocused();
+    await expect(summary).toBeInViewport();
+    await expect(first.locator(":scope > details")).not.toHaveAttribute(
+      "open",
+      "",
+    );
+    await summary.click();
+    await basisToggle.click();
+    await panel
+      .getByRole("button", { name: "继续补查缺少的资料", exact: true })
+      .click();
+    service.stage("researching");
+    await expect(panel.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      /读取官网/,
+    );
+    await expect(first.locator(":scope > details")).toHaveAttribute("open", "");
+    await expect(
+      basis.getByText("示例练习观察", { exact: true }),
+    ).toBeVisible();
+    service.finish("completed", (report) =>
+      makeReport(report, "2026-11-12T00:01:00Z"),
+    );
+    await expect(
+      panel.getByRole("button", { name: "继续补查缺少的资料", exact: true }),
+    ).toBeEnabled();
+    await expect(first.locator(":scope > details")).not.toHaveAttribute(
+      "open",
+      "",
+    );
+    await expect(basis.getByText("示例练习观察", { exact: true })).toBeHidden();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    expect(service.postCount()).toBe(1);
+    expect(service.supplementCount()).toBe(1);
+  });
+}

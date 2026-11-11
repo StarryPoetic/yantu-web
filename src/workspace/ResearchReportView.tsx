@@ -45,7 +45,10 @@ export function ResearchReportView({
   const legacy = isLegacyResearchReport(report);
   const availability = reportAvailability(report, outdated);
   return (
-    <div className="research-report">
+    <div
+      className="research-report"
+      key={`${run.guidanceRunId}:${report.generatedAt}`}
+    >
       <section
         className="research-availability"
         aria-label="报告可用性"

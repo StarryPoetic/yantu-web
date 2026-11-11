@@ -138,8 +138,11 @@ test("T3-01 research suggestion persists through favorites, target preparation a
       name: "个人匹配理由与取舍",
       exact: true,
     });
-    await expect(reasons).toContainText("待核验的研究建议");
+    await expect(reasons).toBeHidden();
     await summary.focus();
+    await summary.press("Enter");
+    await expect(reasons).toContainText("待核验的研究建议");
+    await expect(reasons).toBeVisible();
     await summary.press("Enter");
     await expect(reasons).toBeHidden();
     await expect(

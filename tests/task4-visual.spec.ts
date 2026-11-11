@@ -225,6 +225,7 @@ for (const width of [375, 1280]) {
       await page.locator(".research-prefilter > summary").click();
       await page.locator(".research-prefilter li summary").first().click();
       await audit("filter basis", ".research-prefilter li");
+      await page.locator(".research-school-details > summary").first().click();
       await audit("school detail", ".research-school");
       await page
         .getByRole("button", { name: "收藏研究关注项", exact: true })

@@ -1,5 +1,6 @@
 import type { ResearchReport } from "../../server/explanation/research";
 import type { GuidanceRun } from "../../server/disciplines/types";
+import { useId, useRef } from "react";
 import {
   admissionLabel,
   profileLabel,
@@ -29,13 +30,22 @@ export function ResearchSchoolCard({
   gaps: ResearchEvidenceGap[];
   interest?: { jobId: string; index: number };
 }) {
+  const details = useRef<HTMLDetailsElement>(null);
+  const heading = useRef<HTMLElement>(null);
+  const contentId = useId();
+  function collapse() {
+    if (!details.current || !heading.current) return;
+    details.current.open = false;
+    heading.current.focus({ preventScroll: true });
+    heading.current.scrollIntoView({ block: "start", behavior: "instant" });
+  }
   return (
     <article
       className="research-school"
       aria-label={item.institutionName + " · " + programName(item, run)}
     >
-      <details className="research-school-details" open>
-        <summary className="research-school-heading">
+      <details className="research-school-details" ref={details}>
+        <summary className="research-school-heading" ref={heading}>
           {item.tier && (
             <span className={"research-tier " + item.tier}>
               {tierLabels[item.tier]}
@@ -62,7 +72,19 @@ export function ResearchSchoolCard({
             <span className="when-open">收起学校详情</span>
           </span>
         </summary>
-        <div className="research-school-content">
+        <div className="research-school-content" id={contentId}>
+          <div className="research-school-controls">
+            <strong>{item.institutionName}</strong>
+            <button
+              type="button"
+              className="ws-link"
+              aria-label={`收起${item.institutionName}详情`}
+              aria-controls={contentId}
+              onClick={collapse}
+            >
+              收起详情
+            </button>
+          </div>
           {interest && <ResearchInterestActions {...interest} />}
           <p
             className={
@@ -194,6 +216,17 @@ export function ResearchSchoolCard({
             <strong>查看学校与专业依据</strong>
             <ResearchSourceLinks ids={item.citations} sources={sources} />
           </footer>
+          <div className="research-school-bottom-actions">
+            <button
+              type="button"
+              className="ws-secondary"
+              aria-label={`收起${item.institutionName}详情`}
+              aria-controls={contentId}
+              onClick={collapse}
+            >
+              收起详情，返回学校标题
+            </button>
+          </div>
         </div>
       </details>
     </article>

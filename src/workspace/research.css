@@ -225,6 +225,32 @@
   border-bottom: 0;
   padding-bottom: 0;
 }
+.research-school-heading {
+  scroll-margin-top: var(--space-4);
+}
+.research-school-controls {
+  position: sticky;
+  top: var(--space-3);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--font-small);
+}
+.research-school-controls strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.research-school-controls button {
+  flex-shrink: 0;
+}
+.research-school-bottom-actions {
+  margin-top: var(--space-5);
+}
 .research-school-toggle {
   display: block;
   margin-top: var(--space-4);
@@ -233,7 +259,9 @@
   font-weight: var(--weight-strong);
 }
 .research-school-details[open] .when-closed,
-.research-school-details:not([open]) .when-open {
+.research-school-details:not([open]) .when-open,
+.research-basis-disclosure[open] > summary .when-closed,
+.research-basis-disclosure:not([open]) > summary .when-open {
   display: none;
 }
 .research-tradeoffs {
@@ -522,6 +550,20 @@
   margin: 0;
   color: var(--color-ink);
   font-size: var(--font-subheading);
+}
+.research-basis-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  list-style: none;
+}
+.research-basis-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.research-basis-disclosure > summary > span {
+  flex-shrink: 0;
+  font-size: var(--font-small);
 }
 .research-basis-grid {
   display: grid;
