@@ -35,6 +35,7 @@ import { guidanceRoutes } from "./routes/guidance.ts";
 import { createResearchRoutes } from "./routes/research.ts";
 import type { ResearchEngine } from "./routes/research.ts";
 import { createResearchEvidenceLibrary } from "./explanation/research-library.ts";
+import { createPersistentUsageLedger } from "./explanation/usage-ledger.ts";
 
 const safeEqual = (a: string, b: string) => {
   const left = Buffer.from(a);
@@ -128,6 +129,7 @@ export async function createApplication(
       );
   }
   const assistant = createAssistantRoutes({
+    usageLedger: createPersistentUsageLedger(store),
     library: createResearchEvidenceLibrary(store, {
       allowedHosts: process.env.YANTU_OFFICIAL_HOSTS?.split(",")
         .map((value) => value.trim())

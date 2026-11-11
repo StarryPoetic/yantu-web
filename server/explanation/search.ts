@@ -1,6 +1,8 @@
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { ModelError } from "./deepseek.ts";
 import { isIP } from "node:net";
+import { createMemoryUsageLedger } from "./usage-ledger.ts";
+import type { UsageLedger } from "./usage-ledger.ts";
 
 export type SearchProvider = "bocha" | "brave";
 /** Internal research controls; never copied from browser request bodies. */
@@ -62,6 +64,7 @@ export interface SearchConfig {
   searchDailyRequestsPerUser?: number;
   searchDailyRequestsGlobal?: number;
   searchBudget?: SearchBudget;
+  usageLedger?: UsageLedger;
 }
 export interface SearchBudget {
   claim(subjectId: string, day: string): boolean;
@@ -111,21 +114,20 @@ export function createSearchBudget(config: SearchConfig = {}): SearchBudget {
     )
   )
     throw new ModelError("INVALID_BUDGET_CONFIG");
-  const counts = new Map<string, number>();
-  let date = "",
-    total = 0;
+  const ledger = config.usageLedger ?? createMemoryUsageLedger();
   return {
     claim(subjectId, day) {
-      if (day !== date) {
-        date = day;
-        total = 0;
-        counts.clear();
-      }
-      const count = counts.get(subjectId) ?? 0;
-      if (count >= userLimit || total >= globalLimit) return false;
-      counts.set(subjectId, count + 1);
-      total++;
-      return true;
+      return (
+        ledger.reserve({
+          kind: "search",
+          subjectId,
+          day,
+          amount: 1,
+          headroom: 0,
+          userLimit,
+          globalLimit,
+        }) !== null
+      );
     },
   };
 }

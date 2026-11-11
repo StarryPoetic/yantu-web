@@ -684,12 +684,13 @@ test("deployment legacy allowance supports the complete configured run without r
     YANTU_SEARCH_DAILY_REQUESTS: "300",
   });
   const budget = createSearchBudget(config);
-  for (let i = 0; i < B.searches; i++) assert.ok(budget.claim("same", "day"));
-  assert.equal(budget.claim("same", "day"), false);
+  for (let i = 0; i < B.searches; i++)
+    assert.ok(budget.claim("same", "2026-10-20"));
+  assert.equal(budget.claim("same", "2026-10-20"), false);
   assert.equal(
     createSearchBudget(
       searchConfigFromEnvironment({ YANTU_SEARCH_USER_DAILY_REQUESTS: "0" }),
-    ).claim("same", "day"),
+    ).claim("same", "2026-10-20"),
     false,
   );
 });

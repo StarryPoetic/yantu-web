@@ -320,7 +320,9 @@ npx playwright test tests/tutor-chat.spec.ts
 
 其中collection=(collectionPages+collectionSummaryCalls+2)×(collectionInputChars+collectionOutputTokens)，required=collection+2×planning+3×final，withCoverage再加一次final。这是按字符与最大输出计算的保守容量参考，不是供应商token账单或每次必然消费；实际每次发送由runtime预占并在已知usage时结算。
 
-模型日账本、搜索日计数、并发预占与进程缓存尚未持久化；研究作业、checkpoint及report usage保存在SQLite，注册登录限流也已持久化。重启不会抹去已保存报告，但会重置前述进程日额度；多进程或可靠长期费用控制需要单独实现共享事务账本。
+应用的模型日账本与搜索日计数通过 `usage-ledger.ts` 持久化到同一SQLite数据库。发送前在 `BEGIN IMMEDIATE` 事务内检查个人和全站额度并预占；模型只有取得有效usage才结算，失败或进程崩溃保留未知用量预占，搜索失败不退还。每次预占固定在调用开始时的UTC日，跨日完成、重启、清除画像、降低额度或时钟回拨均不清空已有消费。账本只保存主体标识、日期、类别与计数，不存提示词、回复或密钥，不自动清理历史账本。独立模块不注入账本时使用内存实现，应用入口始终注入SQLite实现。
+
+同时活动的调用与缓存仍由单进程管理；数据库原子预算预占不意味着研究队列、运行并发和一般API限流已支持多实例。研究作业、checkpoint及report usage和注册登录限流原已持久化。供应商费用控制仍需单独设置；从旧版本首次升级前的纯内存历史用量无法凭空恢复，应在启用付费调用前核对当日剩余额度或等下一UTC日。
 
 ## 历史预算和策略记录（非现行）
 

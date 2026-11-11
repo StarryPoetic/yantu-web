@@ -1,5 +1,7 @@
 import { RESEARCH_BUDGET as B } from "./research-budget.ts";
 import { createHash } from "node:crypto";
+import { createMemoryUsageLedger } from "./usage-ledger.ts";
+import type { UsageLedger } from "./usage-ledger.ts";
 import { AssessmentError, publicDiagnosis } from "../assessment/index.ts";
 import type { AssessmentAttempt } from "../assessment/types.ts";
 import {
@@ -43,6 +45,7 @@ export interface ExplanationConfig extends DeepSeekConfig {
   globalConcurrency?: number;
   now?: () => number;
   runtime?: ModelRuntime;
+  usageLedger?: UsageLedger;
 }
 
 export interface ModelRuntime {
@@ -59,7 +62,7 @@ export interface ModelRuntime {
 const promptVersion = "grounded-extracts-v1";
 const modelConfigVersion = "deepseek-server-task-routing-2026-09-27";
 
-/** Process-local reservations count in-flight requests. Persist this ledger for multi-process deployment. */
+/** Application billing reservations are durable; active-call concurrency remains process-local. */
 export function createModelRuntime(
   config: ExplanationConfig = {},
 ): ModelRuntime {
@@ -73,16 +76,12 @@ export function createModelRuntime(
   }
   const adapter = config.adapter ?? createDeepSeekAdapter(config);
   const now = config.now ?? Date.now;
-  const ledger = new Map<
-    string,
-    { tokens: number; active: number; collecting: number }
-  >();
+  const usageLedger = config.usageLedger ?? createMemoryUsageLedger();
+  const ledger = new Map<string, { active: number; collecting: number }>();
   const cache = new Map<
     string,
     { user: string; result: unknown; expires: number }
   >();
-  let day = "";
-  let globalTokens = 0;
   let active = 0;
   const generations = new Map<string, number>();
   return {
@@ -109,13 +108,7 @@ export function createModelRuntime(
       if (saved && saved.expires > now())
         return { value: structuredClone(saved.result as T), cached: true };
       const today = new Date(now()).toISOString().slice(0, 10);
-      if (today !== day && active === 0) {
-        day = today;
-        globalTokens = 0;
-        ledger.clear();
-      }
       const account = ledger.get(user) ?? {
-        tokens: 0,
         active: 0,
         collecting: 0,
       };
@@ -138,21 +131,22 @@ export function createModelRuntime(
         active >= (config.globalConcurrency ?? 4)
       )
         throw new ModelError("CONCURRENCY_LIMIT");
-      if (
-        account.tokens + reserve + (options.finalTokenHeadroom ?? 0) >
-          (config.userDailyTokens ?? B.userDailyTokens) ||
-        globalTokens + reserve + (options.finalTokenHeadroom ?? 0) >
-          (config.globalDailyTokens ?? B.globalDailyTokens)
-      )
-        throw new ModelError("BUDGET_EXHAUSTED");
+      const reservationId = usageLedger.reserve({
+        kind: "model",
+        subjectId: user,
+        day: today,
+        amount: reserve,
+        headroom: options.finalTokenHeadroom ?? 0,
+        userLimit: config.userDailyTokens ?? B.userDailyTokens,
+        globalLimit: config.globalDailyTokens ?? B.globalDailyTokens,
+      });
+      if (!reservationId) throw new ModelError("BUDGET_EXHAUSTED");
       const generation = generations.get(user) ?? 0;
-      account.tokens += reserve;
       account.active += 1;
       if (options.researchParallel) account.collecting++;
-      globalTokens += reserve;
       active += 1;
       ledger.set(user, account);
-      let actual = reserve;
+      let actual: number | undefined;
       try {
         options.onCall?.();
         const reply = await adapter.complete(messages, options);
@@ -163,6 +157,10 @@ export function createModelRuntime(
         )
           throw new ModelError("UNKNOWN_USAGE");
         actual = reply.inputTokens + reply.outputTokens;
+        if (!Number.isSafeInteger(actual)) {
+          actual = undefined;
+          throw new ModelError("UNKNOWN_USAGE");
+        }
         options.onUsage?.({
           inputTokens: reply.inputTokens,
           outputTokens: reply.outputTokens,
@@ -179,11 +177,10 @@ export function createModelRuntime(
         return { value, cached: false };
       } finally {
         // An unknown upstream outcome retains its full reservation: timeout does not imply free.
-        account.tokens += actual - reserve;
         account.active -= 1;
         if (options.researchParallel) account.collecting--;
-        globalTokens += actual - reserve;
         active -= 1;
+        if (actual !== undefined) usageLedger.settle(reservationId, actual);
       }
     },
     clearSubject(subjectId: string) {

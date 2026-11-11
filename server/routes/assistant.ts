@@ -24,11 +24,16 @@ import { guidanceFreshness } from "./guidance.ts";
 import type { GuidanceRun } from "../disciplines/types.ts";
 import { createResearchReportModule } from "../explanation/research.ts";
 import type { ResearchEvidenceLibrary } from "../explanation/research-library.ts";
+import type { UsageLedger } from "../explanation/usage-ledger.ts";
 
 export function createAssistantRoutes(
-  dependencies: { library?: ResearchEvidenceLibrary } = {},
+  dependencies: {
+    library?: ResearchEvidenceLibrary;
+    usageLedger?: UsageLedger;
+  } = {},
 ) {
   const config = {
+    usageLedger: dependencies.usageLedger,
     enabled: process.env.YANTU_MODEL_ENABLED === "true",
     apiKey: process.env.DEEPSEEK_API_KEY,
     dnsMode: dnsModeFromEnvironment(process.env),
@@ -46,7 +51,10 @@ export function createAssistantRoutes(
     ...config,
     runtime,
     ...searchConfig,
-    searchBudget: createSearchBudget(searchConfig),
+    searchBudget: createSearchBudget({
+      ...searchConfig,
+      usageLedger: dependencies.usageLedger,
+    }),
     reader: createHttpsReader({ dnsMode: config.dnsMode }),
     ...(process.env.YANTU_OFFICIAL_HOSTS
       ? {
