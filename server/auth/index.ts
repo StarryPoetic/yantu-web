@@ -29,6 +29,10 @@ export function sessionCookie(
 
 /** Credentials and identity changes are kept behind one small module; business records keep their stable subject ID. */
 export function createAuthModule(store: Store, config: AppConfig) {
+  store.db.exec(`CREATE TABLE IF NOT EXISTS auth_recovery_codes (
+    account_id TEXT PRIMARY KEY REFERENCES accounts(account_id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL, expires_at INTEGER NOT NULL
+  ) STRICT`);
   const registrationIpLimit = authRateLimit(
     config.authRegistrationIpLimit ?? 10,
   );
@@ -103,8 +107,205 @@ export function createAuthModule(store: Store, config: AppConfig) {
       },
     };
   }
+  async function reauthenticate(context: AuthContext, password: unknown) {
+    if (!context.session?.user)
+      throw new HttpError(401, "authentication_required", "请先登录账号。");
+    const name = usernameInput(context.session.user.username);
+    limit("security", name.usernameKey, context.remoteAddress);
+    const account = store.account(name.usernameKey);
+    const valid = await hashWork(() =>
+      verifyPassword(passwordInput(password), account?.passwordHash),
+    );
+    if (!account || !valid)
+      throw new HttpError(401, "invalid_credentials", "当前密码不正确。");
+    return account;
+  }
+  function unchanged(context: AuthContext, account: AccountRecord) {
+    freshSession(context);
+    if (
+      store.account(account.usernameKey)?.passwordHash !== account.passwordHash
+    )
+      throw new HttpError(
+        409,
+        "account_changed",
+        "账号状态已变化，请重新登录。",
+      );
+  }
+  function clearRecovery(accountId: string) {
+    store.db
+      .prepare("DELETE FROM auth_recovery_codes WHERE account_id=?")
+      .run(accountId);
+  }
   return {
     view,
+    async changePassword(
+      context: AuthContext,
+      input: { currentPassword: unknown; newPassword: unknown },
+    ) {
+      const account = await reauthenticate(context, input.currentPassword);
+      const passwordHash = await hashWork(() =>
+        hashPassword(passwordInput(input.newPassword)),
+      );
+      return store.transaction(() => {
+        unchanged(context, account);
+        store.db
+          .prepare("UPDATE accounts SET password_hash=? WHERE account_id=?")
+          .run(passwordHash, account.accountId);
+        store.revokeSubjectSessions(account.subjectId);
+        clearRecovery(account.accountId);
+        const next = rotate(account.subjectId, null);
+        store.audit(
+          account.accountId,
+          "auth.password_changed",
+          account.accountId,
+        );
+        return {
+          body: {
+            ...view(next.session),
+            notice: "密码已更新，其他会话与旧恢复码已失效。",
+          },
+          cookie: next.cookie,
+        };
+      });
+    },
+    async issueRecovery(context: AuthContext, currentPassword: unknown) {
+      const account = await reauthenticate(context, currentPassword);
+      const recoveryCode = randomBytes(32).toString("base64url");
+      const expiresAt = Date.now() + 365 * 24 * 60 * 60 * 1000;
+      return store.transaction(() => {
+        unchanged(context, account);
+        store.db
+          .prepare(
+            "INSERT INTO auth_recovery_codes VALUES (?,?,?) ON CONFLICT(account_id) DO UPDATE SET token_hash=excluded.token_hash, expires_at=excluded.expires_at",
+          )
+          .run(account.accountId, digest(recoveryCode), expiresAt);
+        store.audit(
+          account.accountId,
+          "auth.recovery_issued",
+          account.accountId,
+        );
+        return {
+          body: {
+            recoveryCode,
+            expiresAt: new Date(expiresAt).toISOString(),
+            notice: "恢复码只显示一次，新码会替换旧码。请离线妥善保存。",
+          },
+        };
+      });
+    },
+    async recover(
+      context: AuthContext,
+      input: { username: unknown; recoveryCode: unknown; newPassword: unknown },
+    ) {
+      if (context.session?.user)
+        throw new HttpError(
+          409,
+          "already_authenticated",
+          "已登录，请使用修改密码。",
+        );
+      const name = usernameInput(input.username);
+      limit("recover", name.usernameKey, context.remoteAddress);
+      const account = store.account(name.usernameKey);
+      const tokenHash = digest(
+        typeof input.recoveryCode === "string" ? input.recoveryCode : "",
+      );
+      const saved = account
+        ? store.db
+            .prepare(
+              "SELECT token_hash,expires_at FROM auth_recovery_codes WHERE account_id=?",
+            )
+            .get(account.accountId)
+        : null;
+      if (
+        !account ||
+        !saved ||
+        saved.token_hash !== tokenHash ||
+        Number(saved.expires_at) <= Date.now()
+      )
+        throw new HttpError(
+          401,
+          "invalid_recovery",
+          "用户名或恢复码无效、已过期或已使用。",
+        );
+      const passwordHash = await hashWork(() =>
+        hashPassword(passwordInput(input.newPassword)),
+      );
+      return store.transaction(() => {
+        freshSession(context);
+        if (
+          store.account(account.usernameKey)?.passwordHash !==
+          account.passwordHash
+        )
+          throw new HttpError(
+            409,
+            "account_changed",
+            "账号状态已变化，请重新操作。",
+          );
+        const consumed = store.db
+          .prepare(
+            "DELETE FROM auth_recovery_codes WHERE account_id=? AND token_hash=? AND expires_at>?",
+          )
+          .run(account.accountId, tokenHash, Date.now());
+        if (consumed.changes !== 1)
+          throw new HttpError(
+            401,
+            "invalid_recovery",
+            "用户名或恢复码无效、已过期或已使用。",
+          );
+        store.db
+          .prepare("UPDATE accounts SET password_hash=? WHERE account_id=?")
+          .run(passwordHash, account.accountId);
+        store.revokeSubjectSessions(account.subjectId);
+        store.audit(account.accountId, "auth.recovered", account.accountId);
+        return {
+          body: {
+            ...view(context.session),
+            notice: "密码已重置，恢复码已使用，请用新密码登录。",
+          },
+          cookie: context.session
+            ? undefined
+            : sessionCookie("", config.secureCookies, true),
+        };
+      });
+    },
+    async deleteAccount(
+      context: AuthContext,
+      input: { currentPassword: unknown; confirmation: unknown },
+    ) {
+      if (input.confirmation !== "DELETE_ACCOUNT")
+        throw new HttpError(
+          422,
+          "confirmation_required",
+          "请明确确认注销账号及全部个人资料。",
+        );
+      const account = await reauthenticate(context, input.currentPassword);
+      if (account.role === "admin")
+        throw new HttpError(
+          403,
+          "admin_deletion_requires_handoff",
+          "管理员账号需先完成权限交接，不能在此自行注销。",
+        );
+      return store.transaction(() => {
+        unchanged(context, account);
+        store.erase(account.subjectId);
+        store.revokeSubjectSessions(account.subjectId);
+        store.db
+          .prepare("DELETE FROM accounts WHERE account_id=?")
+          .run(account.accountId);
+        store.audit(
+          account.accountId,
+          "auth.account_deleted",
+          account.accountId,
+        );
+        return {
+          body: {
+            ...view(null),
+            notice: "账号与在线个人资料已注销。已下载文件不受影响。",
+          },
+          cookie: sessionCookie("", config.secureCookies, true),
+        };
+      });
+    },
     async bootstrap(entries: BootstrapAdmin[] = []) {
       validateBootstrapAdmins(entries);
       for (const entry of entries) {
@@ -239,6 +440,15 @@ export function createAuthModule(store: Store, config: AppConfig) {
         throw new HttpError(401, "invalid_credentials", "用户名或密码不正确。");
       return store.transaction(() => {
         freshSession(context);
+        if (
+          store.account(account.usernameKey)?.passwordHash !==
+          account.passwordHash
+        )
+          throw new HttpError(
+            409,
+            "account_changed",
+            "账号状态已变化，请重新登录。",
+          );
         const next = rotate(account.subjectId, context.sessionHash);
         store.audit(account.accountId, "auth.login", account.accountId);
         return {

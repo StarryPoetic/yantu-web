@@ -17,6 +17,7 @@ import {
 import type { Resource, Session } from "./api";
 import { ensureSession, request, resetSession, acceptSession } from "./api";
 import { AuthScreen } from "./AuthScreen";
+import { AccountSecurity } from "./AccountSecurity";
 import { loadCatalog } from "./catalog";
 import type {
   Catalog,
@@ -147,6 +148,7 @@ export default function Workspace() {
             <ShieldCheck size={20} /> 研途 · 管理工作台
           </strong>
           <span>{session.user.username}</span>
+          <AccountSecurity session={session} onSession={setSession} />
           <button className="ws-secondary" onClick={() => void logout()}>
             <LogOut size={16} />
             退出登录
@@ -166,6 +168,7 @@ export default function Workspace() {
         <SignedInWorkspace
           key={session.user.accountId}
           session={session}
+          onSession={setSession}
           onLogout={() => void logout()}
           globalError={error}
         />
@@ -176,10 +179,12 @@ export default function Workspace() {
 
 function SignedInWorkspace({
   session,
+  onSession,
   onLogout,
   globalError,
 }: {
   session: Session;
+  onSession: (session: Session) => void;
   onLogout: () => void;
   globalError?: unknown;
 }) {
@@ -424,6 +429,7 @@ function SignedInWorkspace({
             <small>{session.user?.username} · 已登录</small>
           </div>
         </div>
+        <AccountSecurity session={session} onSession={onSession} />
         <button className="ws-link ws-logout" onClick={onLogout}>
           <LogOut size={16} />
           退出登录

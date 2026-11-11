@@ -25,7 +25,15 @@ export function createAuthRoutes(store: Store, config: AppConfig) {
         return { body: auth.view(session) };
       if (
         method !== "POST" ||
-        !["/auth/register", "/auth/login", "/auth/logout"].includes(path)
+        ![
+          "/auth/register",
+          "/auth/login",
+          "/auth/logout",
+          "/auth/password",
+          "/auth/recovery-code",
+          "/auth/recover",
+          "/auth/delete-account",
+        ].includes(path)
       )
         throw new HttpError(404, "route_not_found", "接口不存在。");
       if (session) {
@@ -48,7 +56,7 @@ export function createAuthRoutes(store: Store, config: AppConfig) {
         sessionHash,
         remoteAddress: clientIpAddress(request, config.trustedProxyIps),
       };
-      let result: { body: unknown; cookie: string };
+      let result: { body: unknown; cookie?: string };
       if (path === "/auth/register") {
         fields(body, ["username", "password", "migrateGuestData"]);
         result = await auth.register(context, {
@@ -63,6 +71,28 @@ export function createAuthRoutes(store: Store, config: AppConfig) {
           password: body.password,
           leaveGuestData: body.leaveGuestData,
         });
+      } else if (path === "/auth/password") {
+        fields(body, ["currentPassword", "newPassword"]);
+        result = await auth.changePassword(context, {
+          currentPassword: body.currentPassword,
+          newPassword: body.newPassword,
+        });
+      } else if (path === "/auth/recovery-code") {
+        fields(body, ["currentPassword"]);
+        result = await auth.issueRecovery(context, body.currentPassword);
+      } else if (path === "/auth/recover") {
+        fields(body, ["username", "recoveryCode", "newPassword"]);
+        result = await auth.recover(context, {
+          username: body.username,
+          recoveryCode: body.recoveryCode,
+          newPassword: body.newPassword,
+        });
+      } else if (path === "/auth/delete-account") {
+        fields(body, ["currentPassword", "confirmation"]);
+        result = await auth.deleteAccount(context, {
+          currentPassword: body.currentPassword,
+          confirmation: body.confirmation,
+        });
       } else {
         fields(body, []);
         result = auth.logout(context);
@@ -70,7 +100,7 @@ export function createAuthRoutes(store: Store, config: AppConfig) {
       return {
         status: path === "/auth/register" ? 201 : 200,
         body: result.body,
-        headers: { "Set-Cookie": result.cookie },
+        headers: result.cookie ? { "Set-Cookie": result.cookie } : {},
       };
     },
   };

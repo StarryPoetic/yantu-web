@@ -12,6 +12,285 @@ import type { AppConfig } from "../../server/config.ts";
 import { authRateLimit } from "../../server/config.ts";
 
 const password = "test-only-secure-password";
+
+test("password recovery preserves unrelated guest records and requires the normal login migration choice", async (t) => {
+  const f = await setup();
+  t.after(() => f.app.close());
+  const owner = f.client();
+  await owner.request("/auth/register", "POST", {
+    username: "recovery.guest",
+    password,
+  });
+  const issued = await owner.request("/auth/recovery-code", "POST", {
+    currentPassword: password,
+  });
+  const guest = f.client();
+  const guestSession = await guest.request("/guest-sessions", "POST", {});
+  const guestId = f.app.store.session(
+    digest(guest.cookie.split("=")[1]),
+  )!.subjectId;
+  f.app.store.put(guestId, "chat", "draft", { content: "保留游客草稿" });
+  const cookie = guest.cookie;
+  const reset = await guest.request("/auth/recover", "POST", {
+    username: "recovery.guest",
+    recoveryCode: issued.body.recoveryCode,
+    newPassword: "new-guest-safe-password",
+  });
+  assert.equal(reset.status, 200);
+  assert.equal(reset.body.guestHasData, true);
+  assert.equal(reset.body.csrfToken, guestSession.body.csrfToken);
+  assert.equal(guest.cookie, cookie);
+  assert.ok(f.app.store.get(guestId, "chat", "draft"));
+  assert.equal(
+    (
+      await guest.request("/auth/login", "POST", {
+        username: "recovery.guest",
+        password: "new-guest-safe-password",
+      })
+    ).status,
+    409,
+  );
+});
+
+test("password change reauthenticates rotates current session and revokes other sessions and recovery", async (t) => {
+  const f = await setup();
+  t.after(() => f.app.close());
+  const a = f.client(),
+    b = f.client();
+  await a.request("/auth/register", "POST", {
+    username: "security.change",
+    password,
+  });
+  await b.request("/auth/login", "POST", {
+    username: "security.change",
+    password,
+  });
+  const recovery = await a.request("/auth/recovery-code", "POST", {
+    currentPassword: password,
+  });
+  assert.equal(recovery.status, 200);
+  assert.equal(
+    (
+      await a.request("/auth/password", "POST", {
+        currentPassword: "incorrect-password",
+        newPassword: "new-strong-password",
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await a.request(
+        "/auth/password",
+        "POST",
+        { currentPassword: password, newPassword: "new-strong-password" },
+        { "x-csrf-token": "wrong" },
+      )
+    ).status,
+    403,
+  );
+  const before = a.cookie;
+  assert.equal(
+    (
+      await a.request("/auth/password", "POST", {
+        currentPassword: password,
+        newPassword: "new-strong-password",
+      })
+    ).status,
+    200,
+  );
+  assert.notEqual(a.cookie, before);
+  assert.equal((await a.request("/auth/session")).body.authenticated, true);
+  assert.equal((await b.request("/auth/session")).body.authenticated, false);
+  assert.equal(
+    (
+      await f.client().request("/auth/login", "POST", {
+        username: "security.change",
+        password,
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await f.client().request("/auth/recover", "POST", {
+        username: "security.change",
+        recoveryCode: recovery.body.recoveryCode,
+        newPassword: password,
+      })
+    ).status,
+    401,
+  );
+});
+
+test("recovery codes are hash-only replaceable expiring and consumed once under concurrent requests", async (t) => {
+  const f = await setup();
+  t.after(() => f.app.close());
+  const a = f.client();
+  const registered = await a.request("/auth/register", "POST", {
+    username: "security.recover",
+    password,
+  });
+  const first = await a.request("/auth/recovery-code", "POST", {
+    currentPassword: password,
+  });
+  const second = await a.request("/auth/recovery-code", "POST", {
+    currentPassword: password,
+  });
+  assert.match(second.body.recoveryCode, /^[A-Za-z0-9_-]{43}$/);
+  const rows = f.app.store.db
+    .prepare("SELECT * FROM auth_recovery_codes")
+    .all();
+  assert.equal(JSON.stringify(rows).includes(second.body.recoveryCode), false);
+  assert.equal(
+    JSON.stringify(f.app.store.auditEvents()).includes(
+      second.body.recoveryCode,
+    ),
+    false,
+  );
+  const reset = (code: string) =>
+    f.client().request("/auth/recover", "POST", {
+      username: "security.recover",
+      recoveryCode: code,
+      newPassword: "recovered-new-password",
+    });
+  assert.equal((await reset(first.body.recoveryCode)).status, 401);
+  const results = await Promise.all([
+    reset(second.body.recoveryCode),
+    reset(second.body.recoveryCode),
+  ]);
+  assert.equal(results.filter((r) => r.status === 200).length, 1);
+  assert.ok(results.some((r) => r.status === 401 || r.status === 409));
+  assert.equal((await a.request("/auth/session")).body.authenticated, false);
+  const next = f.client();
+  assert.equal(
+    (
+      await next.request("/auth/login", "POST", {
+        username: "security.recover",
+        password: "recovered-new-password",
+      })
+    ).status,
+    200,
+  );
+  const expired = await next.request("/auth/recovery-code", "POST", {
+    currentPassword: "recovered-new-password",
+  });
+  f.app.store.db
+    .prepare("UPDATE auth_recovery_codes SET expires_at=0 WHERE account_id=?")
+    .run(registered.body.user.accountId);
+  assert.equal((await reset(expired.body.recoveryCode)).status, 401);
+});
+
+test("account deletion needs confirmation and password removes records and prevents stale identity resurrection", async (t) => {
+  const f = await setup();
+  t.after(() => f.app.close());
+  const a = f.client(),
+    b = f.client();
+  const registered = await a.request("/auth/register", "POST", {
+    username: "security.delete",
+    password,
+  });
+  const owner = registered.body.user.accountId;
+  f.app.store.put(owner, "chat", "private", { content: "delete-me" });
+  f.app.store.put("administration", "correction", "private", {
+    subjectId: owner,
+    description: "delete-me",
+  });
+  await a.request("/auth/recovery-code", "POST", { currentPassword: password });
+  await b.request("/auth/login", "POST", {
+    username: "security.delete",
+    password,
+  });
+  assert.equal(
+    (
+      await a.request("/auth/delete-account", "POST", {
+        currentPassword: password,
+      })
+    ).status,
+    422,
+  );
+  assert.equal(
+    (
+      await a.request("/auth/delete-account", "POST", {
+        currentPassword: "wrong-password",
+        confirmation: "DELETE_ACCOUNT",
+      })
+    ).status,
+    401,
+  );
+  const before = f.app.store.generation(owner);
+  const outcomes = await Promise.all([
+    a.request("/auth/delete-account", "POST", {
+      currentPassword: password,
+      confirmation: "DELETE_ACCOUNT",
+    }),
+    f.client().request("/auth/login", "POST", {
+      username: "security.delete",
+      password,
+    }),
+  ]);
+  assert.equal(outcomes[0].status, 200);
+  assert.equal(f.app.store.account("security.delete"), null);
+  assert.equal(f.app.store.generation(owner), before + 1);
+  assert.equal(f.app.store.get(owner, "chat", "private"), null);
+  assert.equal(
+    f.app.store.get("administration", "correction", "private"),
+    null,
+  );
+  assert.equal((await b.request("/auth/session")).body.authenticated, false);
+  assert.equal(
+    f.app.store.db
+      .prepare("SELECT count(*) AS n FROM sessions WHERE subject_id=?")
+      .get(owner)!.n,
+    0,
+  );
+  assert.equal(
+    f.app.store.db
+      .prepare(
+        "SELECT count(*) AS n FROM auth_recovery_codes WHERE account_id=?",
+      )
+      .get(owner)!.n,
+    0,
+  );
+  const recreated = await f.client().request("/auth/register", "POST", {
+    username: "security.delete",
+    password,
+  });
+  assert.equal(recreated.status, 201);
+  assert.notEqual(recreated.body.user.accountId, owner);
+});
+
+test("security operations reject anonymous clients and administrator self-deletion", async (t) => {
+  const f = await setup({
+    bootstrapAdmins: [
+      { username: "security.admin", password, roles: ["auditor"] },
+    ],
+  });
+  t.after(() => f.app.close());
+  assert.equal(
+    (
+      await f
+        .client()
+        .request("/auth/recovery-code", "POST", { currentPassword: password })
+    ).status,
+    401,
+  );
+  const a = f.client();
+  await a.request("/auth/login", "POST", {
+    username: "security.admin",
+    password,
+  });
+  assert.equal(
+    (
+      await a.request("/auth/delete-account", "POST", {
+        currentPassword: password,
+        confirmation: "DELETE_ACCOUNT",
+      })
+    ).status,
+    403,
+  );
+  assert.ok(f.app.store.account("security.admin"));
+});
 async function setup(overrides: Partial<AppConfig> = {}) {
   const app = await createApplication({
     databasePath: ":memory:",

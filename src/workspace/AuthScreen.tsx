@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GraduationCap, ArrowRight, ShieldCheck } from "lucide-react";
 import { ApiError, acceptSession, request, type Session } from "./api";
 import { ErrorNotice } from "./ui";
+import { RecoveryScreen } from "./AccountSecurity";
 
 export function AuthScreen({
   session,
@@ -18,6 +19,7 @@ export function AuthScreen({
   const [leaveGuest, setLeaveGuest] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
+  const [recovering, setRecovering] = useState(false);
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (mode === "register" && password !== confirmation) {
@@ -52,6 +54,7 @@ export function AuthScreen({
       setBusy(false);
     }
   }
+  if (recovering) return <RecoveryScreen onBack={() => setRecovering(false)} />;
   return (
     <main className="workspace ws-auth">
       <section className="ws-auth-story">
@@ -172,6 +175,17 @@ export function AuthScreen({
             <ArrowRight size={18} />
           </button>
         </form>
+        <button
+          type="button"
+          className="ws-link"
+          onClick={() => {
+            setPassword("");
+            setConfirmation("");
+            setRecovering(true);
+          }}
+        >
+          忘记密码 / 使用恢复码
+        </button>
         <p className="ws-muted ws-auth-role">
           <ShieldCheck size={17} />
           管理员使用同一入口登录，身份由系统确认。
