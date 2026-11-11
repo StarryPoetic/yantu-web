@@ -1,0 +1,7 @@
+{
+  "enabled": false,
+  "source": "/var/lib/yantu/yantu.sqlite",
+  "directory": "/var/backups/yantu",
+  "retainCount": 7,
+  "minimumAgeHours": 168
+}

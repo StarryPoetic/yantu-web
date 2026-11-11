@@ -1,0 +1,11 @@
+[Unit]
+Description=Yantu backup schedule (enable explicitly after configuring policy)
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=300
+Unit=yantu-backup.service
+
+[Install]
+WantedBy=timers.target

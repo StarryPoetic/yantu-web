@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import re
+import json
 import unittest
 from urllib.parse import unquote, urlsplit
 
@@ -724,8 +725,16 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_deployment_preparation_links_and_recovery_limits_are_documented(self):
         path = ROOT / "docs" / "长期部署.md"
         content = path.read_text(encoding="utf-8")
-        for phrase in ("没有服务器和域名", "尚未在实际 Linux 服务器执行", "一个 Node.js 应用进程", "YANTU_TRUSTED_PROXY_IPS", "/api/v1/health", "backup-database.mjs", "--source", "--destination", "integrity_check", "foreign_key_check", "删除状态", "撤销快照内旧会话", "没有设置定时备份", "不能将进程内额度当作长期账单硬上限"):
+        for phrase in ("尚未验收服务器和域名", "尚未在实际 Linux 服务器执行", "一个 Node.js 应用进程", "YANTU_TRUSTED_PROXY_IPS", "/api/v1/health", "backup-database.mjs", "--source", "--destination", "integrity_check", "foreign_key_check", "删除代次", "撤销快照内旧会话", "真实实例尚未启用", "应用账本不能当作供应商账单硬上限", "usage_reservations", "restore-isolated.mjs"):
             self.assertIn(phrase, content)
+        recovery = (ROOT / "docs" / "备份与隔离恢复.md").read_text(encoding="utf-8")
+        for phrase in ("enabled:false", "--apply", "retainCount", "minimumAgeHours", "当前可信状态不可读", "approvedForServing:false", "不提供对外切换命令", "个人资源仅保留", "恢复码", "保守并集"):
+            self.assertIn(phrase, recovery)
+        backup_config = json.loads((ROOT / "deploy" / "backup.example.json").read_text(encoding="utf-8"))
+        self.assertFalse(backup_config["enabled"])
+        self.assertGreaterEqual(backup_config["retainCount"], 2)
+        self.assertTrue((ROOT / "scripts" / "managed-backup.mjs").is_file())
+        self.assertTrue((ROOT / "scripts" / "restore-isolated.mjs").is_file())
         for target in re.findall(r"\]\(([^)]+)\)", content):
             parts = urlsplit(target)
             if not parts.scheme and not parts.netloc:

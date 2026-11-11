@@ -1,0 +1,17 @@
+[Unit]
+Description=Yantu explicitly configured database backup and retention
+
+[Service]
+Type=oneshot
+User=yantu
+Group=yantu
+WorkingDirectory=/opt/yantu/current
+ExecStart=/usr/bin/node /opt/yantu/current/scripts/managed-backup.mjs --config /etc/yantu/backup.json --apply
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/backups/yantu
+StandardOutput=journal
+StandardError=journal
