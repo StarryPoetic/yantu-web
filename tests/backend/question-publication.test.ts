@@ -215,12 +215,9 @@ test("question publishing requires explicit independent checks, preserves revisi
   );
   assert.equal(history.body.status, "submitted");
   assert.deepEqual(history.body.diagnosis, submitted.body.diagnosis);
-  assert.equal(
-    (
-      await fixture.user("/assessment-attempts", "POST", {
-        modules: ["english"],
-      })
-    ).status,
-    422,
-  );
+  const blocked = await fixture.user("/assessment-attempts", "POST", {
+    modules: ["english"],
+  });
+  assert.equal(blocked.status, 409);
+  assert.equal(blocked.body.code, "bank_withdrawn");
 });
