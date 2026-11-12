@@ -1,0 +1,17 @@
+# Free disposable preview only. No disk, database add-on, secret or paid service.
+services:
+  - type: web
+    name: yantu-web-preview
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node scripts/render-preview.ts
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: NODE_VERSION
+        value: "24.14.1"
+      - key: NODE_ENV
+        value: production
