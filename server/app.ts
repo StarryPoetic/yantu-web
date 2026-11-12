@@ -130,6 +130,7 @@ export async function createApplication(
       );
   }
   const assistant = createAssistantRoutes({
+    previewMode: config.previewMode,
     usageLedger: createPersistentUsageLedger(store),
     library: createResearchEvidenceLibrary(store, {
       allowedHosts: process.env.YANTU_OFFICIAL_HOSTS?.split(",")
@@ -137,7 +138,9 @@ export async function createApplication(
         .filter(Boolean),
     }),
   });
-  const researchEngine = dependencies.research ?? assistant.research;
+  const researchEngine = config.previewMode
+    ? assistant.research
+    : (dependencies.research ?? assistant.research);
   const research = createResearchRoutes(store, researchEngine);
   const limits = new Map<string, { count: number; until: number }>();
   const inFlight = new Map<string, { hash: string; promise: Promise<Reply> }>();

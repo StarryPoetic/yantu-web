@@ -3,6 +3,7 @@ import { GraduationCap, ArrowRight, ShieldCheck } from "lucide-react";
 import { ApiError, acceptSession, request, type Session } from "./api";
 import { ErrorNotice } from "./ui";
 import { RecoveryScreen } from "./AccountSecurity";
+import { PreviewNotice } from "./PreviewNotice";
 
 export function AuthScreen({
   session,
@@ -54,7 +55,13 @@ export function AuthScreen({
       setBusy(false);
     }
   }
-  if (recovering) return <RecoveryScreen onBack={() => setRecovering(false)} />;
+  if (recovering)
+    return (
+      <RecoveryScreen
+        onBack={() => setRecovering(false)}
+        previewMode={session.features.previewMode}
+      />
+    );
   return (
     <main className="workspace ws-auth">
       <section className="ws-auth-story">
@@ -77,8 +84,13 @@ export function AuthScreen({
         </ol>
       </section>
       <section className="ws-auth-card">
+        {session.features.previewMode && <PreviewNotice />}
         <h2>{mode === "login" ? "欢迎回到研途" : "创建你的研途账号"}</h2>
-        <p>登录后保存画像、测评和选择，换一台设备也能继续。</p>
+        <p>
+          {session.features.previewMode
+            ? "注册测试账号，体验画像、测评、收藏与规划。记录仅在本次测试环境存续期间可用。"
+            : "登录后保存画像、测评和选择，换一台设备也能继续。"}
+        </p>
         <div className="ws-auth-tabs" role="group" aria-label="登录或注册">
           {(["login", "register"] as const).map((value) => (
             <button

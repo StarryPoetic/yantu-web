@@ -22,7 +22,11 @@ export interface SessionView {
   csrfToken: string | null;
   guest: boolean;
   guestHasData: boolean;
-  features: { sampleData: boolean; modelEnabled: boolean };
+  features: {
+    sampleData: boolean;
+    modelEnabled: boolean;
+    previewMode?: boolean;
+  };
   notice?: string;
   guestDataMigrated?: boolean;
 }

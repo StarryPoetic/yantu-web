@@ -31,6 +31,7 @@ function localEnvironment(t: TestContext) {
     YANTU_ORIGIN: undefined,
     YANTU_DATABASE_PATH: undefined,
     YANTU_SAMPLE_DATA: undefined,
+    YANTU_PREVIEW_MODE: undefined,
     YANTU_TRUSTED_PROXY_IPS: undefined,
     YANTU_TEST_API_RATE_LIMIT: undefined,
     YANTU_ADMIN_CREDENTIALS: "[]",

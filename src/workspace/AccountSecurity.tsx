@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { acceptSession, request, type Session } from "./api";
 import { Dialog, ErrorNotice } from "./ui";
+import { PreviewNotice } from "./PreviewNotice";
 
 export function AccountSecurity({
   session,
@@ -187,7 +188,13 @@ export function AccountSecurity({
   );
 }
 
-export function RecoveryScreen({ onBack }: { onBack: () => void }) {
+export function RecoveryScreen({
+  onBack,
+  previewMode,
+}: {
+  onBack: () => void;
+  previewMode?: boolean;
+}) {
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
@@ -198,6 +205,7 @@ export function RecoveryScreen({ onBack }: { onBack: () => void }) {
   return (
     <main className="workspace ws-auth">
       <section className="ws-auth-card">
+        {previewMode && <PreviewNotice />}
         <h1>恢复账号</h1>
         <p>
           使用此前在“账号安全”中保存的一次性恢复码。未保存或遗失恢复码时，无法在此自动找回；当前没有邮件找回服务。

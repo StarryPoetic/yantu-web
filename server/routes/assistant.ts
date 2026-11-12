@@ -30,23 +30,35 @@ export function createAssistantRoutes(
   dependencies: {
     library?: ResearchEvidenceLibrary;
     usageLedger?: UsageLedger;
+    previewMode?: boolean;
   } = {},
 ) {
+  // Preview is an application boundary, including when started without the cloud wrapper.
+  // Do not resolve provider credentials or allow enabled flags to override this mode.
+  const previewMode = dependencies.previewMode === true;
   const config = {
     usageLedger: dependencies.usageLedger,
-    enabled: process.env.YANTU_MODEL_ENABLED === "true",
-    apiKey: process.env.DEEPSEEK_API_KEY,
+    enabled: !previewMode && process.env.YANTU_MODEL_ENABLED === "true",
+    apiKey: previewMode ? undefined : process.env.DEEPSEEK_API_KEY,
     dnsMode: dnsModeFromEnvironment(process.env),
-    userDailyTokens: Number(
-      process.env.YANTU_MODEL_USER_DAILY_TOKENS ?? B.userDailyTokens,
-    ),
-    globalDailyTokens: Number(
-      process.env.YANTU_MODEL_DAILY_TOKENS ?? B.globalDailyTokens,
-    ),
+    userDailyTokens: previewMode
+      ? 0
+      : Number(process.env.YANTU_MODEL_USER_DAILY_TOKENS ?? B.userDailyTokens),
+    globalDailyTokens: previewMode
+      ? 0
+      : Number(process.env.YANTU_MODEL_DAILY_TOKENS ?? B.globalDailyTokens),
   };
   const runtime = createModelRuntime(config);
   const explanations = createExplanationModule({ ...config, runtime });
-  const searchConfig = searchConfigFromEnvironment(process.env);
+  const searchConfig = searchConfigFromEnvironment(
+    previewMode
+      ? {
+          YANTU_SEARCH_ENABLED: "false",
+          YANTU_SEARCH_USER_DAILY_REQUESTS: "0",
+          YANTU_SEARCH_DAILY_REQUESTS: "0",
+        }
+      : process.env,
+  );
   const webConfig = {
     ...config,
     runtime,

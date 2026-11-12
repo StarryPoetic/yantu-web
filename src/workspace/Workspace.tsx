@@ -18,6 +18,7 @@ import type { Resource, Session } from "./api";
 import { ensureSession, request, resetSession, acceptSession } from "./api";
 import { AuthScreen } from "./AuthScreen";
 import { AccountSecurity } from "./AccountSecurity";
+import { PreviewNotice } from "./PreviewNotice";
 import { loadCatalog } from "./catalog";
 import type {
   Catalog,
@@ -155,6 +156,7 @@ export default function Workspace() {
           </button>
         </header>
         <main className="ws-main">
+          {session.features.previewMode && <PreviewNotice />}
           <ErrorNotice error={error} />
           <Suspense fallback={<p role="status">正在打开管理工作台…</p>}>
             <AdminPanel />
@@ -450,6 +452,7 @@ function SignedInWorkspace({
           </span>
         </header>
         <main id="workspace-content" className="ws-main" tabIndex={-1}>
+          {session.features.previewMode && <PreviewNotice />}
           <ErrorNotice error={globalError} />
           {research.badge && page !== "guidance" && (
             <div

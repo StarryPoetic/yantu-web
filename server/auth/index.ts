@@ -103,7 +103,9 @@ export function createAuthModule(store: Store, config: AppConfig) {
       ),
       features: {
         sampleData: config.sampleData,
-        modelEnabled: process.env.YANTU_MODEL_ENABLED === "true",
+        modelEnabled:
+          !config.previewMode && process.env.YANTU_MODEL_ENABLED === "true",
+        previewMode: config.previewMode === true,
       },
     };
   }

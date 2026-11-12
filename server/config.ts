@@ -9,6 +9,7 @@ export interface AdminIdentity {
 export interface AppConfig {
   databasePath: string;
   sampleData: boolean;
+  previewMode?: boolean;
   secureCookies: boolean;
   origins: string[];
   admins: AdminIdentity[];
@@ -21,6 +22,7 @@ export interface AppConfig {
 }
 export function environmentConfig(): AppConfig {
   const production = process.env.NODE_ENV === "production";
+  const previewMode = process.env.YANTU_PREVIEW_MODE === "true";
   // Parallel browser tests share one loopback IP; this override never applies outside test mode.
   const testRateLimit =
     process.env.NODE_ENV === "test"
@@ -84,7 +86,9 @@ export function environmentConfig(): AppConfig {
     );
   return {
     databasePath: databasePath || "./var/yantu.sqlite",
-    sampleData: !production && process.env.YANTU_SAMPLE_DATA !== "false",
+    sampleData:
+      previewMode || (!production && process.env.YANTU_SAMPLE_DATA !== "false"),
+    previewMode,
     secureCookies: production,
     origins: process.env.YANTU_ORIGIN
       ? [process.env.YANTU_ORIGIN]

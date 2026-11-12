@@ -36,7 +36,11 @@ export interface Session {
   guest: boolean;
   guestHasData: boolean;
   notice?: string;
-  features: { sampleData: boolean; modelEnabled: boolean };
+  features: {
+    sampleData: boolean;
+    modelEnabled: boolean;
+    previewMode?: boolean;
+  };
 }
 
 export async function request<T>(
