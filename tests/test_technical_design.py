@@ -233,15 +233,15 @@ class TechnicalDesignTests(unittest.TestCase):
 
     def test_v6_school_tiers_evidence_budget_and_provider_retries_are_traceable(self):
         product = PRODUCT.read_text(encoding="utf-8")
-        for phrase in ("5–10所不同学校", "每校一个主推荐专业", "未知不能默认合格", "年度预算", "不足5校", "硬限制"):
+        for phrase in ("每校一个主推荐专业", "未知不能默认合格", "年度预算", "硬限制"):
             self.assertIn(phrase, product)
         data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
-        for field in ("preferred/alternative/exploratory", "suitabilityTier", "suitabilityReason", "constraintChecks", "match/mismatch/unknown", "tuition", "location", "academic_year/program/semester/credit", "studyMode", "coverage", "targetMin:5", "targetMax:10", "exploratoryCount", "shortfallReasons", "旧v5报告"):
+        for field in ("preferred/alternative/exploratory", "suitabilityTier", "suitabilityReason", "constraintChecks", "match/mismatch/unknown", "tuition", "location", "academic_year/program/semester/credit", "studyMode", "coverage", "targetMin:4", "targetMax:5", "exploratoryCount", "shortfallReasons", "旧v5报告"):
             self.assertIn(field, data)
         for path in (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md", ROOT / "server" / "explanation" / "README.md"):
             content = path.read_text(encoding="utf-8")
             with self.subTest(document=path.name):
-                for phrase in ("5–10所不同学校", "4–6个", "24次搜索", f"{B['candidates']}条搜索候选", f"{B['reads']}次正文读取", f"{B['initialSearches']}次搜索", f"{B['initialReads']}次读取", f"最多{B['feeSearches']}次搜索", f"{B['cityReads']}次读取", f"最多{B['attachments']}条同校PDF附件候选", "15分钟", "失败不缓存", f"{B['thinkingChars']}字符", "规划与初次报告每阶段最多3次", "整份报告最多6次", "保留已有建议", "250毫秒", "beforeRetry", "PROVIDER_BALANCE_INSUFFICIENT", "PROVIDER_INVALID_REQUEST", "PROVIDER_TEMPORARY_UNAVAILABLE", "PROVIDER_NETWORK_ERROR", "60次", "300次", f"每账号每日{B['userDailyTokens']}、全站{B['globalDailyTokens']}", "同一额度", "不能直接与用户年度预算比较"):
+                for phrase in ("5–10所不同学校", "4–6个", "24次搜索", f"{B['candidates']}条搜索候选", f"{B['reads']}次正文读取", f"{B['initialSearches']}次搜索", f"{B['initialReads']}次读取", f"最多{B['feeSearches']}次搜索", f"{B['cityReads']}次读取", f"最多{B['attachments']}条同校PDF附件候选", "15分钟", "失败不缓存", f"{B['thinkingChars']}字符", "规划与初次报告每阶段最多3次", "整份报告最多6次", "保留已有建议", "250毫秒", "beforeRetry", "PROVIDER_BALANCE_INSUFFICIENT", "PROVIDER_INVALID_REQUEST", "PROVIDER_TEMPORARY_UNAVAILABLE", "PROVIDER_NETWORK_ERROR", f"每账号每日{B['userDailyTokens']}、全站{B['globalDailyTokens']}", "同一额度", "不能直接与用户年度预算比较"):
                     self.assertIn(phrase, content)
                 self.assertNotIn("整份报告至多四次模型调用", content)
                 self.assertNotIn("整份报告最多7次", content)
@@ -251,7 +251,7 @@ class TechnicalDesignTests(unittest.TestCase):
         acceptance = (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8")
         self.assertIn("| T-23 |", acceptance)
         self.assertIn("| T-24 |", acceptance)
-        self.assertIn("达到5校的比例", acceptance)
+        self.assertIn("达到4校及5校的比例", acceptance)
         self.assertIn("各类失败码", acceptance)
 
     def test_comprehensive_tiers_and_academic_http_research_preserve_boundaries(self):
@@ -355,7 +355,7 @@ class TechnicalDesignTests(unittest.TestCase):
                     "sourceIds/references", "下一动作", "失败原因", "尝试时间",
                     "reusedSourceCount/supplementedSourceCount/lookupKeys/attempts",
                     "仅统计本次实际调查", "不代表全国院校资料已全部覆盖",
-                    "24 次搜索", f"{B['reads']} 次正文读取", "不做无界重试",
+                    "不做无界重试",
                     *modules,
                 ):
                     self.assertIn(value, content)
@@ -387,7 +387,7 @@ class TechnicalDesignTests(unittest.TestCase):
             "WebSource.transport:'http'", "明文传输", "GBK/GB18030", "gzip/deflate/br",
             "大小上限", "时间和取消限制", "细分读取失败码", "includeDomains",
             "先查公共院校资料库", "yz.chsi.com.cn", "verified:false", "只删除该句",
-            "阶段1已实现研究HTTP及同校有限跳转", "阶段5统一替换为60次读取、每校8次、24次搜索与80条候选",
+            "阶段1已实现研究HTTP及同校有限跳转", "历史预算已被下方现行预算表替代",
         ):
             self.assertIn(phrase, policy)
         current = model.split("当前v7以", 1)[1].split("历史v6以", 1)[0]
@@ -725,7 +725,7 @@ class TechnicalDesignTests(unittest.TestCase):
     def test_deployment_preparation_links_and_recovery_limits_are_documented(self):
         path = ROOT / "docs" / "长期部署.md"
         content = path.read_text(encoding="utf-8")
-        for phrase in ("尚未验收服务器和域名", "尚未在实际 Linux 服务器执行", "一个 Node.js 应用进程", "YANTU_TRUSTED_PROXY_IPS", "/api/v1/health", "backup-database.mjs", "--source", "--destination", "integrity_check", "foreign_key_check", "删除代次", "撤销快照内旧会话", "真实实例尚未启用", "应用账本不能当作供应商账单硬上限", "usage_reservations", "restore-isolated.mjs"):
+        for phrase in ("尚未在实际 Linux 服务器执行", "一个 Node.js 应用进程", "YANTU_TRUSTED_PROXY_IPS", "/api/v1/health", "backup-database.mjs", "--source", "--destination", "integrity_check", "foreign_key_check", "删除代次", "撤销快照内旧会话", "真实实例尚未启用", "应用账本不能当作供应商账单硬上限", "usage_reservations", "restore-isolated.mjs"):
             self.assertIn(phrase, content)
         recovery = (ROOT / "docs" / "备份与隔离恢复.md").read_text(encoding="utf-8")
         for phrase in ("enabled:false", "--apply", "retainCount", "minimumAgeHours", "当前可信状态不可读", "approvedForServing:false", "不提供对外切换命令", "个人资源仅保留", "恢复码", "保守并集"):
@@ -740,6 +740,51 @@ class TechnicalDesignTests(unittest.TestCase):
             if not parts.scheme and not parts.netloc:
                 self.assertTrue((path.parent / unquote(parts.path)).resolve().is_file(), target)
         self.assertIn("长期部署.md", README.read_text(encoding="utf-8"))
+
+    def test_current_supplement_contract_separates_scope_progress_and_completion(self):
+        data = (DESIGN_DIR / "02-数据模型与可信数据.md").read_text(encoding="utf-8")
+        section = data.split("## 11. 补查快照", 1)[1]
+        for phrase in ("programAlternatives", "不包含 `candidateAudit`", "scope_unverified",
+                       "completedTaskIds", "failedTaskIds", "workingSources", "merged",
+                       "不等于证据确认不存在", "不把半成品覆盖对外旧报告",
+                       "beforeRank/afterRank", "beforeTier/afterTier", "remainingTaskCount",
+                       "任务数量不能充当已确认事实数"):
+            self.assertIn(phrase, section)
+        api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
+        current = api.split("## 8. 当前报告折叠", 1)[1]
+        for phrase in ("整块", "默认收起", "顶部吸附控制条与底部", "焦点与视口回到该卡标题",
+                       "96帧", "prefers-reduced-motion", "lastSuccessfulSyncAt", "重连只 GET",
+                       "不 POST", "按新到旧排列", "jobId", "沿用原模式、范围与私有断点",
+                       "零检索、零读取、零模型"):
+            self.assertIn(phrase, current)
+        self.assertIn("targetMin:4、targetMax:5", data)
+        self.assertNotIn("targetMin:5、targetMax:10", data)
+        self.assertNotIn("每次任务仍受最多 24 次搜索及 60 次正文读取限制", api)
+        self.assertIn(f"每次任务仍受最多{B['searches']}次搜索及{B['reads']}次正文读取限制", api)
+
+    def test_free_preview_contract_keeps_production_security_and_content_gates(self):
+        architecture = (DESIGN_DIR / "01-总体架构与演进.md").read_text(encoding="utf-8")
+        for phrase in ("YANTU_PREVIEW_MODE=true", "Secure Cookie", "系统临时目录",
+                       "不复制本机账号和数据库", "强制关闭模型、搜索", "常规 production",
+                       "休眠、重启或重新部署会丢失临时数据"):
+            self.assertIn(phrase, architecture)
+        api = (DESIGN_DIR / "04-接口与前端交互.md").read_text(encoding="utf-8")
+        for phrase in ("features.previewMode", "features.modelEnabled", "PreviewNotice",
+                       "?demo=1", "不能绕过登录"):
+            self.assertIn(phrase, api)
+        model = (DESIGN_DIR / "07-DeepSeek接入与密钥管理.md").read_text(encoding="utf-8")
+        current = model.split("## 当前补查与免费模式的调用边界", 1)[1]
+        for phrase in ("不求值供应商密钥", "researchEngine", "readiness 为 false", "模型预算为0"):
+            self.assertIn(phrase, current)
+        self.assertNotIn("账本是单进程内存、重启重置", model)
+        security = (DESIGN_DIR / "05-安全运维与验证.md").read_text(encoding="utf-8")
+        for phrase in ("usage_reservations", "一次性恢复码", "普通用户主动注销",
+                       "邮件身份验证及真实投递未配置", "enabled:false", "approvedForServing:false",
+                       "自动部署当前关闭", "覆盖率60%不是阶段完成门禁"):
+            self.assertIn(phrase, security)
+        decisions = (DESIGN_DIR / "08-变更与扩展约定.md").read_text(encoding="utf-8")
+        self.assertIn("| D-11 | 部分确定 |", decisions)
+        self.assertIn("源代码仓库公开不等于正式目录公开发布", decisions)
 
     def test_project_artifacts_do_not_contain_live_key_shapes(self):
         credential = re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")
