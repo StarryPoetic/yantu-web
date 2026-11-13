@@ -107,12 +107,97 @@ class ProductDocumentTests(unittest.TestCase):
         self.assertNotIn("后续再扩展全学科覆盖", scope)
         self.assertNotIn("先面向准备全日制考研的理工科", scope)
 
-    def test_phase_five_budget_is_current_in_section_three(self):
+    def test_research_budget_matches_runtime_without_stale_current_limits(self):
         budgets = {key: int(value) for key, value in re.findall(r'^  (\w+): (\d+),', (ROOT / 'server/explanation/research-budget.ts').read_text(encoding='utf-8'), re.M)}
-        section = self.content.split("### 3.3.", 1)[1].split("## 4.", 1)[0]
-        for key in ('reads', 'schoolReads', 'searches', 'thinkingChars'):
-            self.assertIn(str(budgets[key]), section)
+        section = self.content.split("### 3.3.", 1)[1].split("### 3.4.", 1)[0]
+        for requirement in (
+            f"每份报告{budgets['searches']}次检索",
+            f"{budgets['reads']}次读取",
+            f"每校{budgets['schoolReads']}次读取",
+            f"最终模型输入{budgets['thinkingChars']}字符",
+            f"跨校读取并发上限{budgets['concurrency']}",
+            f"候选上限{budgets['candidates']}所",
+            f"每城预筛最多{budgets['prefilterCitySchools']}所",
+            f"默认全程时限{budgets['defaultResearchTotalTimeoutMs'] // 1000}秒",
+            f"最终分析预留{budgets['finalReserveMs'] // 1000}秒",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, section)
+        for stale in ("72次检索", "24次付费搜索", "60次正文读取", "单校8次", "并发≤4"):
+            self.assertNotIn(stale, section)
         self.assertNotIn("新预算在后续实现阶段同步", section)
+
+    def test_current_school_quantity_preserves_legacy_reports(self):
+        policy = (ROOT / "shared/research-policy.ts").read_text(encoding="utf-8")
+        current_policy = policy.split("Object.freeze({", 1)[1].split("});", 1)[0]
+        values = {
+            key: int(value)
+            for key, value in re.findall(r"^    (minimum|target|maximum): (\d+),", current_policy, re.M)
+        }
+        self.assertEqual(set(values), {"minimum", "target", "maximum"})
+        self.assertIn(f"比较{values['minimum']}–{values['maximum']}所不同学校", self.content)
+        self.assertIn(f"目标{values['target']}所、最多{values['maximum']}所", self.content)
+        self.assertIn(f"不足{values['minimum']}校", self.content)
+        self.assertNotIn("5–10", self.content)
+        for requirement in ("同校对照不重复计数", "候选发现范围与最终展示数量独立", "旧报告保留生成时的数量口径"):
+            self.assertIn(requirement, self.content)
+
+    def test_report_disclosures_progress_and_reconnection_match_delivery(self):
+        section = self.content.split("### 3.3.", 1)[1].split("### 3.4.", 1)[0]
+        for requirement in (
+            "学校卡片默认全部收起", "个人匹配理由与取舍", "学校资料",
+            "顶部吸附", "收起详情，返回学校标题", "焦点和滚动位置回到该校标题",
+            "“测评与学位路线依据”整块默认折叠", "概括说明", "学位路线", "复习任务",
+            "不重新提供历史报告列表入口", "透明果冻", "去除多余背景",
+            "循环动作不表示精确完成比例", "减少动画模式使用静态图",
+            "不显示手动刷新进度按钮", "最近成功同步时间", "连接中按钮禁用",
+            "重新连接只读取原任务状态", "本次最新处理记录", "按新到旧排列",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, section)
+
+    def test_supplement_is_bounded_resumable_and_reports_changes(self):
+        section = self.content.split("### 3.5.", 1)[1].split("## 4.", 1)[0]
+        for requirement in (
+            "只补当前报告已展示的学校与项目", "含已展示的同校对照",
+            "冻结项目身份与已记录缺项", "不重新全量检索", "不为补足学校数量扩校",
+            "重新调研并生成报告", "旧报告无法明确项目身份", "断点",
+            "没有可执行任务时零检索、零读取、零模型调用",
+            "取消、失败和超时不覆盖原报告", "原项目集合内更新排序与层级",
+            "明确停招或资格不符", "不拿其他学校补位", "前后位次、层级和变化字段",
+            "本次实际检索/读取次数", "任务已执行不等于缺项已补齐",
+            "检索失败与成功但无结果分别记录",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, section)
+
+    def test_free_preview_is_distinct_from_full_runtime_and_human_review(self):
+        section = self.content.split("### 6.1. 当前交付与免费测试边界", 1)[1].split("## 7.", 1)[0]
+        for requirement in (
+            "https://github.com/StarryPoetic/yantu-web", "https://yantu-web-preview.onrender.com/",
+            "不需要启动本地电脑", "代码更新也不等于云端已重新部署",
+            "模型、联网搜索、联网报告生成和模型咨询均关闭",
+            "不能用该站验收真实模型报告质量", "未正式审校的示例",
+            "真实学科审校、校准和目录人工审核仍待完成", "不能自动入库或发布",
+            "闲置15分钟后休眠", "休眠、重启或重新部署可能清除账号和记录",
+            "本地账号与资料未迁移", "独立测试密码", "不能视为生产持久化验收通过",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, section)
+        acceptance = self.content.split("## 7. 首版验收方向", 1)[1]
+        for requirement in ("不以三项60%为完成门槛", "第11次", "不因文档同步或交互验收启动第12次"):
+            self.assertIn(requirement, acceptance)
+
+    def test_reliable_scores_require_independent_review_and_revalidation(self):
+        section = self.content.split("### 3.6. 可靠成绩与规划差距", 1)[1].split("## 4.", 1)[0]
+        for requirement in (
+            "独立审核", "自报估分与五题小测不作为当前分数", "审核者不能是提交人",
+            "待审核", "同招生年度、项目修订、考试组、科目及满分", "非负差距",
+            "撤回、过期或适用范围变化", "当前成绩与差距清空", "旧快照不能恢复失效成绩",
+            "有效期180天仅为操作默认值", "学科负责人确认", "不代表真实成绩已审核或题库已校准",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, section)
 
     def test_heading_hierarchy_and_unique_titles(self):
         headings = re.findall(r"^(#{1,6}) (.+)$", self.content, re.MULTILINE)
