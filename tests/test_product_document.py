@@ -199,6 +199,24 @@ class ProductDocumentTests(unittest.TestCase):
             with self.subTest(requirement=requirement):
                 self.assertIn(requirement, section)
 
+    def test_account_recovery_deletion_and_governance_have_delivered_boundaries(self):
+        section = self.content.split("### 3.4. 自由咨询与身份分流", 1)[1].split("### 3.5.", 1)[0]
+        for requirement in (
+            "验证当前密码后修改密码", "重新签发的当前会话", "撤销其他设备会话与旧恢复码",
+            "预先生成并自行保存的一次性恢复码", "只显示一次、一年有效",
+            "目标账号全部会话撤销", "未预留或遗失恢复码不能自动找回",
+            "邮件身份验证与真实邮件投递尚未配置", "删除个人资料", "保留登录账号与当前会话",
+            "注销账号", "删除账号与在线个人资料", "撤销全部会话和恢复码",
+            "管理员须先交接权限", "已下载文件不受删除影响", "最小操作审计保留",
+            "旧任务迟到不能恢复已删除数据", "其他用户不受影响",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, section)
+        governance = self.table_rows["管理后台"]
+        for requirement in ("纠错处理", "发布撤回", "操作审计", "真实资料仍需人工审核", "学生可查看自己的纠错进度"):
+            self.assertIn(requirement, governance)
+        self.assertIn("[账号安全与治理](账号安全与治理.md)", governance)
+
     def test_heading_hierarchy_and_unique_titles(self):
         headings = re.findall(r"^(#{1,6}) (.+)$", self.content, re.MULTILINE)
         self.assertTrue(headings)
